@@ -60,6 +60,9 @@ Three conventions follow from how this repo works, and all are visible below:
 
 * PR-early body composer writes nothing on Windows and… ([#3120](https://github.com/thn-inc/claude-tweaks/issues/3120)) ([be11935](https://github.com/thn-inc/claude-tweaks/commit/be11935c91414ce9faf9104a2688ac17aa2da4b3))
 
+### Highlights
+* Fixed pull-request-first runs on Windows stopping before their draft PR opened, and stopped spec text from passing through the shell when the PR body is written.
+
 ## [6.140.0](https://github.com/thn-inc/claude-tweaks/compare/v6.139.2...v6.140.0) (2026-10-11)
 
 
