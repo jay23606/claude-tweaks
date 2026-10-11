@@ -70,6 +70,19 @@ Three conventions follow from how this repo works, and all are visible below:
 * Repoint the citations [#3097](https://github.com/thn-inc/claude-tweaks/issues/3097) left dangling and make /tidy… ([#3101](https://github.com/thn-inc/claude-tweaks/issues/3101)) ([4a7502c](https://github.com/thn-inc/claude-tweaks/commit/4a7502c37969912fcfb8b709d8ed65bec33f37a6)), closes [#3102](https://github.com/thn-inc/claude-tweaks/issues/3102) [#3103](https://github.com/thn-inc/claude-tweaks/issues/3103) [#3104](https://github.com/thn-inc/claude-tweaks/issues/3104)
 * writeStagedItem allocate:true race test intermittently… ([#3105](https://github.com/thn-inc/claude-tweaks/issues/3105)) ([0925f45](https://github.com/thn-inc/claude-tweaks/commit/0925f458b66a29b520646a9f1c873e67a9c1e147))
 
+### Highlights
+* Setup and docs now name the playwright-cli browser backend, and harness-health warns when a project has both CLAUDE.md and AGENTS.md, since Claude Code loads only CLAUDE.md by default.
+* /flow now states that its build step must be a real /claude-tweaks:build call, which opens the run's draft PR before any edit.
+* Spec decomposition can now hand unresolved red-team findings back to its caller, loads less before deciding whether to delegate, and no longer forces a gradual-replacement shape on low-risk infrastructure changes.
+* Code review now flags polling loops where realtime updates are available, leftover "v2"-style duplicate code, oversized or legacy-format images, and unused loaded resources, and recommends measuring page speed before optimizing.
+* No user-visible change.
+* /claude-tweaks:tidy no longer deletes a plan that code or a decision record still cites.
+* Made the wrap-up engine fail with a clear message when its console is rendered before any results were recorded.
+* No user-visible change: evaluated the Taste and Web Design Guidelines skills for design reviews.
+* Pipeline PRs now always carry the run marker, phase checklist and `Fixes` lines, and a PR opened without them is repaired before merge, so merging it closes its records.
+* No user-visible change.
+* No user-visible change.
+
 ## [6.139.2](https://github.com/thn-inc/claude-tweaks/compare/v6.139.1...v6.139.2) (2026-10-10)
 
 
