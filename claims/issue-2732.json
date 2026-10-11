@@ -1,7 +1,8 @@
 {
-  "runId": "2026-09-29T165523-record-2732",
-  "sessionId": "4257db75-8991-4621-9da2-54f553eefbd5",
-  "claimedAt": "2026-09-29T16:56:51.060Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "released": true,
+  "runId": "2026-10-10T130853-tidy-standalone",
+  "reason": "swept: issue closed",
+  "releasedAt": "2026-10-11T14:05:36.190Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/2830",
+  "sweptFrom": "2026-09-29T165523-record-2732"
 }
