@@ -170,5 +170,9 @@
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1791598351614
+  },
+  "skill:node-test-output-evidence": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1791782703414
   }
 }
