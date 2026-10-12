@@ -208,5 +208,8 @@
   },
   "doc:plans/2026-10-08-record-3040-ledger": {
     "lastAuditedMs": 1791699672315
+  },
+  "doc:reference/claude-quality-levers": {
+    "lastAuditedMs": 1791786158059
   }
 }
