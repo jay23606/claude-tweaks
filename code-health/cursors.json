@@ -270,5 +270,9 @@
   "plugin/bin/lib/smoke-test": {
     "lastSweptMs": 1791601695660,
     "lastHash": "5111626b55a70f1fd609c3c38ffd6c6c2a517522"
+  },
+  "plugin/bin/lib/specify": {
+    "lastSweptMs": 1791774441564,
+    "lastHash": "e5951caf938bc80469341352a6dfe34a5db54b46"
   }
 }
