@@ -211,5 +211,8 @@
   },
   "doc:reference/claude-quality-levers": {
     "lastAuditedMs": 1791786158059
+  },
+  "doc:skill-authoring": {
+    "lastAuditedMs": 1791872227906
   }
 }
