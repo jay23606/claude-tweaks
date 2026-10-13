@@ -274,5 +274,9 @@
   "plugin/bin/lib/specify": {
     "lastSweptMs": 1791774441564,
     "lastHash": "e5951caf938bc80469341352a6dfe34a5db54b46"
+  },
+  "plugin/bin/lib/stage-item": {
+    "lastSweptMs": 1791860897300,
+    "lastHash": "f9c9c4f46ff20bd707aae75bb68ba651eeddb38e"
   }
 }
