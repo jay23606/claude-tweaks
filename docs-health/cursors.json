@@ -214,5 +214,8 @@
   },
   "doc:skill-authoring": {
     "lastAuditedMs": 1791872227906
+  },
+  "doc:skill-graph": {
+    "lastAuditedMs": 1791958605694
   }
 }
