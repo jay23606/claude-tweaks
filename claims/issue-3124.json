@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-15T174025-spec-3124",
-  "sessionId": "a3adc7a3-98d9-486a-b202-6014ca9fe5c9",
-  "claimedAt": "2026-10-15T17:40:27.538Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "pr-opened: https://github.com/thn-inc/claude-tweaks/pull/3157",
+  "releasedAt": "2026-10-15T18:11:01.362Z",
+  "link": "--remove-in-progress"
 }
