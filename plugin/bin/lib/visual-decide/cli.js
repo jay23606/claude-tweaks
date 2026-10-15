@@ -210,10 +210,23 @@ async function cmdStop(opts) {
     process.stdout.write('already stopped\n');
     return;
   }
-  await waitFor(
+  const settled = await waitFor(
     () => fs.existsSync(path.join(stateDir, 'server-stopped')) || !pidAlive(info.pid),
     { timeoutMs: 3000, intervalMs: 50 },
   );
+  if (!settled) {
+    // waitFor timed out: on a zombie PID (no reaping init) pidAlive(pid)
+    // keeps answering true via kill(pid, 0) even though the process can no
+    // longer run its own SIGTERM handler to write the marker itself. Write
+    // it defensively here, matching the dead-PID branch's own behavior
+    // above (lines 190-197) -- stop is a stale-PID-tolerant contract
+    // regardless of which branch gets there.
+    try {
+      fs.writeFileSync(path.join(stateDir, 'server-stopped'), '');
+    } catch {
+      // best-effort
+    }
+  }
   process.stdout.write('stopped\n');
 }
 
