@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-15T085915-sweep-standalone",
-  "sessionId": "e1905207-2080-4833-b622-58bd7a005524",
-  "claimedAt": "2026-10-15T10:29:07.335Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "shaped: #3014",
+  "releasedAt": "2026-10-15T10:30:29.813Z"
 }
