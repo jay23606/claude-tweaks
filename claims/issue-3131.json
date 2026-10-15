@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-15T190744-spec-3131",
-  "sessionId": "a3adc7a3-98d9-486a-b202-6014ca9fe5c9",
-  "claimedAt": "2026-10-15T19:07:48.649Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "pr-opened: #3184 (awaiting human merge)",
+  "releasedAt": "2026-10-15T19:54:30.546Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/3184"
 }
