@@ -1,7 +1,7 @@
 {
-  "runId": "2026-09-29T154722-record-2806",
-  "sessionId": "c83d21e6-6c7b-4efc-b47c-253efd84c6a3",
-  "claimedAt": "2026-09-29T18:49:46.668Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "released": true,
+  "runId": "2026-10-15T155559-tidy-standalone",
+  "reason": "swept: stale claim",
+  "releasedAt": "2026-10-15T16:08:20.003Z",
+  "sweptFrom": "2026-09-29T154722-record-2806"
 }
