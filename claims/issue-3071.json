@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-15T165908-record-3071",
-  "sessionId": "939e488d-a6f0-4d49-b657-7e694e8f0a30",
-  "claimedAt": "2026-10-15T17:02:39.151Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "already-shipped",
+  "releasedAt": "2026-10-15T17:09:01.411Z"
 }
