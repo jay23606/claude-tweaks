@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-15T153100-specify-standalone",
-  "sessionId": "a3adc7a3-98d9-486a-b202-6014ca9fe5c9",
-  "claimedAt": "2026-10-15T15:35:10.843Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "failed: shaping",
+  "releasedAt": "2026-10-15T15:38:15.232Z"
 }
