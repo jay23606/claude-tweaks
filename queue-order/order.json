@@ -1,23 +1,8 @@
 {
-  "computedAt": "2026-10-06T03:18:20.046Z",
+  "computedAt": "2026-10-15T12:42:30.844Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
-      {
-        "number": 2997,
-        "updatedAt": "2026-10-06T03:18:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2844,
-        "updatedAt": "2026-10-05T22:38:35Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2829,
-        "updatedAt": "2026-10-01T16:18:13Z",
-        "state": "OPEN"
-      },
       {
         "number": 2807,
         "updatedAt": "2026-09-29T15:24:37Z",
@@ -34,83 +19,18 @@
         "state": "OPEN"
       },
       {
-        "number": 2802,
-        "updatedAt": "2026-10-04T12:34:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2798,
-        "updatedAt": "2026-10-02T20:32:15Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2794,
-        "updatedAt": "2026-10-02T20:32:14Z",
-        "state": "OPEN"
-      },
-      {
         "number": 2791,
         "updatedAt": "2026-09-29T17:34:25Z",
         "state": "OPEN"
       },
       {
         "number": 2789,
-        "updatedAt": "2026-09-29T15:17:04Z",
+        "updatedAt": "2026-10-12T16:23:17Z",
         "state": "OPEN"
       },
       {
         "number": 2787,
         "updatedAt": "2026-09-29T18:40:37Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2746,
-        "updatedAt": "2026-10-04T12:32:59Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2732,
-        "updatedAt": "2026-09-29T16:56:58Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2717,
-        "updatedAt": "2026-10-02T20:32:12Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2703,
-        "updatedAt": "2026-09-30T17:19:21Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2700,
-        "updatedAt": "2026-09-30T17:19:30Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2699,
-        "updatedAt": "2026-09-30T17:19:32Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2694,
-        "updatedAt": "2026-10-04T11:41:40Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2692,
-        "updatedAt": "2026-10-01T11:46:21Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2688,
-        "updatedAt": "2026-10-02T06:24:20Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2669,
-        "updatedAt": "2026-10-01T11:46:17Z",
         "state": "OPEN"
       },
       {
@@ -135,182 +55,12 @@
       },
       {
         "number": 1350,
-        "updatedAt": "2026-10-06T03:16:32Z",
+        "updatedAt": "2026-10-14T12:33:51Z",
         "state": "OPEN"
       }
     ]
   },
-  "groups": [
-    [
-      {
-        "body": "Origin: dispatch of #2980-#2984 (session 6ccd43b3), group 3 PR #2996\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`_shared/pr-early-run-lifecycle.md` defines the run PR's body template: a `<!-- claude-tweaks-run: {run-id} -->` marker on the first line, a `phases-start`/`phases-end` checklist, and a `fixes-start`/`fixes-end` block carrying one `Fixes #{n}` per record. Nothing composes that template mechanically: the agent running `/flow`'s PR-early step writes the body by hand and passes it to `gh pr create`.\n\nObserved on PR #2996 (record #2982, run `2026-10-05T071404-record-2982`, a dispatched `build,test` call): the PR was created at 2026-10-05T07:31:37Z with a freeform `## Summary` body carrying none of the three markers. GitHub's `userContentEdits` for the PR shows exactly two versions — the creation body and a later manual restore — so it was opened without the template, not overwritten afterwards.\n\nNothing downstream repairs it. `_shared/pr-checklist-refresh.md`'s phase-checklist update treats a missing delimiter pair as a best-effort skip (the run logged `SKIP ... body carries no phases-start/phases-end delimiter pair` twice), and its pre-merge Fixes-block rewrite replaces the fixes span only when one exists. The file calls a stale title, checklist or Fixes block \"cosmetic, never a merge blocker\". The run reached `pending-review` with `closingIssuesReferences` empty; the dispatching session noticed only because it happened to read that field, and restored the template by hand.\n\nA missing block is not cosmetic, on three counts:\n- `partitionByOpenLinkedPR` (`bin/lib/issues/record.js`) keys dispatch's open-linked-PR exclusion (#1224) on `closedByPullRequestsReferences` alone, so a record whose PR has no closing reference stays dispatch-eligible while that PR is open (only the claim stands in the way, until it is released).\n- `_shared/github-pr-scan.md`'s unarmed-PR and stale-pending scans recognize plugin PRs only by the `RUN_MARKER` regex, so such a PR drops out of `/help` and `/tidy`.\n- A merge through GitHub's UI (rather than `pr-first-merge.md`'s `compose-subject.js` path, whose commit message carries its own `Fixes` lines) does not close the record.\n\n## Deliverables\n\n1. A tested `plugin/bin/` CLI (or an extension of an existing one) that composes the PR-early body from the run directory — run id, phases, resume line, and one `Fixes #{n}` per target — so `_shared/pr-early-run-lifecycle.md`'s `gh pr create` step passes its output via `--body-file` instead of a hand-written body. The template's literal text moves into that module, and the prose cites it instead of restating it.\n\n2. A repair path for a body missing the markers: when `_shared/pr-checklist-refresh.md`'s phase-checklist update or pre-merge refresh finds no run marker, no phases pair, or no fixes pair, it re-inserts the missing pieces (keeping any freeform content the body already has) instead of skipping, and logs one `AUTO` line naming what was restored.\n\n3. Correct `pr-checklist-refresh.md`'s \"a stale ... `Fixes` block is cosmetic, never a merge blocker\" sentence: a missing Fixes block must be restored before the merge sequence runs (still never a new stop — restoration is mechanical).\n\n4. A test covering a PR body with all three marker pairs absent: the repair step restores all three and preserves the freeform text.\n\n## Acceptance Criteria\n\n- [ ] A `/flow` run's PR-early `gh pr create` passes a body produced by the new composer, and the composed body passes `RUN_MARKER` and contains both delimiter pairs and one `Fixes #{n}` per target.\n\n- [ ] Given a run PR whose body has no markers (the #2996 shape), the next phase-checklist update or the pre-merge refresh restores the run marker, phases block and fixes block, keeps the existing freeform text, and logs one `AUTO` line; `gh pr view --json closingIssuesReferences` then lists the run's records.\n\n- [ ] `pr-checklist-refresh.md` no longer describes a missing `Fixes` block as cosmetic.\n\n- [ ] `npm test` passes, including the new tests.\n\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/pr-early-run-lifecycle.md` — the `gh pr create` step passes the composer's output via `--body-file`; the template's literal text moves to the module and the prose cites it.\n- `plugin/skills/_shared/pr-checklist-refresh.md` — the phase-checklist update and pre-merge refresh restore missing markers instead of skipping; the \"cosmetic, never a merge blocker\" sentence is corrected.\n- `plugin/bin/lib/flow/manifest.js` — home of the existing `composeFixesBlock` (`:218`); the body composer and the marker-repair function reuse it, here or in a sibling module under `plugin/bin/lib/flow/`.\n- `plugin/bin/lib/flow/preflight.js` — already parses the `phases-start` span (`:156`); it should read the markers through the same module rather than a second literal.\n- `tests/pr-early-run-lifecycle.test.js` — existing prose tests that pin the template text; update for the cite-instead-of-restate change.\n- `tests/bin-lib/flow/manifest.test.js` — unit tests for the composer and for repairing a body with all three marker pairs absent.\n- `docs/plugin-structure.md` — list the new CLI, if one is added, alongside the other `plugin/bin/*.js` entries.\n## Release Note\n\nPipeline PRs now always carry the run marker, phase checklist and `Fixes` lines, and a PR opened without them is repaired before merge, so merging it closes its records.\n\n_Filed by `capture` via specShapedBody._\n",
-        "createdAt": "2026-10-05T15:33:18Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          }
-        ],
-        "number": 2997,
-        "state": "OPEN",
-        "title": "PR-early lifecycle can open a run's PR without its template, and nothing restores it before merge",
-        "updatedAt": "2026-10-06T03:18:07Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`design-wrapper` currently routes design-quality work to Impeccable only. A described set of five Claude Code design plugins includes a Taste skill (anti-slop styling, 76k GitHub stars) and a Web Design Guidelines skill (audits against Vercel's rules including accessibility).\n\n## Deliverables\n\n- Trial the Taste and Web Design Guidelines skills against a sample build alongside Impeccable's own passes.\n- Decide whether either complements or duplicates Impeccable's finish-reviewer/asset-producer roles.\n\n## Acceptance Criteria\n\n- A short comparison note on overlap/gaps versus Impeccable, checked into `design-wrapper`'s docs.\n\n## Release Note\n\nNo user-visible change: evaluated the Taste and Web Design Guidelines skills for design reviews.\n\n## Technical Approach\n\nRun Taste and Web Design Guidelines against the same sample build `design-wrapper`'s Impeccable passes (`impeccable-finish-reviewer`, `impeccable-asset-producer`) already cover, and compare findings directly: does either surface issues Impeccable misses (e.g. Web Design Guidelines' accessibility rules against Vercel's own bar), or does either largely duplicate Impeccable's existing critique? Write the comparison as a short note, landing in `design-wrapper`'s docs alongside its existing mode documentation.\n\n### Key Files\n\n- `plugin/skills/design-wrapper/modes/` — the existing Impeccable-routed passes to compare against\n- `plugin/skills/design-wrapper/` docs — where the comparison note lands\n\n## Gotchas\n\n- Both third-party skills are external plugins this repo doesn't own — availability/version drift should be noted in the comparison if either isn't stably installable.\n- This is a comparison-and-decide record — a \"duplicates Impeccable, no action\" outcome is a valid, complete result, not a failure to find value.\n\n## Original request\n\nEvaluate Taste/Web-Design-Guidelines skills for design-wrapper\n\nCurrent State:\n- design-wrapper currently routes design-quality work to Impeccable only.\n- A reel names five Claude Code design plugins: a Taste skill (anti-slop styling, 76k GitHub stars), a Web Design Guidelines skill (audits against Vercel's rules incl. accessibility), a full design-system skill, 21st Dev MCP (10k+ UI components), and Playwright CLI for self-screenshot review.\n\nDeliverables:\n- Trial the Taste and Web Design Guidelines skills against a sample build alongside Impeccable's own passes.\n- Decide whether either complements or duplicates Impeccable's finish-reviewer/asset-producer roles.\n\nAcceptance Criteria:\n- A short comparison note on overlap/gaps versus Impeccable, checked into design-wrapper's docs.\n\nSource: https://www.instagram.com/reel/DcEFABnvBuH/\n",
-        "createdAt": "2026-09-20T19:00:56Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2694,
-        "state": "OPEN",
-        "title": "Evaluate Taste/Web-Design-Guidelines skills for design-wrapper",
-        "updatedAt": "2026-10-04T11:41:40Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ]
-  ],
-  "excluded": [
-    {
-      "number": 2829,
-      "blockedBy": [
-        2564
-      ]
-    }
-  ],
+  "groups": [],
+  "excluded": [],
   "bundles": []
 }
