@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-16T20:11:36.309Z",
+  "computedAt": "2026-10-16T21:06:28.360Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -10,7 +10,7 @@
       },
       {
         "number": 3249,
-        "updatedAt": "2026-10-16T19:08:09Z",
+        "updatedAt": "2026-10-16T20:38:42Z",
         "state": "OPEN"
       },
       {
@@ -45,17 +45,17 @@
       },
       {
         "number": 3058,
-        "updatedAt": "2026-10-15T16:24:32Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3057,
-        "updatedAt": "2026-10-15T16:24:28Z",
+        "updatedAt": "2026-10-16T20:41:17Z",
         "state": "OPEN"
       },
       {
         "number": 3056,
         "updatedAt": "2026-10-16T16:30:18Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 3057,
+        "updatedAt": "2026-10-16T20:39:02Z",
         "state": "OPEN"
       },
       {
@@ -89,11 +89,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3028,
-        "updatedAt": "2026-10-16T19:13:29Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3026,
         "updatedAt": "2026-10-16T19:08:46Z",
         "state": "OPEN"
@@ -110,7 +105,7 @@
       },
       {
         "number": 3022,
-        "updatedAt": "2026-10-15T16:23:15Z",
+        "updatedAt": "2026-10-16T20:31:32Z",
         "state": "OPEN"
       },
       {
@@ -125,7 +120,7 @@
       },
       {
         "number": 3017,
-        "updatedAt": "2026-10-15T16:22:59Z",
+        "updatedAt": "2026-10-16T20:31:31Z",
         "state": "OPEN"
       },
       {
@@ -140,7 +135,7 @@
       },
       {
         "number": 3009,
-        "updatedAt": "2026-10-15T19:27:29Z",
+        "updatedAt": "2026-10-16T20:16:11Z",
         "state": "OPEN"
       },
       {
@@ -199,11 +194,6 @@
         "state": "OPEN"
       },
       {
-        "number": 2955,
-        "updatedAt": "2026-10-16T19:19:17Z",
-        "state": "OPEN"
-      },
-      {
         "number": 2949,
         "updatedAt": "2026-10-15T16:21:26Z",
         "state": "OPEN"
@@ -245,7 +235,7 @@
       },
       {
         "number": 2907,
-        "updatedAt": "2026-10-15T16:20:56Z",
+        "updatedAt": "2026-10-16T20:33:01Z",
         "state": "OPEN"
       },
       {
@@ -265,12 +255,12 @@
       },
       {
         "number": 2877,
-        "updatedAt": "2026-10-15T16:20:41Z",
+        "updatedAt": "2026-10-16T20:40:56Z",
         "state": "OPEN"
       },
       {
         "number": 2876,
-        "updatedAt": "2026-10-16T19:54:19Z",
+        "updatedAt": "2026-10-16T21:02:22Z",
         "state": "OPEN"
       },
       {
@@ -284,11 +274,6 @@
         "state": "OPEN"
       },
       {
-        "number": 2806,
-        "updatedAt": "2026-10-16T19:53:13Z",
-        "state": "OPEN"
-      },
-      {
         "number": 2805,
         "updatedAt": "2026-10-15T16:08:18Z",
         "state": "OPEN"
@@ -296,11 +281,6 @@
       {
         "number": 2799,
         "updatedAt": "2026-10-16T16:31:35Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2783,
-        "updatedAt": "2026-10-16T17:33:52Z",
         "state": "OPEN"
       },
       {
@@ -692,193 +672,7 @@
           "notPlanned": false,
           "shapedHeadless": true
         }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2806, #3017, #3063, #3066, #3113, #3129\n\n## Current State\n\n`.claude-tweaks/verify-scope.json` may declare `checks.tests` as a map of suite name to command. `plugin/bin/lib/verify/declaration.js:57-59` parses that map form (`isPlainObject(checks.tests)`) into per-suite commands plus `decl.suites`. The string form (`:53-56`) declares a single `tests` suite.\n\n`plugin/bin/verify.js`'s `--scope` block never runs the map form's commands:\n\n- The check set is always `parsed.cmds` (command-line `--cmd`s) filtered by the selection (`verify.js:308-313`). Only tool-scoped mode synthesizes a check from the declaration, and only from the string form (`decl.checks.tests.replace(/\\{base\\}/g, …)`, `:314-319`).\n- The H2 check (`:321-338`) makes any required suite without a matching `--cmd` a usage error: `--scope: mode {mode} requires --cmd for: …`.\n\n`plugin/bin/lib/verify/args.js` adds two more constraints:\n\n- `:98` \"at least one --cmd <name>=<command> is required\", even under `--scope`.\n- `:114` `--cmd-env` that \"names no declared --cmd\". A suite declared in `verify-scope.json` does not count.\n\nReported use case (plugin 6.136.0): a project declaring five suites (`tests`, `ui-static`, `ui-unit`, `ui-build`, `ui-e2e`) needed one environment variable on one suite for a full-scope re-verify. Passing one `--cmd` failed H2 for the other four. `--cmd-env` on a declared-only suite failed `:114`. The working invocation re-typed all five commands from the declaration. Two copies of each command can then drift, and the command-line copy silently wins.\n\n## Deliverables\n\n1. Under `--scope` with a map-form `checks.tests`, build the check set from the declaration. Each selected suite runs its declared command unless a `--cmd` with the same name overrides it. `types` and `lint` follow the same rule from `checks.types` and `checks.lint` when declared.\n2. Narrow H2 so it fires only for a required name that has neither a declared command nor a `--cmd`.\n3. Let `--cmd-env <suite>=KEY=VALUE` attach to a declared suite even when no `--cmd` names it. Keep the \"names no check\" error for names that are neither declared nor passed.\n4. Relax `args.js`'s \"at least one --cmd\" rule when `--scope` is given and the declaration supplies checks.\n5. Update the `verify.js` usage text and `plugin/skills/test/verification.md` examples that show the long `--cmd` list.\n\n## Acceptance Criteria\n\n- `verify.js --scope <map-form declaration>` with no `--cmd` runs exactly the suites the selection picks, using their declared commands, and writes the same pass stamp a fully spelled-out invocation writes today. A test asserts the spawned command strings.\n- `--cmd <suite>=<other>` overrides that one suite's declared command, and the run report names the override.\n- `--cmd-env ui-e2e=FOO=1` with no `--cmd ui-e2e` sets `FOO=1` for that suite's spawn, flaky retry included.\n- A string-form or absent `checks.tests`, and any invocation without `--scope`, behaves exactly as today. `tests/bin-lib/verify/args.test.js`, `scope.test.js` and `cli.test.js` pass unchanged except where they assert the removed errors, and each such edit is named in the PR.\n- `npm test` passes in full.\n\n## Release Note\n\nScoped verification now runs the test commands declared in your verify-scope file, so you no longer have to repeat every command on the command line to change one.\n\n## Technical Approach\n\nMake the declaration the default source of commands and `--cmd` an override layer: merge `decl`'s per-suite commands with `parsed.cmds` by name (command line wins), then filter by the selection as today. H2 and the `--cmd-env` binding then check against the merged set rather than `parsed.cmds` alone. The tool-scoped string-form path is unchanged.\n\n### Key Files\n\n- `plugin/bin/verify.js` — `--scope` check-set build (`:308-319`) merges declared commands; H2 (`:321-338`) checks the merged set; usage text\n- `plugin/bin/lib/verify/args.js` — `:98` at-least-one-`--cmd` relaxed under `--scope`; `:114` `--cmd-env` binding accepts declared suites, resolved where the declaration is available\n- `plugin/bin/lib/verify/declaration.js` — map-form parse (`:57-59`); reference, exposes per-suite commands\n- `plugin/skills/test/verification.md` — invocation examples\n- `tests/bin-lib/verify/cli.test.js` — no-`--cmd` map-form run, override, `--cmd-env` on declared suite\n\n## Gotchas\n\n- #2806 (ready, in flight with `bot:in-progress` and an open PR) restructures `args.js`'s four-mode `parseArgs` with \"no change to verify.js's CLI-facing behavior\". This record changes that behavior in the same file. Build after #2806 merges, or rebase onto it, to avoid a conflicting parallel rewrite of `parseArgs`.\n- `args.js` validates `--cmd-env` before the declaration is read. Binding to declared suites needs the check moved after declaration load (in `verify.js`) or the declared names passed in. Do not read the declaration file twice.\n- A command-line override that silently shadows a declared command was the original drift risk. The run report must name every override so the shadowing is visible.\n- The pass stamp's `suitesRun` must list the suites actually run, declared or overridden, so a later `--stamp-status` reads the same coverage as today's spelled-out run.\n\n## Original request\n\nbin/verify.js --scope: a map-shaped verify-scope.json's per-suite commands are never run, so every selected suite must be re-typed as `--cmd`, and `--cmd-env` can attach only to those\n\n**Summary:** `verify-scope.json` can declare `checks.tests` as a map of suite name to command. `declaration.js` parses and validates that map, and `verify.js` uses the suite names for selection, but it never runs the declared commands. Under `--scope`, a full-mode selection requires a `--cmd` for every declared suite (\"`--scope: mode full requires --cmd for: ...`\"). The caller therefore re-types, on the command line, every command the declaration already holds. `--cmd-env` binds only to a command-line `--cmd`, so setting one environment variable for one suite still means re-passing all of them.\n\n**Kind:** Gap\n\n**Affected component:** `bin/verify.js` (the `--scope` block: the check-set filter at ~L308-320 and the H2 required-names check at ~L327-338), `bin/lib/verify/args.js` (the \"at least one --cmd\" rule and the `--cmd-env` → `--cmd` binding)\n\n**Plugin version:** 6.136.0\n\n**Related:** #2806 untangles `parseArgs` with \"No change to verify.js's CLI-facing behavior\", so it explicitly leaves this behaviour alone. #3017 covers only relative `--scope` resolving against the process cwd. #2779 (closed) added `--cmd-env` and made \"names no declared --cmd\" an error on purpose. None of them covers the coupling below.\n\n## Current State\n\n- `declaration.js` turns `checks.tests` (map form) into `decl.checks.tests = {suite: command}` and `decl.suites = [...]`.\n- `verify.js` reads `decl.checks.tests` only in tool-scoped mode, and only for the string form (`decl.checks.tests.replace(/\\{base\\}/g, ...)`). The map form's commands are never spawned. The check set is always `parsed.cmds` filtered by the selection.\n- The H2 check makes a missing `--cmd` for any required suite a usage error, so a full run must pass every suite.\n- `args.js` rejects a `--cmd-env <name>=...` whose name has no command-line `--cmd`. A declared suite does not count.\n\n**Use case (plugin 6.136.0):** a project declares five suites (`tests`, `ui-static`, `ui-unit`, `ui-build`, `ui-e2e`), each with its full command in `verify-scope.json`. A full-scope re-verify that needed one environment variable on one suite cost several retries:\n1. Passing only the one `--cmd` it wanted to tweak produced `mode full requires --cmd for: <the other four>`.\n2. `--cmd-env` aimed at a suite taken from the declaration produced `names no declared --cmd`.\n3. The working invocation re-typed all five commands from the declaration onto the command line. Two copies of each command can now drift, and when they do, the command-line copy silently wins.\n\nExpected: the declaration is the source of truth for a declared suite's command. `--cmd` overrides it only when given, and `--cmd-env` can target any declared suite.\n\n## Deliverables\n\n1. Under `--scope` with a map-form `checks.tests`, build the check set from the declaration. Each selected suite runs its declared command unless a `--cmd` with the same name overrides it. `types` and `lint` follow the same rule from `checks.types` and `checks.lint` when declared.\n2. Narrow the H2 required-names check so it fires only for a required name that has neither a declared command nor a `--cmd`.\n3. Let `--cmd-env <suite>=KEY=VALUE` attach to a declared suite even when no `--cmd` names it. Keep the \"names no check\" error for names that are neither declared nor passed.\n4. Relax `args.js`'s \"at least one --cmd is required\" when `--scope` is given, since the declaration supplies the checks. Coordinate with #2806, which restructures the same parser.\n5. Update the usage text and the verification docs that show the long `--cmd` list.\n\n## Acceptance Criteria\n\n- `verify.js --scope <map-form declaration>` with no `--cmd` runs exactly the suites the selection picks, using their declared commands, and writes the same stamp a fully spelled-out invocation writes today.\n- `--cmd <suite>=<other>` overrides that one suite's declared command, and the run report names the override.\n- `--cmd-env ui-e2e=FOO=1` with no `--cmd ui-e2e` sets `FOO=1` for that suite's spawn, flaky retry included.\n- A string-form or absent `checks.tests`, and any invocation without `--scope`, behaves exactly as it does today, and the existing args and scope tests pass unchanged except where they assert the removed errors.\n\n**Definition:** Clear\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-369f250d -->\n",
-        "createdAt": "2026-10-07T15:39:00Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3022,
-        "state": "OPEN",
-        "title": "bin/verify.js --scope: a map-shaped verify-scope.json's per-suite commands are never run, so every selected suite must be re-typed as `--cmd`, and `--cmd-env` can attach only to those",
-        "updatedAt": "2026-10-15T16:23:15Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
       },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThree `bin/` CLIs resolve repo-relative inputs against `process.cwd()`. When the shell sits in a subdirectory of the checkout, they silently produce plausible-looking wrong results:\n\n- **`bin/verify.js --scope`**: `readDeclaration(parsed.scope)` (`plugin/bin/verify.js:244`) reads the path as given. `plugin/bin/lib/verify/declaration.js:22-27` maps `ENOENT` to `{ ok: true, decl: null, missing: true }`, so a relative `--scope` that misses because of the cwd reads as \"no declaration\" and the run falls back to the full suite. `--cwd` (`verify.js:374`) is applied to the check commands only, never to the `--scope` path.\n- **`bin/wrap-up-engine.js plan`**: `gatherFacts({ cwd: process.cwd(), ... })` (`plugin/bin/wrap-up-engine.js:194-196`) evaluates fact gates (journeys, CLAUDE.md sections) against the cwd. The same `process.cwd()` pattern recurs at `:291`, `:318`, `:468` and `:634`. `:467` already computes `resolveRepoRoot(process.cwd())` for one path.\n- **`bin/build-review-context.js build`**: `plugin/bin/lib/review-context/build.js:58-73` reads each changed file as `readFile(f)` with the repo-relative name from `git diff --name-only`. From a subdirectory every read fails and every file lands in `emptySections`.\n\nReported run (plugin 6.136.0, cwd `<worktree>/web`): verify.js printed `Scope: full — no declaration at .claude-tweaks/verify-scope.json` and ran an unscoped 22-minute suite. `plan` reported \"no journeys\" although `docs/journeys/` exists at the root, and flagged a CLAUDE.md change the diff never made. build-review-context reported all 26 changed files as empty sections. An absolute `--scope` path, or running from the root, gave correct results.\n\n## Deliverables\n\n1. **verify.js**: resolve a relative `--scope` against the checkout root, which is `--cwd` when given, else `git rev-parse --show-toplevel` from the process cwd. An explicitly passed `--scope` path that does not exist after resolution is a usage error, exit 2 through the existing `scopeUsageExit` shape (`verify.js:236`), never \"no declaration\". Keep the missing-declaration fallback only for the implicit default path, if one exists.\n2. **wrap-up-engine.js**: every subcommand that gathers repo facts resolves the repo root once (`resolveRepoRoot`, already used at `:467`) and passes it as `cwd` instead of `process.cwd()`. Each `process.cwd()` site listed above is either converted or annotated with why the raw cwd is correct there.\n3. **build-review-context.js**: read per-file sections relative to the repo toplevel (`git rev-parse --show-toplevel`), not the cwd.\n4. Each CLI's `--help` or header comment states that repo-relative inputs resolve against the checkout root.\n\n## Acceptance Criteria\n\n- For each of the three CLIs, a test runs it with the process cwd set to a subdirectory of a temp git repo (via `execFileSync`'s `cwd` option) and asserts the root-correct result: verify selects the declared suites, `plan` sees the root `docs/journeys/`, and `build` writes non-empty sections. Prove each test goes red against today's code.\n- A test asserts `verify.js --scope does-not-exist.json` exits 2 with a message naming the resolved path.\n- Running each CLI from the repo root produces byte-identical output to today. Existing suites under `tests/bin-lib/verify/`, `tests/bin-lib/wrap-up/`, `tests/bin-lib/review-context/`, `tests/wrap-up-engine-run-dir-anchoring.test.js` and `tests/wrap-up-engine-journey-crlf.test.js` pass.\n- `npm test` passes in full.\n\n## Release Note\n\nVerification, wrap-up planning and review-context building now give correct results when run from a subfolder of your project, instead of silently running everything or seeing nothing.\n\n## Technical Approach\n\nResolve the root once per invocation at the CLI boundary and thread it down as an explicit `cwd`/`root` argument. The libraries already accept one (`gatherFacts({cwd})`, `verify`'s `--cwd`). Prefer `git rev-parse --show-toplevel` over walking up for a marker file, so a linked worktree resolves to its own root, not the main checkout. Changing exit 0 to exit 2 on a missing explicit `--scope` is a deliberate behavior change: a typo'd path must stop the run rather than widen it.\n\n### Key Files\n\n- `plugin/bin/verify.js` — `--scope` resolution against `--cwd`/toplevel (`:235-276`); explicit-missing → exit 2\n- `plugin/bin/lib/verify/declaration.js` — `readDeclaration` (`:22-27`) missing-file result, distinguishing explicit from implicit callers if needed\n- `plugin/bin/wrap-up-engine.js` — `process.cwd()` sites (`:194`, `:291`, `:318`, `:468`, `:634`) → resolved repo root\n- `plugin/bin/lib/review-context/build.js` — per-file `readFile(f)` (`:58-73`) relative to the toplevel\n- `tests/bin-lib/verify/cli.test.js` — subdirectory-cwd and missing-explicit-scope cases\n- `tests/bin-lib/wrap-up/engine-plan.test.js` — subdirectory-cwd fact-gate case\n- `tests/bin-lib/review-context/build.test.js` — subdirectory-cwd section case\n\n## Gotchas\n\n- `/claude-tweaks:test`'s and `/claude-tweaks:flow`'s prose may pass `--scope` as a relative path today. After this change that path resolves against the root instead of the cwd, which is the intended fix, but grep the skills for `--scope` call sites and confirm none relied on cwd-relative resolution from a non-root directory.\n- `wrap-up-engine.js:584` reads `readRunState(args.runDir)?.worktree || process.cwd()`. The run-state worktree is already the right root there. Do not override it with the main checkout's toplevel.\n- A file deleted in the diff legitimately has no content to read. It must still land in `emptySections`, so the fix must not hide real deletions.\n- Run-dir anchoring rules (`_shared/pipeline-run-dir.md`, `[IL-127]`) are about the main checkout, not the worktree toplevel. Do not conflate the two roots when threading `cwd`.\n\n## Original request\n\nverify.js / wrap-up-engine.js / build-review-context.js: repo-relative inputs resolve against the process cwd, not the git toplevel or --cwd\n\n**Summary:** Three CLIs silently degrade to plausible-looking wrong results when the shell's cwd is a subdirectory of the checkout, because they resolve repo-relative inputs against the process cwd.\n\n**Kind:** Defect\n\n**Affected component:** bin/verify.js (`--scope`), bin/wrap-up-engine.js (`plan` fact gates), bin/build-review-context.js (`build` per-file sections)\n\n**Repro steps:**\n1. In a worktree whose app lives in a subdirectory (e.g. `<worktree>/web`), leave the shell cwd in that subdirectory (common after running the app's own npm scripts).\n2. Run `node bin/verify.js --scope .claude-tweaks/verify-scope.json --cwd <worktree-root>`.\n3. Run `node bin/wrap-up-engine.js plan --run-dir <anchored run dir> --base <sha>`.\n4. Run `node bin/build-review-context.js build --base <sha> --branch HEAD`.\n\n**Expected vs. actual:**\nExpected: each CLI resolves repo-relative inputs against the git toplevel of the checkout it operates on (or `--cwd` where that flag exists), or fails loudly when an explicitly passed path does not exist.\nActual:\n- verify.js prints `Scope: full — no declaration at .claude-tweaks/verify-scope.json` and runs the full suite (a 22-minute unscoped run here); `--scope` is resolved against the process cwd, not `--cwd`. An absolute `--scope` path selects suites correctly.\n- wrap-up-engine.js `plan` evaluates fact gates against the subdirectory: \"no journeys\" although `docs/journeys/` exists at the repo root, and \"CLAUDE.md Commands section changed\" although the diff never touched CLAUDE.md. Re-running from the worktree root gives the correct gates.\n- build-review-context.js lists every changed file (26) in `emptySections`; only the top-of-bundle diff has content.\n\nSuggested fix: resolve relative `--scope`, run-dir-adjacent and per-file paths against `git rev-parse --show-toplevel` (honouring `--cwd` where given); treat an explicitly passed declaration path that does not exist as exit 2, not \"no declaration\".\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-3ac90d10 -->\n",
-        "createdAt": "2026-10-07T09:50:47Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3017,
-        "state": "OPEN",
-        "title": "verify.js / wrap-up-engine.js / build-review-context.js: repo-relative inputs resolve against the process cwd, not the git toplevel or --cwd",
-        "updatedAt": "2026-10-15T16:22:59Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
       {
         "body": "Surface: infra\n\n**Related:** #2987\n\n## Current State\n\n`plugin/bin/verify.js` writes the pass stamp only for a passing run of the full resolved check set: the write gate requires `fullSet && !parsed.noStamp` (verify.js ~line 568). `plugin/skills/test/verification.md:48` requires any deliberately partial `--cmd` set to pass `--no-stamp`, because the runner cannot tell a partial set from the full one. Both rules are correct on their own.\n\nTogether they leave a long suite with no way to earn a stamp. A project whose declared checks take about 25 minutes end to end must split verification into chunks under the harness's 10-minute foreground Bash cap. Every chunk is partial, so every chunk passes `--no-stamp`, and `--stamp-status` never reads `verifiedHead: true`. Every later gate (`/claude-tweaks:review` Step 1.5, the second call of a dispatched two-call group, skip-if-recent) then re-runs the whole set, so the two-call dispatch form pays the full ~25 minutes twice even when HEAD did not move. Agent-written stamps are forbidden (#1921), correctly, so there is no workaround. Reported on plugin 6.136.0.\n\nWhy not a single background run: `plugin/skills/test/verification.md:46`'s Foreground rule already permits one full-set run with `run_in_background` when the set exceeds the 600 s foreground cap — but only for the orchestrating session. \"A dispatched subagent never backgrounds it — its turn cannot wait on a notification\" (the `[IL-108]` family; #1904 stalled waiting on a background verify child's notification that never arrived). `/claude-tweaks:dispatch`'s two-call form runs each `/flow` call as a dispatched subagent, so inside those calls the 600 s cap is hard and chunking is the only sanctioned option. That is the case this record targets.\n\n## Deliverables\n\n1. A per-suite stamp mode: `verify.js --stamp-suite` (or equivalent) records, for a passing chunk, which declared checks passed against which sha and tree state, written by the runner only.\n2. `--stamp-status` composes `verifiedHead: true` when every check declared in `.claude-tweaks/verify-scope.json` (types, lint, and each declared suite) has a passing per-suite record at the current clean HEAD.\n3. A per-suite record never counts toward a different sha, a dirty tree, or a check it did not run; a failing chunk clears or never writes its record.\n4. `plugin/skills/test/verification.md` documents the chunked flow: when to use it, and that `--no-stamp` stays required for ad hoc partial runs.\n\n## Acceptance Criteria\n\n1. Running each declared check in separate `verify.js` invocations with the per-suite mode, all passing at one clean HEAD, makes `--stamp-status` report `verifiedHead: true`.\n2. If any declared check has no passing record at the current HEAD, `verifiedHead` stays `false`.\n3. A per-suite record from an earlier sha, or written against a dirty tree, does not count.\n4. A plain `--no-stamp` partial run still writes nothing.\n5. The verify stamp tests pass, with new cases for 1–4.\n\n## Release Note\n\nLong test suites can now be verified in chunks under the 10-minute command limit and still earn a full verification stamp.\n\n## Technical Approach\n\nStore per-suite pass records alongside the existing stamp (same git-dir location, runner-written), keyed by sha and check name. Have `--stamp-status` compute the full-coverage verdict from the declared check list in `verify-scope.json`. Keep the existing full-run stamp unchanged so current callers see no difference.\n\n### Key Files\n\n- `plugin/bin/verify.js` — new flag, write path, and `--stamp-status` composition\n- `plugin/bin/lib/verify/stamp.js` — per-suite record read/write\n- `plugin/bin/lib/verify/args.js` — flag parsing\n- `plugin/bin/lib/verify/declaration.js` — declared check list from `verify-scope.json`\n- `plugin/skills/test/verification.md` — chunked-run documentation\n- `tests/bin-lib/verify/stamp.test.js` — new cases\n\n## Gotchas\n\n- #2806 (untangling `verify/args.js`'s parseArgs, PR #2836) is in flight on `args.js`; build this after it merges or rebase onto it.\n- #2987 changes the same stamp's dirty handling; agree one stamp schema so the two compose.\n- A project with no `verify-scope.json` has no declared check list to compose against; per-suite mode should refuse there with a clear message rather than guess.\n- The runner stays the only stamp writer; nothing here may add an agent-side write path.\n\n## Original request\n\nbin/verify.js: no way to compose a full pass stamp from chunked --no-stamp runs, so a suite longer than the 10-minute foreground cap never verifies HEAD\n\n**Summary:** A project whose declared suites take about 25 minutes end to end (a Python allowlist near 12 minutes, an e2e suite of 4-5 minutes, build plus lint of 3 minutes) must split verification into chunks under the harness's 10-minute foreground Bash timeout; every chunk is a partial `--cmd` set and must pass `--no-stamp`, so `verify.js --stamp-status` never reads `verifiedHead: true` and every later gate (review Step 1.5, the second call of a dispatched group, Skip-if-recent) re-runs the whole set.\n\n**Kind:** Gap\n\n**Affected component:** bin/verify.js (pass stamp) and test/verification.md (\"A targeted run never stamps\")\n\n**Use case:** verification.md is explicit that a partial `--cmd` set must pass `--no-stamp` because the runner cannot tell a partial set from the full one. That rule is correct, but it leaves a long suite with no sanctioned way to ever earn a stamp: the two-call dispatch form (`build,test` then `review,polish,wrap-up`) pays the full ~25-minute set twice — once in the first call's chunks and again when the second call's review Step 1.5 finds `present: false` — even when HEAD did not move. Expected: a per-suite stamp mode — e.g. `--stamp-suite <name>` recording that suite's pass against the sha, with `--stamp-status` composing `verifiedHead: true` once every suite declared in `.claude-tweaks/verify-scope.json` has a passing stamp at a clean HEAD — so chunked runs under the foreground cap can still produce a trustworthy full pass without an agent-side stamp write (which #1921 rightly forbids).\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-334cb7c9 -->\n\n\n**Related:** #2987\n\n",
         "createdAt": "2026-10-05T17:57:27Z",
@@ -1454,90 +1248,6 @@
     ],
     [
       {
-        "body": "Origin: reflect full from #2628\n\nDefer-reason: tangential\n\n## Current State\n\n`categoriseReproduction` (`plugin/bin/lib/coordination.js`) pairs agent A findings against agent B in A-order. When A reports two findings at the same path:line and the first has different substance from B finding, B is consumed as a `nearLocation` partner and A second finding — which does match B in substance — can no longer pair, so a genuinely reproduced finding lands `unconfirmed`. Observed on #2628 review (lens 3b, candidates-app-store-readiness.js:308: both agents reported the symlink-containment gap). Probe: A=[size-cap, symlink], B=[symlink] → 0 confirmed / 3 unconfirmed; reordering A to [symlink, size-cap] → 1 confirmed / 1 unconfirmed.\n\n## Deliverables\n\nMake pairing order-independent: before emitting near-location (different-substance) entries, prefer a same-substance match across all A findings at that location (e.g. pair by best substance score globally, not first-come in A order).\n\nA regression test with the exact two-findings-one-location fixture above, asserting the symlink finding is confirmed regardless of A order.\n\n## Acceptance Criteria\n\n`categoriseReproduction(A,B)` and `categoriseReproduction(reversed A,B)` both return the same-substance pair as confirmed for the fixture above.\n\nThe existing #1980 different-substance near-location tests still pass.\n\n## Release Note\n\nReview reproduction pairing no longer drops a finding both agents reported when one agent also reported a second issue on the same line.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-02T15:56:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          }
-        ],
-        "number": 2907,
-        "state": "OPEN",
-        "title": "categoriseReproduction drops a reproduced finding when the same agent reports two findings at one location",
-        "updatedAt": "2026-10-15T16:20:56Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "\n## Current State\n\n#2546 split `review-console.md`, `curation-engine.md`, `cleanup-procedures-execution.md`, and `_shared/pr-first-merge.md` into operative head + appendix and added `wrap-up-engine.js render --section procedure:<name>`. Measured after the split (branch of PR #2901): `review-console.md` went 34,034 B -> 32,443 B (-4.7%), and `render --section procedure:review-console` emits the whole 32,443 B head. The record's triggering symptom (a 46.6 KB persisted read) came from a single read exceeding the ~30 KB tool-output persist threshold; the head alone still exceeds it, whether read via Read or via the render verb's stdout. `summary-template.md` (17,915 B) was untouched. Review of #2546 (spec compliance D4 / Gotcha \"re-measure after split\") found the size-cap case not demonstrably fixed.\n\n## Deliverables\n\n1. Re-split `plugin/skills/wrap-up/review-console.md` so the operative head read on every run is under ~24 KB, moving further rare-branch content (auto-merge short-circuit applicability prose, multi-spec defer detail, historical #nnnn rationale) to `review-console-appendix.md` or existing sibling files, each behind its own gated read.\n2. Re-measure the four `render --section procedure:<name>` outputs and record the byte counts in the PR.\n\n## Acceptance Criteria\n\n- `node plugin/bin/wrap-up-engine.js render --section procedure:review-console | wc -c` prints a value under 24,576.\n- A standalone docs-only `/claude-tweaks:wrap-up` run produces no persisted (\"Output too large\") tool result from a procedure-file read.\n- `npm test` passes, including byte-pin and engine-cli `procedure:` tests.\n\n## Release Note\n\nWrap-up loads less instruction text on a typical run.\n\n---\nFiled by /claude-tweaks:review (flow run 2026-10-02T110307-record-2740-..., PR #2901) as the residual of #2546.\n",
         "createdAt": "2026-10-02T13:42:19Z",
         "labels": [
@@ -1586,78 +1296,6 @@
           "origin": null,
           "risk": "low",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #2749\n\nDefer-reason: tangential\n\n## Current State\n\n`_shared/pr-early-run-lifecycle.md`'s Step 3 states that a run's draft PR body should start with\nall five canonical phase-checklist rows (build, test, review, polish, wrap-up) unchecked,\nregardless of which steps the initiating `/flow` invocation's step-list argument actually names —\n\"even for steps this run's step-list argument will skip.\" Observed on record #2749's run\n(`2026-10-01T192708-record-2749`, PR #2875): the first dispatch call ran `/flow #2749 build,test`\nand the PR body it created at run start carried only `- [ ] build` / `- [ ] test` — no `review`,\n`polish`, or `wrap-up` rows at all — contradicting the documented contract. The second dispatch\ncall (`/flow #2749 review,polish,wrap-up`, this run) had to self-heal by backfilling the three\nmissing rows before it could flip `review` to checked (logged in this run's `decisions.md` at\n21:59:13). Nothing caught the drift before that point — there is no code or test pinning this\nspecific composition rule, unlike, e.g., the `tests/wrap-up-registry-pin.test.js` pattern used\nelsewhere in this plugin to keep a documented table and its implementation from drifting.\n\nEvidence: record #2749's run, `decisions.md` entries at 21:58:02 (discovery) and 21:59:13\n(self-heal), PR #2875's body history (`gh pr view 2875 --json body`). Cost this session: one\nextra read-patch-write round trip to detect and self-heal the missing rows before the review\nphase-exit checklist flip could proceed — low, but would compound across every two-call dispatch\nsplit run until fixed.\n\n## Deliverables\n\n- Either: add a deterministic check (a composer function + a test pinning its output shape) that\n  `pr-early-run-lifecycle.md` Step 3's PR-body composition always emits all five canonical rows\n  regardless of the step-list argument passed to the composing `/flow` call, or\n- Explicitly document that a two-call dispatch split (`dispatch/SKILL.md` Step 5's own sanctioned\n  pattern — `/flow {target} build,test` then `/flow {target} review,polish,wrap-up`) is a\n  known gap in this contract today, with the self-heal this run performed named as the interim\n  mitigation every later phase's checklist-update step should apply.\n\n## Acceptance Criteria\n\n- A fresh two-call dispatch split run's PR body carries all five canonical phase rows\n  (unchecked, in order) immediately after the first call's run-start PR creation — verified by a\n  test that simulates a `build,test`-scoped first call and asserts the composed body's phases\n  span contains `review`, `polish`, and `wrap-up` rows alongside `build`/`test`.\n\n## Release Note\n\nHardened the PR-checklist composer so a two-call dispatch split always starts every phase row, closing a drift this record's own run hit.\n\n_Filed by `reflect`. Close to resolve; label `wontfix` to suppress future reports of this finding._",
-        "createdAt": "2026-10-01T20:14:59Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 2877,
-        "state": "OPEN",
-        "title": "pr-early-run-lifecycle.md's \"start every row unchecked\" PR-checklist rule has no mechanical enforcement",
-        "updatedAt": "2026-10-15T16:20:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -1767,78 +1405,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate\n\n**Related:** #2779 (add `--cmd-env` to verify.js — both records edit `plugin/bin/lib/verify/args.js`; build order matters, coordinate before dispatching both)\n\n## Current State\n\n`plugin/bin/lib/verify/args.js`'s `parseArgs` handles four distinct CLI modes (a normal check run, `--stamp-status`, `--changed-files`, and their `--scope`/`--base`/`--integration-branch` variants) inside one function, with roughly ten cross-mode incompatibility checks (lines 79-100) enforcing which flags are illegal in which mode. A whole-branch review lens (3e, single-agent, unconfirmed) flagged this as coupling.\n\n## Deliverables\n\nUntangle the four modes — e.g. a discriminated result shape per mode, or separate parse paths that share only the flag-tokenizing loop — so each mode's own validation lives with that mode, not interleaved with the other three's.\n\n## Acceptance Criteria\n\n- Every existing cross-mode incompatibility check (the ~10 branches at lines 79-100) has an equivalent assertion in the new structure, each individually verified against the current test suite before the refactor is trusted\n- `tests/bin-lib/verify/args.test.js` (or wherever this file's tests live) passes unchanged, plus any new tests the refactor's own shape needs\n- No change to `verify.js`'s CLI-facing behavior (usage text, exit codes, flag names)\n\n## Release Note\n\n`verify/args.js`'s argument parsing restructured for clarity; no CLI-facing behavior change.\n\n_Filed by `ledger resolve gate`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
-        "createdAt": "2026-09-29T02:00:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          }
-        ],
-        "number": 2806,
-        "state": "OPEN",
-        "title": "Untangle verify/args.js's four-mode parseArgs coupling",
-        "updatedAt": "2026-10-16T19:53:13Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
         }
       }
     ],
@@ -2186,260 +1752,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n**Related:** #2799, #2918, #2927, #2963, #3060, #3119\n\nOrigin: wrap-up of #2997 (session 6ccd43b3) -- the Docs/Journeys curation rows surfaced these via domain-overlap ranking; none are caused by or related to #2997's own change (PR-early run body composition), they are pre-existing drift the scan happened to touch while judging nearby docs\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nSeveral docs still describe browser automation as \"agent-browser\", which was replaced by `playwright-cli` (confirmed: `plugin/skills/browse/SKILL.md` and `plugin/skills/init/bootstrap/step-07-browser-integration.md` both name `playwright-cli` as the single backend):\n- `docs/getting-started.md` lines 7 and 110\n- `docs/skill-graph.md` lines 90, 327, 330, 530\n- `README.md` line 178\n- `plugin/skills/init/SKILL.md` lines 125 and 401\n\nSeparately, `docs/journeys/compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 still cite the pre-#2316 40,960 B `CEILING_BYTES` value (now 46,080 B) for the `claims`/`pr-scan` composed bundles -- unrelated subsystems to that journey's own Step 6 (already refreshed during wrap-up of #2997): Step 8 says the gate \"rejects any call site over 40 KB -- each source composes alone, at 37 KB and 40 KB\" (real measured max: claims 43,238 B, pr-scan 45,977 B); Step 10 names a \"raw 40,960 B warning band\" (the real band is 41,472-46,080 B); Step 11's grep for `40960\\|40 \\* 1024` over `tests/` returns nothing rather than the \"two fixture lines\" it promises.\n\nAlso minor: `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md`'s frontmatter lists `docs/plugin-structure.md` and `docs/skill-graph.md` in its `files:` block, but none of its 4 steps actually visit either -- a spurious origin-coverage scoping (optional to fix). And `docs/skill-authoring.md` was left as wrap-up's Docs-row overflow during #2997 (ranked 4th under the cap of 3) -- worth a look on a future pass.\n\nShaping-time premise check (`git grep -n -i agent-browser`): every location listed above is confirmed. Two more live references the list above misses:\n- `docs/donts.md:37` states \"`agent-browser` is the only backend working in both interactive sessions and hosted Routines\" — a live rule, now wrong.\n- `docs/journeys/draft-third-party-upstream-feedback-2759.md` (lines 12, 20, 35, 41, 42, 44) uses agent-browser as its worked example of a dependency the plugin wraps.\n\nThe ceiling is `CEILING_BYTES = 45 * 1024` (46,080 B) at `plugin/bin/lib/skill-audit/context-cost.js:31`. The stale journey figures sit at lines 98, 113 and 116-120.\n\n## Deliverables\n\n1. Replace every \"agent-browser\" reference in the 4 files above with the current `playwright-cli` terminology, matching the wording already used in `browse/SKILL.md` and `init/bootstrap/step-07-browser-integration.md`.\n2. Refresh `compose-a-per-run-context-bundle-1988.md` Steps 8, 10, and 11's byte figures against the current `claims`/`pr-scan` composed bundles and the real 46,080 B `CEILING_BYTES`.\n3. Optional: drop the two unused `files:` frontmatter entries from `adopt-a-run-directory-from-one-preflight-pack-1931.md`, or confirm a future step should visit them instead.\n4. Optional: give `docs/skill-authoring.md` a staleness pass against its own domain.\n5. Correct `docs/donts.md:37`'s browser-backend rule to name `playwright-cli`. Decide whether `draft-third-party-upstream-feedback-2759.md`'s agent-browser example stays (see Gotchas).\n\n## Acceptance Criteria\n\n- [ ] No live doc or skill file calls the plugin's browser backend \"agent-browser\": `git grep -n -i agent-browser -- docs plugin README.md` returns only historical prose (`docs/incident-log.md`) and any deliberately kept third-party example. `CHANGELOG.md` and archived run dirs under `.claude-tweaks/pipelines/archive/` are history and stay untouched.\n- [ ] `compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 state byte figures that match a fresh measurement at fix time.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change -- documentation accuracy only.\n\n## Technical Approach\n\nA prose-only edit. Replace backend naming with the `playwright-cli` wording `plugin/skills/browse/SKILL.md:3,9` already uses. Re-measure the `claims`/`pr-scan` composed bundles with `bin/compose-context.js` (or the context-cost gate) at fix time instead of copying the figures quoted above, which were measured earlier.\n\n### Key Files\n\n- `docs/getting-started.md` — lines 7, 110: backend naming\n- `docs/skill-graph.md` — lines 90, 327, 330, 530: backend naming\n- `README.md` — line 178: dependency table row (package name and install command)\n- `plugin/skills/init/SKILL.md` — lines 125, 401: browser detection prose and anti-pattern row\n- `docs/donts.md` — line 37: browser-backend rule\n- `docs/journeys/draft-third-party-upstream-feedback-2759.md` — third-party example naming (judge: keep or swap)\n- `docs/journeys/compose-a-per-run-context-bundle-1988.md` — Steps 8, 10, 11 byte figures\n- `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md` — optional `files:` frontmatter trim\n\n## Gotchas\n\n- `README.md:178` is a dependency-table row with an install command. Replace the whole row (package, install command, purpose) with the real `playwright-cli` install line from `plugin/skills/init/bootstrap/step-07-browser-integration.md`, not just the name.\n- `docs/donts.md` rules carry `[IL-nn]` tags tied to `docs/incident-log.md`. Keep the tag and the rule's intent (no `mcp__claude-in-chrome__*` calls in plugin skills), and change only the stale backend name.\n- Journey 2759 uses agent-browser as an example of a third-party tool someone might file upstream feedback against. That use is not a claim about this plugin's backend, so keeping it is defensible. Swap it only if the example now misleads readers into thinking the plugin still wraps it.\n- #3119 (ready) covers `/visual-review` and `/review` still instructing agents to run retired agent-browser commands. This record covers docs plus `init/SKILL.md` naming only. Coordinate rather than both editing the same skill file, and check #3119's Key Files before touching any `plugin/skills/**` file beyond `init/SKILL.md`.\n- Tests pin some doc prose repo-wide. Run the full suite, not just a docs subset.\n\n## Original request\n\ndocs/journeys and docs/ still reference the retired \"agent-browser\" backend and carry pre-#2316 byte-ceiling figures\n\nOrigin: wrap-up of #2997 (session 6ccd43b3) -- the Docs/Journeys curation rows surfaced these via domain-overlap ranking; none are caused by or related to #2997's own change (PR-early run body composition), they are pre-existing drift the scan happened to touch while judging nearby docs\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nSeveral docs still describe browser automation as \"agent-browser\", which was replaced by `playwright-cli` (confirmed: `plugin/skills/browse/SKILL.md` and `plugin/skills/init/bootstrap/step-07-browser-integration.md` both name `playwright-cli` as the single backend):\n- `docs/getting-started.md` lines 7 and 110\n- `docs/skill-graph.md` lines 90, 327, 330, 530\n- `README.md` line 178\n- `plugin/skills/init/SKILL.md` lines 125 and 401\n\nSeparately, `docs/journeys/compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 still cite the pre-#2316 40,960 B `CEILING_BYTES` value (now 46,080 B) for the `claims`/`pr-scan` composed bundles -- unrelated subsystems to that journey's own Step 6 (already refreshed during wrap-up of #2997): Step 8 says the gate \"rejects any call site over 40 KB -- each source composes alone, at 37 KB and 40 KB\" (real measured max: claims 43,238 B, pr-scan 45,977 B); Step 10 names a \"raw 40,960 B warning band\" (the real band is 41,472-46,080 B); Step 11's grep for `40960\\|40 \\* 1024` over `tests/` returns nothing rather than the \"two fixture lines\" it promises.\n\nAlso minor: `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md`'s frontmatter lists `docs/plugin-structure.md` and `docs/skill-graph.md` in its `files:` block, but none of its 4 steps actually visit either -- a spurious origin-coverage scoping (optional to fix). And `docs/skill-authoring.md` was left as wrap-up's Docs-row overflow during #2997 (ranked 4th under the cap of 3) -- worth a look on a future pass.\n\n## Deliverables\n\n1. Replace every \"agent-browser\" reference in the 4 files above with the current `playwright-cli` terminology, matching the wording already used in `browse/SKILL.md` and `init/bootstrap/step-07-browser-integration.md`.\n2. Refresh `compose-a-per-run-context-bundle-1988.md` Steps 8, 10, and 11's byte figures against the current `claims`/`pr-scan` composed bundles and the real 46,080 B `CEILING_BYTES`.\n3. Optional: drop the two unused `files:` frontmatter entries from `adopt-a-run-directory-from-one-preflight-pack-1931.md`, or confirm a future step should visit them instead.\n4. Optional: give `docs/skill-authoring.md` a staleness pass against its own domain.\n\n## Acceptance Criteria\n\n- [ ] No file in the repo (outside historical/incident-log prose describing the old backend by name) calls the browser backend \"agent-browser\".\n- [ ] `compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 state byte figures that match a fresh measurement at fix time.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change -- documentation accuracy only.\n\n_Filed by `wrap-up` via specShapedBody._",
-        "createdAt": "2026-10-06T06:10:42Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3009,
-        "state": "OPEN",
-        "title": "docs/journeys and docs/ still reference the retired \"agent-browser\" backend and carry pre-#2316 byte-ceiling figures",
-        "updatedAt": "2026-10-15T19:27:29Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe original request says claude-tweaks \"already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel\". The checkout does not support that premise:\n\n- The only blast-radius code is `plugin/bin/blast-radius.js` (with `plugin/bin/lib/blast-radius-cli.js`). It is the gather step of `assess-agent-autonomy`'s merge-check: merge-base resolution, diff numstat, and sensitive-path classification at merge time. It never intercepts a command.\n- claude-tweaks ships no mods. Its tool-call interception is the PreToolUse hook (`plugin/bin/lib/hooks/pre-tool-use.js`), and it only ever emits `permissionDecision: 'deny'` (pre-tool-use.js:422). It never emits an ask prompt, so no claude-tweaks gate can leave an unattended run waiting on a Proceed/Cancel.\n- None of its gates targets `rm -rf` or `git reset --hard` (no match for either in `plugin/bin/lib/hooks/`).\n- Recursive deletion inside claude-tweaks' own unattended machinery runs through Node `fs.rmSync`, not a Bash `rm` command. Examples: `plugin/bin/lib/file-lock.js:115`, `plugin/bin/lib/reconcile/archive-merged.js:834`, `plugin/bin/lib/reconcile/reap-merged.js:132`. Shipped skill prose uses only single-file `rm -f` (for example `plugin/skills/_shared/headless-self-report.md:51`).\n\nThe external change: Claude Code 2.1.281+ times out a flagged dangerous `rm` prompt after two minutes in unattended, auto, or `--dangerously-skip-permissions` runs, denying the command with a rewrite hint instead of hanging (source in the original request below).\n\n## Deliverables\n\n1. A written comparison, posted as a comment on this record, of the native dangerous-`rm` timeout against what claude-tweaks actually ships. It should cover:\n   - the premise correction above: no blast-radius command interceptor exists, and `blast-radius.js` is a merge-time gather;\n   - whether any claude-tweaks PreToolUse gate overlaps or conflicts with the native prompt and timeout (expected answer: no, because the gates are deny-only and none targets `rm`);\n   - whether any claude-tweaks unattended path (`/claude-tweaks:dispatch`, `/claude-tweaks:flow` auto, Routine firings, `reconcile`) issues a Bash command the native flag would trip, which would now be denied after two minutes rather than hanging;\n   - where the \"blast-radius mod\" in the original request lives, if it exists outside this repo, so the comparison can be redirected there.\n2. For any claude-tweaks path the comparison finds the native flag would trip, file a backlog record via `/claude-tweaks:capture` with a spec-shaped body. Otherwise, state explicitly that no adjustment is needed.\n\n## Acceptance Criteria\n\n- The comparison comment exists on this record and addresses each of the four points in Deliverable 1, citing the files above.\n- It states a clear verdict: no claude-tweaks adjustment needed, or the specific path(s) that need one, each with a linked filed record.\n- No claude-tweaks code changes land in this record.\n\n## Release Note\n\nNo user-facing change. This produces an internal comparison of claude-tweaks' guardrails against Claude Code's native dangerous-rm timeout.\n\n## Technical Approach\n\nA desk comparison. Confirm the deny-only posture of `pre-tool-use.js` and the absence of Bash recursive-`rm` in shipped skill prose and `bin/` code with a repo-wide grep. Then read the native permission-modes documentation for the exact trigger set, which may cover more than `rm`, and re-check the unattended paths against that set.\n\n### Key Files\n\n- `plugin/bin/blast-radius.js` — the only blast-radius code; merge-time gather, not an interceptor\n- `plugin/bin/lib/hooks/pre-tool-use.js` — the PreToolUse gates; deny-only\n- `plugin/bin/lib/reconcile/reap-merged.js` — representative unattended recursive deletion via `fs.rmSync`\n\n## Gotchas\n\n- The original request's premise of a shipped blast-radius mod is contradicted by the checkout. #3055 lists a \"blast-radius-style guardrail\" only as a candidate for a future mod. Do not build one under this record; that is #3055's evaluation.\n- ASSUMPTION — verify at build: the native flag fires only on Bash-tool commands, not on Node `fs.rmSync` inside a hook or CLI subprocess. Confirm from the permission-modes documentation.\n- The native trigger set may widen across Claude Code versions. Cite the version the comparison was made against.\n\n## Original request\n\nCompare blast-radius against Claude Code's native dangerous-rm timeout\n\nCurrent State:\n- Claude Code (2.1.281+) now times out a flagged dangerous rm prompt after two minutes in unattended/auto/--dangerously-skip-permissions runs, denying the command with a rewrite hint instead of hanging.\n- claude-tweaks already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel.\n\nDeliverables:\n- Check whether blast-radius's own unattended-run behavior overlaps or conflicts with this native timeout.\n- Align blast-radius's timeout/denial behavior with the native one where it makes sense, or document why it intentionally differs.\n\nAcceptance Criteria:\n- A written comparison of the two behaviors.\n- Any needed blast-radius adjustment made or explicitly deferred with a reason.\n\nSource: https://code.claude.com/docs/en/permission-modes#critical-paths\n",
-        "createdAt": "2026-10-09T03:34:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3057,
-        "state": "OPEN",
-        "title": "Compare blast-radius against Claude Code's native dangerous-rm timeout",
-        "updatedAt": "2026-10-15T16:24:28Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe audit the original request asks for has a known answer at shaping time: a repo-wide `git grep -i -E 'thinking_?disabled|between_tools'` returns zero hits. Nothing in `plugin/`, `docs/`, `tests/`, `evals/`, or the project's `.claude/` references either spelling.\n\nclaude-tweaks does not set a thinking mode anywhere. It controls models through two settings:\n\n- Agent and routine frontmatter set `model:` and `effort:` only. `plugin/agents/qa-agent.md` uses `model: sonnet` and `effort: medium`. Every `plugin/skills/*/routine-template.yml` carries a `model:` line, for example `plugin/skills/specify/routine-template.yml:7` `model: claude-sonnet-5`.\n- Subagent dispatches resolve a model profile through `plugin/bin/resolve-profile.js`. The profiles (`plugin/bin/lib/model-profiles/profiles.js:15-18`) carry `model` and `effort` fields only, and effort reaches the agent as a prompt line, not an API thinking setting (`profiles.js:27-29`).\n\nThe external change: Claude Sonnet 5.5 renames the no-upfront-thinking setting from `thinkingdisabled` to `between_tools` (source in the original request below).\n\n`docs/skill-authoring.md`'s \"Model-version prompting notes\" section (line 215) is where this repo records per-model deltas that affect how skills are authored. It currently has a Fable 5.1 entry (line 233) and no Sonnet 5.5 entry.\n\n## Deliverables\n\n1. Re-run the zero-usage audit at build time (the grep above, repo-wide, both spellings) and record the result in this record's closing comment.\n2. Add one short Sonnet 5.5 bullet to the \"Model-version prompting notes\" section of `docs/skill-authoring.md`. It should state the `thinkingdisabled` to `between_tools` rename, cite the migration guide, and say that claude-tweaks sets no thinking mode today (model and effort only), so nothing needs migrating. Any future agent, routine template, or profile that adds a thinking setting should use `between_tools` when targeting Sonnet 5.5.\n\n## Acceptance Criteria\n\n- The build-time grep for `thinkingdisabled` (case-insensitive, with and without an underscore) returns zero hits outside the new note.\n- `docs/skill-authoring.md`'s Model-version prompting notes section carries a Sonnet 5.5 bullet naming both spellings and linking the migration guide.\n- CLAUDE.md is unchanged. The note belongs in the model-version section, not the always-loaded file, which has a line budget.\n\n## Release Note\n\nNo user-facing change. This records the Sonnet 5.5 thinking-setting rename in claude-tweaks' authoring notes; no configuration needed migrating.\n\n## Technical Approach\n\nA documentation-only change. Re-run the grep, then add the bullet next to the existing Fable 5.1 entry, following its source-cited format. If the build-time grep unexpectedly finds a usage, migrate it in the same change, scoped to settings that target `claude-sonnet-5-5`, and list it in the closing comment.\n\n### Key Files\n\n- `docs/skill-authoring.md` — Model-version prompting notes section gains the Sonnet 5.5 bullet\n- `plugin/bin/lib/model-profiles/profiles.js` — profile fields (model, effort) confirmed to carry no thinking setting\n- `plugin/agents/qa-agent.md` — the one shipped agent's model and effort frontmatter\n\n## Gotchas\n\n- The original request assumed claude-tweaks \"may still reference the old flag\". The shaping-time grep contradicts that, so no migration is expected. Do not invent a thinking setting just to have something to rename.\n- Routine templates pin `claude-sonnet-5`, not `claude-sonnet-5-5`. Bumping their model is a separate decision, out of scope here.\n\n## Original request\n\nAudit claude-tweaks configs for the thinkingdisabled rename\n\nCurrent State:\n- Claude Sonnet 5.5 renames the no-upfront-thinking setting from `thinkingdisabled` to `between_tools`.\n- claude-tweaks defines multiple subagents/skills with model and thinking settings that may still reference the old flag.\n\nDeliverables:\n- Audit claude-tweaks' agent/skill definitions for any `thinkingdisabled` usage.\n- Migrate any found usages to `between_tools` when targeting claude-sonnet-5-5.\n\nAcceptance Criteria:\n- No remaining `thinkingdisabled` references that target Sonnet 5.5.\n- A short note in CLAUDE.md or the relevant skill doc about the rename.\n\nSource: https://platform.claude.com/docs/en/models/sonnet-5-5/migration-guide\n",
-        "createdAt": "2026-10-09T03:34:53Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3058,
-        "state": "OPEN",
-        "title": "Audit claude-tweaks configs for the thinkingdisabled rename",
-        "updatedAt": "2026-10-15T16:24:32Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: reflect full from #2628\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/code-health/candidates-security-hardening.js:53-54` requires `./candidates-dead-code` before `./focus-generators` — the order `.claude/skills/code-health-focus-vertical/SKILL.md` pitfall 1 forbids. Requiring the module directly (as `/claude-tweaks:review` Step 6.6 does via `node -e`) emits circular-require warnings (`listTrackedSourceFiles`, `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp`) and leaves sibling verticals shared helpers bound to `undefined` in that process. #2628 hit and fixed the identical order in candidates-app-store-readiness.js (11 warnings → 0).\n\n## Deliverables\n\nSwap the two require lines so `./focus-generators` loads first, matching candidates-prelaunch.js and candidates-abstraction-police.js.\n\nA test that requires each `plugin/bin/lib/code-health/candidates-*.js` in a fresh child process and asserts no `inside circular dependency` warning on stderr — so the next vertical cannot regress this.\n\n## Acceptance Criteria\n\n`node -e \"require('./plugin/bin/lib/code-health/candidates-security-hardening')\"` prints no circular-dependency warning.\n\nThe new per-generator load test fails when any generator reverses the order (verified by temporarily reverting one).\n\n## Release Note\n\nFixed a module load-order hazard in the security-hardening code-health check.\n\n_Filed by `reflect` via specShapedBody._\n",
         "createdAt": "2026-10-02T15:56:14Z",
         "labels": [
@@ -2714,13 +2026,6 @@
     }
   ],
   "bundles": [
-    {
-      "records": [
-        3009,
-        3057,
-        3058
-      ]
-    },
     {
       "records": [
         2908,
