@@ -57,7 +57,7 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792172307473
+    "lastAuditedMs": 1792173912787
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
@@ -113,7 +113,7 @@
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792133922255
+    "lastAuditedMs": 1792173898308
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -125,11 +125,11 @@
   },
   "skill:run-directory-fact-packs": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792171861161
+    "lastAuditedMs": 1792173911216
   },
   "skill:driver-skill-outcome-taxonomy": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1790748662384
+    "lastAuditedMs": 1792173909503
   },
   "skill:release": {
     "lastAuditedSha": null,
@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792169782643
+    "lastAuditedMs": 1792173906371
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
@@ -178,5 +178,9 @@
   "skill:visual-review": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792092321118
+  },
+  "skill:merge-shape-landed-proof": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792173907900
   }
 }
