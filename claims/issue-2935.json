@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-16T102133-record-2935",
-  "sessionId": "333918ec-258a-5178-aba8-1d63ff753ee5",
-  "claimedAt": "2026-10-16T10:25:20.973Z",
-  "ttlHours": 72,
-  "host": "vm"
+  "reason": "merged: close-out #2935",
+  "releasedAt": "2026-10-16T17:32:16.171Z",
+  "link": "ad6bb4f7ab2d"
 }
