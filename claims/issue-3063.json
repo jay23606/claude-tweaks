@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-15T183433-record-3063",
-  "sessionId": "d416dc49-46fe-422f-b013-87d855808639",
-  "claimedAt": "2026-10-15T18:36:31.236Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "merged: close-out #3063",
+  "releasedAt": "2026-10-16T18:58:50.959Z",
+  "link": "8bc3263039b8"
 }
