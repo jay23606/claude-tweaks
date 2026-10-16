@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-16T05:45:55.926Z",
-  "runId": null,
+  "computedAt": "2026-10-16T05:53:18.458Z",
+  "runId": "2026-10-16T055157-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "number": 3113,
-        "updatedAt": "2026-10-15T16:30:19Z",
+        "updatedAt": "2026-10-16T05:47:27Z",
         "state": "OPEN"
       },
       {
@@ -61,16 +61,6 @@
       {
         "number": 3088,
         "updatedAt": "2026-10-16T05:30:49Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3083,
-        "updatedAt": "2026-10-15T17:08:41Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3082,
-        "updatedAt": "2026-10-15T17:08:33Z",
         "state": "OPEN"
       },
       {
@@ -3613,84 +3603,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: /claude-tweaks:flow #3101-#3104 run 2026-10-10T190327-spec-3101-3102-3103-3104. PR #3107's CI caught what local verification missed.\n\nDefer-reason: tangential\n\n## Current State\n\n`tests/release-lifecycle-byte-budget.test.js` measures `plugin/skills/wrap-up/SKILL.md` and `plugin/skills/tidy/scan-procedures.md` with `Buffer.byteLength(fs.readFileSync(...))`. That counts raw bytes, so on a Windows checkout with `core.autocrlf` the CRLF line endings inflate both counts past their caps. The test therefore always fails at base there.\n\n`verify.js`'s baseline adjudication then counts that file as pre-existing. A real regression is invisible locally on Windows. In run 2026-10-10T190327, #3101 grew `scan-procedures.md` to 43840 B against its 42466 B cap. Local verification passed four times, and only Linux CI on PR #3107 caught it (fixed in 58625fcde).\n\n## Deliverables\n\n- Normalize `\\r\\n` to `\\n` before measuring in `release-lifecycle-byte-budget.test.js`, so the count matches the LF blob CI sees.\n- Sweep `tests/` for other raw-byte budget checks over skill or doc files, such as `Buffer.byteLength(fs.readFileSync(...))` or `fs.statSync(...).size` compared against a constant, and give them the same normalization. Follow the `windows-checkout-test-parity` project skill.\n\n## Acceptance Criteria\n\n- [ ] On a Windows CRLF checkout, `release-lifecycle-byte-budget.test.js` passes at a base whose LF blobs are under budget, and fails when a file's LF size is over budget.\n- [ ] No byte-budget test under `tests/` compares a raw CRLF byte count against an LF-derived ceiling.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `flow` via specShapedBody._\n",
-        "createdAt": "2026-10-11T01:11:48Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3113,
-        "state": "OPEN",
-        "title": "Byte-budget tests count CRLF bytes, so a Windows checkout masks real size regressions",
-        "updatedAt": "2026-10-15T16:30:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
