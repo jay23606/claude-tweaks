@@ -318,6 +318,7 @@ node -e "const c=require('${CLAUDE_PLUGIN_ROOT}/bin/lib/issues/claims.js');
   runId:process.argv[2],sessionId:process.env.CLAUDE_CODE_SESSION_ID||'',
   host:require('os').hostname(),now:Date.now()}).commentBody)" "$ISSUE" "$RUN_ID" > /tmp/claim-${ISSUE}.md
 ```
+
 <!-- when: transport=gh -->
 ```bash
 gh issue comment "$ISSUE" --body-file /tmp/claim-${ISSUE}.md
@@ -325,7 +326,9 @@ gh issue comment "$ISSUE" --body-file /tmp/claim-${ISSUE}.md
 <!-- /when -->
 <!-- when: transport=mcp -->
 `add_issue_comment` with the issue number and `body` = the contents of
-`/tmp/claim-${ISSUE}.md` (`_shared/github-write-transport.md`'s Comment row).
+`/tmp/claim-${ISSUE}.md` (`_shared/github-write-transport.md`'s Comment row), exactly as the module
+printed it, then read it back per that file's **Marker comments on the MCP path** (#3131: the
+2026-10-12 #1350 mirror was stored escaped).
 <!-- /when -->
 
 Marker shapes (emitted by `claimPayload` / `releasePayload` — the same JSON shape the blob
@@ -376,6 +379,11 @@ is atomic regardless of whether the label add/remove succeeds.
   section. Read current labels first (`issue_read`, `get_labels`), merge via
   `mergeLabelNames` (`bin/lib/issues/label-write.js`, `add: ['bot:in-progress']`), and write
   that full array — never `labels: ['bot:in-progress']` alone.
+  Then read the labels back: the MCP path has no `labelFailures` output, so a silent no-op
+  add would otherwise leave the hold invisible to `/dispatch`'s label pre-filter. Absent (or a
+  failed read) → retry the add once through the same merge, read back again, and trace a second
+  absence with a `SKIP` degrade line — never abort the claim. `flow/claim-targets.md`'s "Read
+  back the `bot:in-progress` add" paragraph carries the exact procedure and log line (#3131).
 - **Removed** alongside claim release — every release removes it, regardless of outcome
   (`wrap-up/cleanup-procedures-execution.md` Section E, its duplicate in `flow/multispec-review-console.md`,
   and — for a single-spec issue-mode run the user chooses not to merge — the same Section E
