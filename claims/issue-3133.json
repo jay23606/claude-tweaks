@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-16T055343-record-3016",
-  "sessionId": "5d2bdfdd-81fd-44de-a33a-4dc14f1edcb7",
-  "claimedAt": "2026-10-16T05:54:58.260Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "merged: spec 3133",
+  "releasedAt": "2026-10-16T07:24:27.476Z",
+  "link": "63fd459cdc7781390e160ff4ee80bb285d51de6c"
 }
