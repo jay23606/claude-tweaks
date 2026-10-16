@@ -1323,6 +1323,18 @@ async function main(argv) {
         `worktree ${match.path} (branch ${match.branch || '(none)'}, pid ${match.pid}) is in use by a live session; ` +
         `verify before claiming\n`,
       );
+      return 0;
+    }
+    // The worktree lock only sees siblings on this machine whose worktree
+    // name carries the record; a live claims-registry claim from another
+    // session is the remote-facing half of the same question.
+    const claim = siblingSessions.findLiveClaim(recordRef, { cwd: process.cwd() });
+    if (claim) {
+      process.stdout.write(
+        `claude-tweaks: sibling session may already hold record ${recordRef} — ` +
+        `live claim by run ${claim.runId || '(unknown)'} (session ${claim.sessionId || '(unknown)'}, ` +
+        `host ${claim.host || '(unknown)'}, claimed ${claim.claimedAt || '(unknown)'}); verify before claiming\n`,
+      );
     } else {
       process.stdout.write(`claude-tweaks: no sibling-session conflict found for record ${recordRef}\n`);
     }

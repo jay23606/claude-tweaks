@@ -158,4 +158,50 @@ function findConflictingSession(recordRef, opts = {}) {
   return null;
 }
 
-module.exports = { findConflictingSession, matchesRecordRef, tokenize };
+// Default claim read: the claims-registry blob for issue `n` via the same
+// git-CAS-first, contents-API-fallback read the claim write path uses
+// (claim-store.js's readClaimBlob — host comes from `origin`, so GHE works
+// unchanged). Returns the blob's raw content, or null on absent/any failure.
+function defaultReadClaim(cwd) {
+  return (n) => {
+    const claimStore = require('../issues/claim-store');
+    const { defaultRunner } = require('../issues/claims-git-cas');
+    const { repoSlugOf } = require('./git-exec');
+    const deps = {
+      gitRunner: (args, o) => defaultRunner(args, { cwd, ...o }),
+      ghApi: claimStore.defaultGhApi,
+    };
+    const r = claimStore.readClaimBlob(deps, repoSlugOf(cwd), n);
+    return r.failure || r.absent ? null : r.content;
+  };
+}
+
+// findLiveClaim(recordRef, opts) -> { runId, sessionId, host, claimedAt } | null
+//
+// The remote-facing half the worktree-lock check above cannot see: a live
+// (non-stale, non-tombstoned) claims-registry claim on this record held by a
+// session other than the caller's own — a sibling on another machine, in the
+// cloud, or one whose worktree carries no lock naming the record. Same
+// fail-open posture: a non-numeric ref, a failed read, an unparseable blob
+// all return null. opts: { cwd, readClaim, sessionId, now } — readClaim is
+// (n) => string|null, injected by tests.
+function findLiveClaim(recordRef, opts = {}) {
+  if (!/^#?[1-9]\d*$/.test(String(recordRef || ''))) return null;
+  const n = Number(String(recordRef).replace(/^#/, ''));
+  const cwd = opts.cwd || process.cwd();
+  const readClaim = opts.readClaim || defaultReadClaim(cwd);
+  const sessionId = Object.prototype.hasOwnProperty.call(opts, 'sessionId')
+    ? opts.sessionId
+    : process.env.CLAUDE_CODE_SESSION_ID;
+  const now = opts.now || Date.now();
+  let content = null;
+  try { content = readClaim(n); } catch { return null; }
+  const { classifyClaimBlob } = require('../issues/claims');
+  if (classifyClaimBlob(content, now).state !== 'live') return null;
+  let claim;
+  try { claim = JSON.parse(content); } catch { return null; }
+  if (sessionId && claim.sessionId === sessionId) return null; // this session's own claim
+  return { runId: claim.runId || null, sessionId: claim.sessionId || null, host: claim.host || null, claimedAt: claim.claimedAt || null };
+}
+
+module.exports = { findConflictingSession, findLiveClaim, matchesRecordRef, tokenize };

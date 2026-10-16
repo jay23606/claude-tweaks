@@ -14,9 +14,11 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" check-sibling-sessions --record "$ISSU
 
 Branch on the printed line:
 
-- `claude-tweaks: sibling session may already hold record...` — names a live worktree (path,
-  branch, pid) whose lock names that record. Surface it and stop the automated claim for this
-  group. This is **not** an unconditional hard block: matching this plugin's "ambiguity
+- `claude-tweaks: sibling session may already hold record...` — names either a live worktree
+  (path, branch, pid) whose lock names that record, or a live claims-registry claim on it held
+  by another session (run, session, host, claimed-at) — the second covers a sibling on another
+  machine or one whose worktree name doesn't carry the record. Surface it and stop the automated
+  claim for this group. This is **not** an unconditional hard block: matching this plugin's "ambiguity
   resolves to allow, but never silently" posture elsewhere (e.g. E1's foreign-session
   warning), a human/agent that confirms the other session is actually stale can still proceed
   with the claim manually.
@@ -25,8 +27,10 @@ Branch on the printed line:
   unresolvable `git worktree list`, a dead pid, or an unparseable lock all print this same
   no-conflict line) — never treat silence as a reason to escalate.
 
-This check is additive to the existing branches/claims/labels check that follows in Step 4,
-not a replacement for it, and it does not alter that check's own logic.
+This check is advisory and additive to the claim write itself — `/claude-tweaks:flow` Step 2.8's
+atomic claim (`flow/claim-targets.md`, inside the group's first Task call) stays the correctness
+boundary; this check only stops dispatch from minting a run dir and a worktree for a group a
+sibling already holds.
 
 ## Worktree-resume check (Step 5, #2838)
 

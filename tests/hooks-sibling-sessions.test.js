@@ -4,7 +4,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { findConflictingSession, matchesRecordRef, tokenize } = require('../plugin/bin/lib/hooks/sibling-sessions');
+const {
+  findConflictingSession, findLiveClaim, matchesRecordRef, tokenize,
+} = require('../plugin/bin/lib/hooks/sibling-sessions');
 
 // Frozen `git worktree list --porcelain` fixtures — never live command output,
 // per [IL-80]: the lock-reason format is git's own unversioned implementation
@@ -202,4 +204,32 @@ test('matchesRecordRef: does not match a bare substring inside a different segme
 
 test('matchesRecordRef: matches via path when the branch does not carry the record', () => {
   assert.strictEqual(matchesRecordRef({ branch: 'main', path: '/repo/.claude/worktrees/spec-308' }, '308'), true);
+});
+
+// A sibling's claims-registry claim is invisible to the worktree-lock check
+// above when its worktree is on another machine, or its lock/name does not
+// carry the record (observed: a 14-minute-old live claim went undetected).
+const NOW = Date.parse('2026-10-05T12:00:00Z');
+const claimBlob = (over = {}) => JSON.stringify({
+  runId: '2026-10-05T114600-record-77', sessionId: 'sibling', claimedAt: '2026-10-05T11:46:00Z', ttlHours: 72, host: 'other-box', ...over,
+});
+
+test('findLiveClaim: a live claim held by another session is reported', () => {
+  const hit = findLiveClaim('77', { readClaim: () => claimBlob(), sessionId: 'me', now: NOW });
+  assert.deepStrictEqual(hit, {
+    runId: '2026-10-05T114600-record-77', sessionId: 'sibling', host: 'other-box', claimedAt: '2026-10-05T11:46:00Z',
+  });
+  assert.ok(findLiveClaim('#77', { readClaim: () => claimBlob(), sessionId: 'me', now: NOW }));
+});
+
+test('findLiveClaim: own-session, tombstoned, stale, absent, unreadable, failing, and non-numeric refs all fail open to null', () => {
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => claimBlob(), sessionId: 'sibling', now: NOW }), null);
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => JSON.stringify({ released: true, runId: 'x' }), sessionId: 'me', now: NOW }), null);
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => claimBlob({ claimedAt: '2026-09-01T00:00:00Z' }), sessionId: 'me', now: NOW }), null);
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => null, sessionId: 'me', now: NOW }), null);
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => '{not json', sessionId: 'me', now: NOW }), null);
+  assert.strictEqual(findLiveClaim('77', { readClaim: () => { throw new Error('offline'); }, sessionId: 'me', now: NOW }), null);
+  let called = false;
+  assert.strictEqual(findLiveClaim('flow-spec-12', { readClaim: () => { called = true; return claimBlob(); }, sessionId: 'me', now: NOW }), null);
+  assert.strictEqual(called, false, 'a slug ref never triggers a claim read');
 });
