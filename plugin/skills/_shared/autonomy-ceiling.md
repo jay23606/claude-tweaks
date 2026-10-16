@@ -185,11 +185,38 @@ every ceiling tier, including `supervised`. The two mechanisms solve different p
 `consoleAutoResolve` (above) is a **standing, ceiling-gated** capability that, once the project
 opts into `unattended`, applies to every future run without further per-run action. This lever is
 the opposite shape: **per-run, always requiring a live answer** (an explicit Manifesto
-`confirm`/`hybrid` override — never a `policy.yml` default, per `flow/manifesto.md`'s
-Recommendation defaults note), regardless of the project's ceiling setting. A `supervised`-ceiling
-project can still pre-authorize one specific run's merge this way; an `unattended`-ceiling project
-still needs `consoleAutoResolve` (or this lever) to actually skip the terminal click — raising the
-ceiling alone does not, by itself, answer this lever.
+`confirm`/`hybrid` override, or the `/flow pre-authorize-merge` CLI arg below — never a
+`policy.yml` default, per `flow/manifesto.md`'s Recommendation defaults note), regardless of the
+project's ceiling setting. A `supervised`-ceiling project can still pre-authorize one specific
+run's merge this way; an `unattended`-ceiling project still needs `consoleAutoResolve` (or this
+lever) to actually skip the terminal click — raising the ceiling alone does not, by itself,
+answer this lever.
+
+**Decision (#2734): keep this lever ceiling-independent by design — a `pre-authorize-merge` CLI
+arg closes the stall, not a ceiling extension.** The question this record raised: should a
+sufficiently high resolved ceiling (`unattended` + `consoleAutoResolve`) extend to merge-
+authorization directly, as a new `bookkeepingPermissions()` capability? No. Every existing
+bookkeeping capability in the table above governs a *reversible* bookkeeping write (a ledger
+route, a queue file, a console resolution) — this lever authorizes an *irreversible* action (a
+merge) with zero further human interaction once the run reaches its terminal step. Turning it
+into a ceiling-unlocked standing default would mean every future `unattended`-ceiling run merges
+itself forever, with no per-run decision point at all — exactly the non-interactive auto-grant
+`_shared/auto-mode-contract.md`'s `auto:*` invariant forbids, and exactly why this lever already
+excludes `policy.yml` (`wrap-up/manifesto-authorized-merge.md`'s "Why policy.yml is excluded"
+section says the identical thing about a different source). A ceiling check answers "has this
+*project* opted into hands-off operation," never "has a human decided, right now, that THIS run's
+diff should merge itself" — the second question is what an irreversible action needs, and only a
+live, explicit, per-run answer provides it.
+
+The actual pain this record reports — a default-`auto` run at `unattended` still stalling on one
+terminal click, once for 7.5 hours — is a *delivery* problem, not a *trust* problem: the only
+existing way to supply that live per-run answer was `confirm`/`hybrid` mode, which reopens the
+*whole* Manifesto gate to re-litigate twelve other levers just to answer this one. `/flow`'s new
+`pre-authorize-merge` CLI arg (`flow/SKILL.md`'s Arguments table) is the fix: it is still a live,
+explicit, per-run decision — typed on the command line instead of answered via `AskUserQuestion`
+— and it works under plain `auto` mode, so a user (or an automation wrapper invoking `/flow`
+non-interactively with this pre-decided intent) gets exactly the zero-click `unattended` behavior
+the record wants, with no weakening of "irreversible actions need a live per-run answer."
 
 ### Floor rule (ledger narrowing)
 

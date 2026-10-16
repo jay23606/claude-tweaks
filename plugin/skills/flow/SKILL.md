@@ -1,7 +1,7 @@
 ---
 name: flow
 description: Use when you want to run an automated build → test → review → polish → wrap-up pipeline on a work record without stopping between steps. Accepts record references (#N) only — design docs must be decomposed via /claude-tweaks:specify first.
-argument-hint: "#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]"
+argument-hint: "#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [pre-authorize-merge] [step1,step2,step3]"
 ---
 
 # Flow — Automated Pipeline
@@ -29,12 +29,12 @@ Run multiple lifecycle steps in sequence without stopping between them. Each ste
 
 ## Input
 
-`$ARGUMENTS` is parsed as `#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]` — see Syntax and Arguments below for what each token resolves to.
+`$ARGUMENTS` is parsed as `#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [pre-authorize-merge] [step1,step2,step3]` — see Syntax and Arguments below for what each token resolves to.
 
 ## Syntax
 
 ```
-/claude-tweaks:flow #N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]
+/claude-tweaks:flow #N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [pre-authorize-merge] [step1,step2,step3]
 ```
 
 All bracketed tokens are optional and order-independent. `worktree` is the default git strategy when neither `worktree` nor `current-branch` is set. `keep-going` applies to multi-record runs only. Design doc paths are rejected at Step 2.7 — run `/claude-tweaks:specify` first.
@@ -58,6 +58,7 @@ All bracketed tokens are optional and order-independent. `worktree` is the defau
 | `hybrid` | No | Manifesto approval gate runs; downstream skills still prompt on reversibility/confidence-floor or severity-ceiling failures. Between `auto` and `interactive`. |
 | `keep-going` | No | **Multi-spec only.** Continue the run after a HARD-GATE failure in one spec — remaining specs still run, committing into the same shared worktree. Failed specs surface in the consolidated Review Console's "Not run / Failed" footer. Use when specs are genuinely independent (no `blocked-by:` edges). The default is to stop on first failure because spec N+1 may build on spec N's correctness — `keep-going` inverts that safety, so it's opt-in. See `multi-spec.md`. On a single-spec/single-record run, `keep-going` has nothing to continue past — treat it as a no-op and note: "`keep-going` has no effect on a single-target run — it only applies when multiple specs/records are given." |
 | `cleanup-only` | No | Valid only when the resolved step list includes `wrap-up` (e.g. `/claude-tweaks:flow {target} wrap-up cleanup-only`) — a dedicated teardown-only entry point (#298): the caller's teardown-only follow-up call needs `wrap-up`'s cleanup route (`[IL-116]`) but not its full review/reflection semantics. Under `cleanup-only`, `/claude-tweaks:wrap-up` skips Phases 1-4 (reflection, routing, settle, close) and runs only `cleanup-procedures.md`'s cleanup items; `/flow`'s own Step 5 treats the run the same way it already treats a step list where `wrap-up` is *absent* — skip the nothing-left-behind ledger gate and the Creative/Depth surveys, render the "Flow: Steps Complete" note (see `steps-and-gates.md`'s "Partial step lists" section). On a step list that does not include `wrap-up`, the flag is a no-op — note it in the pipeline output, the same convention `keep-going` uses for its own no-op case: "`cleanup-only` has no effect — `wrap-up` is not in the step list." **Does not exempt Step 1.5** — this flag is read only after Step 1's materialize hard gate has already run, so routing a teardown call through `/flow {target} wrap-up cleanup-only` for a record whose triggering failure *was* that gate reproduces the identical STOP rather than reaching cleanup (`#1766`). `/claude-tweaks:dispatch`'s own teardown call sidesteps this by invoking `/claude-tweaks:wrap-up {target} cleanup-only` directly, never through `/flow` — see `dispatch/two-call-gate.md` §5. |
+| `pre-authorize-merge` | No | **#2734.** Resolves the Manifesto's `merge-authorization` lever (13) to `pre-authorized` as an explicit CLI arg — the same precedence-chain step every other lever already honors (`manifesto.md`'s "Compute recommendations" Step 1), just the first caller to exercise it for this one lever. This is deliberately distinct from `confirm`/`hybrid` mode: it answers only this one lever with one live, explicit, per-run decision typed on the command line, without reopening the whole Manifesto gate to re-litigate the other twelve. Works under plain `auto` too (the lever's own "ask" default was never reachable there before — see `_shared/autonomy-ceiling.md`'s "Orthogonal to the ceiling" section for why a project-wide `policy.yml`/autonomy-ceiling default was rejected in favor of this per-run flag). A run started this way still merges only once every HARD-GATE is green and `assess-agent-autonomy merge-check`'s content-judgment safety net passes — this flag authorizes the merge decision, never a skip of that check. |
 | `[steps]` | No | Step argument(s). Single step = resume from that step onward. Comma-separated steps = run exactly those steps. Default (no steps): `build,test,review,polish,wrap-up` (re-verify is bundled with polish). |
 
 **Full mode prose** — every fact behind the `auto`/`confirm`/`interactive`/`hybrid` rows above, and the per-mode Manifesto-behavior table (Step 3) — lives in `mode-table.md` in this skill's directory; read it before choosing a mode for anything beyond the common case.
@@ -91,6 +92,7 @@ If no UI files changed, or `no-stories` is set, the stories step is skipped.
 /claude-tweaks:flow 42 no-polish                                    → full pipeline without polish phase
 /claude-tweaks:flow 42 no-deepen                                    → full pipeline, skip the end-of-run depth-opportunities survey
 /claude-tweaks:flow 42 no-creative                                  → full pipeline, skip the end-of-run creative-opportunities survey
+/claude-tweaks:flow 42 pre-authorize-merge                          → full pipeline in auto, merges itself with zero clicks once every HARD-GATE is green
 /claude-tweaks:flow 42,45,48                                        → multi-spec sequential, all specs in one shared worktree
 /claude-tweaks:flow 42,45,48 keep-going                             → multi-spec, continue past HARD-GATE failures (independent specs only)
 /claude-tweaks:flow meal planning                                   → resolve to spec by name (rejected if only design doc exists)
@@ -111,7 +113,7 @@ When a gate fails, the pipeline stops immediately and renders a failure card. Tw
 
 ### Step 1: Validate Input
 
-1. Parse `$ARGUMENTS` — extract record reference(s) (`#N` / `#A,#B`) or topic name, detect `worktree`, `current-branch`, `no-stories`, `no-polish`, `no-deepen`, `no-creative`, the mode keywords (`auto` / `interactive` / `hybrid` / `confirm`), plus optional step list. **Resolve the mode** in this order (first match wins):
+1. Parse `$ARGUMENTS` — extract record reference(s) (`#N` / `#A,#B`) or topic name, detect `worktree`, `current-branch`, `no-stories`, `no-polish`, `no-deepen`, `no-creative`, `pre-authorize-merge`, the mode keywords (`auto` / `interactive` / `hybrid` / `confirm`), plus optional step list. **Resolve the mode** in this order (first match wins):
    1. Explicit mode keyword in `$ARGUMENTS` — `interactive` / `hybrid` / `confirm` / `auto`. (`confirm` means "auto mode, but gate the Manifesto"; see Step 3.)
    2. `auto-mode` policy — `AUTO_MODE=$(node "${CLAUDE_PLUGIN_ROOT}/bin/resolve-policy.js" --values auto-mode)`: `default-off` → `interactive`; `default-on` → `auto`; empty (unset) → fall through.
    3. **Intrinsic default → `auto`.** Flow is hands-off by purpose — auto unless a param or `auto-mode: default-off` lowers it.

@@ -40,10 +40,14 @@ default a human sets once, in the repo, on behalf of every future run. This leve
 authorizes an irreversible action (a merge) with zero further human interaction once the run
 reaches its terminal step — collapsing that into a project-wide, no-longer-live default would
 recreate the exact non-interactive auto-grant `_shared/auto-mode-contract.md`'s `auto:*` invariant
-forbids. The only way to set it is a live answer: an explicit Manifesto override reply
-(`confirm`/`hybrid` mode, `13=pre-authorized`) — the default `auto` mode's read-only-FYI
-Manifesto never asks, so under plain `auto` this lever always resolves `ask` unless a prior step
-in *this same run* already wrote `pre-authorized` into `config.yml`.
+forbids. There are two ways to set it, both a live, per-run, explicit answer: an explicit
+Manifesto override reply (`confirm`/`hybrid` mode, `13=pre-authorized`), or the `/flow
+pre-authorize-merge` CLI arg (#2734, `flow/SKILL.md`'s Arguments table) — the latter is what lets
+a plain default-`auto` run reach `pre-authorized` at all, since that mode's read-only-FYI
+Manifesto never asks. Absent either, this lever always resolves `ask` unless a prior step in
+*this same run* already wrote `pre-authorized` into `config.yml`. `_shared/autonomy-ceiling.md`'s
+"Orthogonal to the ceiling" section records the decision behind keeping both paths live/per-run
+rather than extending a ceiling to this lever.
 
 ## Log line (lever-triggered case only)
 
