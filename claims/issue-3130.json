@@ -1,6 +1,7 @@
 {
-  "released": true,
-  "runId": "2026-10-16T050052-record-3130",
-  "reason": "abandoned: spec 3130 (first call bypassed /flow; artifact check failed; commits kept on worktree-dispatch-record-3130-r2)",
-  "releasedAt": "2026-10-16T05:07:13.125Z"
+  "runId": "2026-10-16T155630-record-3130",
+  "sessionId": "939e488d-a6f0-4d49-b657-7e694e8f0a30",
+  "claimedAt": "2026-10-16T15:58:47.943Z",
+  "ttlHours": 72,
+  "host": "Thomass-MacBook-Pro-3376.local"
 }
