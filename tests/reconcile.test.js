@@ -1466,6 +1466,51 @@ test('reconcile(): an exhausted wall-clock budget skips every remaining check in
   }
 });
 
+test('reconcile(): opts.budgetMs reaches createBudget, so an unbounded explicit subset is never budget-skipped', async () => {
+  const { mainDir } = pairedFixture();
+  fs.mkdirSync(path.join(mainDir, '.claude-tweaks'), { recursive: true });
+  fs.writeFileSync(path.join(mainDir, '.claude-tweaks', 'policy.yml'), 'integration-model: pr-first\n');
+  const preflight = require('../plugin/bin/lib/reconcile/preflight');
+  const originalHealth = preflight.ghHealthCheck;
+  const originalHealthAsync = preflight.ghHealthCheckAsync;
+  preflight.ghHealthCheck = () => ({ ok: true, reason: null });
+  preflight.ghHealthCheckAsync = async () => ({ ok: true, reason: null });
+  const budgetMod = require('../plugin/bin/lib/reconcile/budget');
+  const original = budgetMod.createBudget;
+  const seen = [];
+  // Exhausted unless the caller lifted the ceiling.
+  budgetMod.createBudget = (ms) => { seen.push(ms); return { exceeded: () => ms !== Infinity, remainingMs: () => 0 }; };
+  try {
+    const r = await reconcile({ cwd: mainDir, checks: ['mirror', 'red-tip'], budgetMs: Infinity });
+    assert.deepEqual(seen, [Infinity]);
+    assert.ok(!r.skipped.some((s) => s.reason === 'budget-exceeded'), JSON.stringify(r.skipped));
+  } finally {
+    budgetMod.createBudget = original;
+    preflight.ghHealthCheck = originalHealth;
+    preflight.ghHealthCheckAsync = originalHealthAsync;
+  }
+});
+
+test('hooks.js reconcile: an explicit --checks subset runs unbounded; an unscoped pass keeps the default budget', async () => {
+  const reconcileMod = require('../plugin/bin/lib/reconcile');
+  const original = reconcileMod.reconcile;
+  const calls = [];
+  reconcileMod.reconcile = async (opts) => { calls.push(opts); return { skipped: [] }; };
+  const { main } = require('../plugin/bin/hooks');
+  const write = process.stdout.write;
+  process.stdout.write = () => true;
+  try {
+    await main(['node', 'hooks.js', 'reconcile', '--checks', 'reap', '--json']);
+    await main(['node', 'hooks.js', 'reconcile', '--json']);
+  } finally {
+    process.stdout.write = write;
+    reconcileMod.reconcile = original;
+  }
+  assert.strictEqual(calls[0].budgetMs, Infinity);
+  assert.deepEqual(calls[0].checks, ['reap']);
+  assert.strictEqual(calls[1].budgetMs, undefined);
+});
+
 // --- shared fetch (#820 D2): mirror and remote-prune merge into one fetch ---
 
 test('reconcile(): mirror and remote-prune share one fetch, not two (D2)', async () => {

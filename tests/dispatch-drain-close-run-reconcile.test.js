@@ -34,7 +34,9 @@ test('#2430: the drain loop closes a minted run dir at termination, skips (and r
 test('#2430: drain termination re-runs reconcile a second time so merged-PR worktrees from this firing are reaped, not left for a future SessionStart', () => {
   const t = read('plugin/skills/dispatch/SKILL.md');
   const section = t.slice(t.indexOf('At loop termination'), t.indexOf('**`next` (deprecated alias'));
-  assert.match(section, /run `node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/hooks\.js" reconcile` a second time/);
+  // Scoped to release,archive,reap: an unscoped pass spends the hot-path
+  // budget before reap (dispatched last) and reports it budget-exceeded.
+  assert.match(section, /run `node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/hooks\.js" reconcile --checks release,archive,reap` a second time/);
   assert.match(section, /reaped now rather than left for a future session's SessionStart hook to discover/);
   // Step 1's own first reconcile call stays as-is -- this is additive, not a replacement.
   // Scope is Steps 1-3 (the drain-termination block lives at the end of Step 3's own text,

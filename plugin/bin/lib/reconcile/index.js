@@ -37,7 +37,7 @@ const { formatReconcileSummary, archivedCountFromRunsResult } = require('./resid
 // determine dispatch order.
 const ALL_CHECKS = ['mirror', 'red-tip', 'reap', 'release', 'archive', 'archive-branches', 'remote-prune', 'console'];
 
-// opts: { dryRun?: boolean, checks?: string[], cwd?: string, sessionId?: string }
+// opts: { dryRun?: boolean, checks?: string[], cwd?: string, sessionId?: string, budgetMs?: number }
 // -> { mirror, worktrees, claims, runs, branches, console, skipped }
 // `sessionId`, when the caller has one, threads through to archiveMerged's
 // own `isAbandonedInterrupted` ownership check (archive-merged.js) — omitted
@@ -238,8 +238,12 @@ async function reconcile(opts = {}) {
   // order; each guard's slice is "every requested check from here on",
   // so a budget exhausted mid-pass reports the whole remainder in one
   // `skipped` entry and returns immediately rather than running a partial
-  // remainder.
-  const budget = require('./budget').createBudget();
+  // remainder. `opts.budgetMs` overrides the default ceiling — the
+  // `reconcile` CLI passes Infinity for an explicit `--checks` subset, since
+  // `reap` runs last by design (see the ordering comment below) and an
+  // 18s hot-path ceiling would otherwise starve exactly the check the caller
+  // named.
+  const budget = require('./budget').createBudget(opts.budgetMs);
   // #2505 — one shared per-pass memo for the `gh issue list` fetch
   // escalateResidue/resolveResidue's own findResidueDuplicate issues,
   // reused across every stuck dir/path archive+reap escalate or resolve in
