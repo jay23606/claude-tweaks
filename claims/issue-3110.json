@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-15T165918-record-3110",
-  "sessionId": "bd04d6e4-d4e0-4001-8534-827f191cbe54",
-  "claimedAt": "2026-10-15T17:01:08.719Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "merged: spec 3110",
+  "releasedAt": "2026-10-16T05:09:02.799Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/commit/b59e7e2ed07c39b543f6494511506e77da318024"
 }
