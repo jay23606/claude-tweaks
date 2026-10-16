@@ -25,7 +25,7 @@
   },
   "skill:upstream-drift": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1789417711846
+    "lastAuditedMs": 1792135855132
   },
   "skill:.claude/skills/transcript-payload-verification/SKILL.md": {
     "lastAuditedSha": null,
@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792133927508
+    "lastAuditedMs": 1792135853614
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
