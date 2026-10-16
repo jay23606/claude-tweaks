@@ -260,12 +260,19 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
     pr: async () => {
       if (!state || !state.pr || !state.pr.number) return null;
       let raw;
-      try { raw = await exec('gh', ['pr', 'view', String(state.pr.number), '--json', 'state,isDraft,body'], { cwd: mainRoot }); } catch (err) {
+      // #3014: mergeable/mergeStateStatus ride the same `gh pr view` call —
+      // one more pair of JSON fields adds no new network round-trip. A
+      // forge/gh that omits either field (older gh, a forge without
+      // mergeability support) yields `null` for that field via `?? null`
+      // below, never an error that fails the whole probe.
+      try { raw = await exec('gh', ['pr', 'view', String(state.pr.number), '--json', 'state,isDraft,body,mergeable,mergeStateStatus'], { cwd: mainRoot }); } catch (err) {
         if (err && err.code === 'ENOENT') throw new Error('gh-absent');
         throw err;
       }
       const view = JSON.parse(raw);
-      return { number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body) };
+      return {
+        number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body), mergeable: view.mergeable ?? null, mergeStateStatus: view.mergeStateStatus ?? null,
+      };
     },
     stamp: async () => JSON.parse(await exec('node', [VERIFY_JS, '--stamp-status'], { cwd: worktreeCwd })),
     changedFiles: async () => {

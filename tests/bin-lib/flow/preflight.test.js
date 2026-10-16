@@ -70,6 +70,10 @@ test('case 1: anchored dir with config.yml → adopt, the case-1 literal, OK fre
   assert.deepStrictEqual(pack.spec.value, { path: 'work/7-spec.md', present: true, record: 7, records: [7] });
   assert.strictEqual(pack.pr.value.number, 1901);
   assert.deepStrictEqual(pack.pr.value.checklist, [{ phase: 'build', done: true }, { phase: 'test', done: true }, { phase: 'review', done: false }, { phase: 'polish', done: false }, { phase: 'wrap-up', done: false }]);
+  // #3014: a gh stub that omits mergeable/mergeStateStatus yields null for
+  // both — never an error that fails the whole pr probe.
+  assert.strictEqual(pack.pr.value.mergeable, null);
+  assert.strictEqual(pack.pr.value.mergeStateStatus, null);
   assert.strictEqual(pack.stamp.value.match, true);
   assert.ok(Array.isArray(pack.changedFiles.value.files));
   const stampCall = calls.find((c) => c.args.includes('--stamp-status'));
@@ -78,6 +82,56 @@ test('case 1: anchored dir with config.yml → adopt, the case-1 literal, OK fre
   assert.strictEqual(stampCall.opts.cwd, '/w/tree');
   assert.strictEqual(changedCall.opts.cwd, '/w/tree');
   assert.strictEqual(ghCall.opts.cwd, fx.root);
+});
+
+// #3014: a two-call dispatch resume used to miss a PR that turned
+// CONFLICTING between calls — the pr probe never read mergeable/
+// mergeStateStatus at all.
+test('pr probe carries mergeable/mergeStateStatus when gh reports them (#3014)', async () => {
+  const fx = mainRoot();
+  seedCase1(fx);
+  const d = deps(fx, {
+    execFile: (cmd, args) => {
+      if (cmd === 'gh') return JSON.stringify({ state: 'OPEN', isDraft: true, body: PR_BODY, mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' });
+      if (args.includes('--stamp-status')) return STAMP;
+      if (args.includes('--changed-files')) return CHANGED;
+      throw new Error(`unexpected exec ${cmd} ${args.join(' ')}`);
+    },
+  });
+  const pack = await gatherPreflight({ runDir: fx.runDir, steps: ['review'], cwd: fx.root, mainRoot: fx.root, deps: d });
+  assert.strictEqual(pack.pr.ok, true);
+  assert.strictEqual(pack.pr.value.mergeable, 'CONFLICTING');
+  assert.strictEqual(pack.pr.value.mergeStateStatus, 'DIRTY');
+});
+
+test('pr probe reports MERGEABLE/UNKNOWN unchanged — no error, no special behavior at this layer (#3014)', async () => {
+  const fx = mainRoot();
+  seedCase1(fx);
+  const d = deps(fx, {
+    execFile: (cmd, args) => {
+      if (cmd === 'gh') return JSON.stringify({ state: 'OPEN', isDraft: true, body: PR_BODY, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' });
+      if (args.includes('--stamp-status')) return STAMP;
+      if (args.includes('--changed-files')) return CHANGED;
+      throw new Error(`unexpected exec ${cmd} ${args.join(' ')}`);
+    },
+  });
+  const pack = await gatherPreflight({ runDir: fx.runDir, steps: ['review'], cwd: fx.root, mainRoot: fx.root, deps: d });
+  assert.strictEqual(pack.pr.value.mergeable, 'MERGEABLE');
+  assert.strictEqual(pack.pr.value.mergeStateStatus, 'CLEAN');
+
+  const fx2 = mainRoot();
+  seedCase1(fx2);
+  const d2 = deps(fx2, {
+    execFile: (cmd, args) => {
+      if (cmd === 'gh') return JSON.stringify({ state: 'OPEN', isDraft: true, body: PR_BODY, mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' });
+      if (args.includes('--stamp-status')) return STAMP;
+      if (args.includes('--changed-files')) return CHANGED;
+      throw new Error(`unexpected exec ${cmd} ${args.join(' ')}`);
+    },
+  });
+  const pack2 = await gatherPreflight({ runDir: fx2.runDir, steps: ['review'], cwd: fx2.root, mainRoot: fx2.root, deps: d2 });
+  assert.strictEqual(pack2.pr.value.mergeable, 'UNKNOWN');
+  assert.strictEqual(pack2.pr.value.mergeStateStatus, 'UNKNOWN');
 });
 
 test('case 3: decisions.md content but no config.yml → the #1013-recovery literal with the computed backfills; case 2: empty dir → the minted literal (#1931 AC2)', () => {
