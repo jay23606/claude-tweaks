@@ -320,7 +320,6 @@ async function adjudicate({
   // sameness-at-base, instead of up to four per-file git spawns (#3070) — the
   // repo root above is passed straight through rather than resolved again.
   const baseInfo = git.batchBaseInfo(baseSha, work.map((w) => repoRel(w.file)), root);
-  process.stderr.write(`DEBUG baseInfo ${JSON.stringify([...baseInfo.entries()])} root=${root} sub=${sub}\n`);
   const atBase = work.map((w) => baseInfo.get(repoRel(w.file)).exists);
   const unchanged = work.map((w) => baseInfo.get(repoRel(w.file)).same);
   let scratch = null;
