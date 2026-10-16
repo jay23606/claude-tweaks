@@ -286,5 +286,9 @@
   "plugin/bin/lib/timing": {
     "lastSweptMs": 1792033663197,
     "lastHash": "ee966ebc1f4c0e94f48b1df85276f7f861a167d6"
+  },
+  "plugin/bin/lib/transcript-judge": {
+    "lastSweptMs": 1792120113115,
+    "lastHash": "6bde05e38517749742fe96938e634ef4e379b233"
   }
 }
