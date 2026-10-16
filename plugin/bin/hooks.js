@@ -43,6 +43,7 @@ const specStatusLib = require('./lib/flow/manifest');
 const resumeFreshness = require('./lib/hooks/resume-freshness');
 const stagedInventory = require('./lib/hooks/staged-inventory');
 const sessionResidue = require('./lib/hooks/session-residue');
+const { resolvePrStateByNumber } = require('./lib/reconcile/pr-state');
 const wtDetect = require('./lib/hooks/worktree-detect');
 const { closeRunState } = require('./lib/hooks/close-run-state');
 const { teardownRun } = require('./lib/hooks/teardown-run');
@@ -89,8 +90,9 @@ function pluginRoot() {
 
 // #1143: usage strings for every documented `hooks.js` subcommand (the
 // dispatch table's own record-worktree/close-run/teardown-run/archive-run/
-// resolve-run-dir/record-pr/spec-status/check-resume-freshness/check-staged-
-// inventory/check-sibling-sessions/sweep-shadow/adopt-run-dir/reconcile/
+// resolve-run-dir/record-pr/spec-status/manifest-init/pr-merge-state/
+// check-resume-freshness/check-staged-inventory/check-sibling-sessions/
+// sweep-shadow/adopt-run-dir/reconcile/
 // reconcile-background/reconcile-summary set — see docs/plugin-structure.md's
 // hooks.js line). Doubles as the membership table for the `--help`/`-h` intercept
 // below: a verb absent from this map gets no guard, by design — the six
@@ -113,6 +115,7 @@ const USAGE = {
   'archive-run': 'archive-run [--run <dir>]',
   'resolve-console': 'resolve-console --run <dir> [--approve <id,id,...>] [--decline <id,id,...>]',
   'check-resume-freshness': 'check-resume-freshness [--run <dir>]',
+  'pr-merge-state': 'pr-merge-state [--run <dir>]',
   'check-staged-inventory': 'check-staged-inventory [--run <dir>]',
   'check-session-residue': 'check-session-residue [--run <dir>]',
   'check-sibling-sessions': 'check-sibling-sessions --record <id-or-slug>',
@@ -1277,6 +1280,40 @@ async function main(argv) {
     } else {
       process.stdout.write(`claude-tweaks: resume freshness BLOCKED for ${runId} — run appears actively owned (${result.reason})\n`);
     }
+    return 0;
+  }
+  if (cmd === 'pr-merge-state') {
+    // Read-only, best-effort, fail-open (#2986): wraps
+    // bin/lib/reconcile/pr-state.js's resolvePrStateByNumber so
+    // _shared/git-discipline.md's Phase-exit push can check for a
+    // conflicting PR mechanically rather than an agent-composed `gh` call.
+    // Prints one JSON line; never throws past this handler.
+    const { runDir, invalidRunArg, worktreeLocalFallback } = resolveRunArg(argv.slice(3), process.cwd(), process.env);
+    reportWorktreeLocalFallback(runDir, worktreeLocalFallback);
+    if (invalidRunArg) {
+      process.stdout.write(JSON.stringify({ ok: false, reason: 'invalid-run-arg' }) + '\n');
+      return 0;
+    }
+    if (!runDir) {
+      process.stdout.write(JSON.stringify({ ok: false, reason: 'no-run-dir' }) + '\n');
+      return 0;
+    }
+    const state = ctxLib.readRunState(runDir);
+    const number = state && state.pr && state.pr.number;
+    if (!number) {
+      process.stdout.write(JSON.stringify({ ok: true, pr: null }) + '\n');
+      return 0;
+    }
+    const repoRoot = (state && state.worktree) || repoRootOf(runDir) || process.cwd();
+    let result;
+    try { result = resolvePrStateByNumber(repoRoot, number); } catch { result = null; }
+    if (!result || typeof result !== 'object') {
+      // null (no number — unreachable here) or a classified failure string
+      // ('gh-absent'/'network-failure') — fail open, never alarming.
+      process.stdout.write(JSON.stringify({ ok: true, pr: null, degraded: typeof result === 'string' ? result : 'unresolved' }) + '\n');
+      return 0;
+    }
+    process.stdout.write(JSON.stringify({ ok: true, pr: { number: result.number, mergeable: result.mergeable ?? null, mergeStateStatus: result.mergeStateStatus ?? null } }) + '\n');
     return 0;
   }
   if (cmd === 'check-staged-inventory') {

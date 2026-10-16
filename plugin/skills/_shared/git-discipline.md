@@ -54,6 +54,25 @@ never a hard stop, never a flag written to `run-state.json` that would suppress 
 phase's own push attempt. The next phase exit's push naturally catches up whatever the failed
 one didn't, so a single transient failure self-heals without any retry logic of its own.
 
+**Post-push merge-state check (#2986).** After a successful phase-exit push, when
+`run-state.json` carries a `pr` object, run `node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js"
+pr-merge-state --run "$PIPELINE_RUN_DIR"` — a mechanical wrapper over
+`bin/lib/reconcile/pr-state.js`'s `resolvePrStateByNumber`, best-effort and fail-open (a
+transport failure or a forge that omits the field prints `{"ok":true,"pr":null}` or
+`{"ok":true,"pr":{...,"mergeable":null}}` — never alarming, never blocking). GitHub computes
+mergeability asynchronously, so `mergeable: "UNKNOWN"` immediately after a push is common —
+treat it as no signal, same as a missing `pr` object. Only on `mergeable: "CONFLICTING"`: state
+it in the phase output and log one `AUTO` decision naming the PR number and phase. In `auto`
+mode, run "Catching a branch up with `main`" below (fetch, merge in the worktree, resolve per
+"Merge conflict resolution" below, re-push with this same section's worktree-scoped
+`git -C "{worktree-path}" push origin {branch}` form) before the next phase starts — never when
+the worktree has uncommitted changes, same precondition every merge in this file already
+requires; in `interactive`/`hybrid`, surface the conflict and the catch-up command rather than
+adding a new mid-flow stop.
+This check never runs for `local-merge` or `current-branch` mode (no phase-exit push, and
+`local-merge` has no `pr` object until finish) — the `pr`-object precondition above already
+excludes both.
+
 `local-merge` runs keep today's behavior: no phase-exit push, one push at finish. So does
 `current-branch` mode (no worktree branch to push mid-run). Either condition is `build/SKILL.md`
 Common Step 7's documented conditional action — write one `SKIP` entry per
