@@ -115,6 +115,21 @@ test('polish.md states the precedence: review\'s ceiling-aware routing is author
   );
 });
 
+test('#2977: a STAGED routing outcome (dispositionByReview.status: "staged") is paired end-to-end with polish\'s "any value" skip, so a Design-Quality audit finding review stages for a human is never re-applied by polish\'s suggestion-driven dispatch', () => {
+  // Half 1: review writes dispositionByReview with status "staged" for a STAGED outcome.
+  assert.ok(reviewSteps.includes('STAGED → `staged`'), 'Step 6.7 must map STAGED to dispositionByReview.status: "staged"');
+  // Half 2: polish's skip branch fires on "any value" of dispositionByReview, which covers "staged" —
+  // it is not keyed on a specific status, so the STAGED-written value is caught by the same branch
+  // as every other status.
+  assert.ok(
+    polish.includes('a `dispositionByReview` field (any value)') && polish.includes('**Skipped entirely**'),
+    'polish.md\'s four-way table must skip entirely on any dispositionByReview value, including "staged"'
+  );
+  // The check-order test above (dispositionIndex < suggestionFieldIndex) already proves this skip
+  // is evaluated before polish's own suggestion-driven Command dispatch for every finding, so a
+  // "staged" entry written by Step 6.7 never reaches the suggestion branch that would re-apply it.
+});
+
 test('cross-references to the renamed table are updated repo-wide (no stale "three-way consumption" citations)', () => {
   const REVIEW_MODE_PATH = path.join(__dirname, '..', 'plugin', 'skills', 'design-wrapper', 'modes', 'review.md');
   const POLISH_EXEC_PATH = path.join(__dirname, '..', 'plugin', 'skills', 'flow', 'polish-execution.md');
