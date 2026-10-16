@@ -38,7 +38,7 @@ const { execFileSync } = require('child_process');
 const {
   parseRecordFacets, extractFingerprint, extractVerifiedAsOf, extractPremiseCheck, extractTemplateStamp, parseDependencies,
 } = require('./lib/issues/record');
-const { shapeGate, liftMetadata, composeHeader, composeFile } = require('./lib/issues/materialize-format');
+const { shapeGate, liftMetadata, composeHeader, composeFile, validateDesignIntent } = require('./lib/issues/materialize-format');
 const { findSiblingPremiseDisproof } = require('./lib/issues/sibling-premise');
 const wtDetect = require('./lib/hooks/worktree-detect');
 const {
@@ -543,6 +543,13 @@ function run(argv, deps = realDeps) {
     return 2;
   }
   const meta = liftMetadata(record.body);
+  if (meta.designIntent) {
+    const validated = validateDesignIntent(meta.designIntent);
+    if (!validated.ok) {
+      deps.stderr(`materialize.js: Record #${opts.n}'s Design-intent: value is invalid — ${validated.reason}.\n`);
+      return 1;
+    }
+  }
   const header = composeHeader({
     record: opts.n,
     origin: facets.origin || 'human',

@@ -54,7 +54,7 @@ A lever is **suppressed** (hidden from the Manifesto) when no skill in the resol
 | Lever | Suppressed when |
 |---|---|
 | **Overlap** (3) | `/specify` not in the pipeline (always suppressed for `/flow` — specs already exist) |
-| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless) |
+| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless). A multi-value header dispatches in full via `command-map.md`, not this lever. |
 | **Tidy aggressiveness** (8) | Always suppressed by `/flow` — `/tidy` is not an allowed flow step (`steps-and-gates.md`'s Allowed Steps table lists it unconditionally under "Not allowed in flow") and can never be added to a step list. Still written to `config.yml` (per the "suppression is a UI affordance" rule below) since a standalone `/tidy` run can independently resolve this run directory. Kept in the canonical lever count for stable numbering. |
 | **Auto-fix threshold** (6) | `/test` not in the step list |
 | **Review auto-apply ceiling** (7) | `/review` not in the step list |

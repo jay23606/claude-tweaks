@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  shapeGate, liftMetadata, composeHeader, composeFile, sectionText, stripCodeSpans,
+  shapeGate, liftMetadata, composeHeader, composeFile, sectionText, stripCodeSpans, validateDesignIntent,
 } = require('../../../plugin/bin/lib/issues/materialize-format');
 const wtDetect = require('../../../plugin/bin/lib/hooks/worktree-detect');
 
@@ -198,13 +198,13 @@ test('shapeGate: the reported record shape (Deliverables quoting the "No implici
 
 test('liftMetadata: reads Surface/Design-intent/Design-seed from the leading metadata block', () => {
   const body = 'Surface: web\nDesign-intent: quiet\nDesign-seed: abc123\n\n## Current State\nx';
-  assert.deepEqual(liftMetadata(body), { surface: 'web', designIntent: 'quiet', designSeed: 'abc123' });
+  assert.deepEqual(liftMetadata(body), { surface: 'web', designIntent: ['quiet'], designSeed: 'abc123' });
 });
 
 test('liftMetadata: reads Ui-stack alongside Surface/Design-intent/Design-seed', () => {
   const body = 'Surface: web\nDesign-intent: quiet\nUi-stack: shadcn/ui + Tailwind\nDesign-seed: abc123\n\n## Current State\nx';
   assert.deepEqual(liftMetadata(body), {
-    surface: 'web', designIntent: 'quiet', uiStack: 'shadcn/ui + Tailwind', designSeed: 'abc123',
+    surface: 'web', designIntent: ['quiet'], uiStack: 'shadcn/ui + Tailwind', designSeed: 'abc123',
   });
 });
 
@@ -220,7 +220,27 @@ test('liftMetadata: a bare Design-intent: line (no value) does not swallow the n
 
 test('liftMetadata: a bare Ui-stack: line (no value) does not swallow the next metadata line (refs #357)', () => {
   const body = 'Surface: web\nDesign-intent: quiet\nUi-stack:\nDesign-seed: abc123\n\n## Current State\nx';
-  assert.deepEqual(liftMetadata(body), { surface: 'web', designIntent: 'quiet', designSeed: 'abc123' });
+  assert.deepEqual(liftMetadata(body), { surface: 'web', designIntent: ['quiet'], designSeed: 'abc123' });
+});
+
+// #3018: a comma-separated Design-intent list was truncated to its first
+// value — \S+ stopped at the first whitespace, so `Design-intent: quiet,
+// minimal` lifted as `quiet,` (trailing comma kept, second value lost). This
+// test's assertion (a two-element array) goes red against that old `\S+`
+// capture, which would instead lift the single string `'quiet,'`.
+test('liftMetadata: a comma-separated Design-intent list lifts every value, not just the first (#3018)', () => {
+  const body = 'Surface: web\nDesign-intent: quiet, minimal\n\n## Current State\nx';
+  assert.deepEqual(liftMetadata(body).designIntent, ['quiet', 'minimal']);
+});
+
+test('liftMetadata: a Design-intent list normalizes extra spaces and a trailing comma', () => {
+  const body = 'Surface: web\nDesign-intent: quiet ,minimal,\n\n## Current State\nx';
+  assert.deepEqual(liftMetadata(body).designIntent, ['quiet', 'minimal']);
+});
+
+test('liftMetadata: a single Design-intent value still lifts as a one-element list', () => {
+  const body = 'Surface: web\nDesign-intent: quiet\n\n## Current State\nx';
+  assert.deepEqual(liftMetadata(body).designIntent, ['quiet']);
 });
 
 test('liftMetadata: legacy Surface: frontend reads as web', () => {
@@ -271,7 +291,7 @@ test('composeHeader: every optional field present renders in the documented orde
   const header = composeHeader({
     record: 711, origin: 'capture', risk: 'low', size: 'high', ceremony: 'standard',
     grants: { build: true, merge: true }, fingerprint: 'fp123', blockedBy: [1, 2],
-    surface: 'backend', designIntent: 'none', uiStack: 'none — defer to reference codebase', designSeed: 'seedabc', parkedAtShaping: true,
+    surface: 'backend', designIntent: ['none'], uiStack: 'none — defer to reference codebase', designSeed: 'seedabc', parkedAtShaping: true,
   });
   const lines = header.split('\n');
   assert.deepEqual(lines, [
@@ -279,6 +299,37 @@ test('composeHeader: every optional field present renders in the documented orde
     'grants: [build, merge]', 'fingerprint: fp123', 'blocked-by: [1, 2]', 'surface: backend',
     'design-intent: none', 'ui-stack: none — defer to reference codebase', 'design-seed: seedabc', 'parked-at-shaping: true', '---',
   ]);
+});
+
+test('composeHeader: a two-value designIntent list renders as "quiet, minimal" (refs #3018)', () => {
+  const header = composeHeader({
+    record: 5, origin: 'human', ceremony: 'standard', grants: {}, designIntent: ['quiet', 'minimal'],
+  });
+  assert.match(header, /^design-intent: quiet, minimal$/m);
+});
+
+// ---- validateDesignIntent --------------------------------------------------
+
+test('validateDesignIntent: every enum value, singly, is valid', () => {
+  for (const v of ['none', 'bold', 'quiet', 'minimal', 'delightful', 'onboarding']) {
+    assert.deepEqual(validateDesignIntent([v]), { ok: true });
+  }
+});
+
+test('validateDesignIntent: a multi-value list of real intents is valid', () => {
+  assert.deepEqual(validateDesignIntent(['quiet', 'minimal']), { ok: true });
+});
+
+test('validateDesignIntent: an unknown value fails, naming it', () => {
+  const result = validateDesignIntent(['quiet', 'sparkly']);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /sparkly/);
+});
+
+test('validateDesignIntent: "none" combined with another value fails (#3018)', () => {
+  const result = validateDesignIntent(['none', 'bold']);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /none/);
 });
 
 // ---- composeFile -----------------------------------------------------------
@@ -426,6 +477,39 @@ test('materialize CLI: gh absent exits 2', () => {
   const code = withCwd(repoRoot, () => cliRun(['1', '--run-dir', runDir], deps));
   assert.equal(code, 2);
   assert.match(err.join(''), /`gh` is required/);
+});
+
+test('materialize CLI: a two-value Design-intent header lifts and composes both values (#3018)', () => {
+  const runDir = mkRunDir('run-design-intent-multi');
+  const body = SHAPED_BODY.replace('Surface: backend', 'Surface: web\nDesign-intent: quiet, minimal');
+  const { deps, out, written } = cliDeps({ ghView: () => ghJson({ body }) });
+  const code = withCwd(repoRoot, () => cliRun(['1', '--run-dir', runDir], deps));
+  assert.equal(code, 0);
+  const content = written[path.join(runDir, 'work', '1-spec.md')];
+  assert.match(content, /^design-intent: quiet, minimal$/m);
+  const env = JSON.parse(out.join(''));
+  assert.equal(env.surface, 'web');
+});
+
+test('materialize CLI: an unknown Design-intent value hard-fails materialization, naming the record and value (#3018)', () => {
+  const runDir = mkRunDir('run-design-intent-unknown');
+  const body = SHAPED_BODY.replace('Surface: backend', 'Surface: web\nDesign-intent: sparkly');
+  const { deps, err, written } = cliDeps({ ghView: () => ghJson({ body }) });
+  const code = withCwd(repoRoot, () => cliRun(['1', '--run-dir', runDir], deps));
+  assert.equal(code, 1);
+  assert.match(err.join(''), /Record #1/);
+  assert.match(err.join(''), /sparkly/);
+  assert.deepEqual(written, {}, 'nothing written on a hard-fail');
+});
+
+test('materialize CLI: "none" combined with another Design-intent value hard-fails materialization (#3018)', () => {
+  const runDir = mkRunDir('run-design-intent-none-mix');
+  const body = SHAPED_BODY.replace('Surface: backend', 'Surface: web\nDesign-intent: none, bold');
+  const { deps, err, written } = cliDeps({ ghView: () => ghJson({ body }) });
+  const code = withCwd(repoRoot, () => cliRun(['1', '--run-dir', runDir], deps));
+  assert.equal(code, 1);
+  assert.match(err.join(''), /Record #1/);
+  assert.deepEqual(written, {}, 'nothing written on a hard-fail');
 });
 
 test('materialize CLI: a record whose only markers sit in ## Original request materializes successfully (refs #1240)', () => {

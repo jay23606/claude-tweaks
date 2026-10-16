@@ -6,6 +6,8 @@
 // header format has exactly one implementation instead of a copy per caller.
 'use strict';
 
+const { POLICY_KEYS } = require('../policy-schema');
+
 const REQUIRED_SECTIONS = ['## Current State', '## Deliverables', '## Acceptance Criteria', '## Release Note'];
 // One entry per placeholder marker; the gate's combined regex is their union, so
 // compose.js can name which marker matched without a second implementation (#2827).
@@ -128,13 +130,44 @@ function liftMetadata(body) {
   // a bare line a no-match, never a misread of the next field (refs #357).
   const surfaceMatch = /^Surface:[ \t]*(\S+)/m.exec(block);
   if (surfaceMatch) out.surface = surfaceMatch[1] === 'frontend' ? 'web' : surfaceMatch[1];
-  const intentMatch = /^Design-intent:[ \t]*(\S+)/m.exec(block);
-  if (intentMatch) out.designIntent = intentMatch[1];
+  // (.+)$ like Ui-stack below, not \S+ — a comma-separated list
+  // (`Design-intent: quiet, minimal`) must be captured whole so the split
+  // below sees every value; \S+ silently stopped at the first whitespace
+  // (refs #3018). The [ \t]* same-line guard above the capture is unchanged
+  // (refs #357) — a bare `Design-intent:` line with no value still lifts
+  // nothing, since (.+)$ requires at least one same-line character.
+  const intentMatch = /^Design-intent:[ \t]*(.+)$/m.exec(block);
+  if (intentMatch) {
+    const list = intentMatch[1].split(',').map((v) => v.trim()).filter(Boolean);
+    if (list.length) out.designIntent = list;
+  }
   const uiStackMatch = /^Ui-stack:[ \t]*(.+)$/m.exec(block);
   if (uiStackMatch) out.uiStack = uiStackMatch[1].trim();
   const seedMatch = /^Design-seed:[ \t]*(\S+)/m.exec(block);
   if (seedMatch) out.designSeed = seedMatch[1];
   return out;
+}
+
+// list -> { ok: true } | { ok: false, reason }. Validates a lifted
+// Design-intent list (liftMetadata's output, already comma-split and
+// trimmed) against the closed enum `policy-schema.js` defines for the
+// `design-intent` lever — read from there, never re-listed, so the two
+// cannot drift. `none` mixed with any other value is also invalid: `none`
+// means "no design intent", which is incoherent alongside a real one.
+// Never silently drops an invalid value — materialize.js hard-fails the
+// whole record on the first `{ ok: false }` it sees (refs #3018).
+function validateDesignIntent(list) {
+  const entry = POLICY_KEYS.find((e) => e.key === 'design-intent');
+  const enumValues = entry ? entry.values : [];
+  for (const value of list) {
+    if (!enumValues.includes(value)) {
+      return { ok: false, reason: `unknown design-intent value "${value}" (expected one of ${enumValues.join('|')})` };
+    }
+  }
+  if (list.includes('none') && list.length > 1) {
+    return { ok: false, reason: `"none" cannot be combined with another design-intent value (${list.join(', ')})` };
+  }
+  return { ok: true };
 }
 
 // Double-quote a scalar for the YAML-shaped header when it contains a
@@ -166,7 +199,11 @@ function composeHeader({ record, origin, risk, size, ceremony, grants, fingerpri
   if (fingerprint) lines.push(`fingerprint: ${fingerprint}`);
   if (Array.isArray(blockedBy) && blockedBy.length) lines.push(`blocked-by: [${blockedBy.join(', ')}]`);
   if (surface) lines.push(`surface: ${surface}`);
-  if (designIntent) lines.push(`design-intent: ${designIntent}`);
+  // designIntent is a list (liftMetadata always produces one, even for a
+  // single declared value) — joined with ", " (comma + single space), the
+  // shape command-map.md:106 documents for a multi-value header. A
+  // single-element list renders identically to the old bare-string output.
+  if (Array.isArray(designIntent) && designIntent.length) lines.push(`design-intent: ${designIntent.join(', ')}`);
   if (uiStack) lines.push(`ui-stack: ${yamlSafeScalar(uiStack)}`);
   if (designSeed) lines.push(`design-seed: ${designSeed}`);
   if (parkedAtShaping) lines.push('parked-at-shaping: true');
@@ -180,5 +217,5 @@ function composeFile({ header, n, title, body }) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, sectionText, shapeGate, liftMetadata, composeHeader, composeFile, stripCodeSpans,
+  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, sectionText, shapeGate, liftMetadata, composeHeader, composeFile, stripCodeSpans, validateDesignIntent,
 };
