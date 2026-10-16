@@ -105,6 +105,7 @@ const USAGE = {
   'sweep-shadow': 'sweep-shadow [--run <dir>] [--worktree <path>]',
   'adopt-run-dir': 'adopt-run-dir --run <main-checkout-run-dir> --worktree <worktree-path>',
   'record-pr': 'record-pr [--run <dir>] <number> <url>',
+  'manifest-init': 'manifest-init --run <parent-dir> --specs <n1,n2,...> [--base-sha <sha>]',
   'spec-status': 'spec-status --run <parent-dir> --spec <n> --status <pending|running|complete|failed|not-run> --phase <phase>',
   'close-run': 'close-run [--run <dir>]',
   'delete-ledger': 'delete-ledger --run <dir> [--ledger <path>]',
@@ -136,6 +137,7 @@ const KNOWN_FLAGS = {
   'delete-ledger': ['--run', '--ledger'],
   'record-worktree': ['--run'],
   'record-pr': ['--run'],
+  'manifest-init': ['--run', '--specs', '--base-sha'],
   'spec-status': ['--run', '--spec', '--status', '--phase', '--now'],
   'teardown-run': ['--run', '--merged', '--abandoned', '--remote-ref-only'],
   'resolve-console': ['--run', '--approve', '--decline'],
@@ -897,6 +899,45 @@ async function main(argv) {
     }
     return 0;
   }
+  if (cmd === 'manifest-init') {
+    // The sanctioned writer of the INITIAL manifest.yml (#3035) — --run
+    // mirrors spec-status's shape below: it names the multi-spec PARENT run
+    // dir, never a per-spec subdirectory. Called once, after the parent run
+    // directory is created and before spec 1's first spec-status call
+    // (multi-spec.md); idempotent on resume (manifestInit itself never
+    // resets an existing spec's status/phases[]).
+    const callerIdentity = { sessionId: process.env.CLAUDE_CODE_SESSION_ID, cwd: process.cwd() };
+    const {
+      runDir, invalidRunArg, rest, worktreeLocalFallback, explicit, candidates,
+    } = resolveRunArg(argv.slice(3), process.cwd(), process.env, { unambiguousOnly: true, callerIdentity });
+    reportWorktreeLocalFallback(runDir, worktreeLocalFallback);
+    const specsArg = flagVal(rest, '--specs');
+    const baseShaArg = flagVal(rest, '--base-sha');
+    const implicitForeign = !explicit && runDir
+      && ctxLib.classifyOwnership(callerIdentity, ctxLib.readRunState(runDir)) === 'foreign';
+    const specs = typeof specsArg === 'string'
+      ? specsArg.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (invalidRunArg) {
+      process.stdout.write(`claude-tweaks: --run path rejected: ${invalidRunArg} — manifest not initialized\n`);
+    } else if (candidates) {
+      process.stdout.write(`${renderCandidateRefusal('manifest-init', candidates)}\nManifest not initialized.\n`);
+    } else if (!runDir) {
+      process.stdout.write('claude-tweaks: no pipeline run dir found — manifest not initialized\n');
+    } else if (implicitForeign) {
+      process.stdout.write(`claude-tweaks: run ${path.basename(runDir)} was recorded by another session/worktree — refusing to initialize a manifest against it without an explicit --run\n`);
+    } else if (!specs.length) {
+      process.stdout.write(`claude-tweaks: usage: ${USAGE['manifest-init']} — manifest not initialized\n`);
+    } else {
+      const result = specStatusLib.manifestInit(runDir, { specs, baseSha: baseShaArg || null });
+      if (result.ok) {
+        process.stdout.write(`claude-tweaks: manifest initialized for ${path.basename(runDir)} (${specs.length} spec(s))\n`);
+      } else {
+        process.stdout.write(`claude-tweaks: manifest not initialized for ${path.basename(runDir)} (${result.reason})\n`);
+      }
+    }
+    return 0;
+  }
   if (cmd === 'spec-status') {
     // Couples a multi-spec manifest.yml status transition to the
     // `## Flow: Running ...` progress banner (#690) — one call does both,
@@ -933,7 +974,8 @@ async function main(argv) {
         now: nowArg ? new Date(nowArg) : new Date(),
       });
       if (!result.ok) {
-        process.stdout.write(`claude-tweaks: spec status not recorded for spec #${specArg} (${result.reason}) — no manifest.yml at ${path.basename(runDir)}, or spec/status/phase invalid\n`);
+        const noManifestHint = result.reason === 'no-manifest' ? ` — run \`${USAGE['manifest-init']}\` first` : '';
+        process.stdout.write(`claude-tweaks: spec status not recorded for spec #${specArg} (${result.reason}) — no manifest.yml at ${path.basename(runDir)}, or spec/status/phase invalid${noManifestHint}\n`);
       } else {
         process.stdout.write(result.banner + '\n');
         if (result.summaryLine) process.stdout.write(result.summaryLine + '\n');

@@ -88,6 +88,14 @@ The slug convention, the per-spec `config.yml` copy, and `manifest.yml`'s field-
 
 ## Execution
 
+**Initialize the manifest (once, right after the parent run directory is created, before spec 1's first `spec-status` call):**
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" manifest-init --run "{parent}" --specs {N1,N2,N3}
+```
+
+`transitionSpec`/`spec-status` can only UPDATE an already-present `manifest.yml` (`no-manifest`/`unknown-spec` otherwise) — this is the sanctioned writer of the INITIAL file, every spec at `status: pending` (`bin/lib/flow/manifest.js`'s `manifestInit`). Idempotent: a re-run (resume) never resets an already-transitioned spec's status, `startedAt`, or `phases[]`.
+
 ### Pre-flight Verify Sweep (once, before spec 1)
 
 Before spec 1's pipeline begins — after the shared worktree exists and is checked out (`worktree` mode), or in the current checkout otherwise — run `test/verification.md` Steps 1-2 (type check, lint, tests) **once** against the unmodified base, before any spec's build touches the code.
@@ -135,7 +143,10 @@ When `worktree` is specified, a sequential run uses **one shared worktree for th
    the convention below. **Created** (not isolated, or dirty): `/flow` creates a single worktree
    from the current local HEAD
    following `skills/build/worktree-setup.md` (including its Step 4 unconditional catch-up with
-   the integration branch). The branch covers the whole run: `flow/spec-{N1}-{N2}-{N3}` (for runs
+   the integration branch). When `MULTISPEC_CURATION_DEFER=1`, re-run `manifest-init` with
+   `--base-sha` naming the commit the worktree was just created from (Step 0's `EXPECTED_BASE`) —
+   the already-initialized manifest keeps every spec's status untouched; only `baseSha` is added.
+   The branch covers the whole run: `flow/spec-{N1}-{N2}-{N3}` (for runs
    longer than 3, use `flow/spec-{N1}-…-{Nlast}`; the manifest holds the full list) — `{N}` is the
    record id, the same keying as the run directory layout above. This branch slug is exactly the
    kind `build/worktree-setup.md`'s "Worktree name derivation" section requires sanitizing before

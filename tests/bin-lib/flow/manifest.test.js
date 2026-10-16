@@ -10,7 +10,7 @@ const { formatEntry } = require('../../../plugin/bin/lib/log-decision/append');
 const {
   parseManifestYaml, serializeManifestYaml, readManifest, writeManifest,
   formatElapsedMs, transitionSpec, composeFixesBlock, readDeferredClosures,
-  readSingleRecordDeferredClosure,
+  readSingleRecordDeferredClosure, manifestInit,
 } = manifestModule;
 
 function tmpRunDir() {
@@ -87,6 +87,72 @@ test('readManifest returns null when manifest.yml does not exist', () => {
   assert.equal(readManifest(dir), null);
 });
 
+// --- manifestInit (#3035): the sanctioned writer of the INITIAL manifest ---
+
+test('manifestInit on an empty parent directory creates the manifest, then a transition succeeds', () => {
+  const dir = tmpRunDir();
+  assert.equal(readManifest(dir), null, 'no manifest before init');
+  const result = manifestInit(dir, { specs: [157, 159, 160] });
+  assert.equal(result.ok, true);
+  const manifest = readManifest(dir);
+  assert.deepEqual(manifest.multispec.specs.map((s) => s.id), [157, 159, 160]);
+  for (const spec of manifest.multispec.specs) {
+    assert.equal(spec.status, 'pending');
+    assert.equal(spec.subdir, `spec-${spec.id}/`);
+  }
+  // The exact failure this record reports: spec-status's first call used to
+  // refuse with no-manifest because nothing wrote the starting file.
+  const transition = transitionSpec({ runDir: dir, specId: 157, status: 'running', phase: 'build' });
+  assert.equal(transition.ok, true);
+  assert.match(transition.banner, /Running build \(1\/3\) — spec #157/);
+});
+
+test('manifestInit sets baseSha only when the manifest does not already carry one', () => {
+  const dir = tmpRunDir();
+  manifestInit(dir, { specs: [1], baseSha: 'abc123' });
+  assert.equal(readManifest(dir).multispec.baseSha, 'abc123');
+  // A second call with a different baseSha must not overwrite the first.
+  manifestInit(dir, { specs: [2], baseSha: 'def456' });
+  assert.equal(readManifest(dir).multispec.baseSha, 'abc123');
+});
+
+test('manifestInit on an existing manifest does not reset any spec\'s status, startedAt, or phases[]', () => {
+  const dir = tmpRunDir();
+  manifestInit(dir, { specs: [157, 159] });
+  const t1 = transitionSpec({ runDir: dir, specId: 157, status: 'running', phase: 'build', now: '2026-05-16T14:32:07.000Z' });
+  assert.equal(t1.ok, true);
+  transitionSpec({ runDir: dir, specId: 157, status: 'complete', phase: 'wrap-up', now: '2026-05-16T14:47:40.000Z' });
+  const before = readManifest(dir);
+
+  // Re-init with an overlapping id set (157, 159 already present) plus one
+  // brand-new id (160) — simulating a resumed/retried run.
+  const result = manifestInit(dir, { specs: [157, 159, 160] });
+  assert.equal(result.ok, true);
+  const after = readManifest(dir);
+
+  const spec157Before = before.multispec.specs.find((s) => s.id === 157);
+  const spec157After = after.multispec.specs.find((s) => s.id === 157);
+  assert.deepEqual(spec157After, spec157Before, 'an already-transitioned spec is untouched by re-init');
+  assert.equal(spec157After.status, 'complete');
+  assert.ok(Array.isArray(spec157After.phases) && spec157After.phases.length === 2);
+
+  const spec159 = after.multispec.specs.find((s) => s.id === 159);
+  assert.equal(spec159.status, 'pending', 'an untouched existing spec stays pending');
+
+  const spec160 = after.multispec.specs.find((s) => s.id === 160);
+  assert.equal(spec160.status, 'pending', 'the new id is appended at pending');
+  assert.equal(after.multispec.specs.length, 3, 'no duplicate entries for already-present ids');
+});
+
+test('manifestInit is idempotent: calling it twice with the identical spec list changes nothing', () => {
+  const dir = tmpRunDir();
+  manifestInit(dir, { specs: [1, 2, 3] });
+  const first = readManifest(dir);
+  manifestInit(dir, { specs: [1, 2, 3] });
+  const second = readManifest(dir);
+  assert.deepEqual(second, first);
+});
+
 test('formatElapsedMs formats seconds, minutes, and hours compactly', () => {
   assert.equal(formatElapsedMs(45_000), '45s');
   assert.equal(formatElapsedMs(754_000), '12m34s');
@@ -143,18 +209,23 @@ test('transitionSpec on failed also emits the summary line', () => {
   assert.equal(r.summaryLine, 'spec #159: failed — deferred (3m00s)');
 });
 
-test('transitionSpec is the module\'s only status-mutation entry point, and every successful call returns a non-empty banner', () => {
-  // Locks the module's public surface: `transitionSpec` is the one status
-  // mutator. `readManifest`/`writeManifest` stay exported for test fixtures
-  // and for the CLI's error-path checks, but no OTHER helper composes a
-  // status write — the CLI (bin/hooks.js's `spec-status` subcommand, see
-  // tests/hooks-spec-status.test.js) never calls anything but
-  // transitionSpec, so the real entry point skills cite has exactly one
+test('transitionSpec is the module\'s only EXISTING-spec status-mutation entry point, and every successful call returns a non-empty banner', () => {
+  // Locks the module's public surface: `transitionSpec` is the one mutator
+  // of an already-present spec's status. `manifestInit` (#3035) is the one
+  // other write entry point, and it is deliberately narrower — it only ever
+  // appends a brand-new id at a fixed `status: 'pending'`; it never changes
+  // an existing entry's status, startedAt, or phases[] (pinned by the
+  // manifestInit tests above), so it never competes with transitionSpec's
+  // banner-producing contract. `readManifest`/`writeManifest` stay exported
+  // for test fixtures and for the CLI's error-path checks, but no OTHER
+  // helper composes a status write — the CLI (bin/hooks.js's `spec-status`
+  // subcommand, see tests/hooks-spec-status.test.js) never calls anything
+  // but transitionSpec, so the real entry point skills cite has exactly one
   // path from "write a status" to "produce a banner," and they are the
   // same call.
   assert.deepEqual(
     Object.keys(manifestModule).sort(),
-    ['VALID_STATUSES', 'composeFixesBlock', 'formatElapsedMs', 'parseManifestYaml', 'readDeferredClosures', 'readManifest', 'readSingleRecordDeferredClosure', 'serializeManifestYaml', 'transitionSpec', 'writeManifest'].sort(),
+    ['VALID_STATUSES', 'composeFixesBlock', 'formatElapsedMs', 'manifestInit', 'parseManifestYaml', 'readDeferredClosures', 'readManifest', 'readSingleRecordDeferredClosure', 'serializeManifestYaml', 'transitionSpec', 'writeManifest'].sort(),
   );
 
   const dir = seedRunDir([{ id: 42, status: 'pending', subdir: 'spec-42/' }]);

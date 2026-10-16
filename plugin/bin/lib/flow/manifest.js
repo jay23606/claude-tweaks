@@ -197,6 +197,32 @@ function transitionSpec({ runDir, specId, status, phase, now = new Date() }) {
   return { ok: true, banner, summaryLine, position, total, manifest };
 }
 
+// runDir (the multi-spec PARENT dir) + { specs, baseSha? } -> the sanctioned
+// writer of the INITIAL manifest.yml (#3035) — transitionSpec above can only
+// UPDATE an existing entry (`no-manifest`/`unknown-spec` on anything else),
+// and until this function existed nothing wrote the starting file, so every
+// multi-spec run's first `spec-status --status running` call refused.
+// `specs` is the array of spec ids (number or string) in execution order.
+// Idempotent on resume: an id already present in an existing manifest keeps
+// its own status/startedAt/phase/phases[] completely untouched — only a new
+// id (not yet in specs[]) is appended, at status: pending. `baseSha` is set
+// only once: a caller-supplied value is written when the manifest does not
+// already carry one, and never overwrites an existing baseSha on a re-run.
+// { ok: true, manifest } | { ok: false, reason: 'write-failed' }.
+function manifestInit(runDir, { specs, baseSha } = {}) {
+  const ids = (specs || []).map((id) => coerceId(id));
+  const existing = readManifest(runDir);
+  const manifest = existing || { multispec: { parent: `${path.basename(runDir)}/`, specs: [] } };
+  if (baseSha && !manifest.multispec.baseSha) manifest.multispec.baseSha = baseSha;
+  const existingIds = new Set(manifest.multispec.specs.map((s) => String(s.id)));
+  for (const id of ids) {
+    if (existingIds.has(String(id))) continue;
+    manifest.multispec.specs.push({ id, status: 'pending', subdir: `spec-${id}/` });
+  }
+  if (!writeManifest(runDir, manifest)) return { ok: false, reason: 'write-failed' };
+  return { ok: true, manifest };
+}
+
 // specs (manifest.multispec.specs) -> string[] of one line per spec, in
 // manifest order: 'Fixes #{id}' for status:'complete', 'Refs #{id} — not
 // run/failed: {reason}' for any other status. #2015: a bundle PR's `Fixes`
@@ -305,6 +331,7 @@ module.exports = {
   readManifest,
   writeManifest,
   formatElapsedMs,
+  manifestInit,
   transitionSpec,
   composeFixesBlock,
   readDeferredClosures,
