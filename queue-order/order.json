@@ -1,11 +1,11 @@
 {
-  "computedAt": "2026-10-16T17:54:44.775Z",
+  "computedAt": "2026-10-16T19:00:13.376Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
         "number": 3242,
-        "updatedAt": "2026-10-16T17:32:49Z",
+        "updatedAt": "2026-10-16T18:59:04Z",
         "state": "OPEN"
       },
       {
@@ -44,23 +44,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3064,
-        "updatedAt": "2026-10-15T17:24:12Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3063,
-        "updatedAt": "2026-10-15T18:36:39Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3062,
         "updatedAt": "2026-10-15T16:28:43Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3059,
-        "updatedAt": "2026-10-16T17:41:08Z",
         "state": "OPEN"
       },
       {
@@ -79,23 +64,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3055,
-        "updatedAt": "2026-10-16T16:30:23Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3054,
         "updatedAt": "2026-10-16T16:30:34Z",
         "state": "OPEN"
       },
       {
         "number": 3053,
-        "updatedAt": "2026-10-16T16:30:29Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3052,
-        "updatedAt": "2026-10-16T16:30:40Z",
+        "updatedAt": "2026-10-16T18:57:49Z",
         "state": "OPEN"
       },
       {
@@ -105,7 +80,7 @@
       },
       {
         "number": 3049,
-        "updatedAt": "2026-10-15T16:24:19Z",
+        "updatedAt": "2026-10-16T18:06:25Z",
         "state": "OPEN"
       },
       {
@@ -119,13 +94,18 @@
         "state": "OPEN"
       },
       {
+        "number": 3036,
+        "updatedAt": "2026-10-16T17:57:22Z",
+        "state": "OPEN"
+      },
+      {
         "number": 3035,
         "updatedAt": "2026-10-15T16:24:03Z",
         "state": "OPEN"
       },
       {
         "number": 3034,
-        "updatedAt": "2026-10-15T16:23:59Z",
+        "updatedAt": "2026-10-16T18:03:48Z",
         "state": "OPEN"
       },
       {
@@ -155,7 +135,7 @@
       },
       {
         "number": 3023,
-        "updatedAt": "2026-10-16T16:32:17Z",
+        "updatedAt": "2026-10-16T18:07:07Z",
         "state": "OPEN"
       },
       {
@@ -214,18 +194,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3001,
-        "updatedAt": "2026-10-16T17:26:55Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3000,
-        "updatedAt": "2026-10-15T16:22:14Z",
+        "updatedAt": "2026-10-16T18:10:52Z",
         "state": "OPEN"
       },
       {
         "number": 2999,
-        "updatedAt": "2026-10-15T16:22:09Z",
+        "updatedAt": "2026-10-16T18:10:44Z",
         "state": "OPEN"
       },
       {
@@ -330,7 +305,7 @@
       },
       {
         "number": 2882,
-        "updatedAt": "2026-10-15T16:20:45Z",
+        "updatedAt": "2026-10-16T18:12:28Z",
         "state": "OPEN"
       },
       {
@@ -425,13 +400,18 @@
       },
       {
         "number": 3225,
-        "updatedAt": "2026-10-16T17:32:57Z",
+        "updatedAt": "2026-10-16T18:59:06Z",
         "state": "OPEN"
       },
       {
         "number": 3212,
         "updatedAt": "2026-10-16T16:48:57Z",
         "state": "OPEN"
+      },
+      {
+        "number": 3213,
+        "updatedAt": "2026-10-16T17:56:08Z",
+        "state": "CLOSED"
       }
     ]
   },
@@ -585,252 +565,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe original request says claude-tweaks \"already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel\". The checkout does not support that premise:\n\n- The only blast-radius code is `plugin/bin/blast-radius.js` (with `plugin/bin/lib/blast-radius-cli.js`). It is the gather step of `assess-agent-autonomy`'s merge-check: merge-base resolution, diff numstat, and sensitive-path classification at merge time. It never intercepts a command.\n- claude-tweaks ships no mods. Its tool-call interception is the PreToolUse hook (`plugin/bin/lib/hooks/pre-tool-use.js`), and it only ever emits `permissionDecision: 'deny'` (pre-tool-use.js:422). It never emits an ask prompt, so no claude-tweaks gate can leave an unattended run waiting on a Proceed/Cancel.\n- None of its gates targets `rm -rf` or `git reset --hard` (no match for either in `plugin/bin/lib/hooks/`).\n- Recursive deletion inside claude-tweaks' own unattended machinery runs through Node `fs.rmSync`, not a Bash `rm` command. Examples: `plugin/bin/lib/file-lock.js:115`, `plugin/bin/lib/reconcile/archive-merged.js:834`, `plugin/bin/lib/reconcile/reap-merged.js:132`. Shipped skill prose uses only single-file `rm -f` (for example `plugin/skills/_shared/headless-self-report.md:51`).\n\nThe external change: Claude Code 2.1.281+ times out a flagged dangerous `rm` prompt after two minutes in unattended, auto, or `--dangerously-skip-permissions` runs, denying the command with a rewrite hint instead of hanging (source in the original request below).\n\n## Deliverables\n\n1. A written comparison, posted as a comment on this record, of the native dangerous-`rm` timeout against what claude-tweaks actually ships. It should cover:\n   - the premise correction above: no blast-radius command interceptor exists, and `blast-radius.js` is a merge-time gather;\n   - whether any claude-tweaks PreToolUse gate overlaps or conflicts with the native prompt and timeout (expected answer: no, because the gates are deny-only and none targets `rm`);\n   - whether any claude-tweaks unattended path (`/claude-tweaks:dispatch`, `/claude-tweaks:flow` auto, Routine firings, `reconcile`) issues a Bash command the native flag would trip, which would now be denied after two minutes rather than hanging;\n   - where the \"blast-radius mod\" in the original request lives, if it exists outside this repo, so the comparison can be redirected there.\n2. For any claude-tweaks path the comparison finds the native flag would trip, file a backlog record via `/claude-tweaks:capture` with a spec-shaped body. Otherwise, state explicitly that no adjustment is needed.\n\n## Acceptance Criteria\n\n- The comparison comment exists on this record and addresses each of the four points in Deliverable 1, citing the files above.\n- It states a clear verdict: no claude-tweaks adjustment needed, or the specific path(s) that need one, each with a linked filed record.\n- No claude-tweaks code changes land in this record.\n\n## Release Note\n\nNo user-facing change. This produces an internal comparison of claude-tweaks' guardrails against Claude Code's native dangerous-rm timeout.\n\n## Technical Approach\n\nA desk comparison. Confirm the deny-only posture of `pre-tool-use.js` and the absence of Bash recursive-`rm` in shipped skill prose and `bin/` code with a repo-wide grep. Then read the native permission-modes documentation for the exact trigger set, which may cover more than `rm`, and re-check the unattended paths against that set.\n\n### Key Files\n\n- `plugin/bin/blast-radius.js` — the only blast-radius code; merge-time gather, not an interceptor\n- `plugin/bin/lib/hooks/pre-tool-use.js` — the PreToolUse gates; deny-only\n- `plugin/bin/lib/reconcile/reap-merged.js` — representative unattended recursive deletion via `fs.rmSync`\n\n## Gotchas\n\n- The original request's premise of a shipped blast-radius mod is contradicted by the checkout. #3055 lists a \"blast-radius-style guardrail\" only as a candidate for a future mod. Do not build one under this record; that is #3055's evaluation.\n- ASSUMPTION — verify at build: the native flag fires only on Bash-tool commands, not on Node `fs.rmSync` inside a hook or CLI subprocess. Confirm from the permission-modes documentation.\n- The native trigger set may widen across Claude Code versions. Cite the version the comparison was made against.\n\n## Original request\n\nCompare blast-radius against Claude Code's native dangerous-rm timeout\n\nCurrent State:\n- Claude Code (2.1.281+) now times out a flagged dangerous rm prompt after two minutes in unattended/auto/--dangerously-skip-permissions runs, denying the command with a rewrite hint instead of hanging.\n- claude-tweaks already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel.\n\nDeliverables:\n- Check whether blast-radius's own unattended-run behavior overlaps or conflicts with this native timeout.\n- Align blast-radius's timeout/denial behavior with the native one where it makes sense, or document why it intentionally differs.\n\nAcceptance Criteria:\n- A written comparison of the two behaviors.\n- Any needed blast-radius adjustment made or explicitly deferred with a reason.\n\nSource: https://code.claude.com/docs/en/permission-modes#critical-paths\n",
-        "createdAt": "2026-10-09T03:34:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3057,
-        "state": "OPEN",
-        "title": "Compare blast-radius against Claude Code's native dangerous-rm timeout",
-        "updatedAt": "2026-10-15T16:24:28Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe original request says claude-tweaks \"ships only skills/commands, never a mod\". That is accurate about mods, but it understates what the plugin already hooks into:\n\n- **Agent-loop hooks.** `plugin/hooks/hooks.json` registers SessionStart, SessionEnd, PreCompact, PreToolUse, PostToolUse and SubagentStop. All of them route through one dispatcher, `plugin/bin/hooks.js`, with one module per event under `plugin/bin/lib/hooks/`. `pre-tool-use.js`, for example, already intercepts tool calls with deny gates. The contract is in `docs/hooks.md`.\n- **Custom UI.** `plugin/bin/claude-tweaks-statusline.js` renders a statusline that includes a context-window segment (`renderContext`). That is the \"context/usage indicator\" the original request names as an example.\n- **Blast radius.** `plugin/bin/blast-radius.js` exists, but as the gather step of `assess-agent-autonomy`'s merge-check (diff size and sensitive paths at merge time). It is not a live tool-call guardrail.\n- **Agents.** The plugin also ships one agent (`plugin/agents/qa-agent.md`).\n\nSo both example capabilities in the original request already have a non-mod implementation: hooks for interception, and the statusline for UI. The open question is whether mods (TypeScript functions in a plugin that hook the agent loop, intercept tool calls, draw custom UI, or add commands) do any of these better.\n\n## Deliverables\n\n1. A written recommendation, posted as a comment on this record, on whether and where mods fit claude-tweaks. It should cover:\n   - for each candidate capability (at minimum the PreToolUse deny gates, the statusline context segment, and a live blast-radius guardrail), what a mod would add over the existing hook or statusline implementation, or a statement that it adds nothing;\n   - what a mod would cost relative to today's runtime model: TypeScript versus the plugin's zero-dependency Node `bin/` modules, how mods load, and any build step;\n   - whether running a mod beside the existing hook dispatcher would double-handle the same event, and how that would be avoided;\n   - a clear verdict: no fit, or the one capability that should become a mod.\n2. When the verdict names a capability, a working prototype mod for it. It must not double-handle any event the hook dispatcher already owns.\n\n## Acceptance Criteria\n\n- The recommendation comment exists on this record and addresses each of the four points in Deliverable 1, citing the files above for what already exists and the mod system's published documentation for what mods can do.\n- On a no-fit verdict, no code changes land, and the comment states what would change the answer.\n- On a positive verdict, the prototype mod loads in Claude Code from this plugin and demonstrably performs the chosen capability. Any hook or statusline code it supersedes is either removed in the same change or left untouched with the mod disabled by default, never both running.\n\n## Release Note\n\nNo user-facing change unless the recommendation is positive. In that case, claude-tweaks ships its first Claude Code mod, for the capability the recommendation names.\n\n## Technical Approach\n\nStart with the evaluation. Read the mod system's documentation, then map each candidate onto its existing implementation: `pre-tool-use.js` for interception, `renderContext` in the statusline for UI, `blast-radius.js` for the merge-time size check. A mod is worth it only where the hook or statusline surface cannot do something the mod can, such as drawing UI beyond a statusline line, or reacting inside the agent loop where no hook event fires. Build a prototype only after that comparison names a concrete gap.\n\n### Key Files\n\n- `plugin/hooks/hooks.json` — existing agent-loop hook registrations a mod would sit beside\n- `plugin/bin/lib/hooks/pre-tool-use.js` — existing tool-call interception (deny gates)\n- `plugin/bin/claude-tweaks-statusline.js` — existing custom UI, including the context-window segment\n- `plugin/bin/blast-radius.js` — existing merge-time blast-radius gather, a guardrail candidate\n- `docs/hooks.md` — hook dispatcher contract, including the never-break-a-session invariant\n\n## Gotchas\n\n- ASSUMPTION — verify at build: mods are loaded from a plugin's payload alongside hooks, and can be shipped through the existing marketplace. Confirm via the mod system's published documentation before prototyping.\n- The hook dispatcher's never-break-a-session invariant (`docs/hooks.md`) must hold for any mod too. A throwing mod in the agent loop is at least as dangerous as a throwing hook.\n- `plugin/bin/` is zero-runtime-dependency Node. A TypeScript mod that needs a build step changes the payload's build model, and that is a deliberate decision, not a side effect.\n- Moving a PreToolUse gate into a mod would change a shipped contract that several skills depend on. If the verdict points there, follow the expand-contract discipline in CLAUDE.md.\n\n## Original request\n\nEvaluate a claude-tweaks mod for Claude Code's new mod system\n\nCurrent State:\n- Claude Code now supports mods: small TypeScript functions in a plugin that hook into the agent loop, intercept tool calls, draw custom UI, or add commands.\n- claude-tweaks currently ships only skills/commands, never a mod.\n\nDeliverables:\n- Identify one claude-tweaks capability (e.g. a blast-radius-style guardrail or a context/usage indicator) that would work better as a mod than a skill.\n- Prototype that mod.\n\nAcceptance Criteria:\n- A written recommendation on whether/where mods fit claude-tweaks.\n- A working prototype mod if the recommendation is yes.\n\nSource: https://claude.com/blog/claude-code-mods\n",
-        "createdAt": "2026-10-09T03:34:51Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3055,
-        "state": "OPEN",
-        "title": "Evaluate a claude-tweaks mod for Claude Code's new mod system",
-        "updatedAt": "2026-10-16T16:30:23Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe original request says claude-tweaks \"ships a /security-review and /code-health skill, run on demand\". That premise is partly wrong:\n\n- `/security-review` is a Claude Code built-in. No claude-tweaks skill has that name (`plugin/skills/` has no `security-review` directory).\n- claude-tweaks' own security coverage is `/claude-tweaks:code-health`'s `focus=security-hardening` vertical (`plugin/bin/lib/code-health/candidates-security-hardening.js`, registered in `focus-generators.js`). It is judged against `plugin/skills/_shared/criteria-security-hardening.md`, alongside `criteria-security-logic.md` and `criteria-iac-security.md`. `/claude-tweaks:review` also runs a Security Hardening pass in Step 6.6 (`plugin/skills/review/focus-criterion-passes.md`).\n\nclaude-tweaks is also not on-demand only:\n\n- `/claude-tweaks:code-health` ships a routine template (`plugin/skills/code-health/routine-template.yml`), so it can already run on a schedule through `/claude-tweaks:routine create code-health`.\n- `/claude-tweaks:routine webhook-trigger <skill> --events …` (`plugin/skills/routine/webhook-trigger.md`) attaches a GitHub-event trigger (for example push) to an existing routine. That is a commit-triggered mode in all but name.\n- Findings are fingerprinted and deduplicated against open issues before filing, and CI gating exists via `code-health.js status --fail-on` (`plugin/skills/code-health/ci-integration.md`).\n\nThe external prompt for this record: OpenAI's Codex Security Cloud watches a repo continuously, reviews every commit, dedupes alerts and prepares ready-to-review fixes. claude-tweaks' health skills deliberately never edit code.\n\n## Deliverables\n\n1. A written recommendation, posted as a comment on this record, answering whether claude-tweaks' security scanning should gain a continuous or commit-triggered mode beyond what `routine` (scheduled and webhook-triggered) plus `code-health focus=security-hardening` already provide. It should cover:\n   - scope: per-commit diff versus repo-wide sweep, and which security criteria apply;\n   - cost: model tokens per firing, firing frequency, and duplicate-finding noise given the existing fingerprint dedup;\n   - the gap, if any, between today's composable path (a routine with a push webhook running `code-health focus=security-hardening`) and a dedicated continuous mode;\n   - whether \"prepares ready-to-review fixes\" conflicts with the health skills' never-edits-code contract.\n2. For each change the recommendation endorses, file a backlog record via `/claude-tweaks:capture` with a spec-shaped body, or state explicitly that no change is recommended.\n\n## Acceptance Criteria\n\n- The recommendation comment exists on this record and addresses each of the four points in Deliverable 1, citing the files above for what already exists.\n- It states a clear verdict: no change, a documentation-only change (for example a recipe for the routine plus webhook composition), or a specific new capability.\n- Every endorsed change has a filed backlog record linked from the comment; no endorsed change is left as prose only.\n\n## Release Note\n\nNo user-facing change. This produces an internal recommendation on continuous security scanning.\n\n## Technical Approach\n\nA desk evaluation, with no code or skill edits in this record. Start from the existing composable path (`routine create code-health` plus `routine webhook-trigger code-health --events push`, run with `focus=security-hardening`) and decide whether it already meets the continuous-scanning use case. If it does, the likely outcome is a documentation recipe. If not, name the concrete gap (per-commit diff scoping, latency, cost per push) that a new mode would close.\n\n### Key Files\n\n- `plugin/skills/code-health/SKILL.md` — current scoping and focus-mode model the recommendation evaluates\n- `plugin/skills/code-health/routine-template.yml` — existing scheduled firing\n- `plugin/skills/routine/webhook-trigger.md` — existing GitHub-event trigger\n- `plugin/bin/lib/code-health/candidates-security-hardening.js` — current security candidate generator\n\n## Gotchas\n\n- The original request's premise that `/security-review` is a claude-tweaks skill is incorrect: it is a Claude Code built-in. The evaluation must not propose changing it.\n- Auto-prepared fixes would cut against the health skills' report-only contract (\"never edits code\"). Any recommendation in that direction needs its own design record, not a mode flag.\n- Firing on every push multiplies model cost by commit volume. Size the cost against this repo's real push cadence (`git log --since` counts), not an assumed one.\n\n## Original request\n\nEvaluate adding continuous repo security scanning to claude-tweaks\n\nCurrent State:\n- claude-tweaks ships a /security-review and /code-health skill, run on demand.\n- OpenAI's Codex Security Cloud now watches an entire GitHub repo continuously, reviews every commit, dedupes alerts, and prepares ready-to-review fixes, using a 1M-token-context model.\n\nDeliverables:\n- Assess whether claude-tweaks' security/code-health skills should gain a continuous or commit-triggered mode instead of on-demand only.\n\nAcceptance Criteria:\n- A written recommendation on continuous scanning, with scope and cost tradeoffs.\n\nSource: https://x.com/OpenAI/status/2104987422308335828\n",
-        "createdAt": "2026-10-09T03:34:49Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3052,
-        "state": "OPEN",
-        "title": "Evaluate adding continuous repo security scanning to claude-tweaks",
-        "updatedAt": "2026-10-16T16:30:40Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -1021,6 +755,88 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
+        }
+      },
+      {
+        "body": "Surface: infra\n\n## Current State\n\n`plugin/skills/flow/SKILL.md` creates the open-items ledger in Step 1 (Validate Input), item 8 (line ~130), and logs `AUTO {time} — flow: created open-items ledger {path}` (#1800), which `review/code-mode-steps.md`'s QA Ledger Check later reads. The run's worktree is created later: in Step 4's build step under `materialize.md`'s worktree-first ordering, or at Execution in `flow/multi-spec.md`'s \"Shared worktree\" step 1.\n\n`plugin/skills/ledger/SKILL.md`'s Create writes `docs/plans/YYYY-MM-DD-{feature}-ledger.md`, or `{run-dir}/ledger.md` when `run-state.json` has no `worktree` field. `_shared/ledger-format.md:15`'s \"No-worktree run exception\" applies that alternate under `worktree-always: true`; it was designed for a wrap-up-only run that never gets a worktree.\n\nAt Step 1.8 a session that is not already isolated has no `worktree` field yet, so under `worktree-always` every option fails:\n\n1. Writing `docs/plans/` from the main checkout is denied by the `worktree-always` PreToolUse gate.\n2. Following the exception's momentary condition gives a run that will have a worktree a gitignored, never-committed run-dir ledger, which also shadows any later `docs/plans/` ledger through the \"check `{run-dir}/ledger.md` first\" rule.\n3. Deferring creation (what the observed 6.136.0 run did) leaves a window in which a finding has no ledger to land in.\n\n`materialize.md` already moved the spec write behind worktree creation for the same reason; the ledger step was not moved with it. When the session is already isolated (adopt path), Step 1.8 works.\n\n## Deliverables\n\n1. Create the ledger immediately after the run's worktree is created or adopted, before any build task can raise a finding: `build/worktree-setup.md`'s post-creation steps for a single-spec run, `multi-spec.md`'s \"Shared worktree\" step 1 for a multi-spec run. Keep Step 1.8 only for `current-branch` runs and already-isolated sessions.\n2. Narrow the No-worktree run exception so it cannot fire for a run that will create a worktree: key it on the run's resolved git strategy or the wrap-up-only shape, not on `run-state.json`'s momentary lack of a `worktree` field.\n3. Emit #1800's creation log line at the new point so the QA Ledger Check still finds it.\n\n## Acceptance Criteria\n\n1. Under `worktree-always`, a `/flow` run started from a non-isolated session gets its ledger at `docs/plans/...` inside the run's worktree, created before the first build task, with no gate refusal.\n2. No run that creates a worktree ends with a `{run-dir}/ledger.md`.\n3. A wrap-up-only run with no worktree still gets its run-dir ledger.\n4. The QA Ledger Check finds the creation log line in both the single-spec and multi-spec paths.\n\n## Release Note\n\n`/flow` runs under `worktree-always` now create their open-items ledger in the worktree before building, so early findings are never dropped.\n\n## Technical Approach\n\nMove ledger creation from `flow/SKILL.md` Step 1.8 to the worktree-ready points, leaving a short Step 1.8 that handles only the no-worktree strategies, and change the exception's condition in `_shared/ledger-format.md` and `ledger/SKILL.md`'s Create from \"no `worktree` field\" to the resolved strategy. Update the QA Ledger Check only if the log line's location changes in a way it reads.\n\n### Key Files\n\n- `plugin/skills/flow/SKILL.md` — Step 1.8 narrowed\n- `plugin/skills/build/worktree-setup.md` — single-spec creation point\n- `plugin/skills/flow/multi-spec.md` — multi-spec creation point (\"Shared worktree\" step 1)\n- `plugin/skills/ledger/SKILL.md` — Create location rule\n- `plugin/skills/_shared/ledger-format.md` — No-worktree run exception condition\n- `plugin/skills/review/code-mode-steps.md` — QA Ledger Check reader of the creation line\n\n## Gotchas\n\n- `build/worktree-setup.md` is also used by standalone `/claude-tweaks:build`; creating a ledger there must be conditional on running under `/flow` (a run directory with a ledger expectation), or standalone builds start creating ledgers they never had.\n- Prose conformance tests pin parts of these files; run the full suite before merging, not just the targeted ones.\n- The run-dir-first resolution rule means a stray `{run-dir}/ledger.md` from an older run can still shadow; consider whether the narrowed exception needs a cleanup note.\n\n## Original request\n\nflow: Step 1.8 creates the open-items ledger before the run's worktree exists, so under `worktree-always` it cannot land in `docs/plans/`\n\n**Causal:** systemic\n\n**Kind:** Defect\n\n**Affected component:** `skills/flow/SKILL.md` Step 1.8, `skills/ledger/SKILL.md` (Create), `skills/_shared/ledger-format.md` (No-worktree run exception)\n\n**Plugin version:** 6.136.0\n\n## Current State\n\n`skills/flow/SKILL.md` Step 1.8 creates the open-items ledger in Step 1 (Validate Input). The run's worktree is created later, in one of two places:\n\n- Step 4's `build` step, under `materialize.md`'s worktree-first ordering;\n- `skills/flow/multi-spec.md`'s \"Shared worktree\" step 1, at Execution.\n\n`skills/ledger/SKILL.md`'s Create writes `docs/plans/YYYY-MM-DD-{feature}-ledger.md`. It writes `{run-dir}/ledger.md` instead when `run-state.json` carries no `worktree` field. `_shared/ledger-format.md`'s \"No-worktree run exception\" applies that alternate under `worktree-always: true`. The exception was designed for a wrap-up-only run that never gets a worktree.\n\nAt Step 1.8, a session that is not already isolated has no `worktree` field in `run-state.json`. Under `worktree-always`, all three options are wrong:\n\n1. **Write `docs/plans/` from the main checkout.** The `worktree-always` PreToolUse gate denies the tracked-path write.\n2. **Follow the exception's literal condition**, which holds only for the moment. A run that will have a worktree then gets a gitignored, never-committed run-dir ledger. Through the \"check `{run-dir}/ledger.md` first\" resolution rule, that ledger also shadows any `docs/plans/` ledger created later.\n3. **Defer creation until the worktree exists.** This is what happened in the observed run. The ledger was created after the first spec's build task. The run's decision log records it as \"late\", and an implementer follow-up had to be seeded into it afterwards. A finding raised in that window has no ledger to land in, so it can be dropped.\n\n`materialize.md` already fixed the same ordering problem for the spec file (\"worktree-first ordering; the reverse order is denied under `worktree-always`\"). The ledger step was not moved with it. When the session is already isolated (the adopt path), Step 1.8 works because `docs/plans/` is writable.\n\n## Deliverables\n\n1. Create the ledger immediately after the run's worktree is created or adopted, before any build task can raise a finding. For a single-spec run that point is `build/worktree-setup.md`'s post-creation steps; for a multi-spec run it is the \"Shared worktree\" step 1. Keep Step 1.8 only for `current-branch` runs and runs that are already isolated.\n2. Narrow the No-worktree run exception's condition so it cannot fire for a run that will create a worktree. Key it on the run's resolved git strategy or on the wrap-up-only shape, not on `run-state.json`'s momentary lack of a `worktree` field.\n3. Emit #1800's creation log line (`AUTO {time} — flow: created open-items ledger {path}`) at the new point, so review's QA Ledger Check still finds it.\n\n## Acceptance Criteria\n\n- Under `worktree-always`, a `/flow` run started from a session that is not already isolated gets its ledger at `docs/plans/...` inside the run's worktree. The ledger is created before the first build task, and no gate refusal occurs.\n- No run that creates a worktree ends with a `{run-dir}/ledger.md`.\n- The wrap-up-only no-worktree case still gets its run-dir ledger.\n\n## Evidence\n\n- `skills/flow/SKILL.md` Step 1 item 8 (ledger create) and Step 4 item 2, where the worktree is created first per `materialize.md`.\n- `skills/flow/multi-spec.md` \"Shared worktree\" step 1 (worktree creation at Execution).\n- `skills/ledger/SKILL.md` Create's location rule.\n- `skills/_shared/ledger-format.md` \"No-worktree run exception\" (`worktree-always` gate, `{run-dir}/ledger.md`, run-dir-first resolution rule).\n- The run's decision log records the ledger as created late, after the first spec's build task. It does not state the cause. The ordering mismatch above is verified against the 6.136.0 sources.\n- There have been no commits to `plugin/skills/flow/`, `plugin/skills/ledger/` or `_shared/ledger-format.md` on `main` since v6.136.0 that touch this area.\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-43bef3e1 -->\n\n",
+        "createdAt": "2026-10-08T03:40:47Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Size: medium effort",
+            "color": "fbca04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Risk: medium blast radius",
+            "color": "fbca04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: standard review",
+            "color": "c5def5"
+          }
+        ],
+        "number": 3036,
+        "state": "OPEN",
+        "title": "flow: Step 1.8 creates the open-items ledger before the run's worktree exists, so under `worktree-always` it cannot land in `docs/plans/`",
+        "updatedAt": "2026-10-16T17:57:22Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
         }
       },
       {
@@ -2744,262 +2560,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n## Current State\n\nclaude-tweaks ships through its own marketplace today, not through any first-party discovery surface:\n\n- The plugin manifest is `plugin/.claude-plugin/plugin.json`: name, description, version, author, repository, MIT license, keywords, one agent. Only the `plugin/` subtree ships (`docs/decisions/0015-plugin-payload-boundary-is-the-plugin-subtree.md`).\n- Releases go out through release-please. `.github/workflows/mirror-marketplace.yml` then writes the catalog entry into `thn-inc/claude-tweaks-marketplace`'s `.claude-plugin/marketplace.json`, pinned by `sha` and with no `version` field (`docs/releasing.md`). Users install through that marketplace.\n- The plugin depends on other plugins being present: Superpowers (several `/superpowers:*` skills) and code-simplifier (its `code-simplifier:code-simplifier` subagent). It also expects Node 18+ for its `plugin/bin/` executables and hooks (CLAUDE.md's Stack table).\n\nThe external prompt for this record: Anthropic has launched a plugin portal for Claude (source link in the original request below).\n\n## Deliverables\n\n1. A written go/no-go on listing claude-tweaks on the portal, posted as a comment on this record. It should cover:\n   - whether the portal accepts Claude Code plugins of this shape: skills, hooks, `bin/` executables, one agent, and dependencies on other plugins. A portal aimed at MCP-based Claude plugins may not fit;\n   - what listing requires (manifest fields beyond today's `plugin.json`, a review process, versioning rules) and how each requirement maps onto the current release-please and marketplace-mirror flow;\n   - how the Superpowers and code-simplifier dependencies would be expressed or satisfied for a portal user;\n   - what listing would cost to maintain alongside the existing marketplace: two catalogs to keep in sync, and review turnaround on every release.\n2. When the verdict is go, file the concrete listing work as a backlog record via `/claude-tweaks:capture` with a spec-shaped body. Name each required manifest or workflow change. Otherwise, state explicitly why not, and what would change the answer.\n\n## Acceptance Criteria\n\n- The comment exists on this record, addresses each of the four points in Deliverable 1, and cites the portal's own published requirements for every requirement it names.\n- It states a clear verdict: go, no-go, or not yet (with the condition that would flip it).\n- A go verdict has a filed backlog record linked from the comment; no listing step is left as prose only.\n\n## Release Note\n\nNo user-facing change. This produces an internal go/no-go on listing claude-tweaks on Anthropic's plugin portal.\n\n## Technical Approach\n\nA desk evaluation, with no manifest, workflow, or skill edits in this record. Read the portal's published submission requirements first. Then diff them against `plugin/.claude-plugin/plugin.json` and the release and mirror flow in `docs/releasing.md`. The plugin-dependency question is the most likely blocker, so settle it early.\n\n### Key Files\n\n- `plugin/.claude-plugin/plugin.json` — current manifest the portal requirements are diffed against\n- `.github/workflows/mirror-marketplace.yml` — current catalog-publish step a portal listing would sit beside\n- `docs/releasing.md` — current release and versioning flow\n\n## Gotchas\n\n- ASSUMPTION — verify at build: the portal lists Claude Code plugins (skills, hooks, executables) rather than only MCP-connector-style Claude plugins. Confirm this from the portal's own submission documentation before evaluating anything else.\n- `plugin.json` carries the single version authority, and the marketplace entry deliberately carries no `version` field. A portal that requires its own version field would reintroduce a second version source, which needs a deliberate decision.\n- Listing does not replace the existing marketplace. Existing users install from `thn-inc/claude-tweaks-marketplace`, so any go verdict keeps that path working.\n\n## Original request\n\nAssess listing claude-tweaks on Anthropic's new Claude plugin portal\n\nCurrent State:\n- claude-tweaks is distributed as a Claude Code plugin suite outside any first-party discovery surface.\n- Anthropic just launched a plugin portal for Claude as MCP usage has grown 110x.\n\nDeliverables:\n- Determine whether claude-tweaks should be listed on the new portal and what that requires (manifest, review, versioning).\n\nAcceptance Criteria:\n- A written go/no-go on listing, with the steps if yes.\n\nSource: https://claude.com/resources/articles/build-plugins-for-claude\n",
-        "createdAt": "2026-10-09T03:34:50Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3053,
-        "state": "OPEN",
-        "title": "Assess listing claude-tweaks on Anthropic's new Claude plugin portal",
-        "updatedAt": "2026-10-16T16:30:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`/claude-tweaks:review`'s Step 3 dispatches each lens as a reproduction pair at `medium` effort and above (`plugin/skills/review/step3-lens-dispatch.md:39`, 3f Test Quality included). `categoriseReproduction` (`plugin/bin/lib/coordination.js:285`, CLI `plugin/bin/review-coordination.js categorise-reproduction`) confirms a finding only when both agents report it at the same location: `sameLocation` with `LINE_TOLERANCE_REPRODUCTION` (exact path, line ±2), then a substance check. Findings with no same-location partner land `unconfirmed`.\n\nThe dispatch prompt already carries one anchoring instruction outside the byte-identical Calibration/Output block: `Path:Line` must be file-native, never bundle-relative (`step3-lens-dispatch.md:74`). It has no rule for where a coverage finding is anchored. The 3f checklist (`step3-lens-dispatch.md:205-214`) asks about missing edge-case and error-path tests and weak tests, so the same coverage gap can legitimately be anchored at the test file or at the production line.\n\nObserved (reporter, plugin 6.136.0, `medium` effort): both 3f agents found the same gap (\"production guard X is only pinned by a Spark-gated test, so CI never exercises it\"). One anchored it at the test's decorator line, the other at the unguarded production line, so neither reproduced. All six 3a/3f findings landed `unconfirmed` and were confirmed only through the reviewer's direct-verification override.\n\n## Deliverables\n\n1. Add a coverage-finding anchor rule to `step3-lens-dispatch.md`'s dispatch-prompt instructions, next to the file-native `Path:Line` rule at `:74` and outside the byte-identical Calibration/Output-template block. A missing-or-weak-test finding is anchored at the production line the test should pin, never at the test file. A finding about a test's own defect (refactor-coupled, non-discriminating, polluting) stays anchored at the test.\n2. Restate the rule as one bullet in the 3f Test Quality checklist (`step3-lens-dispatch.md:205`) so the lens agent sees it where coverage questions are asked.\n3. Leave `categoriseReproduction`'s matching unchanged (see Gotchas).\n\n## Acceptance Criteria\n\n- `step3-lens-dispatch.md` states the coverage anchor rule in the dispatch-prompt instructions, with both halves: coverage gap → production line; test-quality defect → test line.\n- The 3f checklist carries the same rule as a bullet.\n- The byte-identical Calibration/Output-template block is unchanged, so any conformance test pinning it to `_shared/criteria-review-quality.md` still passes.\n- `npm test` passes.\n\n## Release Note\n\nMake review's test-quality agents anchor coverage findings at the code under test, so two agents finding the same gap now confirm each other.\n\n## Technical Approach\n\nA prompt-side rule fixes the cause: the two agents disagree on where to anchor, not on what they found. The reporter's optional matcher relaxation (treat a test-file finding whose evidence names the other side's `path:line` as same-location) was considered and not adopted here. It loosens a deterministic matcher on free-text evidence, which raises the risk of confirming coincidental pairs, the failure mode `categoriseReproduction`'s #1980 substance check exists to prevent. If anchor drift still shows up in practice after this rule ships, the matcher change can be revisited with that evidence.\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — coverage anchor rule in the dispatch-prompt instructions and the 3f checklist\n\n## Gotchas\n\n- Keep the rule out of the byte-identical Calibration/Output-template block (`step3-lens-dispatch.md:107` onward). That block is the canonical copy of `_shared/criteria-review-quality.md` and must stay byte-identical.\n- The reporter's second unconfirmed pair (same location, different wording) is a substance-match question, not an anchor question. This rule does not address it.\n- The rule must be phrased so a lens agent can apply it without seeing sibling files. Dispatched agents only see their prompt.\n\n## Original request\n\nreview: reproduction pairs anchor the same coverage gap at the test vs the code, so neither reproduces\n\n**Component:** claude-tweaks `skills/review` (step3-lens-dispatch.md lens prompt, `bin/review-coordination.js categorise-reproduction`)\r\n**Kind:** gap\r\n\r\n## What happened\r\n\r\nAt `medium` review effort, both agents of the 3f (Test Quality) reproduction pair independently found the same issue — \"the production guard X is only pinned by a Spark-gated test, so CI never exercises it\" — but anchored it at different `Path:Line`s: one at the gated test's decorator line in the test file, the other at the unguarded production line it should pin. `categorise-reproduction` matches on `path` exact + `line ±2`, so both entries came back `unconfirmed`, as did a second shared finding where the agents wrote different wording. All six 3a/3f findings landed `unconfirmed` and were only confirmed through the reviewer's direct-verification override.\r\n\r\n## Expected\r\n\r\nTwo agents that found the same coverage gap should reproduce it.\r\n\r\n## Suggested fix\r\n\r\nIn the canonical lens prompt (3f especially), state the anchor rule for coverage findings: anchor a missing-or-weak-test finding at the production line the test should pin, never at the test. Optionally let `categorise-reproduction` treat a finding pair as same-location when one side's `path` is a test file whose evidence names the other side's `path:line`.\r\n\r\n\r\n_Filed from a recommender-system `/claude-tweaks:wrap-up` run (record #1207, plugin 6.136.0)._\r\n\n",
-        "createdAt": "2026-10-08T18:57:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3049,
-        "state": "OPEN",
-        "title": "review: reproduction pairs anchor the same coverage gap at the test vs the code, so neither reproduces",
-        "updatedAt": "2026-10-15T16:24:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #2907, #2908, #2954, #3049\n\n## Current State\n\n`/claude-tweaks:review` Step 3 runs reproduction pairs. Two agents run the same lens, and `bin/review-coordination.js categorise-reproduction` pairs their findings via `categoriseReproduction` (`plugin/bin/lib/coordination.js:285`). A pair is a candidate only when `sameLocation(fa, fb, LINE_TOLERANCE_REPRODUCTION)` holds (`:300`): path exact, `Math.abs(line delta) <= 2` (`:191-198`, constant `:8`). After that comes the #1980 substance check (`sameSubstance`, Jaccard ≥ `SUBSTANCE_SIMILARITY_MIN = 0.4`, `:26`, `:248-252`). The same ±2 rule is restated in prose at `plugin/skills/_shared/multi-agent-coordination.md:49` and `plugin/skills/review/step3-lens-dispatch.md:90-93`, and pinned by `tests/multi-agent-coordination.test.js:321`.\n\nThe rule fails on a finding inside one multi-line statement. In the reported run, both agents of the error-handling pair flagged the same issue, a value read inside a multi-line call argument after an external side effect. They anchored it on two different lines of that statement, 3 lines apart. `sameLocation` rejected the pair before substance was ever compared. The result was 0 confirmed and 2 unconfirmed, the real finding was routed to the Review Console's Low-confidence section instead of Step 3 Routing, and the reviewer had to confirm it by hand with the direct-verification override. Reported via `/claude-tweaks:feedback` against plugin 6.133.0.\n\n## Deliverables\n\n1. Add a substance-gated wider tolerance to reproduction pairing. A same-path pair whose line delta is above `LINE_TOLERANCE_REPRODUCTION` (2) but within a new, wider bound (for example 5, matching `LINE_TOLERANCE_DEBATE`) is a candidate only when its `substanceSimilarity` clears a stricter floor than `SUBSTANCE_SIMILARITY_MIN`. Today's ±2 path is unchanged, including the `null`-substance-pairs-as-match rule. An unknown (`null`) substance never qualifies for the wider band.\n2. Export the new bound and the stricter floor as named constants next to the existing ones (`:8-26`, export block `:443-448`).\n3. Update the prose twins (`_shared/multi-agent-coordination.md:49` and `review/step3-lens-dispatch.md:90-93`) to state the two-tier rule, so the prose and the code agree.\n\n## Acceptance Criteria\n\n- A test in `tests/multi-agent-coordination.test.js` passes two findings on the same path, 3 lines apart, with near-identical text and the same severity bucket. It asserts one confirmed and zero unconfirmed. Prove it goes red against the current ±2-only rule.\n- A test with the same 3-line delta but substantively different text (below the stricter floor) asserts both stay unconfirmed.\n- A test with a 3-line delta and one side missing its text (`null` substance) asserts both stay unconfirmed.\n- The existing ±2, #1980 near-location, and #733 severity-contested tests pass unchanged.\n- `tests/bin-lib/review-coordination/cli.test.js` passes unchanged.\n- `npm test` passes in full.\n\n## Release Note\n\nReview's reproduction pairs now confirm a finding both agents reported a few lines apart within the same statement, instead of leaving it unconfirmed.\n\n## Technical Approach\n\nIn `categoriseReproduction`'s candidate gather (`:297-302`), accept a B finding when `sameLocation(fa, fb, LINE_TOLERANCE_REPRODUCTION)` holds, or when `sameLocation(fa, fb, <wider bound>)` holds and `substanceSimilarity(fa, fb) >= <strict floor>`. Everything downstream (eligible filter, best-score selection, `reconcileSeverity`) stays unchanged. Keep `findingsMatch`'s default untouched unless a caller needs the same widening, and check its callers first.\n\nThe reporter's other option, anchoring both findings to the enclosing statement's line range, is not chosen. `coordination.js` is pure and receives only `path:line` plus text, so finding a statement range would mean reading and parsing source files inside a module that does no I/O today.\n\n### Key Files\n\n- `plugin/bin/lib/coordination.js` — `categoriseReproduction`: substance-gated wider tolerance band; new exported constants\n- `plugin/skills/_shared/multi-agent-coordination.md` — restate the two-tier line rule (`:49`)\n- `plugin/skills/review/step3-lens-dispatch.md` — restate the two-tier line rule (`:90-93`)\n- `tests/multi-agent-coordination.test.js` — 3-line-apart confirm, different-substance, and null-substance cases\n\n## Gotchas\n\n- Choose the stricter floor with a fixture, not by intuition. Jaccard over tokenized finding text is sensitive to normalization, so check the reported pair's actual text scores above it and an unrelated same-statement pair scores below it.\n- The wider band must not change the #1980 `nearLocation` behavior for pairs within ±2. That branch fires only when every same-location candidate is substantively different. Make sure a wide-band candidate that fails the strict floor is simply not a candidate, rather than being reported as `nearLocation`.\n- `detectCrossLensOverlap` already uses `LINE_TOLERANCE_DEBATE` (5) for a different purpose (`:368`). If the new bound reuses that value, give it its own constant name so the two can diverge later.\n\n## Original request\n\nreview-coordination categorise-reproduction: one finding inside a multi-line statement splits into two unconfirmed findings\n\n**Summary:** Both agents of a reproduction pair reported the same finding inside one multi-line statement, 3 lines apart, so the ±2 line match left a real finding unconfirmed.\n\n**Kind:** Defect\n\n**Affected component:** claude-tweaks review, Step 3 reproduction pairs (`bin/review-coordination.js categorise-reproduction`, `categoriseReproduction` in `bin/lib/coordination.js`)\n\n**Repro steps:**\n1. Run a medium-tier `/claude-tweaks:review` on a diff where a value is read inside a multi-line call argument, after an external side effect.\n2. Both agents of the error-handling pair flag it. Agent A anchors the finding on one line of the statement and agent B on another line, 3 lines away.\n3. Run `categorise-reproduction` on the two findings files.\n\n**Expected vs. actual:**\nExpected: findings that agree in substance and sit inside the same multi-line statement reproduce. One fix would widen the line tolerance when the same-substance score is high; another would anchor both reports to the enclosing statement's line range before comparing.\nActual: the rule is \"path exact, line ±2\", so the result was 0 confirmed and 2 unconfirmed. The real finding would have gone to the Review Console's Low-confidence section instead of Step 3 Routing. The reviewer had to confirm it by hand with the direct-verification override.\n\n**Definition:** Clear\n\n**Plugin version:** 6.133.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-ac3202e2 -->\n",
-        "createdAt": "2026-10-04T09:58:25Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2955,
-        "state": "OPEN",
-        "title": "review-coordination categorise-reproduction: one finding inside a multi-line statement splits into two unconfirmed findings",
-        "updatedAt": "2026-10-15T16:21:33Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #3047\n\n## Current State\n\n`/claude-tweaks:test`'s pipeline path with `VERIFICATION_PASSED=true` and stories present (`plugin/skills/test/SKILL.md:70`) selects QA stories by `source_files` ∩ `node bin/verify.js --changed-files --integration-branch {ref}`. `--changed-files` (`plugin/bin/verify.js:156`, `changedFilesMode`) resolves its base through `resolveBase` (`plugin/bin/lib/verify/changed-files.js:54`) with this precedence: `--base` first, then the checkout's own verification-stamp anchor whenever it is usable and not equal to HEAD (`:62-77`), and only then the `--integration-branch` merge-base (`:78-84`).\n\nIn a `/flow` run, `/build` Common Step 5 writes the stamp. Bookkeeping commits follow (for example `/stories` committing a new story YAML), so by the time `/test` selects stories the stamp anchor is an ancestor of HEAD but not HEAD. The changed-file set is then only the post-stamp bookkeeping, never the build's own source changes. Observed (reporter, plugin 6.136.0): the set was a single `stories/*.yaml` file. No story's `source_files` matched it, the Layer-3 UI sniff found no UI trigger file in it, and the documented path would have reported `QA: skipped — no affected stories` for a build that had just changed three admin-UI components. The reporter selected stories by hand against `git diff --name-only <merge-base>..HEAD`.\n\nThe stamp anchor is the right base for re-running tests (`affected`, `verification.md`'s Re-verify scoping table): the stamp records what was already verified. It is the wrong base for QA story selection, because the stamp says nothing about QA. `plugin/skills/test/design-gate.md:9` reads the same `--changed-files` set to decide which files the design CLI gate judges, so it has the same blind spot.\n\n## Deliverables\n\n1. Add an opt-in `--ignore-stamp` flag to `verify.js --changed-files` (parsed in `plugin/bin/lib/verify/args.js`, honored by `changedFilesMode`/`resolveBase`). It skips the stamp anchor and resolves the base from `--base` or the `--integration-branch` merge-base, keeping the existing exit-1 and `warning: resolved base equals HEAD` semantics. Reject it outside `--changed-files` the way the other read-only flags are rejected.\n2. Switch `test/SKILL.md`'s pipeline QA story selection (`:70`) to `verify.js --changed-files --ignore-stamp --integration-branch {ref}`, so selection compares story `source_files` against the run's own branch diff.\n3. Switch `test/design-gate.md:9`'s `<changed-files>` resolution to the same `--ignore-stamp` form.\n4. Leave `/claude-tweaks:test affected` (test re-runs) and `verification.md`'s Re-verify scoping unchanged — they keep the stamp-anchored set.\n\n## Acceptance Criteria\n\n- With a stamp anchored at commit A, a later source commit B, and a bookkeeping commit C on HEAD, `verify.js --changed-files --integration-branch {ref}` still returns only C's files, and `--changed-files --ignore-stamp --integration-branch {ref}` returns B's and C's files (the merge-base diff). Both cases are covered in `tests/bin-lib/verify/changed-files.test.js` and/or `cli.test.js`.\n- `--ignore-stamp` with no resolvable `--base`/`--integration-branch` base exits 1 with a message, never an empty list.\n- `--ignore-stamp` combined with a non-`--changed-files` mode is a usage error (exit 2), covered by `args.test.js`.\n- `test/SKILL.md`'s QA selection and `design-gate.md` both name the `--ignore-stamp` form; the `affected` mode does not.\n- The existing `verify` suites (`node --test tests/bin-lib/verify/*.test.js`) pass.\n\n## Release Note\n\nSelect pipeline QA stories against the run's full branch diff, so a build's own UI changes are never skipped because a verification stamp was written before them.\n\n## Technical Approach\n\nAn additive flag keeps every existing `--changed-files` caller's behavior unchanged. Flipping the default would change the `affected`/`--scope` semantics that rely on the stamp anchor. The alternative of passing `--base $(git merge-base …)` from the skill prose was rejected: that hand-rolls merge-base resolution (`preferOriginRef`, degenerate-base handling) that `resolveBase` already owns.\n\n### Key Files\n\n- `plugin/bin/lib/verify/args.js` — parse and validate `--ignore-stamp`\n- `plugin/bin/verify.js` — pass the flag through `changedFilesMode`\n- `plugin/bin/lib/verify/changed-files.js` — `resolveBase` skips the stamp anchor when asked\n- `plugin/skills/test/SKILL.md` — QA story selection uses `--ignore-stamp`\n- `plugin/skills/test/design-gate.md` — design-gate changed-file set uses `--ignore-stamp`\n- `tests/bin-lib/verify/changed-files.test.js` — stamp-anchored vs ignore-stamp base cases\n- `tests/bin-lib/verify/args.test.js` — flag validation\n\n## Gotchas\n\n- `verify.js`'s usage string (`args.js:14`) and `verification.md`'s `--changed-files` description must name the new flag. Grep for every `--changed-files` mention in `plugin/skills/` before finishing (`test/SKILL.md`, `test/design-gate.md`, `test/verification.md`).\n- `tests/bin-lib/verify/snippet-conformance.test.js` does not currently pin the `--changed-files` snippet. Run the full `npm test` anyway, because other conformance suites pin `test/SKILL.md` prose repo-wide.\n- The reporter's alternative base (the run's materialize commit's parent) was not chosen. The integration-branch merge-base is already resolvable by `verify.js` without run-dir knowledge, and on a pr-first branch it is the same diff.\n\n## Original request\n\ntest: pipeline QA story selection reads only post-stamp changes, so it can skip the build's own UI change\n\n**Component:** claude-tweaks `skills/test` (pipeline QA selection) + `bin/verify.js --changed-files`\r\n**Kind:** gap\r\n\r\n## What happened\r\n\r\nInside a `/flow` run, `/build` Common Step 5 writes the verification pass stamp. `/stories` then commits a new story YAML, and `/test` (with `VERIFICATION_PASSED=true` and stories present) selects stories by `source_files ∩ verify.js --changed-files`. Because `--changed-files` resolves its base to the stamp's `fullSha` whenever that sha is an ancestor of HEAD, the set at that point is only the post-stamp commits — here a single `stories/*.yaml` file. No story's `source_files` matched it, the Layer-3 UI sniff found no UI trigger file in that one-file set, and the documented path would have reported `QA: skipped — no affected stories` for a build that had just changed three admin-UI components.\r\n\r\n## Expected\r\n\r\nThe pipeline's QA selection should compare story `source_files` against the run's own change set (the branch diff from its merge-base / the run's materialize base), not against \"changes since the last verification stamp\", which in a pipeline is almost always just the bookkeeping that follows `/build`.\r\n\r\n## Workaround used\r\n\r\nSelected stories manually against the branch diff (`git diff --name-only <merge-base>..HEAD`) and logged the deviation to `decisions.md`.\r\n\r\n## Suggested fix\r\n\r\nGive `/test`'s pipeline selection its own base (the run's materialize commit's parent, or `--integration-branch` merge-base) instead of the stamp-anchored `--changed-files`, or add a `--since-base` mode to `verify.js --changed-files` that ignores the stamp.\r\n\r\n\r\n_Filed from a recommender-system `/claude-tweaks:wrap-up` run (record #1207, plugin 6.136.0)._\r\n\n",
         "createdAt": "2026-10-08T18:57:02Z",
         "labels": [
@@ -3430,96 +2990,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n## Current State\n\n`isTestPath` (`plugin/bin/lib/issues/blast-radius.js:24`) recognizes test surface through two regexes only: `TEST_PATH_RE` (`:21`, a `test/` or `tests/` path segment) and `TEST_SUFFIX_RE` (`:22`, `.test.`/`.spec.` js/ts suffixes, `_test.go`, `test_*.py`/`*_test.py`). `classifyDiffFiles` (`:93`) stamps `isTest` from it, and that classification feeds both `blastRadiusSummary` (merge-check's blast-radius input) and `computeDiffFacts` (`plugin/bin/lib/dispatch/ceremony-derive.js:29`), whose `lowSurface` gate (`:53`, zero implementation files) narrows `standard` to `fast-lane` (#1545).\n\nThe plugin's own QA story files — `/claude-tweaks:stories` writes them to `stories/` by default (`plugin/skills/stories/SKILL.md:26`, overridable with `dir=<path>`) — match neither regex. A diff of only `stories/*.yaml` plus docs therefore classifies every story file as implementation: the reporter observed `{\"fileCount\":12,\"testFiles\":0,\"docsFiles\":3,\"implFiles\":9,\"lowSurface\":false}`, so the run kept `standard` ceremony (full-mode reflect, full registry pass), and merge-check's summary counted 567 story lines as implementation lines for a change with no runtime code.\n\nThe existing #1545 discrimination tests live in `tests/bin-lib/dispatch/ceremony-derive.test.js:13`; `tests/bin-lib/issues/blast-radius.test.js` covers `classifyDiffFiles`/`isTestPath`.\n\n## Deliverables\n\n1. Extend `blast-radius.js`'s test-path recognition so a YAML file under a `stories/` path segment (`(^|/)stories/` with a `.yaml`/`.yml` extension) classifies `isTest: true`, and update the convention comment above the regexes to list it.\n2. Add `blast-radius.test.js` cases: `stories/app-customer.yaml` and `qa/stories/x.yml` are test paths; `stories/readme.md`, `src/stories.js`, and `src/history/stories.ts` are not.\n3. Add `ceremony-derive.test.js` discrimination cases next to the #1545 one: a story file plus a docs file is `lowSurface: true` / `fast-lane`; a story file plus one production source file is `lowSurface: false`.\n\n## Acceptance Criteria\n\n- `computeDiffFacts` over `[stories/a.yaml, stories/b.yaml, docs/plan.md]` returns `testFiles: 2`, `implFiles: 0`, `lowSurface: true`, and the derivation yields `fast-lane` from `standard`.\n- `computeDiffFacts` over `[stories/a.yaml, src/app.js]` returns `implFiles: 1`, `lowSurface: false`.\n- `isTestPath('stories/readme.md')`, `isTestPath('src/stories.js')`, and `isTestPath('src/history/stories.ts')` are all `false` (only YAML under a `stories/` segment qualifies).\n- Every pre-existing `blast-radius.test.js` and `ceremony-derive.test.js` case still passes.\n- The new story cases fail against the current regexes and pass with the change (verified by reverting the regex edit).\n\n## Release Note\n\nCount QA story YAML files as test surface, so story-only changes get the lighter fast-lane ceremony and an accurate merge-check blast radius.\n\n## Technical Approach\n\nAdd a third alternation (or a separate `STORY_PATH_RE`) to `isTestPath` rather than special-casing `computeDiffFacts` — `isTestPath` is the single classification point both `blastRadiusSummary` and `computeDiffFacts` read, so fixing it there corrects the merge-check line counts and the ceremony derivation together. Restrict the match to `.yaml`/`.yml` under a `stories/` segment: the stories schema is YAML, and a bare `stories/` directory match would misclassify unrelated content (a CMS or docs site's `stories/` pages) in downstream projects.\n\n### Key Files\n\n- `plugin/bin/lib/issues/blast-radius.js` — add story-YAML recognition to `isTestPath` and its convention comment\n- `tests/bin-lib/issues/blast-radius.test.js` — positive and negative `isTestPath` story cases\n- `tests/bin-lib/dispatch/ceremony-derive.test.js` — story-plus-docs vs story-plus-source discrimination cases\n\n## Gotchas\n\n- A project that passes `/claude-tweaks:stories dir=<path>` to a directory not named `stories` is not covered by a path-segment match. Resolving the configured directory would need I/O this pure module does not do; the default-directory match covers the shipped convention, and a custom directory stays classified as before (no regression).\n- `plugin/bin/lib/issues/initiative-budget.js:33` has its own independent `isTestPath`; leave it unchanged — it serves a different consumer and is out of scope here.\n- Classifying story files as test surface only ever lowers ceremony and shifts merge-check line counts from implementation to test; merge-check still weighs review findings and diff content, so this is never a pass/fail gate on its own (`blast-radius.js` header).\n\n## Original request\n\nblast-radius: isTestPath ignores the stories/ QA directory, so story-only diffs never derive fast-lane ceremony\n\n**Summary:** `isTestPath` in `bin/lib/issues/blast-radius.js` does not recognise the plugin's own `stories/` QA directory, so a diff of only story YAML is never low-surface and never derives the `fast-lane` ceremony.\n\n**Kind:** Defect\n\n**Affected component:** `bin/lib/issues/blast-radius.js` (`isTestPath`), consumed by `bin/lib/dispatch/ceremony-derive.js` (`computeDiffFacts`) and the merge-check blast-radius summary\n\n**Repro steps:**\n1. In any project using the plugin, make a branch whose only changes are edits to `stories/*.yaml`, the files `/claude-tweaks:stories` writes, plus a markdown plan/ledger file.\n2. Run `computeDiffFacts` (`bin/lib/dispatch/ceremony-derive.js`) over the branch's `git diff --numstat`, as `wrap-up/ceremony-derivation.md` does on an auto-mode firing.\n3. Observe the result: every `stories/*.yaml` path is classified `isTest: false`, and `implFiles` equals the story-file count.\n\n**Expected vs. actual:**\nExpected: QA story files count as test surface, so a story-only or story-plus-docs diff is `lowSurface: true` and the diff-derived default (#1545) narrows `standard` to `fast-lane`.\nActual: `{\"fileCount\":12,\"testFiles\":0,\"docsFiles\":3,\"implFiles\":9,\"lowSurface\":false}`. The run keeps `standard` and pays for a full-mode reflect and the full registry pass. The blast-radius summary also counts every story line as an implementation line, so merge-check sees a 567-line \"implementation\" diff for a change with no runtime code.\n\nCause: `isTestPath` only matches a `test/` or `tests/` path segment and language test-file suffixes (`.test.`/`.spec.` for js/ts, `_test.go`, `test_*.py`/`*_test.py`). The plugin's own QA story directory is test surface by construction, but the heuristic doesn't know about it.\n\nSuggested fix: have `isTestPath`, or `computeDiffFacts`, treat the stories directory as test surface: `stories/**/*.yaml`, or whatever directory the stories skill resolves for the project. Add a discrimination test next to the #1545 one: a story file plus a docs file is low-surface, and a story file plus one production source file is not.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-28ab125b -->\n\n",
-        "createdAt": "2026-10-07T23:59:06Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3034,
-        "state": "OPEN",
-        "title": "blast-radius: isTestPath ignores the stories/ QA directory, so story-only diffs never derive fast-lane ceremony",
-        "updatedAt": "2026-10-15T16:23:59Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n## Current State\n\nThe merge-subject composer has three separate gaps. All three were observed on a GitHub Enterprise Server host (Windows + Git Bash, gh 2.92.0):\n\n1. **The handled `issueType` rejection is noisy.** #2561's fallback works: `isUnknownIssueTypeField` (`plugin/bin/lib/compose-subject.js:156`) detects gh's `Unknown JSON field: \"issueType\"` error, the call retries without the field (`compose-subject.js:233`), and it falls back to GraphQL, with exit 0 and a correct subject. But `realDeps.runner` (`compose-subject.js:206`) calls `execFileSync('gh', args, { encoding: 'utf8', timeout: GH_TIMEOUT_MS })` with no `stdio` option, so Node copies the child's stderr to the parent's in addition to capturing it. The successful compose is therefore preceded by gh's error and full field list, and reads like a failure.\n2. **There is no scope support.** `composeSubject` (`plugin/bin/lib/release/subject.js`) builds the prefix as only `{type}` or `{type}!` (`subject.js:73`). Nothing anywhere produces `type(scope):`, so a project whose commit convention requires a scope can't get one.\n3. **Close-out's human-confirmed merge has no tag.** Step 5 of `plugin/skills/dispatch/close-out.md` (`close-out.md:60`) reuses Step 3 of `plugin/skills/_shared/pr-first-merge.md`. That step's `{tag}` vocabulary (`pr-first-merge.md:283-289`) is `auto-merge`, `fast-lane`, and `manifesto-authorized`, and `_shared/github-pr-scan.md`'s `triage-queue` auto-merged-this-week metric counts every one of them as an auto-merge. A merge confirmed at close-out's per-PR gate is none of these. A caller was observed passing `fast-lane`, which miscounts a human decision as an auto-merge.\n\nTwo constraints affect the change. Title truncation to `SUBJECT_BUDGET = 72` (`subject.js:18`) is by design and stays unchanged, though a scope shortens the room left for the title. `tests/merge-subject-composer-conformance.test.js:25` pins `PR_FIRST_BYTE_CEILING = 31304`, and `pr-first-merge.md` is currently 30761 bytes, which leaves 543 bytes of headroom.\n\n## Deliverables\n\n1. **Quiet the handled rejection.** `realDeps.runner` in `plugin/bin/lib/compose-subject.js` passes `stdio: ['ignore', 'pipe', 'pipe']`. The captured `err.stderr`, which `isUnknownIssueTypeField` reads, and `err.message`, which the fatal paths print, still carry the text.\n2. **`--scope <token>`.** Add an optional `--scope` flag to `compose-subject.js`, covering `parseArgs`, the USAGE/header comment, and threading the value into `composeSubject`. `composeSubject` gains an optional `scope`:\n   - output is `type(scope):`, or `type(scope)!:` when breaking\n   - the scope is counted inside the 72-character budget\n   - a blank or omitted scope stays unscoped\n   - anything that isn't a single `[A-Za-z0-9._/-]+` token is rejected with a usage error\n3. **`human-approved` tag.**\n   - Register the tag in Step 3's tag paragraph in `pr-first-merge.md`, which also tells callers to append `--scope {scope}` when the project convention requires one.\n   - Name the tag as close-out's `{tag}` in step 5 of `dispatch/close-out.md`.\n   - Document it in `_shared/github-pr-scan.md`'s `triage-queue` item 3 as deliberately excluded from the auto-merged-this-week metric. The metric's `jq` filter itself is unchanged.\n4. **Tests.**\n   - `tests/bin-lib/compose-subject.test.js`:\n     - `--scope` parsing, including a missing value\n     - scoped and breaking-scoped output\n     - multi-word scope rejected\n     - the runner pipes stderr\n   - `tests/bin-lib/release/subject.test.js`:\n     - the scope prefix stays within the budget\n     - a blank scope stays unscoped\n     - `a(b)` throws\n\n## Acceptance Criteria\n\n- On a host where `gh issue view --json issueType` is rejected, `compose-subject.js <N> --shell` prints no gh stderr and exits 0 with the GraphQL-resolved type. A genuine fatal gh failure still surfaces its error text through `err.message`.\n- `compose-subject.js <N> --scope api` emits `{type}(api): {title} (#N)`. On a breaking record it emits `{type}(api)!: …`. `--scope 'two words'` exits 1 with `scope must be a single token`, and `--scope` with no value is a parse error.\n- `composeSubject({..., scope: 'api'})` returns `fix(api): Fix Y (#7)` for a bug titled \"Fix Y\". A whitespace-only scope returns the unscoped `fix: Fix Y (#7)`. A long title with a scope stays within `SUBJECT_BUDGET`.\n- `pr-first-merge.md` Step 3 lists `human-approved` and the `--scope` instruction. `dispatch/close-out.md` step 5 names `{tag}` = `human-approved`. `github-pr-scan.md` states that `[human-approved]` is excluded from the auto-merge count.\n- `node --test tests/bin-lib/compose-subject.test.js tests/bin-lib/release/subject.test.js tests/pr-first-merge.test.js tests/merge-subject-composer-conformance.test.js tests/bundle-fixes-reconciliation-2015.test.js` passes. In particular, `pr-first-merge.md` stays at or under `PR_FIRST_BYTE_CEILING`.\n\n## Release Note\n\nSilenced a misleading error printed during merge-subject composition, added optional commit-scope support, and stopped counting human-confirmed close-out merges as auto-merges.\n\n## Technical Approach\n\nAll three fixes are additive and local. The stdio change is a one-line fix at the single `runner` seam. Every consumer of the error text already reads the captured `err.stderr`/`err.message`, so piping loses nothing. Scope is threaded as an optional field through the CLI into the pure composer, the same way `tag` and `breaking` already flow. Validation lives in `composeSubject`, so both the CLI and any direct caller get the same rule. For the tag, the alternative was to reuse `fast-lane` or leave it untagged. Reusing `fast-lane` was rejected because it miscounts a human decision as an auto-merge. Leaving it untagged was rejected because it leaves close-out's merge outside Step 3's defined vocabulary. The original request below carries the reporter's complete diff. The reporter checked it live against the patched CLI and saw 74 of 74 passing across the touched suites.\n\n### Key Files\n\n- `plugin/bin/lib/compose-subject.js` — `realDeps.runner` pipes stderr; `--scope` parsing, usage text, and threading\n- `plugin/bin/lib/release/subject.js` — `composeSubject` optional `scope`, validation, `type(scope)[!]:` prefix\n- `plugin/skills/_shared/pr-first-merge.md` — Step 3 tag paragraph registers `human-approved` and the `--scope` instruction\n- `plugin/skills/dispatch/close-out.md` — step 5 names `{tag}` = `human-approved`\n- `plugin/skills/_shared/github-pr-scan.md` — `triage-queue` item 3 documents the `[human-approved]` exclusion\n- `tests/bin-lib/compose-subject.test.js` — `--scope` and stderr-piping tests\n- `tests/bin-lib/release/subject.test.js` — scope prefix, budget, and validation tests\n\n## Gotchas\n\n- `pr-first-merge.md` has only 543 bytes of headroom under `PR_FIRST_BYTE_CEILING`, and the reporter's patch adds about 180. Measure with `wc -c` after the edit. The ceiling is LF-measured, so a CRLF Windows checkout can exceed it locally while CI passes.\n- `tests/bundle-fixes-reconciliation-2015.test.js` looks for `{issue-list}` within a 1,500-character window of Step 3. Insert the new prose so it doesn't push `{issue-list}` out of that window.\n- Out of scope, noted by the reporter and not fixed here. Either one is a candidate for its own record.\n  - `extractSection(body, 'Release Note')` reads up to the next h2, so a record footer after the last section leaks into the merge commit's `Release-Note:` paragraph. `release-notes.js` reads only the first line, so release notes themselves are unaffected.\n  - `tidy/actions-github-issues.md`'s `## Arm ready PR` also reaches Step 3 with no defined `{tag}`. It sometimes auto-applies, so it needs its own tag decision, not `human-approved`.\n- The scope regex allows `/`, so a nested scope like `ui/forms` is accepted. That is intentional per the reporter's diff. Keep `(` and `)` rejected, because they would break the Conventional-Commits prefix grammar.\n\n## Original request\n\ncompose-subject.js: handled `issueType` rejection still echoes gh's stderr; no `--scope`; no tag for close-out's human-confirmed merge\n\n**Summary:** compose-subject.js echoes the handled issueType rejection's gh stderr (reads as a failure), has no type(scope): support, and close-out's human-confirmed merge has no {tag}\n\n**Kind:** Defect\n\n**Affected component:** compose-subject CLI (bin/lib/compose-subject.js, bin/lib/release/subject.js) + _shared/pr-first-merge.md Step 3 + dispatch/close-out.md\n\n**Repro steps:**\n1. On a GitHub Enterprise Server host whose REST `gh issue view --json` lacks `issueType` (Windows + Git Bash, gh 2.92.0), run `node \"${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js\" <N> --tag fast-lane --shell`.\n2. In a project whose commit convention requires `type(scope): subject`, compose a merge subject for a record.\n3. Run `/claude-tweaks:dispatch close-out` and confirm a merge at its per-PR gate; inspect the merge subject's tag.\n\n**Expected vs. actual:**\nExpected: the handled #2561 fallback is silent; a project can request a scope; a human-confirmed close-out merge gets a tag that is not counted as an auto-merge.\nActual: (1) `Unknown JSON field: \"issueType\"` plus gh's full field list is printed, followed by a correct composition with exit 0 (the GraphQL fallback works; `issueType { name }` returned `Task` -> `chore`). (2) The subject is always unscoped (`chore: ... (#N)`). (3) close-out reuses `pr-first-merge.md` Step 3 with no defined `{tag}` for its case; the caller passed `fast-lane`, which is an auto-merge tag.\n\n**Root cause:** Four observations. (1) Noise: the #2561 fallback works (`bin/lib/compose-subject.js:230-247` detects the error and retries without `issueType`; `:260-263` falls back to GraphQL). The echo comes from `realDeps.runner` at `compose-subject.js:206`: `execFileSync('gh', args, { encoding, timeout })` sets no `stdio`, so Node copies the child's stderr to the parent's in addition to capturing it. Fix: `stdio: ['ignore','pipe','pipe']` — `isUnknownIssueTypeField` already reads `err.stderr`, and the fatal paths print `err.message`, which includes it. (2) No scope: by design today — `bin/lib/release/subject.js:73-75` builds `{type}[!]: {title} (#n)` with no scope concept anywhere. Proposed: an optional `--scope <token>` threaded into `composeSubject` (`feat(api): ...`, `feat(api)!: ...`), validated as a single token, and `pr-first-merge.md` Step 3 tells callers to append it when the project convention requires one. (3) Title truncation with `…` is by design (`subject.js:18` `SUBJECT_BUDGET = 72`, `truncateHead` `:35-52`); no change proposed — a scope makes the room 6-10 chars shorter. (4) Tag: `close-out.md` step 5 reuses `pr-first-merge.md` Step 3, whose `{tag}` vocabulary (`pr-first-merge.md:283-289`) is `auto-merge`, `fast-lane`, `manifesto-authorized` — all auto-merge paths counted by `_shared/github-pr-scan.md` `triage-queue` item 3 (`:367-383`). A merge confirmed at `close-out-confirmation.md`'s gate is none of them. Proposed tag `human-approved`, registered in Step 3's tag paragraph, named in `close-out.md` step 5, and explicitly excluded from the auto-merged-this-week metric (its `jq` filter needs no change).\n\n**Proposed fix:**\n```diff\ndiff --git a/plugin/bin/lib/compose-subject.js b/plugin/bin/lib/compose-subject.js\n--- a/plugin/bin/lib/compose-subject.js\n+++ b/plugin/bin/lib/compose-subject.js\n@@ -14,7 +14,7 @@\n // bin/lib/release/subject.js's composeSubject() output. Skill prose reaches\n // the composer only through this CLI — the pure module has no shell surface.\n //\n-// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--shell] [--help]\n+// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--shell] [--help]\n // Numbers may be comma-joined and/or space-separated; the subject record is\n // the lowest number, and the body carries one `Fixes #n` line per number.\n // Output: JSON {\"title\",\"body\"} by default; `--shell` prints two POSIX sh\n@@ -52,7 +52,7 @@ const {\n } = require('./repo-resolve');\n const { GH_TIMEOUT_MS } = require('./shared-primitives');\n \n-const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--shell] [--help]\\n';\n+const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--shell] [--help]\\n';\n // Decision (#2319): kept at the single-call convention, not widened. Each\n // `gh issue view` call below fetches exactly one record — unlike\n // fetch-sub-issues.js's 30000ms bound, which covers a single batched\n@@ -76,15 +76,15 @@ function errMessage(err) {\n }\n \n function parseArgs(argv) {\n-  const opts = { numbers: [], repo: null, tag: null, shell: false, help: false };\n+  const opts = { numbers: [], repo: null, tag: null, scope: null, shell: false, help: false };\n   for (let i = 0; i < argv.length; i++) {\n     const a = argv[i];\n     if (a === '--help' || a === '-h') { opts.help = true; return opts; }\n     if (a === '--shell') { opts.shell = true; continue; }\n-    if (a === '--repo' || a === '--tag') {\n+    if (a === '--repo' || a === '--tag' || a === '--scope') {\n       const v = argv[i + 1];\n       if (v === undefined || v.startsWith('--')) return { error: `missing value for ${a}` };\n-      if (a === '--repo') opts.repo = v; else opts.tag = v;\n+      if (a === '--repo') opts.repo = v; else if (a === '--tag') opts.tag = v; else opts.scope = v;\n       i++;\n       continue;\n     }\n@@ -203,7 +203,12 @@ function aggregateType(records) {\n const realDeps = {\n   ghAvailable,\n   remoteUrl,\n-  runner: (args) => execFileSync('gh', args, { encoding: 'utf8', timeout: GH_TIMEOUT_MS }),\n+  // stderr piped, not inherited: execFileSync's default echoes the child's\n+  // stderr to ours, so the handled #2561 `Unknown JSON field: \"issueType\"`\n+  // rejection printed gh's full field list ahead of a successful compose and\n+  // read as a failure. err.stderr (which isUnknownIssueTypeField reads) and\n+  // err.message (which the fatal paths print) still carry the text.\n+  runner: (args) => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GH_TIMEOUT_MS }),\n   fetchIssueType: fetchIssueTypeGraphQL,\n   stdout: (s) => process.stdout.write(s),\n   stderr: (s) => process.stderr.write(s),\n@@ -285,6 +290,7 @@ function run(argv, deps = realDeps) {\n       type: aggregateType(records),\n       title: subjectRecord.title,\n       number: subjectRecord.number,\n+      scope: opts.scope,\n       breaking: breakingRecords.length > 0,\n       summary: firstSentence(extractSection(subjectRecord.body, 'Overview') || extractSection(subjectRecord.body, 'Current State')),\n       migrationNote,\ndiff --git a/plugin/bin/lib/release/subject.js b/plugin/bin/lib/release/subject.js\n--- a/plugin/bin/lib/release/subject.js\n+++ b/plugin/bin/lib/release/subject.js\n@@ -51,8 +51,10 @@ function truncateHead(head, prefix, suffixLength) {\n   return cut.replace(/[\\s.,;:—-]+$/u, '') + ELLIPSIS;\n }\n \n-// { type, title, number, breaking?, summary?, migrationNote?, releaseNote, fixes?, tag?, breakingRecords? } -> { title, body }\n-function composeSubject({ type, title, number, breaking = false, summary, migrationNote, releaseNote, fixes, tag, breakingRecords } = {}) {\n+// { type, title, number, scope?, breaking?, summary?, migrationNote?, releaseNote, fixes?, tag?, breakingRecords? } -> { title, body }\n+// `scope` is Conventional Commits' optional `type(scope):` noun — for a project\n+// whose own commit convention requires one; omitted, the subject is unscoped.\n+function composeSubject({ type, title, number, scope, breaking = false, summary, migrationNote, releaseNote, fixes, tag, breakingRecords } = {}) {\n   // number is validated first so the type/title usage errors below can cite \"for #{number}\".\n   if (!Number.isInteger(number) || number <= 0) throw usage(`number must be a positive integer, got ${JSON.stringify(number)}`);\n   const prefixBase = TYPE_PREFIX[type];\n@@ -70,7 +72,10 @@ function composeSubject({ type, title, number, breaking = false, summary, migrat\n   const cleanReleaseNote = typeof releaseNote === 'string' ? releaseNote.trim() : '';\n   if (!cleanReleaseNote) throw usage(`releaseNote must be a non-empty string for #${number}`);\n \n-  const prefix = breaking ? `${prefixBase}!` : prefixBase;\n+  const cleanScope = typeof scope === 'string' ? scope.trim() : '';\n+  if (cleanScope && !/^[A-Za-z0-9._/-]+$/.test(cleanScope)) throw usage(`scope must be a single token of letters, digits, . _ / -, got ${JSON.stringify(scope)} for #${number}`);\n+  const scoped = cleanScope ? `${prefixBase}(${cleanScope})` : prefixBase;\n+  const prefix = breaking ? `${scoped}!` : scoped;\n   const suffix = ` (#${number})`;\n   const head = truncateHead(`${prefix}: ${cleanTitle}`, prefix, suffix.length);\n \ndiff --git a/plugin/skills/_shared/github-pr-scan.md b/plugin/skills/_shared/github-pr-scan.md\n--- a/plugin/skills/_shared/github-pr-scan.md\n+++ b/plugin/skills/_shared/github-pr-scan.md\n@@ -376,6 +376,8 @@ Three cheap counts for the dashboard's Triage Queue section. This scope exists s\n    commit is never headless; `[manifesto-authorized]` (`wrap-up/manifesto-authorized-merge.md`,\n    the `merge-authorization` lever) is likewise never headless — it requires a live Manifesto\n    `confirm`/`hybrid` override, the same interactive precondition as `[fast-lane]`.\n+   `[human-approved]` (`dispatch/close-out.md`'s merge, after its per-PR confirmation gate) is\n+   deliberately excluded: a human made that merge decision, so it is not an auto-merge.\n \n    ```bash\n    SINCE=$(node -e \"console.log(new Date(Date.now() - 7*24*60*60*1000).toISOString())\")\ndiff --git a/plugin/skills/_shared/pr-first-merge.md b/plugin/skills/_shared/pr-first-merge.md\n--- a/plugin/skills/_shared/pr-first-merge.md\n+++ b/plugin/skills/_shared/pr-first-merge.md\n@@ -287,7 +287,9 @@ label, or `manifesto-authorized` for the same short-circuit triggered instead by\n `wrap-up/manifesto-authorized-merge.md`) — preserving all three tags' meanings — `/help`'s\n auto-merged-this-week metric (`_shared/github-pr-scan.md` `triage-queue` item 3) keys on all\n three. `{issue-list}` is the record numbers — the manifest's `complete` specs only for a bundle\n-(#2015; rest release via their own `never-started:`/`abandoned:` reason). The composer writes\n+(#2015; rest release via their own `never-started:`/`abandoned:` reason). `human-approved`:\n+`dispatch/close-out.md`'s human-confirmed merge (that metric excludes it). Append `--scope\n+{scope}` when the project's commit convention requires `type(scope):`. The composer writes\n the Conventional-Commits subject and one `Fixes #{n}` line per record. Same set the\n PR body's own `Fixes` lines already carry (`_shared/pr-checklist-refresh.md`'s pre-merge\n refresh), restated here because the merge commit's own message is what GitHub scans for\ndiff --git a/plugin/skills/dispatch/close-out.md b/plugin/skills/dispatch/close-out.md\n--- a/plugin/skills/dispatch/close-out.md\n+++ b/plugin/skills/dispatch/close-out.md\n@@ -61,8 +61,8 @@ touching shared state runs one member at a time.\n    directly against this PR — the second call site reaching Step 3 from outside a build or dispatch\n    pipeline (the first is `actions-github-issues.md`'s `## Arm ready PR`), reusing that file's full\n    degrade chain (`--auto` arm → immediate merge where auto-merge isn't enabled → ready-and-comment\n-   on any other failure) rather than reimplementing it. Report the outcome (`armed`/`merged`) using\n-   that same vocabulary.\n+   on any other failure) rather than reimplementing it, with `{tag}` = `human-approved` (that\n+   step's tag paragraph). Report the outcome (`armed`/`merged`) using that same vocabulary.\n 6. **Deploy, when the project has one (AC4).** When this project's CLAUDE.md Commands section\n    documents a deploy command and step 5 reported `merged`, run it now and log the command, exit\n    code, and one-line outcome — never invented when the project documents none, and never itself\ndiff --git a/tests/bin-lib/compose-subject.test.js b/tests/bin-lib/compose-subject.test.js\n--- a/tests/bin-lib/compose-subject.test.js\n+++ b/tests/bin-lib/compose-subject.test.js\n@@ -431,3 +431,22 @@ test('run(): unaffected hosts (REST issueType field works) are unchanged — sti\n   assert.equal(code, 0, out.stderr);\n   assert.equal(out.calls.length, 1);\n });\n+\n+test('--scope: emits type(scope): for a project whose convention requires one; breaking keeps ! after the scope', () => {\n+  assert.equal(parseArgs(['2251', '--scope', 'api']).scope, 'api');\n+  assert.ok(parseArgs(['2251', '--scope']).error);\n+  const { deps, out } = fakeDeps();\n+  assert.equal(run(['2251', '--scope', 'web-ui'], deps), 0, out.stderr);\n+  assert.equal(JSON.parse(out.stdout).title, 'feat(web-ui): Merge-time conventional subject (#2251)');\n+  const b = fakeDeps();\n+  assert.equal(run(['2260', '--scope', 'cli'], b.deps), 0, b.out.stderr);\n+  assert.ok(JSON.parse(b.out.stdout).title.startsWith('feat(cli)!: Drop the legacy flag'));\n+  const bad = fakeDeps();\n+  assert.equal(run(['2251', '--scope', 'two words'], bad.deps), 1);\n+  assert.match(bad.out.stderr, /scope must be a single token/);\n+});\n+\n+test('realDeps.runner pipes gh stderr instead of inheriting it, so a handled issueType rejection prints nothing', () => {\n+  const src = require('node:fs').readFileSync(require.resolve('../../plugin/bin/lib/compose-subject.js'), 'utf8');\n+  assert.match(src, /runner: \\(args\\) => execFileSync\\('gh', args, \\{[^}]*stdio: \\['ignore', 'pipe', 'pipe'\\]/);\n+});\ndiff --git a/tests/bin-lib/release/subject.test.js b/tests/bin-lib/release/subject.test.js\n--- a/tests/bin-lib/release/subject.test.js\n+++ b/tests/bin-lib/release/subject.test.js\n@@ -148,3 +148,11 @@ test('truncation: trailing punctuation is trimmed when the word-boundary cut lan\n   assert.ok(subject.length <= SUBJECT_BUDGET, `${subject.length} > 72: ${subject}`);\n   assert.ok(subject.endsWith(' (#1)'), subject);\n });\n+\n+test('scope: type(scope): prefix, counted inside the 72-char budget; omitted or blank stays unscoped', () => {\n+  assert.equal(composeSubject({ type: 'bug', title: 'Fix Y', number: 7, scope: 'api', releaseNote: 'N.' }).title, 'fix(api): Fix Y (#7)');\n+  assert.equal(composeSubject({ type: 'bug', title: 'Fix Y', number: 7, scope: '  ', releaseNote: 'N.' }).title, 'fix: Fix Y (#7)');\n+  const long = composeSubject({ type: 'feature', title: 'word '.repeat(30).trim(), number: 4321, scope: 'web-ui', releaseNote: 'N.' }).title;\n+  assert.ok(long.startsWith('feat(web-ui): word') && long.length <= SUBJECT_BUDGET, long);\n+  assert.throws(() => composeSubject({ type: 'bug', title: 'T', number: 1, scope: 'a(b)', releaseNote: 'N.' }), ComposeSubjectError);\n+});\n```\n\nSide findings, not fixed here: (a) `extractSection(body, 'Release Note')` reads from the h2 to the next h2, so a record footer after the last section (e.g. `_Filed by `reflect` via specShapedBody._`) leaks into the commit body's `Release-Note:` paragraph (`release-notes.js` reads only the first line, so release notes are unaffected). (b) `tidy/actions-github-issues.md`'s `## Arm ready PR` also reaches Step 3 with no defined `{tag}`; since it sometimes auto-applies at `moderate`+, it needs its own tag decision rather than `human-approved`.\n\n**Test:** extend `tests/bin-lib/compose-subject.test.js` (`--scope` parsing, `feat(scope):` / `feat(scope)!:` output, multi-word scope rejected; `realDeps.runner` pipes stderr) and `tests/bin-lib/release/subject.test.js` (scope prefix counted inside the 72-char budget; blank scope stays unscoped; `a(b)` throws). Both files plus `tests/pr-first-merge.test.js` pass 74/74. `tests/bundle-fixes-reconciliation-2015.test.js` still finds `{issue-list}` within its 1,500-char window. `tests/merge-subject-composer-conformance.test.js`'s `PR_FIRST_BYTE_CEILING = 31304`: the patched `pr-first-merge.md` is 30,941 bytes with LF (+180), so it fits on CI (exceeds only in a CRLF Windows checkout). Re-checked live with the patched CLI (`--tag human-approved --scope <scope>`): no gh noise, scoped subject.\n\n**Related:** #2561 (closed; added the issueType retry + GraphQL fallback but left the stderr echo), #2364 (closed; added close-out without a tag).\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-e772f8f0 -->\n",
         "createdAt": "2026-10-07T18:27:06Z",
         "labels": [
@@ -3595,190 +3065,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2999\n\n## Current State\n\nEvery Emil craft-critic lookup goes through `plugin/skills/_shared/design-craft.md`'s **Emil skill resolution**. That covers `design-wrapper/critics.md:28`'s Resolution and `design-wrapper/modes/review.md` Step 3.8 (c), and `design-craft.md` is also cited from `build/design-prebuild.md`, `design-wrapper/modes/polish.md`, `pre-build.md`, `explore.md`, `flow/polish-execution.md` and `visual-review/standalone-followup.md`. The lookup order (`design-craft.md:38-43`) has two paths:\n\n1. `{project}/.claude/skills/{name}/SKILL.md`\n2. `~/.claude/skills/{name}/SKILL.md`\n\nA name found at neither path is absent. The same file's install-layout note (`:45`) records that a real `npx skills` install puts the actual directories at `{project}/.agents/skills/{name}/SKILL.md`, and only adds per-skill symlinks at `.claude/skills/{name}`. `init/bootstrap/step-19-emil-skills.md:21` describes the same layout.\n\nWhen the symlink is never created, or is lost, the skill still exists at `.agents/skills/` and the harness still lists it, but the lookup misses it. In the reported case (plugin 6.134.1) `emil-design-eng` was available to the harness with no `.claude/skills/emil-design-eng`. `review.md` Step 3.8 (c) then records `{ran: false, missed: \"not installed at either path\"}` (`:208-211`) and skips the critic.\n\n`review.md:205-208` also restates the two-path list inline instead of only citing `design-craft.md`. A fix to the canonical list alone would leave that restatement stale.\n\n## Deliverables\n\n1. Add `{project}/.agents/skills/{name}/SKILL.md` to `design-craft.md`'s lookup order, after the `{project}/.claude/skills` path (which stays first, since it is the symlink a normal install creates and points at the same directory) and before the user-level `~/.claude/skills` path. Update the install-layout note so it says path 2 is now consulted directly, not only through the symlink.\n2. Replace `review.md` Step 3.8 (c)'s inline path list (`:205-208`) with a citation of `design-craft.md`'s lookup, so the list exists in exactly one place. Reword the unavailability `missed` value and its log line from \"not installed at either path\" to \"not installed at any lookup path\" (`:209`, `:211`, and the output example at `:494`).\n3. Sweep every other consumer that cites `design-craft.md`'s Emil skill resolution (list above) and confirm none restates the path list. At shaping time `git grep 'claude/skills/{name}'` found only `design-craft.md` and `review.md`.\n\n## Acceptance Criteria\n\n- `design-craft.md`'s lookup order lists three paths in the order above. A conformance test pins the order and the `.agents/skills` entry, and goes red against the current two-path text.\n- The literal `{project}/.claude/skills/{name}/SKILL.md` appears in exactly one file under `plugin/skills/`, namely `design-craft.md`. The same conformance test asserts this with a repo-wide scan.\n- No file under `plugin/` still contains \"not installed at either path\".\n- `tests/design-wrapper-review-surface-gate-prose.test.js` passes unchanged.\n- `npm test` passes in full.\n\n## Release Note\n\nDesign reviews now find Emil craft-critic skills installed by the `skills` CLI even when the `.claude/skills` link is missing.\n\n## Technical Approach\n\nThis is a prose-only change in the shared lookup plus one de-duplication in `review.md`, followed by a conformance test. The reporter's other option, resolving through the harness's own skill list, is not chosen. Step 3.8 has to read the skill's `SKILL.md` text to inline it into the critic dispatch, and the harness's skill list exposes names, not file paths. A file-path lookup is still required either way.\n\n### Key Files\n\n- `plugin/skills/_shared/design-craft.md` — Emil skill resolution: add the `.agents/skills` path and update the install note\n- `plugin/skills/design-wrapper/modes/review.md` — Step 3.8 (c): cite instead of restating, and reword the `missed` value and log line (`:205-211`, `:494`)\n- `tests/design-craft-emil-resolution.test.js` — new conformance test for the three-path order and the single-source restatement scan\n\n## Gotchas\n\n- The `missed` string in `craft_critics` is part of `review.md`'s output contract. Before rewording it, grep for consumers that match on the literal. At shaping time no `plugin/bin` code matched \"either path\", so the change is safe as a same-commit rename.\n- Path 2 (`.agents/skills`) and path 1 (the symlink) normally resolve to the same directory. Keep path 1 first so a project that deliberately points `.claude/skills/{name}` somewhere else still wins.\n- `init/bootstrap/step-19-emil-skills.md` describes the install layout but does not resolve skills. Leave it unchanged unless its wording claims the symlink is required.\n\n## Original request\n\ndesign-craft.md Emil skill resolution: misses the .agents/skills install layout when the .claude/skills symlink is absent\n\n**Summary:** `skills/_shared/design-craft.md`'s \"Emil skill resolution\" and `skills/design-wrapper/critics.md`'s Resolution look for `emil-design-eng` in only two places: `{project}/.claude/skills/{name}/SKILL.md` and `~/.claude/skills/{name}/SKILL.md`. The `skills` CLI install puts the real directories at `{project}/.agents/skills/{name}/SKILL.md`. The installed skill is still registered and loadable by the harness. But if the per-skill `.claude/skills` symlink was never created, or was lost, a literal reading marks the critic \"not installed at either path\", and `review` mode Step 3.8 skips it.\n\n**Kind:** Gap\n\n**Affected component:** `skills/_shared/design-craft.md` (Emil skill resolution), `skills/design-wrapper/critics.md` (Resolution), `skills/design-wrapper/modes/review.md` Step 3.8 (c)\n\n**Use case:** A project installed the Emil skills with `npx skills@latest add emilkowalski/skills`. `.agents/skills/emil-design-eng/SKILL.md` exists and the harness lists `emil-design-eng` as an available skill, but `.claude/skills/emil-design-eng` does not exist. The review-time craft critic should still dispatch. Proposed: add `{project}/.agents/skills/{name}/SKILL.md` as a third lookup path (the install note in design-craft.md already documents it as the real location), or resolve through the harness's own skill list.\n\n**Definition:** Clear\n\n**Plugin version:** 6.134.1\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-ab78b1b6 -->\n",
-        "createdAt": "2026-10-05T16:28:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3000,
-        "state": "OPEN",
-        "title": "design-craft.md Emil skill resolution: misses the .agents/skills install layout when the .claude/skills symlink is absent",
-        "updatedAt": "2026-10-15T16:22:14Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #2733, #2799, #2954, #2955, #2977\n\n## Current State\n\nThe report, filed via `/claude-tweaks:feedback` against 6.134.1, says that `plugin/skills/design-wrapper/modes/review.md` Step 3.6 (`:50-57`) cites `review-seed-capture.md` \"in this directory\", and that the file \"does not ship\", based on `ls skills/design-wrapper/`.\n\nThe file does ship, one level down from where the reporter looked. `review.md` lives in `plugin/skills/design-wrapper/modes/`, so \"this directory\" is `modes/`, and `plugin/skills/design-wrapper/modes/review-seed-capture.md` is tracked there. It has existed since the plugin-payload move (`68074d781`, 2026-08-17). It is also present in every installed cache build checked on this machine, including the reporter's own version (`…/claude-tweaks/6.134.1/skills/design-wrapper/modes/review-seed-capture.md`, as well as 6.131.0, 6.134.0, 6.139.1 and 6.140.0). The skill directory's top level (`plugin/skills/design-wrapper/`) holds `SKILL.md` and shared sub-files, while mode files and their own sub-files sit in `modes/`. An executor that resolves \"this directory\" against the skill root rather than the citing file's own directory gets ENOENT, which is exactly the reported symptom.\n\nSo nothing is missing. The defect is that the citation is easy to resolve against the wrong base directory.\n\n## Deliverables\n\n1. Make Step 3.6's citation unambiguous by naming the path relative to the skill root (`modes/review-seed-capture.md`) or stating \"this `modes/` directory\", so an executor resolving from the skill root finds it. Keep it a citation and do not restate the procedure.\n2. Close this record with a comment telling the reporter the file ships at `skills/design-wrapper/modes/review-seed-capture.md` in 6.134.1 and later, and naming the citation-wording change.\n\n## Acceptance Criteria\n\n- `review.md` Step 3.6 names `review-seed-capture.md` with a path that resolves from the skill root (`plugin/skills/design-wrapper/`). A test asserts that the cited path exists on disk when resolved from that root, and goes red if the file is moved or the citation reverts to the bare filename.\n- `review-seed-capture.md` content is unchanged.\n- `npm test` passes in full.\n- The record is closed with the explanatory comment.\n\n## Release Note\n\nNo user-visible change: clarified where design-wrapper's review mode finds its seed-capture procedure.\n\n## Technical Approach\n\nThis is a one-line wording edit in `review.md:54`, plus a small existence assertion in the test suite. Scan the other mode files' \"in this directory\" citations only if the edit reveals the same pattern elsewhere. At shaping time `git grep` found only this one occurrence under `modes/`.\n\n### Key Files\n\n- `plugin/skills/design-wrapper/modes/review.md` — Step 3.6 citation wording (`:54`)\n- `plugin/skills/design-wrapper/modes/review-seed-capture.md` — existing target (verify only)\n- `tests/design-wrapper-review-seed-capture-citation.test.js` — existence assertion for the cited path\n\n## Gotchas\n\n- Do not create a duplicate `review-seed-capture.md` at the skill root to satisfy the reporter's `ls`. Two copies would drift.\n- The reporter's alternative, pointing Step 3.6 at `_shared/design-contract.md` directly, would drop the Step 3.6-specific record-resolution and `Design-seed:` write rules that `review-seed-capture.md` carries. Keep the citation as it is.\n\n## Original request\n\ndesign-wrapper review mode: Step 3.6 cites review-seed-capture.md, which does not ship\n\n**Summary:** `skills/design-wrapper/modes/review.md` Step 3.6 (\"Read the direction contract and record its seed key\") tells the executor to read `review-seed-capture.md` \"in this directory\" and follow it in full. No such file exists in the design-wrapper skill directory at 6.134.1 or 6.136.0.\n\n**Kind:** Defect\n\n**Affected component:** `skills/design-wrapper/modes/review.md` (Step 3.6 / 3.7) and the design-wrapper skill directory\n\n**Repro steps:**\n1. Run `/claude-tweaks:design-wrapper review <spec>` on a frontend diff (from `/claude-tweaks:review` Step 6.5).\n2. Reach Step 3.6, then run `ls skills/design-wrapper/`: `review-seed-capture.md` is absent in both cache versions listed above.\n\n**Expected vs. actual:**\nExpected: the file exists, or Step 3.6 points at `_shared/design-contract.md`'s locate-and-parse procedure directly.\nActual: ENOENT. The executor has to rebuild the step from `_shared/design-contract.md`, which does carry the comment-locating rules, to decide whether Step 3.7's finishing review applies. So the output contract's `design_contract`/`finish_review` fields are specified against a procedure the plugin does not contain.\n\n**Definition:** Clear\n\n**Plugin version:** 6.134.1\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-76e5a335 -->\n",
-        "createdAt": "2026-10-05T16:27:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2999,
-        "state": "OPEN",
-        "title": "design-wrapper review mode: Step 3.6 cites review-seed-capture.md, which does not ship",
-        "updatedAt": "2026-10-15T16:22:09Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -4023,6 +3309,96 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Surface: infra\n\n**Related:** #2907, #2908, #2954, #3049\n\n## Current State\n\n`/claude-tweaks:review` Step 3 runs reproduction pairs. Two agents run the same lens, and `bin/review-coordination.js categorise-reproduction` pairs their findings via `categoriseReproduction` (`plugin/bin/lib/coordination.js:285`). A pair is a candidate only when `sameLocation(fa, fb, LINE_TOLERANCE_REPRODUCTION)` holds (`:300`): path exact, `Math.abs(line delta) <= 2` (`:191-198`, constant `:8`). After that comes the #1980 substance check (`sameSubstance`, Jaccard ≥ `SUBSTANCE_SIMILARITY_MIN = 0.4`, `:26`, `:248-252`). The same ±2 rule is restated in prose at `plugin/skills/_shared/multi-agent-coordination.md:49` and `plugin/skills/review/step3-lens-dispatch.md:90-93`, and pinned by `tests/multi-agent-coordination.test.js:321`.\n\nThe rule fails on a finding inside one multi-line statement. In the reported run, both agents of the error-handling pair flagged the same issue, a value read inside a multi-line call argument after an external side effect. They anchored it on two different lines of that statement, 3 lines apart. `sameLocation` rejected the pair before substance was ever compared. The result was 0 confirmed and 2 unconfirmed, the real finding was routed to the Review Console's Low-confidence section instead of Step 3 Routing, and the reviewer had to confirm it by hand with the direct-verification override. Reported via `/claude-tweaks:feedback` against plugin 6.133.0.\n\n## Deliverables\n\n1. Add a substance-gated wider tolerance to reproduction pairing. A same-path pair whose line delta is above `LINE_TOLERANCE_REPRODUCTION` (2) but within a new, wider bound (for example 5, matching `LINE_TOLERANCE_DEBATE`) is a candidate only when its `substanceSimilarity` clears a stricter floor than `SUBSTANCE_SIMILARITY_MIN`. Today's ±2 path is unchanged, including the `null`-substance-pairs-as-match rule. An unknown (`null`) substance never qualifies for the wider band.\n2. Export the new bound and the stricter floor as named constants next to the existing ones (`:8-26`, export block `:443-448`).\n3. Update the prose twins (`_shared/multi-agent-coordination.md:49` and `review/step3-lens-dispatch.md:90-93`) to state the two-tier rule, so the prose and the code agree.\n\n## Acceptance Criteria\n\n- A test in `tests/multi-agent-coordination.test.js` passes two findings on the same path, 3 lines apart, with near-identical text and the same severity bucket. It asserts one confirmed and zero unconfirmed. Prove it goes red against the current ±2-only rule.\n- A test with the same 3-line delta but substantively different text (below the stricter floor) asserts both stay unconfirmed.\n- A test with a 3-line delta and one side missing its text (`null` substance) asserts both stay unconfirmed.\n- The existing ±2, #1980 near-location, and #733 severity-contested tests pass unchanged.\n- `tests/bin-lib/review-coordination/cli.test.js` passes unchanged.\n- `npm test` passes in full.\n\n## Release Note\n\nReview's reproduction pairs now confirm a finding both agents reported a few lines apart within the same statement, instead of leaving it unconfirmed.\n\n## Technical Approach\n\nIn `categoriseReproduction`'s candidate gather (`:297-302`), accept a B finding when `sameLocation(fa, fb, LINE_TOLERANCE_REPRODUCTION)` holds, or when `sameLocation(fa, fb, <wider bound>)` holds and `substanceSimilarity(fa, fb) >= <strict floor>`. Everything downstream (eligible filter, best-score selection, `reconcileSeverity`) stays unchanged. Keep `findingsMatch`'s default untouched unless a caller needs the same widening, and check its callers first.\n\nThe reporter's other option, anchoring both findings to the enclosing statement's line range, is not chosen. `coordination.js` is pure and receives only `path:line` plus text, so finding a statement range would mean reading and parsing source files inside a module that does no I/O today.\n\n### Key Files\n\n- `plugin/bin/lib/coordination.js` — `categoriseReproduction`: substance-gated wider tolerance band; new exported constants\n- `plugin/skills/_shared/multi-agent-coordination.md` — restate the two-tier line rule (`:49`)\n- `plugin/skills/review/step3-lens-dispatch.md` — restate the two-tier line rule (`:90-93`)\n- `tests/multi-agent-coordination.test.js` — 3-line-apart confirm, different-substance, and null-substance cases\n\n## Gotchas\n\n- Choose the stricter floor with a fixture, not by intuition. Jaccard over tokenized finding text is sensitive to normalization, so check the reported pair's actual text scores above it and an unrelated same-statement pair scores below it.\n- The wider band must not change the #1980 `nearLocation` behavior for pairs within ±2. That branch fires only when every same-location candidate is substantively different. Make sure a wide-band candidate that fails the strict floor is simply not a candidate, rather than being reported as `nearLocation`.\n- `detectCrossLensOverlap` already uses `LINE_TOLERANCE_DEBATE` (5) for a different purpose (`:368`). If the new bound reuses that value, give it its own constant name so the two can diverge later.\n\n## Original request\n\nreview-coordination categorise-reproduction: one finding inside a multi-line statement splits into two unconfirmed findings\n\n**Summary:** Both agents of a reproduction pair reported the same finding inside one multi-line statement, 3 lines apart, so the ±2 line match left a real finding unconfirmed.\n\n**Kind:** Defect\n\n**Affected component:** claude-tweaks review, Step 3 reproduction pairs (`bin/review-coordination.js categorise-reproduction`, `categoriseReproduction` in `bin/lib/coordination.js`)\n\n**Repro steps:**\n1. Run a medium-tier `/claude-tweaks:review` on a diff where a value is read inside a multi-line call argument, after an external side effect.\n2. Both agents of the error-handling pair flag it. Agent A anchors the finding on one line of the statement and agent B on another line, 3 lines away.\n3. Run `categorise-reproduction` on the two findings files.\n\n**Expected vs. actual:**\nExpected: findings that agree in substance and sit inside the same multi-line statement reproduce. One fix would widen the line tolerance when the same-substance score is high; another would anchor both reports to the enclosing statement's line range before comparing.\nActual: the rule is \"path exact, line ±2\", so the result was 0 confirmed and 2 unconfirmed. The real finding would have gone to the Review Console's Low-confidence section instead of Step 3 Routing. The reviewer had to confirm it by hand with the direct-verification override.\n\n**Definition:** Clear\n\n**Plugin version:** 6.133.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-ac3202e2 -->\n",
+        "createdAt": "2026-10-04T09:58:25Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "D93F0B"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "E99695"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: standard review",
+            "color": "c5def5"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
+            "name": "shaped:headless",
+            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
+            "color": "ededed"
+          }
+        ],
+        "number": 2955,
+        "state": "OPEN",
+        "title": "review-coordination categorise-reproduction: one finding inside a multi-line statement splits into two unconfirmed findings",
+        "updatedAt": "2026-10-15T16:21:33Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": true
         }
       }
     ],
@@ -5006,6 +4382,90 @@
     ],
     [
       {
+        "body": "Surface: infra\n\n## Current State\n\nThis record was filed as a `materialize.js` bug: invoked from inside a record's worktree with `--run-dir` pointing at the anchored main-checkout run directory, the materialized spec landed at the worktree-local path `{worktree}/.claude-tweaks/pipelines/{run-id}/work/{n}-spec.md`.\n\nThat write is designed behavior, not a resolution bug. `plugin/bin/materialize.js` lines ~290–317 (#1210) deliberately rewrite a `--run-dir` that resolves to the main checkout (or another worktree) into the cwd worktree's equivalent path when cwd is inside a linked worktree, and print a stderr notice saying so. The reason is `materialize.md`'s worktree-first ordering: the spec must land on the feature branch. `_shared/pipeline-run-dir.md:67` documents `work/{n}-spec.md` as an exception that \"stays inside the worktree\".\n\nThe real defect is documentation drift: `plugin/skills/flow/materialize.md` still describes `--run-dir` as \"the literal write-location prefix, not a run identity — the CLI writes `{--run-dir}/work/{n}-spec.md`\" (line 5) and repeats \"`--run-dir` is the literal write-location prefix\" (line 7). Read literally, both say the main-checkout path is honored from a worktree, which is what led the reflect pass to file this as a bug.\n\n## Deliverables\n\n1. Correct `plugin/skills/flow/materialize.md` lines 5 and 7 to state that `--run-dir` is the write-location prefix except when cwd is inside a linked worktree and the path resolves elsewhere, in which case the CLI writes to the cwd worktree's equivalent path (#1210), citing `_shared/pipeline-run-dir.md`'s `work/{n}-spec.md` exception rather than restating it.\n2. Make `materialize.js`'s usage text (and any other plugin prose describing `--run-dir` as literal) agree.\n3. If an existing test already covers the #1210 rewrite, reference it in the PR; if none does, add one invoking `materialize.js` from a worktree cwd with a main-checkout `--run-dir` and asserting the worktree-local write plus the stderr notice.\n\n## Acceptance Criteria\n\n1. No plugin prose describes `--run-dir` as an unconditional literal write location.\n2. `materialize.md` states the worktree-local rewrite and cites `_shared/pipeline-run-dir.md`'s exception.\n3. A test pins the rewrite behavior, existing or new.\n4. `npm test` passes.\n\n## Release Note\n\nN/A — documentation correction; no behavior change.\n\n## Technical Approach\n\nProse edit in `materialize.md`, a check of `materialize.js`'s `USAGE` string, and a repo-wide grep for \"literal write-location\" and similar phrasing in `plugin/`. No code change to the rewrite itself.\n\n### Key Files\n\n- `plugin/skills/flow/materialize.md` — lines 5 and 7 corrected\n- `plugin/bin/materialize.js` — `USAGE` text, if it says \"literal\"\n- `plugin/skills/_shared/pipeline-run-dir.md` — cited, not edited\n\n## Gotchas\n\n- Do not \"fix\" `materialize.js` to honor the main-checkout path literally: that would reintroduce the stray main-checkout write #1210 closed.\n- Prose conformance tests pin `materialize.md` text; run the full suite.\n\n## Original request\n\nmaterialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir\n\nOrigin: reflect full mode from wrap-up run 2026-09-18T205605-dispatch-drain-pr-merges-standalone\nDefer-reason: tangential\n\n## Current State\n\nDuring record #2466's build attempt (dispatch drain, 2026-09-18), `materialize.js` was invoked from inside the record's dedicated worktree with `--run-dir` pointed at the anchored main-checkout run directory (`.claude-tweaks/pipelines/2026-09-18T063050-record-2466`, per `_shared/pipeline-run-dir.md`'s Anchoring section). Instead, the materialized spec (`work/2466-spec.md`) landed at a worktree-relative shadow path -- `{worktree}/.claude-tweaks/pipelines/2026-09-18T063050-record-2466/work/2466-spec.md` -- a separate, untracked directory tree that happens to share the same relative subpath as the real run dir. This is a previously-known pattern recurring live, meaning the underlying resolution bug in `materialize.js` was never actually fixed at the source -- only documented as a gotcha to watch for and discard after the fact.\n\n## Deliverables\n\n- Investigate `materialize.js`'s `--run-dir` handling to find where a value that should already be an absolute, anchored path gets re-resolved (or silently re-joined) against the current working directory instead of used as given.\n- Fix it so `materialize.js` always writes to the literal `--run-dir` path passed to it, regardless of the caller's cwd (worktree or main checkout).\n- Add a regression test: invoke `materialize.js` with an absolute `--run-dir` from a cwd that is NOT that run dir's own ancestor (e.g., a sibling worktree), and assert the spec lands at the given absolute path, not a cwd-relative shadow of it.\n\n## Acceptance Criteria\n\n- `materialize.js`, invoked from any worktree with an absolute `--run-dir` pointing at the main checkout, writes the materialized header to that literal path -- no worktree-relative shadow copy is created.\n- A new regression test reproduces this scenario and fails on the pre-fix code, passes after the fix.\n- `npm test` passes in full.\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-09-18T21:09:39Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "D93F0B"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "E99695"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszED4w",
+            "name": "ceremony:fast-lane",
+            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 2601,
+        "state": "OPEN",
+        "title": "materialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir",
+        "updatedAt": "2026-10-15T16:20:29Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": "fast-lane",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
         "body": "Surface: infra\n\n**Related:** #2799, #2918, #2927, #2963, #3060, #3119\n\nOrigin: wrap-up of #2997 (session 6ccd43b3) -- the Docs/Journeys curation rows surfaced these via domain-overlap ranking; none are caused by or related to #2997's own change (PR-early run body composition), they are pre-existing drift the scan happened to touch while judging nearby docs\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nSeveral docs still describe browser automation as \"agent-browser\", which was replaced by `playwright-cli` (confirmed: `plugin/skills/browse/SKILL.md` and `plugin/skills/init/bootstrap/step-07-browser-integration.md` both name `playwright-cli` as the single backend):\n- `docs/getting-started.md` lines 7 and 110\n- `docs/skill-graph.md` lines 90, 327, 330, 530\n- `README.md` line 178\n- `plugin/skills/init/SKILL.md` lines 125 and 401\n\nSeparately, `docs/journeys/compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 still cite the pre-#2316 40,960 B `CEILING_BYTES` value (now 46,080 B) for the `claims`/`pr-scan` composed bundles -- unrelated subsystems to that journey's own Step 6 (already refreshed during wrap-up of #2997): Step 8 says the gate \"rejects any call site over 40 KB -- each source composes alone, at 37 KB and 40 KB\" (real measured max: claims 43,238 B, pr-scan 45,977 B); Step 10 names a \"raw 40,960 B warning band\" (the real band is 41,472-46,080 B); Step 11's grep for `40960\\|40 \\* 1024` over `tests/` returns nothing rather than the \"two fixture lines\" it promises.\n\nAlso minor: `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md`'s frontmatter lists `docs/plugin-structure.md` and `docs/skill-graph.md` in its `files:` block, but none of its 4 steps actually visit either -- a spurious origin-coverage scoping (optional to fix). And `docs/skill-authoring.md` was left as wrap-up's Docs-row overflow during #2997 (ranked 4th under the cap of 3) -- worth a look on a future pass.\n\nShaping-time premise check (`git grep -n -i agent-browser`): every location listed above is confirmed. Two more live references the list above misses:\n- `docs/donts.md:37` states \"`agent-browser` is the only backend working in both interactive sessions and hosted Routines\" — a live rule, now wrong.\n- `docs/journeys/draft-third-party-upstream-feedback-2759.md` (lines 12, 20, 35, 41, 42, 44) uses agent-browser as its worked example of a dependency the plugin wraps.\n\nThe ceiling is `CEILING_BYTES = 45 * 1024` (46,080 B) at `plugin/bin/lib/skill-audit/context-cost.js:31`. The stale journey figures sit at lines 98, 113 and 116-120.\n\n## Deliverables\n\n1. Replace every \"agent-browser\" reference in the 4 files above with the current `playwright-cli` terminology, matching the wording already used in `browse/SKILL.md` and `init/bootstrap/step-07-browser-integration.md`.\n2. Refresh `compose-a-per-run-context-bundle-1988.md` Steps 8, 10, and 11's byte figures against the current `claims`/`pr-scan` composed bundles and the real 46,080 B `CEILING_BYTES`.\n3. Optional: drop the two unused `files:` frontmatter entries from `adopt-a-run-directory-from-one-preflight-pack-1931.md`, or confirm a future step should visit them instead.\n4. Optional: give `docs/skill-authoring.md` a staleness pass against its own domain.\n5. Correct `docs/donts.md:37`'s browser-backend rule to name `playwright-cli`. Decide whether `draft-third-party-upstream-feedback-2759.md`'s agent-browser example stays (see Gotchas).\n\n## Acceptance Criteria\n\n- [ ] No live doc or skill file calls the plugin's browser backend \"agent-browser\": `git grep -n -i agent-browser -- docs plugin README.md` returns only historical prose (`docs/incident-log.md`) and any deliberately kept third-party example. `CHANGELOG.md` and archived run dirs under `.claude-tweaks/pipelines/archive/` are history and stay untouched.\n- [ ] `compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 state byte figures that match a fresh measurement at fix time.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change -- documentation accuracy only.\n\n## Technical Approach\n\nA prose-only edit. Replace backend naming with the `playwright-cli` wording `plugin/skills/browse/SKILL.md:3,9` already uses. Re-measure the `claims`/`pr-scan` composed bundles with `bin/compose-context.js` (or the context-cost gate) at fix time instead of copying the figures quoted above, which were measured earlier.\n\n### Key Files\n\n- `docs/getting-started.md` — lines 7, 110: backend naming\n- `docs/skill-graph.md` — lines 90, 327, 330, 530: backend naming\n- `README.md` — line 178: dependency table row (package name and install command)\n- `plugin/skills/init/SKILL.md` — lines 125, 401: browser detection prose and anti-pattern row\n- `docs/donts.md` — line 37: browser-backend rule\n- `docs/journeys/draft-third-party-upstream-feedback-2759.md` — third-party example naming (judge: keep or swap)\n- `docs/journeys/compose-a-per-run-context-bundle-1988.md` — Steps 8, 10, 11 byte figures\n- `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md` — optional `files:` frontmatter trim\n\n## Gotchas\n\n- `README.md:178` is a dependency-table row with an install command. Replace the whole row (package, install command, purpose) with the real `playwright-cli` install line from `plugin/skills/init/bootstrap/step-07-browser-integration.md`, not just the name.\n- `docs/donts.md` rules carry `[IL-nn]` tags tied to `docs/incident-log.md`. Keep the tag and the rule's intent (no `mcp__claude-in-chrome__*` calls in plugin skills), and change only the stale backend name.\n- Journey 2759 uses agent-browser as an example of a third-party tool someone might file upstream feedback against. That use is not a claim about this plugin's backend, so keeping it is defensible. Swap it only if the example now misleads readers into thinking the plugin still wraps it.\n- #3119 (ready) covers `/visual-review` and `/review` still instructing agents to run retired agent-browser commands. This record covers docs plus `init/SKILL.md` naming only. Coordinate rather than both editing the same skill file, and check #3119's Key Files before touching any `plugin/skills/**` file beyond `init/SKILL.md`.\n- Tests pin some doc prose repo-wide. Run the full suite, not just a docs subset.\n\n## Original request\n\ndocs/journeys and docs/ still reference the retired \"agent-browser\" backend and carry pre-#2316 byte-ceiling figures\n\nOrigin: wrap-up of #2997 (session 6ccd43b3) -- the Docs/Journeys curation rows surfaced these via domain-overlap ranking; none are caused by or related to #2997's own change (PR-early run body composition), they are pre-existing drift the scan happened to touch while judging nearby docs\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nSeveral docs still describe browser automation as \"agent-browser\", which was replaced by `playwright-cli` (confirmed: `plugin/skills/browse/SKILL.md` and `plugin/skills/init/bootstrap/step-07-browser-integration.md` both name `playwright-cli` as the single backend):\n- `docs/getting-started.md` lines 7 and 110\n- `docs/skill-graph.md` lines 90, 327, 330, 530\n- `README.md` line 178\n- `plugin/skills/init/SKILL.md` lines 125 and 401\n\nSeparately, `docs/journeys/compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 still cite the pre-#2316 40,960 B `CEILING_BYTES` value (now 46,080 B) for the `claims`/`pr-scan` composed bundles -- unrelated subsystems to that journey's own Step 6 (already refreshed during wrap-up of #2997): Step 8 says the gate \"rejects any call site over 40 KB -- each source composes alone, at 37 KB and 40 KB\" (real measured max: claims 43,238 B, pr-scan 45,977 B); Step 10 names a \"raw 40,960 B warning band\" (the real band is 41,472-46,080 B); Step 11's grep for `40960\\|40 \\* 1024` over `tests/` returns nothing rather than the \"two fixture lines\" it promises.\n\nAlso minor: `docs/journeys/adopt-a-run-directory-from-one-preflight-pack-1931.md`'s frontmatter lists `docs/plugin-structure.md` and `docs/skill-graph.md` in its `files:` block, but none of its 4 steps actually visit either -- a spurious origin-coverage scoping (optional to fix). And `docs/skill-authoring.md` was left as wrap-up's Docs-row overflow during #2997 (ranked 4th under the cap of 3) -- worth a look on a future pass.\n\n## Deliverables\n\n1. Replace every \"agent-browser\" reference in the 4 files above with the current `playwright-cli` terminology, matching the wording already used in `browse/SKILL.md` and `init/bootstrap/step-07-browser-integration.md`.\n2. Refresh `compose-a-per-run-context-bundle-1988.md` Steps 8, 10, and 11's byte figures against the current `claims`/`pr-scan` composed bundles and the real 46,080 B `CEILING_BYTES`.\n3. Optional: drop the two unused `files:` frontmatter entries from `adopt-a-run-directory-from-one-preflight-pack-1931.md`, or confirm a future step should visit them instead.\n4. Optional: give `docs/skill-authoring.md` a staleness pass against its own domain.\n\n## Acceptance Criteria\n\n- [ ] No file in the repo (outside historical/incident-log prose describing the old backend by name) calls the browser backend \"agent-browser\".\n- [ ] `compose-a-per-run-context-bundle-1988.md`'s Steps 8, 10, and 11 state byte figures that match a fresh measurement at fix time.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change -- documentation accuracy only.\n\n_Filed by `wrap-up` via specShapedBody._",
         "createdAt": "2026-10-06T06:10:42Z",
         "labels": [
@@ -5070,6 +4530,88 @@
         "updatedAt": "2026-10-15T19:27:29Z",
         "facets": {
           "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": "fast-lane",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": true
+        }
+      },
+      {
+        "body": "Surface: infra\n\n## Current State\n\nThe original request says claude-tweaks \"already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel\". The checkout does not support that premise:\n\n- The only blast-radius code is `plugin/bin/blast-radius.js` (with `plugin/bin/lib/blast-radius-cli.js`). It is the gather step of `assess-agent-autonomy`'s merge-check: merge-base resolution, diff numstat, and sensitive-path classification at merge time. It never intercepts a command.\n- claude-tweaks ships no mods. Its tool-call interception is the PreToolUse hook (`plugin/bin/lib/hooks/pre-tool-use.js`), and it only ever emits `permissionDecision: 'deny'` (pre-tool-use.js:422). It never emits an ask prompt, so no claude-tweaks gate can leave an unattended run waiting on a Proceed/Cancel.\n- None of its gates targets `rm -rf` or `git reset --hard` (no match for either in `plugin/bin/lib/hooks/`).\n- Recursive deletion inside claude-tweaks' own unattended machinery runs through Node `fs.rmSync`, not a Bash `rm` command. Examples: `plugin/bin/lib/file-lock.js:115`, `plugin/bin/lib/reconcile/archive-merged.js:834`, `plugin/bin/lib/reconcile/reap-merged.js:132`. Shipped skill prose uses only single-file `rm -f` (for example `plugin/skills/_shared/headless-self-report.md:51`).\n\nThe external change: Claude Code 2.1.281+ times out a flagged dangerous `rm` prompt after two minutes in unattended, auto, or `--dangerously-skip-permissions` runs, denying the command with a rewrite hint instead of hanging (source in the original request below).\n\n## Deliverables\n\n1. A written comparison, posted as a comment on this record, of the native dangerous-`rm` timeout against what claude-tweaks actually ships. It should cover:\n   - the premise correction above: no blast-radius command interceptor exists, and `blast-radius.js` is a merge-time gather;\n   - whether any claude-tweaks PreToolUse gate overlaps or conflicts with the native prompt and timeout (expected answer: no, because the gates are deny-only and none targets `rm`);\n   - whether any claude-tweaks unattended path (`/claude-tweaks:dispatch`, `/claude-tweaks:flow` auto, Routine firings, `reconcile`) issues a Bash command the native flag would trip, which would now be denied after two minutes rather than hanging;\n   - where the \"blast-radius mod\" in the original request lives, if it exists outside this repo, so the comparison can be redirected there.\n2. For any claude-tweaks path the comparison finds the native flag would trip, file a backlog record via `/claude-tweaks:capture` with a spec-shaped body. Otherwise, state explicitly that no adjustment is needed.\n\n## Acceptance Criteria\n\n- The comparison comment exists on this record and addresses each of the four points in Deliverable 1, citing the files above.\n- It states a clear verdict: no claude-tweaks adjustment needed, or the specific path(s) that need one, each with a linked filed record.\n- No claude-tweaks code changes land in this record.\n\n## Release Note\n\nNo user-facing change. This produces an internal comparison of claude-tweaks' guardrails against Claude Code's native dangerous-rm timeout.\n\n## Technical Approach\n\nA desk comparison. Confirm the deny-only posture of `pre-tool-use.js` and the absence of Bash recursive-`rm` in shipped skill prose and `bin/` code with a repo-wide grep. Then read the native permission-modes documentation for the exact trigger set, which may cover more than `rm`, and re-check the unattended paths against that set.\n\n### Key Files\n\n- `plugin/bin/blast-radius.js` — the only blast-radius code; merge-time gather, not an interceptor\n- `plugin/bin/lib/hooks/pre-tool-use.js` — the PreToolUse gates; deny-only\n- `plugin/bin/lib/reconcile/reap-merged.js` — representative unattended recursive deletion via `fs.rmSync`\n\n## Gotchas\n\n- The original request's premise of a shipped blast-radius mod is contradicted by the checkout. #3055 lists a \"blast-radius-style guardrail\" only as a candidate for a future mod. Do not build one under this record; that is #3055's evaluation.\n- ASSUMPTION — verify at build: the native flag fires only on Bash-tool commands, not on Node `fs.rmSync` inside a hook or CLI subprocess. Confirm from the permission-modes documentation.\n- The native trigger set may widen across Claude Code versions. Cite the version the comparison was made against.\n\n## Original request\n\nCompare blast-radius against Claude Code's native dangerous-rm timeout\n\nCurrent State:\n- Claude Code (2.1.281+) now times out a flagged dangerous rm prompt after two minutes in unattended/auto/--dangerously-skip-permissions runs, denying the command with a rewrite hint instead of hanging.\n- claude-tweaks already ships a blast-radius mod that intercepts risky commands (rm -rf, git reset --hard, etc.) and asks Proceed/Cancel.\n\nDeliverables:\n- Check whether blast-radius's own unattended-run behavior overlaps or conflicts with this native timeout.\n- Align blast-radius's timeout/denial behavior with the native one where it makes sense, or document why it intentionally differs.\n\nAcceptance Criteria:\n- A written comparison of the two behaviors.\n- Any needed blast-radius adjustment made or explicitly deferred with a reason.\n\nSource: https://code.claude.com/docs/en/permission-modes#critical-paths\n",
+        "createdAt": "2026-10-09T03:34:52Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "D93F0B"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "E99695"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszED4w",
+            "name": "ceremony:fast-lane",
+            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
+            "name": "shaped:headless",
+            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
+            "color": "ededed"
+          }
+        ],
+        "number": 3057,
+        "state": "OPEN",
+        "title": "Compare blast-radius against Claude Code's native dangerous-rm timeout",
+        "updatedAt": "2026-10-15T16:24:28Z",
+        "facets": {
+          "origin": null,
           "risk": "low",
           "size": "low",
           "ceremony": "fast-lane",
@@ -5359,172 +4901,6 @@
           "shapedHeadless": true
         }
       }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThis record was filed as a `materialize.js` bug: invoked from inside a record's worktree with `--run-dir` pointing at the anchored main-checkout run directory, the materialized spec landed at the worktree-local path `{worktree}/.claude-tweaks/pipelines/{run-id}/work/{n}-spec.md`.\n\nThat write is designed behavior, not a resolution bug. `plugin/bin/materialize.js` lines ~290–317 (#1210) deliberately rewrite a `--run-dir` that resolves to the main checkout (or another worktree) into the cwd worktree's equivalent path when cwd is inside a linked worktree, and print a stderr notice saying so. The reason is `materialize.md`'s worktree-first ordering: the spec must land on the feature branch. `_shared/pipeline-run-dir.md:67` documents `work/{n}-spec.md` as an exception that \"stays inside the worktree\".\n\nThe real defect is documentation drift: `plugin/skills/flow/materialize.md` still describes `--run-dir` as \"the literal write-location prefix, not a run identity — the CLI writes `{--run-dir}/work/{n}-spec.md`\" (line 5) and repeats \"`--run-dir` is the literal write-location prefix\" (line 7). Read literally, both say the main-checkout path is honored from a worktree, which is what led the reflect pass to file this as a bug.\n\n## Deliverables\n\n1. Correct `plugin/skills/flow/materialize.md` lines 5 and 7 to state that `--run-dir` is the write-location prefix except when cwd is inside a linked worktree and the path resolves elsewhere, in which case the CLI writes to the cwd worktree's equivalent path (#1210), citing `_shared/pipeline-run-dir.md`'s `work/{n}-spec.md` exception rather than restating it.\n2. Make `materialize.js`'s usage text (and any other plugin prose describing `--run-dir` as literal) agree.\n3. If an existing test already covers the #1210 rewrite, reference it in the PR; if none does, add one invoking `materialize.js` from a worktree cwd with a main-checkout `--run-dir` and asserting the worktree-local write plus the stderr notice.\n\n## Acceptance Criteria\n\n1. No plugin prose describes `--run-dir` as an unconditional literal write location.\n2. `materialize.md` states the worktree-local rewrite and cites `_shared/pipeline-run-dir.md`'s exception.\n3. A test pins the rewrite behavior, existing or new.\n4. `npm test` passes.\n\n## Release Note\n\nN/A — documentation correction; no behavior change.\n\n## Technical Approach\n\nProse edit in `materialize.md`, a check of `materialize.js`'s `USAGE` string, and a repo-wide grep for \"literal write-location\" and similar phrasing in `plugin/`. No code change to the rewrite itself.\n\n### Key Files\n\n- `plugin/skills/flow/materialize.md` — lines 5 and 7 corrected\n- `plugin/bin/materialize.js` — `USAGE` text, if it says \"literal\"\n- `plugin/skills/_shared/pipeline-run-dir.md` — cited, not edited\n\n## Gotchas\n\n- Do not \"fix\" `materialize.js` to honor the main-checkout path literally: that would reintroduce the stray main-checkout write #1210 closed.\n- Prose conformance tests pin `materialize.md` text; run the full suite.\n\n## Original request\n\nmaterialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir\n\nOrigin: reflect full mode from wrap-up run 2026-09-18T205605-dispatch-drain-pr-merges-standalone\nDefer-reason: tangential\n\n## Current State\n\nDuring record #2466's build attempt (dispatch drain, 2026-09-18), `materialize.js` was invoked from inside the record's dedicated worktree with `--run-dir` pointed at the anchored main-checkout run directory (`.claude-tweaks/pipelines/2026-09-18T063050-record-2466`, per `_shared/pipeline-run-dir.md`'s Anchoring section). Instead, the materialized spec (`work/2466-spec.md`) landed at a worktree-relative shadow path -- `{worktree}/.claude-tweaks/pipelines/2026-09-18T063050-record-2466/work/2466-spec.md` -- a separate, untracked directory tree that happens to share the same relative subpath as the real run dir. This is a previously-known pattern recurring live, meaning the underlying resolution bug in `materialize.js` was never actually fixed at the source -- only documented as a gotcha to watch for and discard after the fact.\n\n## Deliverables\n\n- Investigate `materialize.js`'s `--run-dir` handling to find where a value that should already be an absolute, anchored path gets re-resolved (or silently re-joined) against the current working directory instead of used as given.\n- Fix it so `materialize.js` always writes to the literal `--run-dir` path passed to it, regardless of the caller's cwd (worktree or main checkout).\n- Add a regression test: invoke `materialize.js` with an absolute `--run-dir` from a cwd that is NOT that run dir's own ancestor (e.g., a sibling worktree), and assert the spec lands at the given absolute path, not a cwd-relative shadow of it.\n\n## Acceptance Criteria\n\n- `materialize.js`, invoked from any worktree with an absolute `--run-dir` pointing at the main checkout, writes the materialized header to that literal path -- no worktree-relative shadow copy is created.\n- A new regression test reproduces this scenario and fails on the pre-fix code, passes after the fix.\n- `npm test` passes in full.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-09-18T21:09:39Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          }
-        ],
-        "number": 2601,
-        "state": "OPEN",
-        "title": "materialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir",
-        "updatedAt": "2026-10-15T16:20:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #2552, #2771, #2847\n\n## Current State\n\n`plugin/bin/lib/residue/probes/release.js`'s `probeRelease` builds its tag set from the local repository only — `run(['git', 'tag', '-l', 'v*'])` — and reports every post-bootstrap CHANGELOG heading with no matching local tag as a `tag for CHANGELOG entry v{X}` finding carrying `remedy: 'auto'` (the finding at line ~107).\n\nThe four findings this record was filed for (v6.129.0–v6.132.0, from #2552's wrap-up residue sweep) were false positives. Verified 2026-10-15: all four tags exist on origin (`git ls-remote --tags origin` lists `v6.129.0`–`v6.132.0`, created at release on 2026-09-21) and in the main checkout's local tag set. The sweep ran in a checkout whose local tag set lagged origin, so the probe reported \"missing\" for tags that were published. #2847 (push those tags) was closed for the same reason.\n\nSo the defect is the probe's tag source, not the release process: a stale or shallow checkout (a fresh worktree, a cloud sandbox clone without tags) makes the probe report released versions as untagged, and labels the finding `auto`, inviting an unattended remedy against shared release history.\n\n## Deliverables\n\n1. `probeRelease` reads the remote tag set (`git ls-remote --tags origin 'v*'`, through the probe's existing injectable `run`) and unions it with the local `git tag -l 'v*'` list before computing missing-tag findings. A tag present on either side is not missing.\n2. When the remote read fails (offline, no `origin`), the probe falls back to the local list and says so in its result (a reason string naming the fallback), rather than silently treating the local set as authoritative.\n3. Missing-tag findings (`tag for CHANGELOG entry v{X}`) carry `remedy: 'record'`, not `'auto'`: creating or pushing a tag over already-released history is a human decision, not something an unattended sweep should apply.\n4. Unit tests for the three cases below, using an injected `run` stub.\n\n## Acceptance Criteria\n\n1. With the local tag list missing `v6.130.0` and the remote list containing it, `probeRelease` reports no finding for v6.130.0.\n2. With the tag absent from both lists, the probe reports one `tag for CHANGELOG entry v{X}` finding with `remedy: 'record'`.\n3. With the remote read failing, the probe still runs on the local list and its result names the fallback; it does not return `ran: false`.\n4. `node --test tests/bin-lib/residue/probes-observed.test.js tests/bin-lib/residue/cli.test.js` passes.\n\n## Release Note\n\nThe residue sweep no longer reports already-published release tags as missing when the local checkout hasn't fetched them.\n\n## Technical Approach\n\nAdd a remote-tag read beside the existing `git tag -l` call in `probeRelease`, parse `ls-remote` output (`{sha}\\trefs/tags/v{X}`, plus `^{}` peeled lines for annotated tags) down to bare versions, union with the local set, and keep the existing version filter (`versionGte(v, anchor)`). Change only the missing-tag finding's `remedy`; leave the \"CHANGELOG entry for v{X}\" finding (line ~99) as is unless the build finds the same false-positive shape there.\n\n### Key Files\n\n- `plugin/bin/lib/residue/probes/release.js` — union local + remote tag sets; fallback reason; `remedy: 'record'` on missing-tag findings\n- `tests/bin-lib/residue/probes-observed.test.js` — existing probe coverage; extend for the three cases (or a new sibling test file if the release probe has none there)\n- `tests/bin-lib/residue/cli.test.js` — confirm the CLI output still renders the changed finding\n\n## Gotchas\n\n- `git ls-remote` output for an annotated tag carries a second `refs/tags/vX^{}` line; strip the `^{}` suffix before comparing, and never use an exact-ref pattern that hides the peeled line.\n- A network call inside a residue probe adds latency to every wrap-up sweep; keep it to one `ls-remote` call per probe run and honor the probe's existing best-effort posture (a failure degrades, never throws).\n- `/claude-tweaks:tidy` auto-applies `remedy: auto` findings for other probe kinds; moving missing-tag findings to `record` is deliberate and should be called out in the PR.\n- #2771 (release-triple `docs/shipped-versions.tsv`) is very likely obsolete: `release.js` no longer reads that file and `plugin/bin/lib/release/precheck.js` documents the tsv as retired. Close it separately rather than folding it in here.\n\n## Original request\n\nMissing git tags for CHANGELOG entries v6.129.0-v6.132.0\n\n**Related:** discovered during #2552's wrap-up residue sweep (`wrap-up-pack.js` / `bin/residue.js --scope blast-radius`)\n\n## Current State\n`bin/residue.js`'s release-triple probe reports 4 findings on the current `main` tip: `CHANGELOG.md` carries version headings for 6.129.0, 6.130.0, 6.131.0, and 6.132.0 (at or after the bootstrap v6.129.0 marker), but no matching git tag exists for any of the four.\n\n```\n- tag for CHANGELOG entry v6.132.0 — CHANGELOG.md has a version heading for 6.132.0 but no matching v6.132.0 tag exists\n- tag for CHANGELOG entry v6.131.0 — same, 6.131.0\n- tag for CHANGELOG entry v6.130.0 — same, 6.130.0\n- tag for CHANGELOG entry v6.129.0 — same, 6.129.0\n```\n\nThis is unrelated to #2552's own diff (a `wrap-up-engine.js verify` fix) — flagged generically by the residue sweep's release-triple check, not caused by this record's work. Deferred here per `_shared/deferral-gate.md` rather than fixed inline: creating retroactive git tags from a feature worktree, for four already-released versions, is outside a single record's wrap-up scope and has a blast radius (webhooks, CI, release tooling) that warrants deliberate handling, not an unattended auto-fix.\n\n## Deliverables\n1. Determine why these 4 releases' tags were never created (release-please config gap, a failed tag-push step, a manual release that skipped tagging, etc.).\n2. Either backfill the missing tags at the correct commits, or correct the root cause so future releases always tag.\n\n## Acceptance Criteria\n1. `git tag -l 'v6.129.0' 'v6.130.0' 'v6.131.0' 'v6.132.0'` lists all four.\n2. A fresh `bin/residue.js --scope blast-radius` run (or repo-wide) reports zero `release`/`tag for CHANGELOG entry` findings for these four versions.\n3. The root-cause fix (if any) prevents recurrence for the next release.\n\n## Release Note\n\nN/A — internal tooling/process gap, no user-facing change.\n\n---\nFiled via wrap-up residue sweep (#2552).\n\n",
-        "createdAt": "2026-10-01T21:06:00Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          }
-        ],
-        "number": 2882,
-        "state": "OPEN",
-        "title": "Missing git tags for CHANGELOG entries v6.129.0-v6.132.0",
-        "updatedAt": "2026-10-15T16:20:45Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
     ]
   ],
   "excluded": [
@@ -5538,15 +4914,15 @@
   "bundles": [
     {
       "records": [
-        2908,
-        2934,
-        3024
+        3009,
+        3057
       ]
     },
     {
       "records": [
-        2601,
-        2882
+        2908,
+        2934,
+        3024
       ]
     }
   ]
