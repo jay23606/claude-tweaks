@@ -314,3 +314,188 @@ test('#2714: isInterimProgressReply recognizes the marker only as the trailing l
   assert.strictEqual(substop.isInterimProgressReply('No marker at all.\nSTATUS: DONE'), false);
   assert.strictEqual(substop.isInterimProgressReply(''), false);
 });
+
+// #3015: a dispatched agent that is itself a nested dispatcher yields across
+// several of its own turns while ITS OWN in-turn `Agent` dispatches are
+// still pending — composed after intervening tool calls, so neither #2041
+// (no async signal immediately before the yield) nor #2714 (no
+// INTERIM_STATUS marker — the dispatch prompt never asked for one, e.g.
+// flow's review lens fan-out) catches it. Fixture shapes (the launch ack's
+// `toolUseResult.{isAsync, agentId}` and the task-notification payload's
+// `<task-id>` tag inside `message.content`) are taken from a real
+// transcript, not invented — same literal field names and nesting
+// tests/hooks-log-modules.test.js's existing #2041 fixtures already use for
+// the launch-ack shape, extended here with the `agentId`/`<task-id>`
+// correlation #2041's own fixtures never needed.
+function asyncLaunchEntryWithId(agentId, timestamp) {
+  const entry = {
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: 'ok' }] },
+    toolUseResult: { isAsync: true, status: 'async_launched', agentId },
+  };
+  if (timestamp) entry.timestamp = timestamp;
+  return entry;
+}
+function taskNotificationEntryWithId(taskId) {
+  return {
+    type: 'user',
+    message: { role: 'user', content: `<task-notification>\n<task-id>${taskId}</task-id>\n<status>completed</status>\n</task-notification>` },
+    origin: { kind: 'task-notification' },
+  };
+}
+function transcriptWithPriorEntries(priorEntries, lastText, lastTimestamp) {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ct-substop-pending-')), 'agent.jsonl');
+  const lines = priorEntries.map((e) => JSON.stringify(e));
+  const last = { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: lastText }] } };
+  if (lastTimestamp) last.timestamp = lastTimestamp;
+  lines.push(JSON.stringify(last));
+  fs.writeFileSync(f, lines.join('\n') + '\n');
+  return f;
+}
+function runSubstopOnTranscript(transcriptPath) {
+  const run = mkRun();
+  const out = substop.run({
+    input: { agent_transcript_path: transcriptPath },
+    runDir: run, runState: null, ownedRun: { dir: run, attribution: 'session' }, cwd: '/x',
+  });
+  const eventsPath = path.join(run, 'events.jsonl');
+  const events = fs.existsSync(eventsPath)
+    ? fs.readFileSync(eventsPath, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    : [];
+  return { out, events };
+}
+
+// AC1: a transcript with pending async dispatches, yielding before all
+// complete (no async signal immediately before the yield, no INTERIM_STATUS
+// marker, no trailing STATUS: line either) is not blocked and not forced to
+// emit STATUS.
+test('#3015 AC1: a yield while 5 of 8 own dispatches are still pending (no async signal immediately before it, no INTERIM_STATUS marker) is not blocked, logs nothing', () => {
+  const prior = [];
+  for (let n = 1; n <= 8; n += 1) prior.push(asyncLaunchEntryWithId(`child${n}`));
+  for (let n = 1; n <= 3; n += 1) prior.push(taskNotificationEntryWithId(`child${n}`));
+  // An ordinary tool call between the last completion and the yield — this
+  // is exactly the shape #2041's immediately-preceding-signal filter misses.
+  prior.push({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } });
+  prior.push({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } });
+  const t = transcriptWithPriorEntries(prior, '3 of 8 lens agents back so far. Reading child4\'s output now.');
+  const { out, events } = runSubstopOnTranscript(t);
+  assert.deepStrictEqual(out, {}, 'a yield with own dispatches still pending must never produce a dispatcher-facing warning');
+  assert.strictEqual(events.length, 0, 'must log nothing at all — not even the lenient/zero-tool-use variants — while still pending');
+});
+
+// AC2: a transcript where every one of this agent's own dispatches has
+// completed, ending in a non-compliant reply, is STILL blocked — the
+// exemption must never swallow a genuine final-reply violation.
+test('#3015 AC2: a non-compliant reply after every own dispatch has completed is still a genuine violation', () => {
+  const prior = [];
+  for (let n = 1; n <= 3; n += 1) prior.push(asyncLaunchEntryWithId(`child${n}`));
+  for (let n = 1; n <= 3; n += 1) prior.push(taskNotificationEntryWithId(`child${n}`));
+  // An ordinary tool call between the last completion and the reply — keeps
+  // this test isolated from #2041's own immediately-preceding-signal filter
+  // (which would otherwise also exempt a reply directly following a
+  // completion, regardless of whether anything is still pending), so this
+  // exercises #3015's own id-correlated check specifically.
+  prior.push({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } });
+  prior.push({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } });
+  const t = transcriptWithPriorEntries(prior, 'Folded in all 3 lens findings. No status line here.');
+  const { out, events } = runSubstopOnTranscript(t);
+  assert.match(out.json.systemMessage, /status line/i);
+  assert.strictEqual(events.length, 1);
+  assert.strictEqual(events[0].type, 'contract-violation');
+  assert.strictEqual(events[0].variant, 'violation');
+});
+
+// Companion: the same all-completed transcript, this time with a proper
+// trailing STATUS: line, is fully canonical-compliant — the #3015 check
+// never interferes with grading once nothing is actually pending.
+test('#3015: an all-completed transcript with a proper trailing STATUS: line is canonical-compliant', () => {
+  const prior = [];
+  for (let n = 1; n <= 3; n += 1) prior.push(asyncLaunchEntryWithId(`child${n}`));
+  for (let n = 1; n <= 3; n += 1) prior.push(taskNotificationEntryWithId(`child${n}`));
+  prior.push({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } });
+  prior.push({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } });
+  const t = transcriptWithPriorEntries(prior, 'Folded in all 3 lens findings.\nSTATUS: DONE');
+  const { out, events } = runSubstopOnTranscript(t);
+  assert.deepStrictEqual(out, {});
+  assert.strictEqual(events.length, 0);
+});
+
+// #3015 bound: a launch whose own dispatch never completes must not exempt
+// this agent's replies forever — once it's older than
+// PENDING_DISPATCH_STALE_MS relative to the graded reply, it's treated as
+// abandoned, not pending, and a non-compliant reply is graded normally.
+test('#3015: a launch far older than the staleness ceiling (relative to the reply) no longer exempts — treated as abandoned, not pending', () => {
+  const staleLaunchTs = '2026-01-01T00:00:00.000Z';
+  const replyTs = '2026-01-01T06:00:00.000Z'; // 6h later, past the 4h ceiling
+  const prior = [
+    asyncLaunchEntryWithId('stuck-child', staleLaunchTs),
+    // An ordinary tool call between the launch and the reply — keeps this
+    // isolated from #2041's own immediately-preceding-signal filter, same
+    // reasoning as the AC2 fixture above.
+    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } },
+    { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } },
+  ];
+  const t = transcriptWithPriorEntries(prior, 'Giving up on the stuck child. No status line here.', replyTs);
+  const { out, events } = runSubstopOnTranscript(t);
+  assert.match(out.json.systemMessage, /status line/i, 'a sufficiently stale uncompleted launch must not exempt grading forever');
+  assert.strictEqual(events.length, 1);
+  assert.strictEqual(events[0].type, 'contract-violation');
+});
+
+// Companion: the identical shape, but within the staleness ceiling, still
+// exempts — proving the bound is time-based, not an unconditional cutoff.
+test('#3015: an uncompleted launch within the staleness ceiling still exempts', () => {
+  const launchTs = '2026-01-01T00:00:00.000Z';
+  const replyTs = '2026-01-01T01:00:00.000Z'; // 1h later, within the 4h ceiling
+  const prior = [
+    asyncLaunchEntryWithId('still-pending-child', launchTs),
+    // Same isolation from #2041 as the sibling test above — this exercises
+    // #3015's own check, not the pre-existing immediately-preceding filter.
+    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } },
+    { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } },
+  ];
+  const t = transcriptWithPriorEntries(prior, 'Still waiting on the one child.', replyTs);
+  const { out, events } = runSubstopOnTranscript(t);
+  assert.deepStrictEqual(out, {});
+  assert.strictEqual(events.length, 0);
+});
+
+// AC3 (transcript parsing stays defensive): an unparseable/malformed prior
+// line never throws and never produces a blanket exemption on its own — the
+// surrounding well-formed launch/completion entries are still read
+// correctly.
+test('#3015 AC3: an unparseable prior line is skipped defensively, surrounding launch/completion entries still read correctly', () => {
+  const run = mkRun();
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ct-substop-pending-malformed-')), 'agent.jsonl');
+  const lines = [
+    JSON.stringify(asyncLaunchEntryWithId('child1')),
+    'not valid json at all {{{',
+    JSON.stringify(taskNotificationEntryWithId('child1')),
+    // An ordinary tool call between the completion and the reply — keeps
+    // this isolated from #2041's own immediately-preceding-signal filter,
+    // same reasoning as the fixtures above.
+    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Read', input: {} }] } }),
+    JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } }),
+    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'All done. No status line here.' }] } }),
+  ];
+  fs.writeFileSync(f, lines.join('\n') + '\n');
+  const out = substop.run({ input: { agent_transcript_path: f }, runDir: run, runState: null, ownedRun: { dir: run, attribution: 'session' }, cwd: '/x' });
+  // child1 completed (via the task-notification), despite the malformed
+  // line between the launch and the completion, so nothing is pending —
+  // this must grade as a genuine violation, not a swallowed exemption.
+  assert.match(out.json.systemMessage, /status line/i);
+});
+
+test('pendingDispatchCount: counts only launched ids with no completion, excludes stale ones past the ceiling', () => {
+  const lines = [
+    JSON.stringify(asyncLaunchEntryWithId('a', '2026-01-01T00:00:00.000Z')),
+    JSON.stringify(asyncLaunchEntryWithId('b', '2026-01-01T00:00:00.000Z')),
+    JSON.stringify(taskNotificationEntryWithId('a')),
+  ];
+  // 'a' completed; 'b' did not. Reply at 1h — 'b' still within the ceiling.
+  assert.strictEqual(substop.pendingDispatchCount(lines, lines.length, Date.parse('2026-01-01T01:00:00.000Z')), 1);
+  // Same lines, but the reply is 6h later — 'b' is now stale, not pending.
+  assert.strictEqual(substop.pendingDispatchCount(lines, lines.length, Date.parse('2026-01-01T06:00:00.000Z')), 0);
+  // No reply timestamp at all — the staleness bound is disabled, 'b' stays pending.
+  assert.strictEqual(substop.pendingDispatchCount(lines, lines.length, null), 1);
+});

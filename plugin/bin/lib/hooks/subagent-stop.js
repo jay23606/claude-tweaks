@@ -103,6 +103,18 @@
 //    interim replies can carry — see isInterimProgressReply/INTERIM_MARKER_RE
 //    below and `_shared/subagent-output-contract.md`'s matching dispatch-side
 //    instruction.
+// 6. (fixed, #3015) #2714's marker is opt-in — it only helps a dispatch site
+//    whose prompt actually tells the agent to use it (e.g. a dedicated
+//    "report progress as INTERIM_STATUS:" instruction). A nested dispatcher
+//    whose prompt never says so (flow's own review-lens fan-out) still
+//    yields across several turns with no marker, no async signal
+//    immediately before the yield (so #2041 doesn't fire either), and a
+//    plain progress note — misfiring the same way #2041/#2714 do, just for a
+//    dispatch site that never adopted either escape hatch. Closed
+//    mechanically instead of by convention: see pendingDispatchCount below —
+//    a reply composed while this agent's own in-turn Agent dispatches are
+//    still launched-but-uncompleted (and not yet stale) is exempted
+//    regardless of what immediately precedes it or what marker it carries.
 'use strict';
 const fs = require('fs');
 const ctxLib = require('./context');
@@ -265,14 +277,96 @@ function isAsyncWaitSignal(entry) {
   return false;
 }
 
-// -> { text: string|null, asyncWaitCheckpoint: boolean }. `asyncWaitCheckpoint`
-// is true only when `text` is non-null AND the nearest earlier parseable
-// transcript line is an isAsyncWaitSignal hit — i.e. this reply is reacting
-// to "a background dispatch just launched or reported in", not to genuine
-// content (#2041).
+// #3015: how long a launched-but-uncompleted own dispatch keeps exempting
+// this agent's later replies from grading before it's treated as abandoned
+// rather than still-pending. Generous (a real nested fan-out can legitimately
+// run for a while) but finite — an orphaned dispatch (a crashed or stuck
+// child that never sends a task-notification) must not suppress grading of
+// this agent's own TRUE final reply forever. No measured data behind the
+// exact number; revisit if a real run shows it too short (false violation on
+// a legitimately slow fan-out) or too long (a stuck dispatch masking a real
+// violation).
+const PENDING_DISPATCH_STALE_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+// -> parsed epoch ms, or null when `entry.timestamp` is missing/unparseable.
+// Defensive only — every real transcript line carries this field, but a
+// missing/malformed one must disable the staleness bound rather than throw
+// or guess.
+function parseEntryTimestamp(entry) {
+  const t = entry && entry.timestamp;
+  if (typeof t !== 'string') return null;
+  const ms = Date.parse(t);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+// #3015: a dispatched agent that is itself a nested dispatcher (e.g. a
+// review-phase orchestrator fanning out several lens-review agents) yields
+// across several of its own turns while ITS OWN in-turn `Agent` dispatches
+// are still pending. #2041's isAsyncWaitSignal filter only catches a reply
+// immediately preceded by a launch/completion signal; #2714's INTERIM_STATUS
+// marker is opt-in and requires the dispatch prompt to ask for it. Neither
+// covers a yield composed after intervening tool calls (reading a sibling's
+// output, dispatching the next nested agent) with no instruction to use the
+// marker — exactly flow's review lens fan-out.
+//
+// Scans every transcript entry strictly before `beforeIndex` (the reply
+// being graded) for every async launch THIS agent made
+// (`toolUseResult.isAsync: true`, keyed by its `agentId` — the launch
+// acknowledgment the SDK writes back immediately, well before the dispatched
+// agent itself finishes) and every completion it received for one of those
+// (`task-notification` entries, keyed by the `<task-id>` the notification
+// payload embeds as a literal XML-ish tag inside `message.content` — the
+// SAME string as the launch's `agentId`; both shapes confirmed against a
+// live transcript, never inferred from a fixture). Returns the count of
+// launched ids that are both still uncompleted and not yet stale per
+// PENDING_DISPATCH_STALE_MS (relative to `replyTimestampMs`, the graded
+// reply's own timestamp). Defensive throughout: an unparseable line or
+// unexpected shape never throws — it just can't contribute to either set; a
+// missing `replyTimestampMs` (or a missing launch timestamp) disables the
+// staleness bound for that id rather than guessing, so it stays pending.
+function pendingDispatchCount(lines, beforeIndex, replyTimestampMs) {
+  const launchedAt = new Map(); // agentId -> launch timestamp (ms) or null
+  const completed = new Set();
+  for (let i = 0; i < beforeIndex; i++) {
+    const line = lines[i];
+    if (!line || !line.trim()) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; }
+    if (!entry || typeof entry !== 'object') continue;
+    const tur = entry.toolUseResult;
+    if (tur && tur.isAsync === true && typeof tur.agentId === 'string' && tur.agentId) {
+      launchedAt.set(tur.agentId, parseEntryTimestamp(entry));
+      continue;
+    }
+    if (entry.origin && entry.origin.kind === 'task-notification') {
+      const content = entry.message && entry.message.content;
+      const text = typeof content === 'string' ? content
+        : Array.isArray(content) ? content.map((c) => (c && typeof c.text === 'string' ? c.text : '')).join('')
+          : '';
+      const m = /<task-id>([^<]+)<\/task-id>/.exec(text);
+      if (m) completed.add(m[1]);
+    }
+  }
+  let pending = 0;
+  for (const [agentId, launchMs] of launchedAt) {
+    if (completed.has(agentId)) continue;
+    if (typeof replyTimestampMs === 'number' && typeof launchMs === 'number'
+      && (replyTimestampMs - launchMs) > PENDING_DISPATCH_STALE_MS) continue; // abandoned, not pending
+    pending += 1;
+  }
+  return pending;
+}
+
+// -> { text: string|null, asyncWaitCheckpoint: boolean, pendingOwnDispatches:
+// number }. `asyncWaitCheckpoint` is true only when `text` is non-null AND
+// the nearest earlier parseable transcript line is an isAsyncWaitSignal hit
+// — i.e. this reply is reacting to "a background dispatch just launched or
+// reported in", not to genuine content (#2041). `pendingOwnDispatches` is
+// the #3015 count described above — always 0 when `text` is null, since
+// there is nothing to grade either way.
 function lastAssistantText(transcriptPath) {
   let raw;
-  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false }; }
+  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false, pendingOwnDispatches: 0 }; }
   const lines = raw.split('\n');
   // Scan from the tail and stop at the first assistant message found — the
   // last assistant message is almost always near the end of a long-running
@@ -300,9 +394,9 @@ function lastAssistantText(transcriptPath) {
     // result comes back, so this narration precedes the eventual final
     // reply rather than being it. Grading it here is the same category of
     // misfire as the tool-call-only case above: nothing to grade yet (#1329).
-    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false };
+    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false, pendingOwnDispatches: 0 };
     const texts = msg.content.filter((c) => c && c.type === 'text' && typeof c.text === 'string');
-    if (!texts.length) return { text: null, asyncWaitCheckpoint: false };
+    if (!texts.length) return { text: null, asyncWaitCheckpoint: false, pendingOwnDispatches: 0 };
     // Look at the nearest earlier parseable line — what this reply is
     // actually reacting to. Blank/unparseable lines are skipped, same
     // tolerance the outer scan already applies.
@@ -315,9 +409,10 @@ function lastAssistantText(transcriptPath) {
       asyncWaitCheckpoint = isAsyncWaitSignal(priorEntry);
       break;
     }
-    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint };
+    const pendingOwnDispatches = pendingDispatchCount(lines, i, parseEntryTimestamp(entry));
+    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint, pendingOwnDispatches };
   }
-  return { text: null, asyncWaitCheckpoint: false };
+  return { text: null, asyncWaitCheckpoint: false, pendingOwnDispatches: 0 };
 }
 
 function run(ctx) {
@@ -344,7 +439,7 @@ function run(ctx) {
   // transcriptPath is already a confirmed non-empty string (checked above),
   // so a straight equality test already implies mainTranscriptPath is one too.
   if (ctx.input.transcript_path === transcriptPath) return {};
-  const { text, asyncWaitCheckpoint } = lastAssistantText(transcriptPath);
+  const { text, asyncWaitCheckpoint, pendingOwnDispatches } = lastAssistantText(transcriptPath);
   if (typeof text !== 'string') return {}; // unreadable -> best-effort no-op
   const trimmedText = text.trim();
   const firstLine = trimmedText.split('\n')[0].slice(0, 120);
@@ -387,6 +482,13 @@ function run(ctx) {
   // immediately above: must run before the #2345 zero-tool-use-verdict
   // check below, since an interim checkpoint is not graded at all.
   if (isInterimProgressReply(trimmedText)) return {};
+  // #3015: this agent's own in-turn `Agent` dispatches are still pending
+  // (launched, no completion seen yet, not yet stale) — the reply is a
+  // yield across an open fan-out, not this agent's final reply. Same silent
+  // no-op posture as the two filters immediately above: must run before the
+  // #2345 zero-tool-use-verdict check below, since a reply exempted here is
+  // not graded at all.
+  if (pendingOwnDispatches > 0) return {};
   if (toolUseCount === 0) {
     ctxLib.appendEvent(ownedRun.dir, 'zero-tool-use-verdict', { firstLine }, ownedRun.attribution);
   }
@@ -423,4 +525,4 @@ function run(ctx) {
   return { json: { systemMessage: 'claude-tweaks: a subagent reply is missing the Subagent Contract status line (STATUS: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED, as the last non-empty line). Logged to events.jsonl.' } };
 }
 
-module.exports = { run, isExemptAgentType, isAsyncWaitSignal, detectStatus, classifyViolationVariant, countToolUseBlocks, isInterimProgressReply };
+module.exports = { run, isExemptAgentType, isAsyncWaitSignal, detectStatus, classifyViolationVariant, countToolUseBlocks, isInterimProgressReply, pendingDispatchCount };
