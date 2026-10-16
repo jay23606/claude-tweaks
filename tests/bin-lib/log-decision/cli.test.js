@@ -50,6 +50,24 @@ test('--section places the entry under the heading; --lever/--reversibility carr
   assert.equal(lines[5], '## /test');
 });
 
+// #2869 item 4: _shared/pr-early-run-lifecycle.md mandates log lines like
+// `Reversibility: high (branch can be reset/force-pushed).`, but
+// --reversibility only accepted a bare tier — the sanctioned writer could
+// not produce the documented line.
+test('--reversibility accepts a tier with a trailing parenthetical qualifier and writes it verbatim', () => {
+  const { main, run: runDir } = fixture();
+  const code = run(['--run', runDir, '--status', 'AUTO', '--text', 'x', '--reversibility', 'high (branch can be reset/force-pushed)'], deps(main, []));
+  assert.equal(code, 0);
+  const text = fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8');
+  assert.equal(text, '- AUTO 09:05:07 — log-decision: x. Reversibility: high (branch can be reset/force-pushed).\n');
+});
+
+test('--reversibility still rejects an invalid tier even with a parenthetical qualifier attached', () => {
+  const { main, run: runDir } = fixture();
+  const code = run(['--run', runDir, '--status', 'AUTO', '--text', 'x', '--reversibility', 'bogus (x)'], deps(main, []));
+  assert.equal(code, 2);
+});
+
 test('--status SKIP appends a schema-valid degrade-trace line', () => {
   const { main, run: runDir } = fixture();
   const out = [];

@@ -57,8 +57,16 @@
 
 const fs = require('fs');
 const path = require('path');
-const { listTrackedSourceFiles } = require('./candidates-dead-code');
+// `./focus-generators` is required FIRST, deliberately, before
+// `./candidates-dead-code` — see `candidates-abstraction-police.js`'s header
+// comment for the full rationale: requiring the registry first forces its
+// fixed-order autoload cascade (candidates-dead-code.js first) to run to
+// completion before this module's own require below executes, so this file
+// never binds `listTrackedSourceFiles` to a still-mid-load, incomplete
+// exports object when required directly (as its own test file does) rather
+// than via the registry.
 const { registerGenerator } = require('./focus-generators');
+const { listTrackedSourceFiles } = require('./candidates-dead-code');
 const { readListKey } = require('../policy');
 
 const DEFAULT_EXCLUDES = ['emergency', 'circuit', 'kill'];

@@ -27,9 +27,12 @@ currently reads `standard`, the header-fold default (`flow/manifesto.md`'s Cerem
 computation), so there is nothing here to clobber:
 
 1. Compute this run's diff facts via `node "${CLAUDE_PLUGIN_ROOT}/bin/lib/dispatch/ceremony-derive.js"`'s
-   `computeDiffFacts` over `git diff --numstat` against the run's own merge-base (the same facts
-   shape `blast-radius-cli.js`'s `computeBlastRadius` already derives for the merge-check verdict —
-   reuse `classifyDiffFiles`/`blastRadiusSummary`, don't re-derive).
+   `computeDiffFacts` over `git diff --numstat` against the run's own merge-base, parsed first with
+   `bin/lib/blast-radius-cli.js`'s `parseNumstat` into the `{path, additions, deletions}[]` shape
+   `computeDiffFacts` expects — it never accepts the raw numstat string directly:
+   `node -e "const {parseNumstat}=require('.../bin/lib/blast-radius-cli.js'); const {computeDiffFacts}=require('.../bin/lib/dispatch/ceremony-derive.js'); console.log(JSON.stringify(computeDiffFacts(parseNumstat(require('fs').readFileSync('/dev/stdin','utf8')))))" < <(git diff --numstat {merge-base}...HEAD)`
+   (the same facts shape `blast-radius-cli.js`'s `computeBlastRadius` already derives for the
+   merge-check verdict — reuse `classifyDiffFiles`/`blastRadiusSummary`, don't re-derive).
 2. When the diff touches zero production/implementation files — any mix of test and/or docs files
    only (`deriveCeremonyProfile`'s `lowSurface` classification; a test file plus a small amount of
    production code stays disqualified — a real behavioral change riding along with its own

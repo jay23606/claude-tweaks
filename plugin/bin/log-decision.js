@@ -10,8 +10,15 @@
 
 const { STATUSES, formatEntry, resolveTarget, appendEntry } = require('./lib/log-decision/append');
 
-const USAGE = 'usage: log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a] [--lever "<k>=<v> (<source>)"] [--section "/<skill>"] [--help]\n';
+const USAGE = 'usage: log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a[ (qualifier)]] [--lever "<k>=<v> (<source>)"] [--section "/<skill>"] [--help]\n';
 const REVERSIBILITY = ['high', 'med', 'low', 'n/a'];
+// Accepts a bare tier, or a tier with a trailing parenthetical qualifier —
+// _shared/pr-early-run-lifecycle.md mandates lines like
+// `Reversibility: high (branch can be reset/force-pushed).`, and the tier
+// alone (group 1) is what's validated against REVERSIBILITY; the qualifier
+// (group 2, including its parentheses) is never validated, only passed
+// through verbatim by formatEntry.
+const REVERSIBILITY_RE = /^(high|med|low|n\/a)(\s+\(.+\))?$/;
 
 function parseArgs(argv) {
   const o = { run: null, status: null, text: null, spec: null, step: null, reversibility: 'n/a', lever: null, section: null, help: false };
@@ -48,7 +55,7 @@ function run(argv, deps = realDeps) {
   if (!o.run) return usageError('--run <run-dir> is required');
   if (!STATUSES.includes(o.status)) return usageError(`--status must be one of ${STATUSES.join('|')}`);
   if (!o.text || !String(o.text).trim()) return usageError('--text is required');
-  if (!REVERSIBILITY.includes(o.reversibility)) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}`);
+  if (!REVERSIBILITY_RE.test(String(o.reversibility))) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by a parenthetical qualifier`);
   if (o.spec !== null && !/^\d+$/.test(String(o.spec))) return usageError('--spec must be a record number');
   let target;
   try { target = resolveTarget({ runDir: o.run, cwd: deps.cwd(), mainRoot: deps.mainRoot }); } catch (err) { deps.stderr(`log-decision.js: ${err && err.message}\n`); return 3; }
