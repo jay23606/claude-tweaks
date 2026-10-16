@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-16T21:06:28.360Z",
+  "computedAt": "2026-10-16T21:22:20.575Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -254,11 +254,6 @@
         "state": "OPEN"
       },
       {
-        "number": 2877,
-        "updatedAt": "2026-10-16T20:40:56Z",
-        "state": "OPEN"
-      },
-      {
         "number": 2876,
         "updatedAt": "2026-10-16T21:02:22Z",
         "state": "OPEN"
@@ -270,7 +265,7 @@
       },
       {
         "number": 2821,
-        "updatedAt": "2026-10-16T16:31:23Z",
+        "updatedAt": "2026-10-16T21:11:18Z",
         "state": "OPEN"
       },
       {
@@ -291,11 +286,6 @@
       {
         "number": 2775,
         "updatedAt": "2026-10-16T17:29:44Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2767,
-        "updatedAt": "2026-10-16T19:57:31Z",
         "state": "OPEN"
       },
       {
@@ -330,7 +320,7 @@
       },
       {
         "number": 2601,
-        "updatedAt": "2026-10-15T16:20:29Z",
+        "updatedAt": "2026-10-16T21:09:50Z",
         "state": "OPEN"
       },
       {
@@ -341,6 +331,81 @@
       {
         "number": 3213,
         "updatedAt": "2026-10-16T17:56:08Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 2877,
+        "updatedAt": "2026-10-16T21:17:41Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3028,
+        "updatedAt": "2026-10-16T21:17:58Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3132,
+        "updatedAt": "2026-10-16T21:18:33Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3049,
+        "updatedAt": "2026-10-16T21:18:07Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 2955,
+        "updatedAt": "2026-10-16T21:17:46Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3034,
+        "updatedAt": "2026-10-16T21:18:03Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 2999,
+        "updatedAt": "2026-10-16T21:17:50Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 2806,
+        "updatedAt": "2026-10-16T21:17:37Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3000,
+        "updatedAt": "2026-10-16T21:17:54Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 2783,
+        "updatedAt": "2026-10-16T21:22:19Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3059,
+        "updatedAt": "2026-10-16T21:18:28Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3055,
+        "updatedAt": "2026-10-16T21:18:24Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3052,
+        "updatedAt": "2026-10-16T21:18:12Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3054,
+        "updatedAt": "2026-10-16T21:18:20Z",
+        "state": "CLOSED"
+      },
+      {
+        "number": 3053,
+        "updatedAt": "2026-10-16T21:18:16Z",
         "state": "CLOSED"
       }
     ]
@@ -1320,96 +1385,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n## Current State\n\nWhen a feature run finishes, none of its closing surfaces tell the human how to use or check what was built: which page to open, which steps to take, what result to expect. The filed use case was a four-spec `/flow` bundle that merged and deployed in one session. The user then had to ask in chat what had been completed and how to use it.\n\nVerified against the tree:\n\n- `plugin/skills/flow/summary-template.md` has these sections: Spec, Timing, Key Outputs, Manual Steps Required, Actions Performed, Creative Opportunities, Depth Opportunities and Next Actions (lines 10-87). `plugin/skills/flow/multispec-summary.md` has Timing, Manual Steps Required and Per-Spec Details (lines 8-39). Neither template has a section aimed at the user, and nothing anywhere in `plugin/skills/` renders a walkthrough of how to use the result.\n- `plugin/skills/wrap-up/verification-brief.md:52-80` makes the non-parent Verification Brief depend on `exceedsOversightFloor` (`plugin/bin/lib/issues/oversight-floor.js`, #367). On `exceeds: false` it skips Steps 1-4: no `demo:pending`, no observation plan, no brief. `plugin/skills/wrap-up/verification-brief-parent-gate.md:228-238` applies the same risk-only gate on the parent path. Part 2 of that brief, the walkthrough of the primary path, is the only walkthrough aimed at a human, so a run below the floor gets none.\n- `plugin/skills/demo/SKILL.md` Step 2 (lines 78-166) runs Prepare/Validate/Show from the brief's `### Observation plan`. The user found that output reads like an agent procedure.\n\n## Deliverables\n\n1. **One shared \"Try it\" block.** Define a single shared shape for a human walkthrough of each feature: precondition (deployed? data sync? feature flag?), access tier or login, entry point (route, page or command), steps, and expected result. Build it from the spec's Deliverables and Acceptance Criteria plus the QA stories that passed. For a non-web surface, use the observation plan's Entry point command instead of a route. Put it in one place (a new `_shared/` contract, or `_shared/observation-plan.md` if it fits there) and have every consumer cite it rather than copy it.\n2. **Pipeline summaries.** `flow/summary-template.md` gets a mandatory `### Try it` section for each spec. `flow/multispec-summary.md` gets one section per spec plus a section for the end-to-end path across specs.\n3. **Walkthrough no longer depends on the oversight floor.** In both `wrap-up/verification-brief.md` and `verification-brief-parent-gate.md`, the floor continues to gate the `demo:pending` label and the sign-off ceremony only. The walkthrough is produced on every feature delivery, including runs below the floor, where it appears in the summary or PR without a full brief.\n4. **Demo shows the walkthrough first.** `/claude-tweaks:demo` renders the same Try it content at the top of its Show step, before Prepare/Validate output. That way `/demo #N` and the pipeline summary always present the same walkthrough.\n5. Update the `node --test` prose suites that pin these templates or the floor-gate wording in the same change.\n\n## Acceptance Criteria\n\n- A `/flow` run on a record below the oversight floor (`exceedsOversightFloor` returns `exceeds: false`) still ends with a `### Try it` section in its Pipeline Summary, and that section names an entry point, steps and an expected result.\n- A multi-spec run's summary has one Try it section per spec plus one section for the end-to-end path.\n- A record below the floor still gets no `demo:pending` label and no sign-off ceremony, so floor-gating of the label is unchanged.\n- `/claude-tweaks:demo #N` on a record whose brief has a Try it block shows that block before any Prepare/Validate output.\n- The Try it shape is defined in exactly one file. `flow/summary-template.md`, `flow/multispec-summary.md`, `wrap-up/verification-brief.md` and `demo/SKILL.md` cite it and do not restate its fields.\n- `npm test` passes in full.\n\n## Release Note\n\nFinished feature runs now end with a \"Try it\" walkthrough that says where to go, what to do and what to expect, even for low-risk changes.\n\n## Technical Approach\n\nStart with the shared block, because the other three surfaces depend on it. Most of its content already exists in the green QA stories (URL, steps, assertions) and in the spec's ACs, so the block is mostly a human-readable rendering of evidence already produced, not a new data source. Next, split the floor gate in `verification-brief.md`: one decision for the walkthrough (always) and one for `demo:pending` plus sign-off (gated). Keep the #2383 `oversightExempt` recording unchanged, because that tracks the label and not the walkthrough. Change the summary templates and demo's Show step last.\n\n### Key Files\n\n- `plugin/skills/flow/summary-template.md` — add the mandatory `### Try it` section for each spec\n- `plugin/skills/flow/multispec-summary.md` — add Try it sections per spec plus an end-to-end path section\n- `plugin/skills/wrap-up/verification-brief.md` — split the oversight-floor gate (walkthrough always; label and ceremony gated)\n- `plugin/skills/wrap-up/verification-brief-parent-gate.md` — same split on the parent path\n- `plugin/skills/demo/SKILL.md` — Show step renders the Try it block first\n- `plugin/skills/_shared/observation-plan.md` — candidate home for the shared Try it shape, or the new `_shared/` file cites it\n- `plugin/bin/lib/issues/oversight-floor.js` — read-only; its semantics do not change\n\n## Gotchas\n\n- This touches four skill surfaces. If the builder finds it larger than one agent-sized change, split it at the shared block: the shared shape plus the summary templates first, then the verification-brief gate split and the demo change.\n- Do not remove the floor gate on `demo:pending`. The gate is correct for the ceremony. What the record objects to is only that it also hides the walkthrough.\n- A run with no green QA stories (a backend or infra surface) still needs a Try it block. Build it from the ACs and an observation-plan Entry point command, and never leave it empty or render it as placeholder text.\n- `/claude-tweaks:demo`'s legacy-brief path (`demo/legacy-brief-compatibility.md`) reads briefs without an Observation plan, so keep that path working.\n\n## Original request\n\nflow / verification-brief / demo: a finished feature run never tells the human how to use or verify what was built\n\n**Summary:** A finished feature run never tells the human how to use or verify what was built — the closing surfaces (multi-spec Pipeline Summary, Review Console, parent-gate Verification Brief, `/claude-tweaks:demo`) report gates, commits and console rows, not \"open this page, do this, expect that\".\n\n**Kind:** Gap\n\n**Affected component:** `/claude-tweaks:flow` (summary-template.md / multispec-summary.md), `wrap-up/verification-brief.md` + `verification-brief-parent-gate.md` (oversight-floor gate), `/claude-tweaks:demo`\n\n**Use case:**\nA four-spec `/flow` bundle (data layer + three UI/AI consumers) completed, merged and deployed in one session. The user then had to ask, in chat, \"tell me how I can use these new features — what did we actually complete?\". Nothing the pipeline had produced answered that for a person:\n\n- The Pipeline Summary lists build/test/review/polish outcomes, timing, manual steps and survey recommendations — nothing about the features from the user's side.\n- The Review Console lists auto-applied decisions and staged patches — an audit surface, not a walkthrough.\n- The parent-gate Verification Brief — the one artifact whose Part 2 is \"a walkthrough of the feature's primary path\" — was skipped by design: the parent's sub-issues maxed at `risk:medium` against a `risk-floor: high`, so `exceedsOversightFloor` returned false and no brief was composed. The only human-facing walkthrough is therefore gated on risk, which is the wrong trigger: a low-risk feature still needs to be found and tried by the person who asked for it.\n- `/claude-tweaks:demo`'s output (Prepare/Validate/Show driven by an observation plan) reads as an agent-facing procedure; the user's verbatim assessment was \"not super satisfied with the demo skill in its current output\".\n\nWhat the user wants, by default and independent of the oversight floor: every feature delivery ends with a human \"Try it\" section — per feature: the route or page to open, the login tier it needs, the steps (click/type), the expected result, and any precondition (deployed? data sync run? feature flag?). For a bundle, one section per spec plus the end-to-end path across them. `/claude-tweaks:demo` should consume and present the same walkthrough rather than a separate observation-plan shape, so the two never diverge.\n\n**Suggested shape:**\n1. `flow/summary-template.md` and `multispec-summary.md` gain a mandatory `### Try it` section (per spec: precondition, tier, route, steps, expected), composed from the spec's Deliverables/ACs plus the QA stories that passed — the stories already encode URL + steps + assertions, so the walkthrough is mostly a human-readable rendering of the green stories.\n2. The parent-gate/non-parent Verification Brief's Part 2 walkthrough is produced regardless of the oversight floor; the floor should only gate the `demo:pending` label and sign-off ceremony, not the existence of the walkthrough.\n3. `/claude-tweaks:demo` renders that same `Try it` content as its Show phase (and can keep Prepare/Validate as optional automation), so a human running `/demo #N` gets the walkthrough first.\n\n**Definition:** Clear\n\n**Plugin version:** 6.129.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-a3892625 -->\n",
-        "createdAt": "2026-09-29T15:43:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
-            "name": "size:high",
-            "description": "Scoring: large change — consider decomposition before building",
-            "color": "BFD4F2"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2821,
-        "state": "OPEN",
-        "title": "flow / verification-brief / demo: a finished feature run never tells the human how to use or verify what was built",
-        "updatedAt": "2026-10-16T16:31:23Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "high",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate\n\n## Current State\n\n`plugin/bin/lib/issues/record.js` is 898 lines with 28 top-level functions — the unified work-record taxonomy and payload assembly module (label vocabularies, `recordPayload`/`specShapedBody` composition, fingerprint extraction, dependency/blocker parsing, sub-issue queries, and, as of this same session, the newly-consolidated `extractSection`/`typeOf` helpers). A whole-branch review lens (3e, single-agent, unconfirmed) flagged it as module sprawl.\n\n## Deliverables\n\nA deliberate split into cohesive sub-modules (candidate boundaries: label/facet vocabulary and parsing, record-payload/specShapedBody composition, fingerprint handling, dependency/blocker/sub-issue query building) — done as a dedicated architecture pass, not a ledger-cleanup afterthought, since this file has high fan-in (compose-subject.js, decomposition-crossref.js, grouping.js, record-graph/encode.js, and more already import from it) and a careless split risks regressions across every consumer.\n\n## Acceptance Criteria\n\n- `record.js` itself shrinks to a size where its role is legible at a glance (no fixed line target — judged by the split's own boundaries, not a byte number)\n- Every existing consumer's imports still resolve (either from `record.js` re-exporting the split pieces, or updated to import from the new locations directly — the split's own call)\n- Full `npm test` passes with no regressions\n\n## Release Note\n\n`issues/record.js` split into cohesive sub-modules for maintainability; no behavior change.\n\n_Filed by `ledger resolve gate`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
         "createdAt": "2026-09-29T02:00:03Z",
         "labels": [
@@ -1663,90 +1638,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThis record was filed as a `materialize.js` bug: invoked from inside a record's worktree with `--run-dir` pointing at the anchored main-checkout run directory, the materialized spec landed at the worktree-local path `{worktree}/.claude-tweaks/pipelines/{run-id}/work/{n}-spec.md`.\n\nThat write is designed behavior, not a resolution bug. `plugin/bin/materialize.js` lines ~290–317 (#1210) deliberately rewrite a `--run-dir` that resolves to the main checkout (or another worktree) into the cwd worktree's equivalent path when cwd is inside a linked worktree, and print a stderr notice saying so. The reason is `materialize.md`'s worktree-first ordering: the spec must land on the feature branch. `_shared/pipeline-run-dir.md:67` documents `work/{n}-spec.md` as an exception that \"stays inside the worktree\".\n\nThe real defect is documentation drift: `plugin/skills/flow/materialize.md` still describes `--run-dir` as \"the literal write-location prefix, not a run identity — the CLI writes `{--run-dir}/work/{n}-spec.md`\" (line 5) and repeats \"`--run-dir` is the literal write-location prefix\" (line 7). Read literally, both say the main-checkout path is honored from a worktree, which is what led the reflect pass to file this as a bug.\n\n## Deliverables\n\n1. Correct `plugin/skills/flow/materialize.md` lines 5 and 7 to state that `--run-dir` is the write-location prefix except when cwd is inside a linked worktree and the path resolves elsewhere, in which case the CLI writes to the cwd worktree's equivalent path (#1210), citing `_shared/pipeline-run-dir.md`'s `work/{n}-spec.md` exception rather than restating it.\n2. Make `materialize.js`'s usage text (and any other plugin prose describing `--run-dir` as literal) agree.\n3. If an existing test already covers the #1210 rewrite, reference it in the PR; if none does, add one invoking `materialize.js` from a worktree cwd with a main-checkout `--run-dir` and asserting the worktree-local write plus the stderr notice.\n\n## Acceptance Criteria\n\n1. No plugin prose describes `--run-dir` as an unconditional literal write location.\n2. `materialize.md` states the worktree-local rewrite and cites `_shared/pipeline-run-dir.md`'s exception.\n3. A test pins the rewrite behavior, existing or new.\n4. `npm test` passes.\n\n## Release Note\n\nN/A — documentation correction; no behavior change.\n\n## Technical Approach\n\nProse edit in `materialize.md`, a check of `materialize.js`'s `USAGE` string, and a repo-wide grep for \"literal write-location\" and similar phrasing in `plugin/`. No code change to the rewrite itself.\n\n### Key Files\n\n- `plugin/skills/flow/materialize.md` — lines 5 and 7 corrected\n- `plugin/bin/materialize.js` — `USAGE` text, if it says \"literal\"\n- `plugin/skills/_shared/pipeline-run-dir.md` — cited, not edited\n\n## Gotchas\n\n- Do not \"fix\" `materialize.js` to honor the main-checkout path literally: that would reintroduce the stray main-checkout write #1210 closed.\n- Prose conformance tests pin `materialize.md` text; run the full suite.\n\n## Original request\n\nmaterialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir\n\nOrigin: reflect full mode from wrap-up run 2026-09-18T205605-dispatch-drain-pr-merges-standalone\nDefer-reason: tangential\n\n## Current State\n\nDuring record #2466's build attempt (dispatch drain, 2026-09-18), `materialize.js` was invoked from inside the record's dedicated worktree with `--run-dir` pointed at the anchored main-checkout run directory (`.claude-tweaks/pipelines/2026-09-18T063050-record-2466`, per `_shared/pipeline-run-dir.md`'s Anchoring section). Instead, the materialized spec (`work/2466-spec.md`) landed at a worktree-relative shadow path -- `{worktree}/.claude-tweaks/pipelines/2026-09-18T063050-record-2466/work/2466-spec.md` -- a separate, untracked directory tree that happens to share the same relative subpath as the real run dir. This is a previously-known pattern recurring live, meaning the underlying resolution bug in `materialize.js` was never actually fixed at the source -- only documented as a gotcha to watch for and discard after the fact.\n\n## Deliverables\n\n- Investigate `materialize.js`'s `--run-dir` handling to find where a value that should already be an absolute, anchored path gets re-resolved (or silently re-joined) against the current working directory instead of used as given.\n- Fix it so `materialize.js` always writes to the literal `--run-dir` path passed to it, regardless of the caller's cwd (worktree or main checkout).\n- Add a regression test: invoke `materialize.js` with an absolute `--run-dir` from a cwd that is NOT that run dir's own ancestor (e.g., a sibling worktree), and assert the spec lands at the given absolute path, not a cwd-relative shadow of it.\n\n## Acceptance Criteria\n\n- `materialize.js`, invoked from any worktree with an absolute `--run-dir` pointing at the main checkout, writes the materialized header to that literal path -- no worktree-relative shadow copy is created.\n- A new regression test reproduces this scenario and fails on the pre-fix code, passes after the fix.\n- `npm test` passes in full.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-09-18T21:09:39Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          }
-        ],
-        "number": 2601,
-        "state": "OPEN",
-        "title": "materialize.js writes the spec header to a worktree-relative shadow path instead of the anchored main-checkout run dir",
-        "updatedAt": "2026-10-15T16:20:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
         }
       }
     ],
