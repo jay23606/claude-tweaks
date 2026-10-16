@@ -15,7 +15,7 @@ const { execFile: execFileCb, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const { resolvePolicyConfig } = require('../policy-schema');
 const { parseManifestYaml } = require('../flow/manifest');
-const { parseDependencies } = require('../issues/record');
+const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
@@ -329,16 +329,31 @@ function withTimeout(fn, ms) {
 // "terminal" the way it was before this fix.
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
+// #3004: a build/* row carried into the ledger as `deferred` (a recommended
+// deferral) or left `open` with no `Defer-reason:` at all gives no evidence
+// it ever passed `_shared/deferral-gate.md`'s fix-now check — severity
+// ("SDD minor (deferred)") is explicitly listed there as a bad reason.
+// Scoped to the `build`/`build/*` phase only: this backstop targets
+// build-time review-finding triage, not every other phase's ledger usage
+// (a genuinely blocked row is also `open` by Common Step 4's original
+// design — the fix for that is requiring it to ALSO carry a structured
+// `blocked-dependency`/`blocked-external` Defer-reason, per build/SKILL.md's
+// Common Step 4 update, not a carve-out here).
+const DEFER_REASON_RE = /Defer-reason:\s*([a-z-]+)/i;
+
 function parseLedger(text) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
   let open = 0;
   let unrecognized = 0;
   const unrecognizedValues = new Set();
+  const missingDeferReason = [];
   for (const row of rows) {
     const cells = row.split('|').slice(1, -1).map((c) => c.trim());
     const phase = cells[1] || 'unknown';
+    const item = cells[2] || '';
     const status = (cells[3] || '').toLowerCase();
+    const resolution = cells[4] || '';
     byPhase[phase] = byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
     byPhase[phase].total += 1;
     if (status === 'open') {
@@ -346,8 +361,17 @@ function parseLedger(text) {
     } else if (!LEDGER_TERMINAL_STATUSES.has(status)) {
       unrecognized += 1; byPhase[phase].unrecognized += 1; unrecognizedValues.add(cells[3] || '');
     }
+    if (/^build(\/|$)/.test(phase) && (status === 'deferred' || status === 'open')) {
+      const match = DEFER_REASON_RE.exec(resolution);
+      const reason = match ? match[1].toLowerCase() : null;
+      if (!reason || !DEFER_REASONS.includes(reason)) {
+        missingDeferReason.push({ phase, item, status });
+      }
+    }
   }
-  return { open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues] };
+  return {
+    open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues], missingDeferReason,
+  };
 }
 
 // A ledger filename names record {n} only at a `-{n}-` or `-{n}.` boundary. A
@@ -442,7 +466,7 @@ function ledgerProbe(inputs, deps) {
   if (ownedCandidates.length > 1 && files.length === 0) files = ownedCandidates;
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
-    unrecognized: 0, unrecognizedValues: [],
+    unrecognized: 0, unrecognizedValues: [], missingDeferReason: [],
     unattributedFiles: unattributedCandidates.map((f) => path.posix.join('docs', 'plans', f)),
   };
   const unrecognizedValuesSet = new Set();
@@ -454,6 +478,7 @@ function ledgerProbe(inputs, deps) {
     const one = parseLedger(text);
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
+    totals.missingDeferReason.push(...one.missingDeferReason);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
       totals.byPhase[phase].open += c.open; totals.byPhase[phase].total += c.total; totals.byPhase[phase].unrecognized += c.unrecognized;

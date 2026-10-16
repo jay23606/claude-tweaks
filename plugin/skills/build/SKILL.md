@@ -248,8 +248,10 @@ If any part of the plan is blocked (missing infrastructure, unresolved dependenc
    - **Record mode:** add to the materialized spec file under a "Blocked / Future Work" section
    - **Design mode:** file a backlog work record via `/claude-tweaks:capture`
 2. Note what unblocks them
-3. Append blocked items to the open items ledger (see `/claude-tweaks:ledger`) with phase `build/*` and status `open`
+3. Append blocked items to the open items ledger (see `/claude-tweaks:ledger`) with phase `build/*` and status `open`, and a Resolution naming `Defer-reason: blocked-dependency` or `blocked-external` (`_shared/deferral-gate.md`'s vocabulary) — this is the one case that row is genuinely open-by-design rather than skipping the fix-now check
 4. These are resolved by the ledger resolve gate (`/claude-tweaks:ledger resolve`), run by `/claude-tweaks:wrap-up`'s Phase 3 ledger gate or `/claude-tweaks:flow` Step 5 — not by `/claude-tweaks:help`, which does not scan ledger files
+
+**Review-finding ledger writes (#3004).** A Minor-or-higher finding from a per-task reviewer or the whole-branch review (whichever execution strategy ran) follows the same rule as Step 1-4 above: fix it now, or carry it to the ledger only after `_shared/deferral-gate.md`'s fix-now check names exactly one `Defer-reason:` in the row's Resolution text, cited rather than restated. `build/dispatch.md`'s SDD invocation instruction applies this at the subagent-dispatch site; this paragraph is the same rule for whichever execution strategy ran.
 
 **Follow-up ideas (independent of blocking).** If, while implementing, you notice an opportunistic improvement or idea outside the current spec/design's scope — not blocking the current work, just observed in passing — file it via `/claude-tweaks:capture` as a fresh backlog work record before it's lost, rather than inflating this build's scope. This applies in both spec and design mode, and runs regardless of whether any part of the plan is actually blocked.
 
