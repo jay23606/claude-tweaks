@@ -60,6 +60,8 @@ Possible QA statuses (the four canonical values from qa-reporting.md's Status de
 - **ALL FAILED** — no stories passed
 - **Skipped** / **Not run** — QA did not execute
 
+**Staleness qualifier (#3047):** when Step 6.7 applied a fix wave that touched a QA story's `source_files` and `late-findings-qa-refresh.md`'s re-run could not run (no dev server/browser — a headless run), render the pre-wave status with this qualifier appended instead of reporting it as current: `{status} — ran before the review's fix wave ({N} commits since); stories touching changed files: {ids}`. When the re-run DID happen, the line reports its fresh result with no qualifier — the qualifier only ever marks evidence the run could not refresh.
+
 ### Code Review Findings (confirmed)
 | Category | Finding | Severity | Action |
 |----------|---------|----------|--------|
