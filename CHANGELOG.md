@@ -84,6 +84,39 @@ Three conventions follow from how this repo works, and all are visible below:
 * Worktree teardown after a squash merge: the ancestry… ([#3088](https://github.com/thn-inc/claude-tweaks/issues/3088)) ([a2f9641](https://github.com/thn-inc/claude-tweaks/commit/a2f96415f75a1efc86cf9d99d9d8d2b20f558312))
 * wrap-up-engine verify: run-dir-archived… ([#2552](https://github.com/thn-inc/claude-tweaks/issues/2552)) ([2acba9f](https://github.com/thn-inc/claude-tweaks/commit/2acba9f6b63bf851196422ec36e990ea2686dd9b))
 
+### Highlights
+* /claude-tweaks:wrap-up no longer deletes a plan that code or a decision record still cites when plan pruning is enabled.
+* Fix a resumed dispatch claim never getting its `bot:in-progress` label, which let the drain re-select an already-dispatched record and parked its PR.
+* A pipeline run decision log can no longer be silently overwritten when two cleanup paths archive the same run.
+* Finishing a squash-merged pipeline run now proves the worktree is safe to remove on the first check and deletes the remote branch automatically, instead of failing the merge check and leaving the branch behind.
+* Fix QA and visual-review auto-start ignoring the `start_command` declared in `stories/servers.yml`: a declared command is now used and never overwritten.
+* No user-visible change — documentation accuracy fix.
+* No user-visible change — agent harness reliability fix.
+* No user-visible change.
+* No user-visible change.
+* No user-visible change: documents and mitigates a latent correctness gap in the `gh`-absent MCP
+* Dispatch skips records that are not spec-shaped before checking GitHub for them, so those records no longer cost API calls or produce stray close proposals.
+* Make cloud-transport claims and marker comments verify what actually landed, so dispatch stops re-selecting held records and marker lookups stop missing escaped comments.
+* Stop `/specify` from refusing to shape a record just because a stalled, unrelated record touches the same files.
+* Visual review's instructions now match the playwright-cli browser backend instead of the retired agent-browser.
+* Stop `/simplify` from rewriting a test's expected value to read the production constant it checks, which made the test unable to fail.
+* No user-visible change: internal mechanism for closing out watch-item backlog records more
+* Fix `--baseline` verification misclassifying failing test files as new regressions when the checkout path contains a space.
+* Dispatch no longer silently drops earlier exclusion entries when its exclusion list is corrupted mid-pull.
+* Stop `/review` from auto-deleting test cases on a "these tests are vacuous" finding that no agent actually ran.
+* No user-visible change.
+* The worktree guard now allows plain PowerShell script-file invocations while still refusing inline commands.
+* Claim sweeps and reconcile now see every claim in the registry, not just the first 1000.
+* No user-visible change: closes a gap where a singleton watch-item run's PR could auto-close its
+* No user-visible change — documentation accuracy fix.
+* No user-visible change: verified that spec red-team reviews batch correctly across several sub-issues.
+* Fixed several gaps and duplicates in hook event logging.
+* Fixed wrap-up verification failing on archived runs and ledger checks for reasons outside the run.
+* Clarified that /simplify's out-of-scope revert check waits for the simplifier agent to finish, so late edits can no longer slip past it.
+* No user-visible change — agent harness reliability fix.
+* Design evaluation: whether the plugin's hand-rolled GIF/PNG/LZW codec should be replaced by an established library.
+* Fixes a bug where the dispatch/flow pipeline's GitHub MCP transport (used when `gh` CLI is absent, e.g. in cloud Routine sandboxes) could silently delete an issue's non-workflow labels (risk/size/priority/ceremony/type categorization) when adding a bot-status label.
+
 ## [6.140.1](https://github.com/thn-inc/claude-tweaks/compare/v6.140.0...v6.140.1) (2026-10-11)
 
 
