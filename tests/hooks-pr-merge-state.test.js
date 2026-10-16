@@ -22,7 +22,7 @@ function installGhWrapper(jsonOrScript) {
     ? jsonOrScript
     : `#!/bin/sh\ncat <<'EOF'\n${JSON.stringify(jsonOrScript)}\nEOF\n`;
   fs.writeFileSync(wrapperPath, body);
-  fs.chmodSync(wrapperPath, 0o755);
+  fs.chmodSync(wrapperPath, 0o755); // root-safe: makes a spy script executable, not a permission-denial simulation
   return wrapperDir;
 }
 
