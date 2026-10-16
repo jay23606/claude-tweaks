@@ -1,11 +1,11 @@
 {
-  "computedAt": "2026-10-16T05:00:24.720Z",
+  "computedAt": "2026-10-16T05:25:24.223Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
-        "number": 3137,
-        "updatedAt": "2026-10-15T19:21:36Z",
+        "number": 3198,
+        "updatedAt": "2026-10-16T05:23:49Z",
         "state": "OPEN"
       },
       {
@@ -20,7 +20,7 @@
       },
       {
         "number": 3130,
-        "updatedAt": "2026-10-15T17:46:01Z",
+        "updatedAt": "2026-10-16T05:07:19Z",
         "state": "OPEN"
       },
       {
@@ -45,7 +45,7 @@
       },
       {
         "number": 3114,
-        "updatedAt": "2026-10-15T16:30:23Z",
+        "updatedAt": "2026-10-16T05:09:56Z",
         "state": "OPEN"
       },
       {
@@ -66,11 +66,6 @@
       {
         "number": 3088,
         "updatedAt": "2026-10-15T18:42:18Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3086,
-        "updatedAt": "2026-10-15T17:57:25Z",
         "state": "OPEN"
       },
       {
@@ -120,7 +115,7 @@
       },
       {
         "number": 3065,
-        "updatedAt": "2026-10-15T16:28:55Z",
+        "updatedAt": "2026-10-16T05:24:08Z",
         "state": "OPEN"
       },
       {
@@ -150,7 +145,7 @@
       },
       {
         "number": 3051,
-        "updatedAt": "2026-10-15T16:24:24Z",
+        "updatedAt": "2026-10-16T05:23:59Z",
         "state": "OPEN"
       },
       {
@@ -185,7 +180,7 @@
       },
       {
         "number": 3032,
-        "updatedAt": "2026-10-15T16:32:13Z",
+        "updatedAt": "2026-10-16T05:23:51Z",
         "state": "OPEN"
       },
       {
@@ -466,6 +461,84 @@
     ]
   },
   "groups": [
+    [
+      {
+        "body": "Origin: /claude-tweaks:dispatch close-out of #3119 (PR #3181), 2026-10-16\n\nDefer-reason: tangential\n\n## Current State\n\n`archiveRunDir` (`plugin/bin/lib/reconcile/archive-merged.js`, ~line 771) computes `archiveDirPreexisted` but uses it only on refusal paths. On the success path it `renameSync`s every non-`work/` entry into `archive/{runId}/`, silently overwriting any same-named file already there.\n\n`close-run` (`bin/hooks.js`) and `bin/release-claim.js` both write into a run-dir path that no longer exists (recreating it) instead of refusing — unlike `log-decision.js`, which refuses with `run dir does not exist`.\n\nObserved 2026-10-16 closing out #3119 (PR #3181): a concurrent unlocked `reconcile` archived `2026-10-15T184334-record-3119` mid-sequence; `release-claim.js` then wrote a 1-entry `decisions.md` into a recreated run dir at the old path, `close-run` added a fresh `run-state.json`/`events.jsonl`, and `hooks.js archive-run` moved all three over the real archived copies. The ~50-entry decision log was replaced by a stub (partially rebuilt from subagent transcripts); `events.jsonl` was lost (gitignored, no snapshot).\n\n## Deliverables\n\n- `archiveRunDir` never overwrites an existing destination entry: when `archive/{runId}/{entry}` already exists it refuses (new refusal reason) or, for append-only logs (`decisions.md`, `events.jsonl`), appends instead of replacing.\n- `close-run` and `release-claim.js` refuse to recreate an absent run dir: when the path is missing but `archive/{runId}/` exists, resolve to the archive twin or skip the local write with a warning, matching `log-decision.js`.\n- A regression test covering archive -> recreate stub -> `archive-run` that asserts the original archived `decisions.md` content survives.\n\n## Acceptance Criteria\n\n- Running `hooks.js archive-run --run X` when `archive/X/decisions.md` already exists leaves its original lines intact (byte-for-byte prefix preserved).\n- `close-run --run X` against an already-archived run creates no files at the old path.\n- `release-claim.js N --run X` against an already-archived run creates no files at the old path, and still releases the claim and posts the comment.\n- New tests fail on the pre-fix code (verified by reverting) and pass after.\n\n## Release Note\n\nA pipeline run decision log can no longer be silently overwritten when two cleanup paths archive the same run.\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-16T05:02:26Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Size: medium effort",
+            "color": "fbca04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Risk: medium blast radius",
+            "color": "fbca04"
+          }
+        ],
+        "number": 3198,
+        "state": "OPEN",
+        "title": "archive-run silently overwrites an already-archived run directory (decisions.md, events.jsonl, run-state.json)",
+        "updatedAt": "2026-10-16T05:23:49Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "**Skill:** skill-prose-conformance-tests | **Section:** An ordering claim's control must carry both markers — in the wrong order | **Category:** drift | **Classification:** additive | **Confidence:** high\n\nVerified-as-of: bc766631f4e41d913c1a4c070c6fb7aafe9fe5ec\n\nPremise-check: ! grep -qF -- '`## Availability (checked before any option is presented)` in `design-wrapper/modes/explore.md`, and `**Policy gate.**` / `**Availability pre-check.**` in `specify/design-pre-steps.md`' '/home/user/claude-tweaks/.claude/skills/skill-prose-conformance-tests/SKILL.md'\n\n## Current State\n\ntests/design-variant-exploration-availability-order.test.js pins the literal markers `## Availability (checked before any option is presented)` (line 35) and `**Availability pre-check.**` (line 47) — neither carries \"exact-pin\"/\"Exact-pin\". The live headings in plugin/skills/design-wrapper/modes/explore.md:40 and plugin/skills/specify/design-pre-steps.md:51 confirm the same wording. The skill's quoted citation of these markers is simply wrong, in both the file it cites and reality.\n\n## Deliverables\n\n**Current:**\n```\n`## Availability (exact-pin, checked before any option is presented)` in `design-wrapper/modes/explore.md`, and `**Policy gate.**` / `**Exact-pin availability pre-check.**` in `specify/design-pre-steps.md`\n```\n\n**Proposed:**\n```\n`## Availability (checked before any option is presented)` in `design-wrapper/modes/explore.md`, and `**Policy gate.**` / `**Availability pre-check.**` in `specify/design-pre-steps.md`\n```\n\n## Acceptance Criteria\n\nThe #2540 worked example misquotes both pinned markers it cites — neither the live skill files nor the test's own pinned strings carry the \"exact-pin\"/\"Exact-pin\" wording this paragraph attributes to them\n\n## Release Note\n\nNo user-visible change — agent harness reliability fix.\n\n_Filed by `/claude-tweaks:harness-health`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n\n<!-- work-fingerprint: harnesshealth-15e74e68 -->\nwork-fingerprint: harnesshealth-15e74e68",
@@ -3453,7 +3526,7 @@
         "number": 3130,
         "state": "OPEN",
         "title": "visual-decide stop exits 0 without writing server-stopped marker when target PID is a zombie",
-        "updatedAt": "2026-10-15T17:46:01Z",
+        "updatedAt": "2026-10-16T05:07:19Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
@@ -3623,84 +3696,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate — #3105 final whole-branch review sweep, run 2026-10-10T225734-spec-3105\n\nDefer-reason: tangential\n\n## Current State\n\n#3105 found that a test which spawns a child and resolves on the child's `'exit'` event can read its stdio before the pipe drains: Node fires `'exit'` while the streams may still be open. That test's own stdout capture is fixed. Six more tests accumulate **stderr** and resolve on `'exit'`: `tests/bin-lib/declined-learning/store-concurrency.test.js:41` and `:74`, `tests/bin-lib/file-lock.test.js:151`, `tests/bin-lib/log-decision/append.test.js:207`, and `tests/hooks-context.test.js:480` and `:528`. Their pass/fail assertions read from disk, so they do not flake on the capture. However, a failing worker's rejection message can arrive with truncated stderr, which loses the diagnosis exactly when it is needed. `tests/bin-lib/hooks/sweep-shadow-claim-concurrency.test.js:72` and `tests/bin-lib/ports/registry.test.js:119` already use `'close'`. This is the third and fourth occurrence of the pattern, so a shared spawn-and-collect test helper is worth weighing.\n\n## Deliverables\n\n- Switch the six listed handlers from `'exit'` to `'close'` (`(code, signal)`), keeping each rejection's stderr. Alternatively, introduce one shared test helper that spawns a child and resolves on `'close'` with `{code, signal, stdout, stderr}`, and use it at all eight sites.\n\n## Acceptance Criteria\n\n- [ ] No test under `tests/` that collects a spawned child's stdout or stderr resolves on `'exit'`. This holds when checked by a grep for `.on('exit'` beside a stdio `'data'` accumulator, a test that waits on a `stdio: 'ignore'` SIGKILL being the documented exception.\n- [ ] The six touched test files pass.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-11T01:25:24Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3114,
-        "state": "OPEN",
-        "title": "Resolve spawned test workers on close, not exit, across the remaining concurrency tests",
-        "updatedAt": "2026-10-15T16:30:23Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -4107,360 +4102,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`bin/claim-targets.js` resolves the repo slug once, before claiming anything, via `repoSlugOf` (`plugin/bin/lib/claim-targets/claim-targets.js:85-89`, a single `gh repo view --json nameWithOwner` call). Any exception from that call goes down the usage-error path: it prints `claim-targets: could not resolve repo slug — {err}` followed by the full `USAGE` text, and returns exit `2` (`claim-targets.js:210-215`). An empty slug does the same (`:216`).\n\nSo a `gh` timeout (`spawnSync gh ETIMEDOUT`) is reported as \"malformed invocation or missing dependency\", the same class as a bad `--targets` value. The CLI already has a transient class for exactly this: exit `4` with a `{transient: [...], released, releaseFailed}` envelope (`claim-targets.js:314`, `:400`; usage line `:40`). `/flow`'s Step 2.8 renders a \"Claim failed (transient)\" card for exit 4, and treats exit 2 as a hard stop, \"a bug in this call\" (`plugin/skills/flow/claim-targets.md:255-257`, `:274-275`). That doc line explicitly lists \"repo resolution failed\" under exit 2 today.\n\nThe `gh` timeout bound is `GH_TIMEOUT_MS` (`plugin/bin/lib/shared-primitives.js:85`, default 5000 ms). It can be overridden by `CLAUDE_TWEAKS_GH_TIMEOUT_MS` or the `gh-timeout-ms` policy key (`plugin/bin/lib/policy-schema.js:123`). The same module already ships the retry-once primitive this case needs: `isTimeoutError` (`shared-primitives.js:162`) and `runClassified(fn, mapError, { retryOnTimeout: true })` (`:166`). Per `plugin/skills/_shared/policy-schema.md:221`, `reconcile`'s `release-merged.js`, `preflight.js` and `pr-state.js` already use it. `claim-targets.js` does not.\n\nObserved (original request below): on a GitHub Enterprise host, the slug lookup took 2.3–3.6 s under contention from Step 2.8's file-overlap scan (`bin/preflight-records.js`), hit the 5000 ms bound, and exited 2 twice in a row. Raising the timeout to 30000 ms claimed all three targets on the first try.\n\n## Deliverables\n\n1. Route `repoSlugOf`'s `gh` call through `runClassified(..., { retryOnTimeout: true })`, so that a single timeout is retried once at the same bound before anything is reported.\n2. Reclassify slug-resolution failures in `run()`:\n   - **A timeout that survives the retry** (`isTimeoutError`) exits `4`. stdout carries the CLI's existing transient envelope, with every requested target listed as `{issue, error}`, and `released: []` / `releaseFailed: []` since nothing was claimed yet. stderr carries one line naming the timeout and the `gh-timeout-ms` / `CLAUDE_TWEAKS_GH_TIMEOUT_MS` override, and never the `USAGE` text.\n   - **`gh` absent (ENOENT) and an empty slug** stay exit `2` (a genuine missing dependency or misconfiguration), but stop printing the `USAGE` text, which describes argv and is irrelevant to either cause.\n   - **Under `--keep-going`**, the documented contract is that the CLI never exits 3, 4, or 5. A post-retry timeout therefore records every target in `skipped` with `reason: 'transient'` and exits 0, matching every other transient site.\n3. Update `plugin/skills/flow/claim-targets.md`'s exit-code table. Exit `2` no longer covers repo-resolution timeouts; exit `4`'s description covers the pre-claim slug-resolution timeout.\n4. Add tests in `tests/bin-lib/claim-targets/claim-targets.test.js`, using the module's injectable `gh` runner:\n   - a timeout that succeeds on retry (claims proceed, exit 0);\n   - a timeout on both attempts (exit 4, transient envelope, no `USAGE` text on stderr);\n   - the same double timeout under `--keep-going` (exit 0, every target skipped as transient);\n   - ENOENT (still exit 2).\n\n## Acceptance Criteria\n\n- With a fake `gh` that throws an `ETIMEDOUT` error on the first `repo view` call and succeeds on the second, `run()` claims normally and returns 0.\n- With a fake `gh` that throws `ETIMEDOUT` on both calls, `run()` returns 4. stdout parses as `{transient: [{issue, error}, ...]}`, with one entry per requested target, plus empty `released`/`releaseFailed`. stderr does not contain the `USAGE` string.\n- The same double timeout with `--keep-going` returns 0, and every target appears in `skipped` with `reason: 'transient'`.\n- A fake `gh` that throws ENOENT still returns 2, and stderr does not contain the `USAGE` string.\n- `plugin/skills/flow/claim-targets.md`'s exit-2 bullet no longer lists repo-resolution timeouts, and its exit-4 bullet names the slug-resolution timeout case.\n- `node --test tests/bin-lib/claim-targets/*.test.js` passes.\n\n## Release Note\n\nFix claim-targets reporting a slow GitHub response as a usage error. A repo-slug timeout is now retried once, then reported as a transient failure.\n\n## Technical Approach\n\nReuse `runClassified` and `isTimeoutError` from `shared-primitives.js` rather than adding a local retry loop, matching the three reconcile callers. `repoSlugOf` runs before any claim, so the transient exit needs no release step. Build the envelope directly instead of going through `abort()`, or pass empty claimed sets to it, whichever keeps the envelope shape identical to the existing transient sites. Leave the global 5000 ms default alone; projects on GitHub Enterprise already have `gh-timeout-ms`.\n\n### Key Files\n\n- `plugin/bin/lib/claim-targets/claim-targets.js` — `repoSlugOf` retry via `runClassified`; slug-failure classification in `run()`\n- `plugin/bin/lib/shared-primitives.js` — reused `runClassified` / `isTimeoutError` (no change expected)\n- `plugin/skills/flow/claim-targets.md` — exit-code table (exit 2 and exit 4 bullets)\n- `tests/bin-lib/claim-targets/claim-targets.test.js` — new timeout, keep-going and ENOENT cases\n\n## Gotchas\n\n- The original report's suggestion (c), running Step 2.8's overlap scan after the claim or limiting its concurrency, is not adopted. `flow/claim-targets.md` already orders the overlap warning \"Before claiming\" (line 86), so the contention comes from concurrent tool calls, not the documented order. Retry plus correct classification fixes the operator-facing defect without touching the step order.\n- `gh repo view` failing with a real auth or 404 error is not a timeout. `isTimeoutError` is deliberately narrow (`shared-primitives.js:160-163`), so those must not be retried or reclassified as transient.\n- `/claude-tweaks:dispatch`'s task prompt also invokes this CLI (`plugin/skills/dispatch/task-prompt.md:30`), with `--keep-going` available. Confirm its exit handling treats the new exit-4 slug case like any other transient.\n- ASSUMPTION — verify at build: `runClassified` passes the timed-out error's `code`/`killed` through unchanged when wrapping a `spawnSync`-based runner. Confirm with the test's fake runner throwing a real-shaped `{ code: 'ETIMEDOUT' }` error.\n\n## Original request\n\nclaim-targets: a gh timeout while resolving the repo slug exits 2 (usage error) instead of the transient-failure exit 4\n\n**Summary:** `bin/claim-targets.js` reports a `gh` ETIMEDOUT during repo-slug resolution as exit 2 (\"malformed invocation or missing dependency\") and prints the usage text. Its 5 s `gh` timeout is also tight when `/flow`'s own Step 2.8 overlap scan is running `gh` calls at the same time.\n\n**Kind:** Defect\n\n**Affected component:** `bin/claim-targets.js` (`repoSlugOf`), `bin/lib/shared-primitives.js` (`GH_TIMEOUT_MS`), `skills/flow/claim-targets.md` (Step 2.8)\n\n**Repro steps:**\n1. On a GitHub Enterprise host with ~280 open issues, run `/claude-tweaks:flow #A,#B,#C` (three records).\n2. Step 2.8 runs the file-overlap warning scan (`bin/preflight-records.js` over the open queue) and, in parallel, `bin/claim-targets.js --run-id <id> --targets A,B,C`.\n3. While the scan is fetching, `gh repo view --json nameWithOwner` takes 2.3–3.6 s. Under that contention the 5000 ms `GH_TIMEOUT_MS` expires.\n\n**Expected vs. actual:**\nExpected: a `gh` timeout is classified as a transient `gh` failure (exit 4 with the \"Claim failed (transient)\" card), or the slug lookup retries once with backoff.\nActual: `claim-targets: could not resolve repo slug — spawnSync gh ETIMEDOUT`, then the usage text, exit 2. This happened twice in a row and pointed the operator at a malformed invocation. Re-running with `CLAUDE_TWEAKS_GH_TIMEOUT_MS=30000` claimed all three targets on the first try.\n\nSuggested fix: (a) map a slug-resolution spawn error/ETIMEDOUT to exit 4; (b) retry slug resolution once with backoff, or give it a longer timeout than per-call `gh` reads; (c) optionally run Step 2.8's informational overlap scan after the claim, or limit its concurrency.\n\n**Definition:** Clear\n\n**Plugin version:** 6.137.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-59413f38 -->\n\n",
-        "createdAt": "2026-10-09T03:54:31Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3065,
-        "state": "OPEN",
-        "title": "claim-targets: a gh timeout while resolving the repo slug exits 2 (usage error) instead of the transient-failure exit 4",
-        "updatedAt": "2026-10-15T16:28:55Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`plugin/bin/lib/issues/claims-git-cas.js` runs every git call through `defaultRunner` (`:76`), which passes a fixed `timeout: GIT_TIMEOUT_MS` with `GIT_TIMEOUT_MS = 10000` (`:74`) and offers no override. When a call is killed on the timeout:\n\n- `readClaimBlobGit`'s fetch path returns `failure: 'transport-failure'` from a bare `catch` (`:119-121`).\n- `classifyGitError` (`:60-71`) falls through to `{ kind: 'transport-failure' }` for any unmatched error, a timeout kill included.\n\nSo a slow-but-healthy remote is indistinguishable from an unreachable one. `bin/verify-run-bookends.js` reads live claims through `readClaimBlobGit` (`:30`) and reports any read failure as `read-failed: transport-failure` (`:113-114`).\n\nThe repo already solved the same problem for `gh` in #2567. `GH_TIMEOUT_MS` in `plugin/bin/lib/shared-primitives.js:138` (`resolveGhTimeoutMs`) resolves env `CLAUDE_TWEAKS_GH_TIMEOUT_MS` > policy key `gh-timeout-ms` (`plugin/bin/lib/policy-schema.js:123`, integer 1000-60000, default 5000; read via `plugin/bin/lib/policy.js:105`) > default. It is lazily resolved and cached per process. `shared-primitives.js:162` exports `isTimeoutError` (the `ETIMEDOUT` / `killed` / `SIGTERM` check).\n\nObserved (reporter, plugin 6.137.0): about seven concurrent dispatch sessions on one machine against a GitHub Enterprise remote. `verify-run-bookends` failed three times in a row on a live, healthy claim because the claims-branch fetch exceeded 10 s; a hand-timed fetch took 8.6 s, and the fourth attempt passed.\n\n## Deliverables\n\n1. Make the claims-git-cas timeout configurable, mirroring #2567. Add a `git-timeout-ms` policy key in `policy-schema.js` (integer, 1000-120000, default 30000, category `housekeeping`, tier `advanced`), a `policy.js` reader, and an env override `CLAUDE_TWEAKS_GIT_TIMEOUT_MS`, with precedence env > policy > default, resolved lazily and cached. `claims-git-cas.js`'s `defaultRunner` uses the resolved value instead of the fixed `GIT_TIMEOUT_MS`.\n2. Tell a timeout apart from other transport failures without changing the failure vocabulary. When the underlying error satisfies `isTimeoutError`, `readClaimBlobGit` and the other `transport-failure` returns in `claims-git-cas.js` add `timedOut: true` to their result. `failure` stays `'transport-failure'`, so `claim-store.js:344-350` and every other consumer behave exactly as before.\n3. `verify-run-bookends.js` names the timeout in its missing-bookend reason (for example `read-failed: transport-failure (timed out after {ms} ms)`) when `timedOut` is set.\n4. Document `git-timeout-ms` in `plugin/skills/_shared/policy-schema.md` next to `gh-timeout-ms`.\n\n## Acceptance Criteria\n\n- With no env var or policy key, the claims-git-cas runner uses 30000 ms; `CLAUDE_TWEAKS_GIT_TIMEOUT_MS=45000` yields 45000; a `git-timeout-ms: 20000` policy value yields 20000 when the env var is unset; an out-of-range or non-numeric value falls back the same way `gh-timeout-ms` does. Covered by tests next to the existing `gh-timeout-ms` resolution tests.\n- A runner stub throwing a timeout-shaped error (`killed: true` / `signal: 'SIGTERM'` / `code: 'ETIMEDOUT'`) makes `readClaimBlobGit` return `failure: 'transport-failure'` and `timedOut: true`. A non-timeout error returns `failure: 'transport-failure'` with no `timedOut`. Covered in `tests/bin-lib/issues/claims-git-cas.test.js`.\n- `verify-run-bookends` reports the timeout wording when `timedOut` is set, covered by its test.\n- `claim-store.js`'s behavior on a git transport failure, including the contents-API fallback, is unchanged, and the existing claim-store and claims-git-cas suites pass.\n- `policy-schema.md` and `policy-schema.js` agree on the new key (any existing schema/prose conformance test passes).\n\n## Release Note\n\nLet claim checks wait longer on slow git remotes (now configurable, default 30 s) and report a timeout as a timeout instead of a generic transport failure.\n\n## Technical Approach\n\nReuse the #2567 shape exactly: env, then policy key, then default, lazily cached. Reuse the shared `isTimeoutError` helper. A distinct `timedOut` flag is used instead of a new `failure: 'timeout'` value. `claim-store.js` and `claim-targets.js` branch on the existing failure vocabulary, and a new value would need a consumer sweep for a purely diagnostic gain. Retry-with-backoff (the reporter's last idea) is left to callers. With a 30 s bound, the observed 8.6 s fetch passes on the first attempt.\n\n### Key Files\n\n- `plugin/bin/lib/issues/claims-git-cas.js` — resolved timeout in `defaultRunner`; `timedOut` flag on timeout-shaped transport failures\n- `plugin/bin/lib/shared-primitives.js` — `GIT_TIMEOUT_MS` resolution alongside `GH_TIMEOUT_MS` (or a sibling resolver in the same shape)\n- `plugin/bin/lib/policy-schema.js` — `git-timeout-ms` key\n- `plugin/bin/lib/policy.js` — `git-timeout-ms` reader\n- `plugin/bin/verify-run-bookends.js` — timeout wording in the missing-claim reason\n- `plugin/skills/_shared/policy-schema.md` — document `git-timeout-ms`\n- `tests/bin-lib/issues/claims-git-cas.test.js` — `timedOut` cases\n\n## Gotchas\n\n- `shared-primitives.js` is required on `pre-tool-use.js`'s hot path (its own header). Keep the git-timeout resolution lazy, as `GH_TIMEOUT_MS` is, so no policy read happens unless claims-git-cas actually runs git.\n- A larger timeout lengthens the worst case of a genuinely unreachable remote, now up to 30 s per git call. This is accepted: claim operations are not on an interactive hot path, and the env/policy override lets a fast-network project lower it.\n- `policy-schema.js` and `policy-schema.md` are a code/prose twin. Add the key to both in the same change.\n\n## Original request\n\nclaims-git-cas: fixed 10 s git timeout fails claim reads on a loaded machine\n\n**Summary:** `claims-git-cas` runs every git call with a hard-coded 10 s timeout, so a claim read against a slow but healthy remote is killed and reported as a transport failure.\n\n**Kind:** Defect\n\n**Affected component:** `bin/lib/issues/claims-git-cas.js` (`GIT_TIMEOUT_MS`), reached via `bin/verify-run-bookends.js`\n\n**Repro steps:**\n1. Run several `/claude-tweaks:dispatch` sessions at once on one machine against a GitHub Enterprise remote, so a single-ref fetch of the claims branch takes 8-10 s.\n2. Let a `/claude-tweaks:flow` build,test call reach its end-of-call `verify-run-bookends` check while its claim is live.\n3. The claim read's `git fetch` exceeds `GIT_TIMEOUT_MS = 10000` in `defaultRunner`, `execFileSync` kills it, and `classifyGitError` maps the kill to `transport-failure`.\n\n**Expected vs. actual:**\nExpected: a claim read on a slow but healthy remote succeeds, or the failure names the timeout so the caller can tell \"remote slow\" from \"remote unreachable\".\nActual: the bookends check failed three times in a row on the timeout while the claim was live and healthy; a manual fetch of the same branch, timed by hand, took 8.6 s; the fourth attempt passed. About seven sibling dispatch sessions were running on the machine.\n\n**Suggested fix:** raise the default (30 s), allow an environment override (for example `CLAUDE_TWEAKS_GIT_TIMEOUT_MS`), and classify an `ETIMEDOUT` / killed-by-signal exec error as its own `timeout` kind so callers can retry it with backoff instead of treating it as a hard transport failure.\n\n**Definition:** Clear\n\n**Plugin version:** 6.137.0\n<!-- fingerprint: feedback-7d18a620 -->\n\n",
-        "createdAt": "2026-10-08T22:30:06Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Risk: medium blast radius",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3051,
-        "state": "OPEN",
-        "title": "claims-git-cas: fixed 10 s git timeout fails claim reads on a loaded machine",
-        "updatedAt": "2026-10-15T16:24:24Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`bin/claim-targets.js` adds the `bot:in-progress` label in exactly one place: `ensureAndAddLabel` (`plugin/bin/lib/claim-targets/claim-targets.js:94`, called at `:457`), reached only after a fresh claim write is verified and pushed onto `claimedThisRun` (`:455`). The self-owned branch (`:348-351` — a `live`/`stale` blob whose `runId` equals `--run-id`) pushes the issue onto `alreadyOwned` and `continue`s without touching the label.\n\nThat leaves a held claim unlabeled when a first attempt's write lands but reports a transient failure: `stopOrSkip(..., 'transient', ..., 4, ...)` (`:286`) runs with `releaseThisIssue = false`, so `abort()` (`:265`) neither labels nor releases the issue. Flow Step 2.8's retry then reads the blob as self-owned, exits 0 with `alreadyOwned: [N]`, and never repairs the label. The same gap applies when a first attempt's `ensureAndAddLabel` threw into `labelFailures`.\n\nTwo downstream consumers treat `bot:in-progress` as the claim's projection:\n- dispatch's queue-pull pre-filter (`plugin/skills/dispatch/queue-pull-script.md:143`, `!i.facets.bot.inProgress`) keeps the record eligible, and `plugin/skills/dispatch/firing-exclusion.md:30-34` skips the `firing` exclusion for `pending-review` on the stated assumption that such a group holds `bot:in-progress` — so the same firing re-selects an already-dispatched record;\n- the second Task call's `dispatch-missing-claim-fallback` HARD-GATE (`plugin/skills/dispatch/task-prompt.md:291-294`) refuses the merge and reports `pending-review` although this run holds the claim.\n\n`plugin/skills/flow/claim-targets.md:141-144` documents the label only \"On a successful claim\". The existing `(g)`/`(g2)` self-owned tests (`tests/bin-lib/claim-targets/claim-targets.test.js:674-711`) assert no re-claim write, not the absence of a label call, and `makeGh` already supports `fail: { labelAdd: true }` (`:124`).\n\n## Deliverables\n\n1. In `plugin/bin/lib/claim-targets/claim-targets.js`'s self-owned branch, re-assert `bot:in-progress` via `ensureAndAddLabel(deps.gh, issue)` before `continue` — best-effort, a thrown error pushed onto `labelFailures` (same shape as the fresh-claim path), never changing the exit code. No second claim comment is posted.\n2. Extend `plugin/skills/flow/claim-targets.md`'s claim paragraph (`:141-144`) to state that an `alreadyOwned` target gets the same `bot:in-progress` re-assert (no second comment), and why (a resumed claim may never have been labeled; the queue pull's `bot:*` pre-filter and dispatch's second-call state-check both read that label).\n3. Add a `(g3)` test case next to `(g)`/`(g2)` in `tests/bin-lib/claim-targets/claim-targets.test.js`.\n\n## Acceptance Criteria\n\n- A self-owned `live` target run through `run(['--run-id', 'r1', '--targets', N], deps)` exits 0, reports `alreadyOwned: [N]`, `labelFailures: []`, and the injected `gh` runner receives an `issue edit N ... --add-label` call.\n- With `makeGh({ fail: { labelAdd: true } })`, the same self-owned target still exits 0 and reports `labelFailures: [{ issue: N, error: 'label add failed' }]`.\n- The new `(g3)` case fails against the current `claim-targets.js` and passes with the fix (verified by reverting the code change).\n- The existing `(g)`/`(g2)` cases still pass: no claim write is attempted for a self-owned target.\n- `plugin/skills/flow/claim-targets.md` names the `alreadyOwned` re-assert.\n- `node --test tests/bin-lib/claim-targets/*.test.js` passes.\n\n## Release Note\n\nFix a resumed dispatch claim never getting its `bot:in-progress` label, which let the drain re-select an already-dispatched record and parked its PR.\n\n## Technical Approach\n\nMirror the fresh-claim path's label block inside the self-owned branch: a `try { ensureAndAddLabel(deps.gh, issue) } catch (e) { labelFailures.push({ issue, error: errText(e) }) }` before `continue`. `gh issue edit --add-label` is idempotent, so re-asserting on an already-labeled record is harmless. The reporter's proposed diff in `## Original request` is a usable starting point; it was verified against 6.136.0 (40/41 failing without, 41/41 with).\n\n### Key Files\n\n- `plugin/bin/lib/claim-targets/claim-targets.js` — re-assert `bot:in-progress` on the `alreadyOwned` branch\n- `plugin/skills/flow/claim-targets.md` — document the `alreadyOwned` label re-assert\n- `tests/bin-lib/claim-targets/claim-targets.test.js` — new `(g3)` case\n\n## Gotchas\n\n- The defense-in-depth alternatives the reporter names (append a `firing` exclusion for every dispatched group regardless of outcome; have the queue pull consult the claims registry) are out of scope — they cost a registry read per candidate and the source fix repairs both consequences.\n- Keep the label add best-effort: a label failure must never un-claim or change the exit code (`labelFailures` is the reporting channel).\n- Do not post a second claim comment on the self-owned path — only the label is re-asserted.\n- Line numbers above were checked against the current tree; the reporter's `:457-461` / `:449-455` refs have drifted by about one line.\n\n## Original request\n\nclaim-targets.js: an `alreadyOwned` (self-owned) claim never gets `bot:in-progress`, so a held claim reads as unclaimed\n\n**Summary:** claim-targets.js alreadyOwned path never adds bot:in-progress, so a claim that landed during a transient-failed first attempt stays unlabeled; dispatch's second-call HARD-GATE then parks the PR and the drain re-selects the already-dispatched record\n\n**Kind:** Defect\n\n**Affected component:** claim-targets CLI (bin/lib/claim-targets/claim-targets.js) + flow Step 2.8 (skills/flow/claim-targets.md)\n\n**Repro steps:**\n1. In a pr-first project, run a `/claude-tweaks:dispatch` drain (`--budget 2` or more) with an `auto:build` record #N at the top of the queue.\n2. The group's first Task call runs `/claude-tweaks:flow #N build,test`; Step 2.8 runs `bin/claim-targets.js --run-id <runId> --targets N`, and the claim write hits a transient network failure (exit 4) — but the blob actually landed on `claims-registry` under this runId/sessionId. Deterministic repro: a `ghApi`/`gitRunner` stub whose write persists the blob and then returns `{ failure: 'network-failure' }`.\n3. Flow retries Step 2.8: the CLI exits 0 with `{\"claimed\":[],\"alreadyOwned\":[N],...}`.\n4. Check #N's labels / label event history, then let the drain continue to the second Task call and the next iteration.\n\n**Expected vs. actual:**\nExpected: a claim this run genuinely holds carries `bot:in-progress` whether it was claimed fresh or found `alreadyOwned`, so the second call's state-check passes and the queue pull excludes #N.\nActual: #N never receives `bot:in-progress` (its label event history shows it was never added). (a) The second Task call's `dispatch-missing-claim-fallback` HARD-GATE (`skills/dispatch/task-prompt.md:291-294`: claim live AND `bot:in-progress` present) refuses the merge and reports `pending-review` although the claim is held by this run. (b) The drain's next queue pull keeps #N eligible (no `bot:*` label), `firing-exclusion.md` does not append a `firing` exclusion for `pending-review`, and the next ranking re-selects the already-dispatched record in the same firing; a manual `appendExclusion(..., { reason: 'firing' })` was needed.\n\n**Root cause:** the `bot:in-progress` label is added in exactly one place: `ensureAndAddLabel` at `bin/lib/claim-targets/claim-targets.js:457-461`, reached only after a fresh write is verified and pushed onto `claimedThisRun` (`:449-455`). The self-owned branch at `:348-351` (`identity.runId === opts.runId` on a `live`/`stale` blob) pushes onto `alreadyOwned` and `continue`s without touching the label. On the first attempt, a write that reports `failure`/`secondaryRateLimit` (`:391-402`) goes through `stopOrSkip(..., 'transient', ..., 4, ...)` with `releaseThisIssue = false` (`:286-288`), so `abort()` neither labels nor releases this issue — a write that landed despite the reported failure leaves a live, unlabeled blob, and the retry's `alreadyOwned` path never repairs it. (The same gap applies if a first attempt's `ensureAndAddLabel` threw into `labelFailures`.) `skills/flow/claim-targets.md:141-144` documents the label only \"On a successful claim\", but two downstream consumers treat the label as the claim's projection: the queue pull's pre-filter (`skills/dispatch/queue-pull-script.md:143`, `!i.facets.bot.inProgress`; `SKILL.md:128`) and the second-call HARD-GATE (`task-prompt.md:291-294`); `firing-exclusion.md:30-34` skips the `firing` exclusion for `pending-review` on the stated assumption that such a group holds `bot:in-progress`. Fix: re-assert the label (idempotent `gh issue edit --add-label`, best-effort, failures into `labelFailures`) on the `alreadyOwned` path too, and document it in `claim-targets.md`. That repairs both consequences at the source. (Defense-in-depth alternative, not in the diff: have `firing-exclusion.md` append a `firing` entry for every group this firing dispatched regardless of outcome, or have the queue pull consult the claims registry — heavier, since it adds a registry read per candidate.)\n\n**Proposed fix:**\n```diff\ndiff --git a/plugin/bin/lib/claim-targets/claim-targets.js b/plugin/bin/lib/claim-targets/claim-targets.js\n--- a/plugin/bin/lib/claim-targets/claim-targets.js\n+++ b/plugin/bin/lib/claim-targets/claim-targets.js\n@@ -347,6 +347,15 @@ function run(argv, deps) {\n\n     if ((classified.state === 'live' || classified.state === 'stale') && identity && identity.runId === opts.runId) {\n       alreadyOwned.push(issue);\n+      // A self-owned claim is still held, so its `bot:in-progress` projection\n+      // must be too: a prior attempt whose write landed but reported a\n+      // transient failure aborted before the label step, and the retry lands\n+      // here. Re-assert it (idempotent, best-effort like the claim path below).\n+      try {\n+        ensureAndAddLabel(deps.gh, issue);\n+      } catch (e) {\n+        labelFailures.push({ issue, error: errText(e) });\n+      }\n       continue;\n     }\n\ndiff --git a/plugin/skills/flow/claim-targets.md b/plugin/skills/flow/claim-targets.md\n--- a/plugin/skills/flow/claim-targets.md\n+++ b/plugin/skills/flow/claim-targets.md\n@@ -139,8 +139,10 @@\n `alreadyOwned` — a released claim is not still held, so it falls through to the ordinary\n `'tombstone'`/`'stale'` conditional-write branch and is legitimately re-claimed like any other\n tombstone. On a\n successful claim it bootstraps `bot:in-progress` (per `_shared/label-bootstrap.md`) and posts the\n claim comment (`claimPayload`'s `commentBody`) for that target — best-effort: a label or comment\n-failure is logged to stderr and never un-claims the target.\n+failure is logged to stderr and never un-claims the target. An `alreadyOwned` target gets the same\n+`bot:in-progress` re-assert (no second comment) — a resumed claim may never have been labeled, and\n+the queue pull's `bot:*` pre-filter and dispatch's second-call state-check both read that label.\n\n **Log the claim (mandatory, #2492).** Immediately after this call exits 0, for every target in\ndiff --git a/tests/bin-lib/claim-targets/claim-targets.test.js b/tests/bin-lib/claim-targets/claim-targets.test.js\n--- a/tests/bin-lib/claim-targets/claim-targets.test.js\n+++ b/tests/bin-lib/claim-targets/claim-targets.test.js\n@@ -1197,0 +1198,20 @@\n+\n+// A first attempt whose write landed but reported a transient failure exits 4\n+// before the label step; the retry reads the blob as self-owned. The held\n+// claim must still end up carrying bot:in-progress.\n+test('(g3) self-owned target: bot:in-progress is re-asserted; a label failure is reported, not fatal', () => {\n+  const { ghApi } = makeGhApi({ reads: { 732: [readOk(liveMarker('r1'), 'sha732')] }, writes: {} });\n+  const { gh, calls: ghCalls } = makeGh({});\n+  const { deps, io } = baseDeps({ ghApi, gh });\n+  assert.equal(run(['--run-id', 'r1', '--targets', '732'], deps), 0);\n+  const body = JSON.parse(io.out[0]);\n+  assert.deepEqual(body.alreadyOwned, [732]);\n+  assert.deepEqual(body.labelFailures, []);\n+  assert.ok(ghCalls.some((a) => a[0] === 'issue' && a[1] === 'edit' && a[2] === '732' && a.includes('--add-label')));\n+\n+  const failing = makeGh({ fail: { labelAdd: true } });\n+  const b = baseDeps({ ghApi: makeGhApi({ reads: { 732: [readOk(liveMarker('r1'), 'sha732')] }, writes: {} }).ghApi, gh: failing.gh });\n+  assert.equal(run(['--run-id', 'r1', '--targets', '732'], b.deps), 0);\n+  assert.deepEqual(JSON.parse(b.io.out[0]).labelFailures, [{ issue: 732, error: 'label add failed' }]);\n+});\n```\n\nPlatform: Windows + Git Bash, GitHub Enterprise Server. The exact transient failure on the first attempt was not captured; \"write landed but reported failure\" is the only exit-4 path in `run()` that leaves a live blob under this runId, which is what the retry found.\n\n**Test:** extend `tests/bin-lib/claim-targets/claim-targets.test.js` with a `(g3)` case next to the existing `(g)`/`(g2)` self-owned cases (in the diff): a self-owned live target is reported `alreadyOwned` AND gets an `issue edit --add-label` call; a failing label add lands in `labelFailures` with exit 0 (never fatal). Verified against `main` @ 6.136.0: fails without the fix (40/41), passes with it (41/41); `tests/bin-lib/claim-targets/cli.test.js` unchanged (2/2); the existing `(g)`/`(g2)` cases still pass (they assert no write, not no label call).\n\n**Related:** #2073 (post-write claim verification), #2329 (unverified-claim release), #2488 (the second-call state-check audit line) — all cited in the code/prose above; none covers the self-owned label gap., #3030\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-4d356aee -->\n\n",
-        "createdAt": "2026-10-07T18:30:08Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3032,
-        "state": "OPEN",
-        "title": "claim-targets.js: an `alreadyOwned` (self-owned) claim never gets `bot:in-progress`, so a held claim reads as unclaimed",
-        "updatedAt": "2026-10-15T16:32:13Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`liftMetadata` in `plugin/bin/lib/issues/materialize-format.js:119-138` lifts a record's body-metadata lines into the materialized header. The `Design-intent:` capture is `/^Design-intent:[ \\t]*(\\S+)/m` (`:131`). `\\S+` stops at the first whitespace, so `Design-intent: quiet, minimal` lifts as `quiet,` (trailing comma kept, second value lost). `composeHeader` (`:157-169`) then writes `design-intent: quiet,` verbatim.\n\nMulti-value intents are a supported shape downstream. `plugin/skills/design-wrapper/command-map.md:106` says \"Multiple intents (comma-separated, e.g., `design-intent: bold, delightful`) trigger multiple dispatches.\" Polish reads the header's `design-intent:` for that dispatch, and so do `flow/manifesto.md:43` and `:57`. The run-level lever is a single-value enum in `plugin/bin/lib/policy-schema.js:95` (`none | bold | quiet | minimal | delightful | onboarding`).\n\nIn the reported run (plugin 6.136.0), the header read `design-intent: quiet,` and `config.yml` resolved to `quiet` only. Polish ran the `minimal` command only because the polish agent happened to re-read the record body. A mechanical header consumer would have skipped it.\n\n## Deliverables\n\n1. Change `liftMetadata`'s `Design-intent:` capture to the full same-line value: split on `,`, trim each value, drop empties, and validate each against the closed enum from `policy-schema.js:95` (read from there, not re-listed). The lifted value is a normalized list.\n2. `composeHeader` writes the normalized list as `design-intent: quiet, minimal` (comma plus single space), the shape `command-map.md:106` documents. A single value is written exactly as today.\n3. An unknown value (outside the enum), or a list that mixes `none` with any other value, fails materialization with a message naming the record and the offending value, the same hard-gate posture as other malformed header input. It never silently drops the value.\n4. Decide how a multi-value header maps to the run-level `design-intent` lever, which is single-valued in `policy-schema.js`. Either have polish read the header list (not the lever) for dispatch, or document in `flow/manifesto.md` that the lever is a run default and the header list is authoritative per record. Pick one, and make the manifesto's Design-intent row (`manifesto.md:57`) state it.\n\n## Acceptance Criteria\n\n- A unit test lifts `Design-intent: quiet, minimal` and asserts the header line `design-intent: quiet, minimal`. Prove it goes red against the current `\\S+` capture.\n- Unit tests cover: a single value (unchanged output); extra spaces and a trailing comma (`quiet ,minimal,` → `quiet, minimal`); an unknown value (materialization fails, naming it); `none, bold` (fails).\n- A bare `Design-intent:` line with no value still lifts nothing. The existing refs-#357 same-line-only behavior is pinned by an unchanged test.\n- The polish dispatch path receives both intents for a two-value header, asserted by a test or conformance check on whichever consumer Deliverable 4 picks.\n- `npm test` passes in full.\n\n## Release Note\n\nRecords with more than one design intent now carry every intent into the build, so polish runs each one instead of only the first.\n\n## Technical Approach\n\nKeep the change local to `liftMetadata`/`composeHeader`. Capture with `(.+)$` like `Ui-stack:` already does at `:133`, keeping the `[ \\t]*` same-line guard, then normalize. Source the enum from `policy-schema.js` so the two cannot drift. Hard-fail on invalid values rather than filtering: a silent drop is the exact failure this record reports, one level down.\n\n### Key Files\n\n- `plugin/bin/lib/issues/materialize-format.js` — `liftMetadata` `Design-intent:` capture (`:131-132`), list normalization and validation; `composeHeader` output (`:169`)\n- `plugin/bin/lib/policy-schema.js` — enum source of truth (`:95`), read not modified\n- `plugin/skills/flow/manifesto.md` — Design-intent lever vs. per-record header list (`:43`, `:57`)\n- `plugin/skills/design-wrapper/command-map.md` — reference for the documented multi-intent shape (`:106`)\n\n## Gotchas\n\n- The refs-#357 comment at `materialize-format.js:124-128` explains why every capture uses `[ \\t]*`, not `\\s*`. Keep that guard on the new capture, or a bare `Design-intent:` line will swallow the next line.\n- `yamlSafeScalar` (`:146`) is applied only to `ui-stack`. A comma-separated list contains no `:` or `#`, so it needs no quoting, but do not route it through a YAML-list syntax that other header readers do not parse.\n- Records already materialized with `design-intent: quiet,` live in old run dirs. Readers must not crash on that legacy shape. Treat a trailing comma as a trimmed list on read too, if any reader re-parses the header.\n\n## Original request\n\nmaterialize.js: a comma-separated `Design-intent:` list is truncated to its first value\n\n**Summary:** `materialize.js` lifts `Design-intent: quiet, minimal` into the materialized header as `design-intent: quiet,` — trailing comma kept, second value lost.\n\n**Kind:** Defect\n\n**Affected component:** bin/materialize.js, bin/lib/issues/materialize-format.js (`liftMetadata`)\n\n**Repro steps:**\n1. Create a record whose body carries `Design-intent: quiet, minimal` (what `/claude-tweaks:specify` writes when two intents are picked).\n2. Run `/claude-tweaks:flow #N` (or `bin/materialize.js` directly) to materialize it.\n3. Read the materialized header in `{run-dir}/work/{n}-spec.md` and the run's `config.yml` `design-intent` lever.\n\n**Expected vs. actual:**\nExpected: the whole list is lifted (`design-intent: quiet, minimal`, or a YAML list), or each value is validated against the closed enum (`bold | quiet | minimal | delightful | onboarding | none`) and malformed input fails the materialization gate.\nActual: the header reads `design-intent: quiet,` and `config.yml` resolves to `quiet` only. The polish phase still ran the `minimal` intent's command only because the polish agent re-read the record body; a mechanical consumer of the header would have skipped it.\n\nSuggested fix: capture the full same-line value, split on `,`, trim, validate against the enum, emit a normalized list; add a test for a two-value intent line.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-934dd8c2 -->\n",
-        "createdAt": "2026-10-07T09:51:08Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "E99695"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3018,
-        "state": "OPEN",
-        "title": "materialize.js: a comma-separated `Design-intent:` list is truncated to its first value",
-        "updatedAt": "2026-10-15T16:23:04Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
@@ -5163,6 +4804,96 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Surface: infra\n\n## Current State\n\n`liftMetadata` in `plugin/bin/lib/issues/materialize-format.js:119-138` lifts a record's body-metadata lines into the materialized header. The `Design-intent:` capture is `/^Design-intent:[ \\t]*(\\S+)/m` (`:131`). `\\S+` stops at the first whitespace, so `Design-intent: quiet, minimal` lifts as `quiet,` (trailing comma kept, second value lost). `composeHeader` (`:157-169`) then writes `design-intent: quiet,` verbatim.\n\nMulti-value intents are a supported shape downstream. `plugin/skills/design-wrapper/command-map.md:106` says \"Multiple intents (comma-separated, e.g., `design-intent: bold, delightful`) trigger multiple dispatches.\" Polish reads the header's `design-intent:` for that dispatch, and so do `flow/manifesto.md:43` and `:57`. The run-level lever is a single-value enum in `plugin/bin/lib/policy-schema.js:95` (`none | bold | quiet | minimal | delightful | onboarding`).\n\nIn the reported run (plugin 6.136.0), the header read `design-intent: quiet,` and `config.yml` resolved to `quiet` only. Polish ran the `minimal` command only because the polish agent happened to re-read the record body. A mechanical header consumer would have skipped it.\n\n## Deliverables\n\n1. Change `liftMetadata`'s `Design-intent:` capture to the full same-line value: split on `,`, trim each value, drop empties, and validate each against the closed enum from `policy-schema.js:95` (read from there, not re-listed). The lifted value is a normalized list.\n2. `composeHeader` writes the normalized list as `design-intent: quiet, minimal` (comma plus single space), the shape `command-map.md:106` documents. A single value is written exactly as today.\n3. An unknown value (outside the enum), or a list that mixes `none` with any other value, fails materialization with a message naming the record and the offending value, the same hard-gate posture as other malformed header input. It never silently drops the value.\n4. Decide how a multi-value header maps to the run-level `design-intent` lever, which is single-valued in `policy-schema.js`. Either have polish read the header list (not the lever) for dispatch, or document in `flow/manifesto.md` that the lever is a run default and the header list is authoritative per record. Pick one, and make the manifesto's Design-intent row (`manifesto.md:57`) state it.\n\n## Acceptance Criteria\n\n- A unit test lifts `Design-intent: quiet, minimal` and asserts the header line `design-intent: quiet, minimal`. Prove it goes red against the current `\\S+` capture.\n- Unit tests cover: a single value (unchanged output); extra spaces and a trailing comma (`quiet ,minimal,` → `quiet, minimal`); an unknown value (materialization fails, naming it); `none, bold` (fails).\n- A bare `Design-intent:` line with no value still lifts nothing. The existing refs-#357 same-line-only behavior is pinned by an unchanged test.\n- The polish dispatch path receives both intents for a two-value header, asserted by a test or conformance check on whichever consumer Deliverable 4 picks.\n- `npm test` passes in full.\n\n## Release Note\n\nRecords with more than one design intent now carry every intent into the build, so polish runs each one instead of only the first.\n\n## Technical Approach\n\nKeep the change local to `liftMetadata`/`composeHeader`. Capture with `(.+)$` like `Ui-stack:` already does at `:133`, keeping the `[ \\t]*` same-line guard, then normalize. Source the enum from `policy-schema.js` so the two cannot drift. Hard-fail on invalid values rather than filtering: a silent drop is the exact failure this record reports, one level down.\n\n### Key Files\n\n- `plugin/bin/lib/issues/materialize-format.js` — `liftMetadata` `Design-intent:` capture (`:131-132`), list normalization and validation; `composeHeader` output (`:169`)\n- `plugin/bin/lib/policy-schema.js` — enum source of truth (`:95`), read not modified\n- `plugin/skills/flow/manifesto.md` — Design-intent lever vs. per-record header list (`:43`, `:57`)\n- `plugin/skills/design-wrapper/command-map.md` — reference for the documented multi-intent shape (`:106`)\n\n## Gotchas\n\n- The refs-#357 comment at `materialize-format.js:124-128` explains why every capture uses `[ \\t]*`, not `\\s*`. Keep that guard on the new capture, or a bare `Design-intent:` line will swallow the next line.\n- `yamlSafeScalar` (`:146`) is applied only to `ui-stack`. A comma-separated list contains no `:` or `#`, so it needs no quoting, but do not route it through a YAML-list syntax that other header readers do not parse.\n- Records already materialized with `design-intent: quiet,` live in old run dirs. Readers must not crash on that legacy shape. Treat a trailing comma as a trimmed list on read too, if any reader re-parses the header.\n\n## Original request\n\nmaterialize.js: a comma-separated `Design-intent:` list is truncated to its first value\n\n**Summary:** `materialize.js` lifts `Design-intent: quiet, minimal` into the materialized header as `design-intent: quiet,` — trailing comma kept, second value lost.\n\n**Kind:** Defect\n\n**Affected component:** bin/materialize.js, bin/lib/issues/materialize-format.js (`liftMetadata`)\n\n**Repro steps:**\n1. Create a record whose body carries `Design-intent: quiet, minimal` (what `/claude-tweaks:specify` writes when two intents are picked).\n2. Run `/claude-tweaks:flow #N` (or `bin/materialize.js` directly) to materialize it.\n3. Read the materialized header in `{run-dir}/work/{n}-spec.md` and the run's `config.yml` `design-intent` lever.\n\n**Expected vs. actual:**\nExpected: the whole list is lifted (`design-intent: quiet, minimal`, or a YAML list), or each value is validated against the closed enum (`bold | quiet | minimal | delightful | onboarding | none`) and malformed input fails the materialization gate.\nActual: the header reads `design-intent: quiet,` and `config.yml` resolves to `quiet` only. The polish phase still ran the `minimal` intent's command only because the polish agent re-read the record body; a mechanical consumer of the header would have skipped it.\n\nSuggested fix: capture the full same-line value, split on `,`, trim, validate against the enum, emit a normalized list; add a test for a two-value intent line.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-934dd8c2 -->\n",
+        "createdAt": "2026-10-07T09:51:08Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: ready for dispatch",
+            "color": "0e8a16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "D93F0B"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "E99695"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: standard review",
+            "color": "c5def5"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
+            "name": "shaped:headless",
+            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
+            "color": "ededed"
+          }
+        ],
+        "number": 3018,
+        "state": "OPEN",
+        "title": "materialize.js: a comma-separated `Design-intent:` list is truncated to its first value",
+        "updatedAt": "2026-10-15T16:23:04Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": true
         }
       }
     ],
