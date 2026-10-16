@@ -16,6 +16,7 @@
 - AUTO 17:58:21 — approve: released claim on #3104 (swept: issue closed) (swept from run 2026-10-10T190327-spec-3101-3102-3103-3104); labels removed: bot:in-progress. Reversibility: high.
 - AUTO 17:58:30 — approve: released claim on #3105 (swept: issue closed) (swept from run 2026-10-10T225734-spec-3105); labels removed: bot:in-progress. Reversibility: high.
 - AUTO 18:44:36 — approve: tidy --approve (3rd): live re-verify - all 8 staged claim releases already applied (issues CLOSED, no bot labels, claim blobs released:true) - stale, skipped; closing and archiving run. Reversibility: n/a.
+- SKIP 18:46:11 — --approve (2026-10-16): all 8 staged claim releases (#2983 #2984 #2985 #3101 #3102 #3103 #3104 #3105) stale — issues CLOSED and claims already tombstoned by reconcile; nothing applied. Reversibility: n/a.
 ## /specify
 - AUTO 11:26:01 — Claim: claimed #2601 (bin/claim-targets.js, transport: git) — bare drain iteration 1. Reversibility: high.
 - AUTO 11:28:46 — Shape: #2601 framing guard open; near-duplicate check refused shaping (ready in-flight candidate #2552, body-anchor-overlap on --run-dir) — stamped needs:decision + decision comment proposing Absorb into #2552. Reversibility: high.
