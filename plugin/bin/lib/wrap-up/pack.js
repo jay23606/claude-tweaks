@@ -363,6 +363,39 @@ function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
 }
 
+// Files this run's own branch actually added or modified under docs/plans/
+// — the ownership test that replaces the old "assume every candidate in
+// this worktree is this run's" heuristic (#2887). A finished run's ledger
+// stays committed on the integration branch, so every new worktree branched
+// from it inherits those files too; only a diff against the merge base (plus
+// whatever this run has not committed yet) tells them apart from this run's
+// own. Best-effort: a git failure on either half yields an empty owned set
+// for that half rather than throwing — the overall probe still falls back to
+// the unattributed-reporting path below rather than crashing.
+function ownedLedgerFiles(inputs, deps) {
+  const owned = new Set();
+  if (inputs.base) {
+    try {
+      const out = deps.git(['diff', '--name-only', `${inputs.base}...HEAD`, '--', 'docs/plans/'], { cwd: inputs.worktree });
+      for (const line of String(out).split('\n')) {
+        const f = line.trim();
+        if (f) owned.add(path.basename(f));
+      }
+    } catch { /* no committed-owned files from this half */ }
+  }
+  // Untracked or modified-but-uncommitted ledgers in the worktree also count
+  // as owned — a ledger created earlier in this same run and not yet
+  // committed must not read as "inherited".
+  try {
+    const out = deps.git(['status', '--porcelain', '--', 'docs/plans/'], { cwd: inputs.worktree });
+    for (const line of String(out).split('\n')) {
+      const entry = line.slice(3).trim();
+      if (entry) owned.add(path.basename(entry));
+    }
+  } catch { /* no uncommitted-owned files from this half */ }
+  return owned;
+}
+
 function ledgerProbe(inputs, deps) {
   // _shared/ledger-format.md's Location section: a gated no-worktree run
   // (worktree-always with no worktree resolved) writes its ledger at
@@ -377,29 +410,40 @@ function ledgerProbe(inputs, deps) {
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
   const candidates = deps.readdir(dir).filter((f) => f.endsWith('-ledger.md'));
+  // Ownership by diff (#2887): a finished run's ledger stays committed on
+  // the integration branch, so every new worktree branched from it inherits
+  // it too — "every candidate in docs/plans/ is this run's" is false on this
+  // repo. Only a candidate this run's own branch added or modified (or holds
+  // uncommitted) counts; everything else is reported separately, never
+  // folded into open/total.
+  const owned = ownedLedgerFiles(inputs, deps);
+  const ownedCandidates = candidates.filter((f) => owned.has(f));
+  const unattributedCandidates = candidates.filter((f) => !owned.has(f));
   // "One ledger per pipeline run" (_shared/ledger-format.md): when exactly
-  // one *-ledger.md file exists in the worktree, it's unambiguously this
-  // run's regardless of how its {feature} slug was named — a real
-  // topic-slug ledger (the observed #2563 case) has no filename convention
-  // `namesRecord` can positively match. Only when more than one candidate is
-  // present does the record-number boundary disambiguate a leftover
-  // stranger ledger from an earlier, uncleaned run (#1930 review M5's
-  // original false-positive fix) from this run's own.
-  let files = candidates.length <= 1 ? candidates : candidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
-  // When 2+ candidates exist and NONE names any of this run's records at a
-  // boundary — the common case, since a real topic-slug ledger (the #2563
-  // AC1 shape) has no record-number convention for `namesRecord` to match —
-  // the filter above can't disambiguate at all. Reporting zero here would
-  // silently hide every one of this run's own open items behind an unrelated
-  // stray ledger (e.g. a fully-resolved file left over from an earlier,
-  // already-merged run). Fail toward over-counting instead: include every
+  // one owned *-ledger.md file exists, it's unambiguously this run's
+  // regardless of how its {feature} slug was named — a real topic-slug
+  // ledger (the observed #2563 case) has no filename convention `namesRecord`
+  // can positively match. Only when more than one OWNED candidate is present
+  // does the record-number boundary disambiguate between them; it is never
+  // used to rescue an unowned candidate.
+  let files = ownedCandidates.length <= 1 ? ownedCandidates : ownedCandidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
+  // When 2+ owned candidates exist and NONE names any of this run's records
+  // at a boundary — the common case, since a real topic-slug ledger (the
+  // #2563 AC1 shape) has no record-number convention for `namesRecord` to
+  // match — the filter above can't disambiguate at all. Reporting zero here
+  // would silently hide every one of this run's own open items behind an
+  // unrelated OWNED stray ledger (e.g. two ledgers both committed on this
+  // branch). Fail toward over-counting instead: include every owned
   // candidate, so a human reviewing `files` sees exactly what was counted
   // and can correct it, rather than the gate silently passing on a false
-  // "nothing open."
-  if (candidates.length > 1 && files.length === 0) files = candidates;
+  // "nothing open." This is the #1930 review M5 / #2545 fallback, now scoped
+  // to owned candidates only — an unowned (inherited) candidate is never
+  // rescued into this fallback.
+  if (ownedCandidates.length > 1 && files.length === 0) files = ownedCandidates;
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
+    unattributedFiles: unattributedCandidates.map((f) => path.posix.join('docs', 'plans', f)),
   };
   const unrecognizedValuesSet = new Set();
   for (const f of files) {
