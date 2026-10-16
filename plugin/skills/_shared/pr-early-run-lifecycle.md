@@ -187,6 +187,13 @@ Resolve this run's paths, then write the one-paragraph summary from the material
 Overview section to `$PR_EARLY_SUMMARY` with the Write tool, never through the shell: spec text
 carries backticks, `$` and quotes a shell would run or rewrite (#3120).
 
+**This `### Spec summary` paragraph is not necessarily final (#3050).** Build can legitimately
+depart from the mechanism the spec describes — a logged `premise reversed:` entry in
+`decisions.md` (`build/SKILL.md`'s Spec Step 3) — and `_shared/pr-checklist-refresh.md`'s
+Phase-checklist update re-composes this paragraph from the implemented behavior when that
+happens, prefixed with a `Revised during build:` note. Composed here once, at run start, from
+the spec as written; this section's own template text is otherwise unaffected.
+
 ```bash
 eval "$(node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" PR_EARLY_SUMMARY=pr-early-summary-{run-id}.md PR_EARLY_BODY=pr-early-body-{run-id}.md)" && echo "$PR_EARLY_SUMMARY"
 ```

@@ -85,6 +85,40 @@ are **cumulative across every spec in the run, never reset per spec** — see
 (`manifest.yml`'s `specs[].status`) a maintainer should read instead when they need spec-level,
 not run-level, granularity.
 
+**Spec-summary rewrite on a premise reversal (#3050).** After the checklist flip above, check
+this spec's own `decisions.md` (this run's top-level file on a single-record run; this spec's own
+`spec-{id}/decisions.md` on a multi-spec run — never the parent's) for one or more lines carrying
+the literal marker `premise reversed:` (`build/SKILL.md`'s Spec Step 3, both the
+`ASSUMPTION — verify at build:` path and the plan-departure judgment-call path write this same
+marker). None found: leave `### Spec summary` byte-unchanged — the common case, no added cost.
+One or more found:
+
+1. Locate the span by its plain heading text, `### Spec summary` through the next `### ` heading
+   (`### Phases`) — **never** an HTML-comment delimiter pair; unlike the Phases/Fixes spans, this
+   section was composed with no comment markers at all, so hunting for one here would either find
+   nothing or, worse, match a comment belonging to a different span — either way corrupting the
+   body on the MCP path, where HTML comments are invisibly stripped from what the read returns
+   (`_shared/pr-early-run-lifecycle.md`'s Root cause section) while the plain heading text is not.
+2. **Idempotency check first:** if the paragraph already carries a `Revised during build:` line
+   naming every `premise reversed:` entry just found (by its original-claim text), leave the
+   section unchanged — nothing to do.
+3. Otherwise, re-compose the one-paragraph summary from the implemented behavior (agent judgment
+   at this phase exit — one paragraph, as the template defines; never invent behavior not visible
+   in the diff), prefixed with one line per reversed premise: `Revised during build: {original
+   claim} → {implemented behavior}`.
+4. **Multi-spec runs (shared PR, one Spec summary paragraph):** each spec's own phase exit only
+   ever appends *its own* reversal line(s) — read the existing paragraph first and keep every
+   `Revised during build:` line already present from a different spec's earlier rewrite, adding
+   only the lines this spec's own `decisions.md` entries produced. A spec's rewrite must never
+   drop another spec's already-appended note.
+5. Write back through the same transport that did the read (same compose-then-write-once rule as
+   the checklist flip above), logging `AUTO {time} — PR checklist refresh: rewrote Spec summary
+   for PR #{number} — {k} premise reversal(s) noted. Reversibility: high (gh pr edit).`
+
+**Best-effort, like the checklist flip it extends.** A failed Spec-summary edit logs a warning to
+`decisions.md` and the phase continues — same posture the "Best-effort" paragraph below gives a
+stale title or checklist; it never blocks the phase exit or the merge.
+
 ## Pre-merge title/description refresh
 
 Unconditional `AUTO` step, never a stop (`_shared/auto-mode-contract.md`'s "What auto silences" —
