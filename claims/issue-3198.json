@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-16T052544-record-3198",
-  "sessionId": "a6c4f251-3464-49c5-9b63-4a8367aad646",
-  "claimedAt": "2026-10-16T05:27:03.999Z",
-  "ttlHours": 72,
-  "host": "ThomassMBP3376.localdomain"
+  "reason": "pr-opened: spec 3198 (dispatch stopped at first-call artifact check: missing config.yml; review not run)",
+  "releasedAt": "2026-10-16T05:54:23.303Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/3202"
 }
