@@ -146,6 +146,13 @@ When `worktree` is specified, a sequential run uses **one shared worktree for th
    the integration branch). When `MULTISPEC_CURATION_DEFER=1`, re-run `manifest-init` with
    `--base-sha` naming the commit the worktree was just created from (Step 0's `EXPECTED_BASE`) —
    the already-initialized manifest keeps every spec's status untouched; only `baseSha` is added.
+   **Create the open-items ledger here too (#3036)** — immediately after the worktree exists
+   (adopted or created), before any spec's build task can raise a finding: one shared ledger for
+   the whole multi-spec run, at the run-level scope (`$MULTISPEC_PARENT_DIR`, never a per-spec
+   `$PIPELINE_RUN_DIR`), using `/claude-tweaks:ledger`'s create operation and logging the same
+   creation line `flow/SKILL.md` Step 1 item 8 documents. This is the single creation point for a
+   multi-spec run — `build/worktree-setup.md`'s own per-spec ledger step explicitly excludes the
+   `MULTISPEC_SHARED_WORKTREE=1` case for exactly this reason (one ledger per run, not per spec).
    The branch covers the whole run: `flow/spec-{N1}-{N2}-{N3}` (for runs
    longer than 3, use `flow/spec-{N1}-…-{Nlast}`; the manifest holds the full list) — `{N}` is the
    record id, the same keying as the run directory layout above. This branch slug is exactly the

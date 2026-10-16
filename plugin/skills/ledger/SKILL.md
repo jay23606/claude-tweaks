@@ -51,9 +51,9 @@ Phase schema, the full phase table, and the `reason-not-auto` qualifier rules fo
 
 ### Create
 
-Create a new ledger file. Called by `/claude-tweaks:flow` Step 1 or `/claude-tweaks:build` on first item — or, for a run with no worktree at all, by `wrap-up/residue-sweep.md`'s preamble on its first finding.
+Create a new ledger file. Called by `/claude-tweaks:flow` Step 1 (only when no new worktree is coming for this run — `current-branch` strategy, or an already-isolated session), `build/worktree-setup.md`'s Step 4.6 or `flow/multi-spec.md`'s "Shared worktree" step 1 (immediately after the run's worktree exists, when one is coming) — or, for a run that will never have a worktree at all, by `wrap-up/residue-sweep.md`'s preamble on its first finding.
 
-File: `docs/plans/YYYY-MM-DD-{feature}-ledger.md` — or, when this run has no worktree (`run-state.json` carries no `worktree` field, or no `run-state.json` exists), `{run-dir}/ledger.md`. See `_shared/ledger-format.md`'s Location section for the full condition; this file cites it rather than restating it.
+File: `docs/plans/YYYY-MM-DD-{feature}-ledger.md` — or, for a run that will never have a worktree at all (#3036 — never keyed on `run-state.json`'s momentary lack of a `worktree` field), `{run-dir}/ledger.md`. See `_shared/ledger-format.md`'s Location section for the full condition; this file cites it rather than restating it.
 
 ```
 # Open Items — {spec title or design topic}
