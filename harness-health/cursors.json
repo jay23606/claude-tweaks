@@ -49,7 +49,7 @@
   },
   "skill:transcript-payload-verification": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792185086312
+    "lastAuditedMs": 1792261978771
   },
   "skill:tidy": {
     "lastAuditedSha": null,
@@ -57,7 +57,7 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792242914326
+    "lastAuditedMs": 1792246371180
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
@@ -109,11 +109,11 @@
   },
   "skill:pre-tool-use-gate-exemptions": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792235063591
+    "lastAuditedMs": 1792261983058
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792242916111
+    "lastAuditedMs": 1792246372915
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792242912256
+    "lastAuditedMs": 1792261980917
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
@@ -161,7 +161,7 @@
   },
   "skill:upstream-repin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792172567246
+    "lastAuditedMs": 1792261976519
   },
   "skill:design-wrapper": {
     "lastAuditedSha": null,
@@ -169,11 +169,11 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792229504349
+    "lastAuditedMs": 1792246364514
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792180239036
+    "lastAuditedMs": 1792246366352
   },
   "skill:visual-review": {
     "lastAuditedSha": null,
