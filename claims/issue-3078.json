@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-17T213454-record-3078",
-  "sessionId": "311ae7c9-aaf3-4809-85d5-84fa6ec3d6b8",
-  "claimedAt": "2026-10-17T21:36:56.543Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "failed: build-premise-probe",
+  "releasedAt": "2026-10-17T21:42:03.288Z"
 }
