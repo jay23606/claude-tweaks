@@ -61,11 +61,11 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792271938343
+    "lastAuditedMs": 1792272369035
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792269067022
+    "lastAuditedMs": 1792272379592
   },
   "skill:work-record-facet-rename": {
     "lastAuditedSha": null,
@@ -113,7 +113,7 @@
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792271827370
+    "lastAuditedMs": 1792272385339
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792271857592
+    "lastAuditedMs": 1792272360474
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
