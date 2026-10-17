@@ -102,6 +102,65 @@ Three conventions follow from how this repo works, and all are visible below:
 * verify.js has no per-check or per-run timeout — a hung… ([#3063](https://github.com/thn-inc/claude-tweaks/issues/3063)) ([8bc3263](https://github.com/thn-inc/claude-tweaks/commit/8bc3263039b8f50c426047a89ba579fc1b95e040))
 * visual-decide stop exits 0 without writing server-stopped marker ([#3130](https://github.com/thn-inc/claude-tweaks/issues/3130)) ([c223eca](https://github.com/thn-inc/claude-tweaks/commit/c223eca065754f2327c7014fa3ba33fa97be6ece))
 
+### Highlights
+* Fix fast-lane auto-merged runs leaving their claim, labels and run directory behind after the PR merges.
+* Added an early safeguard that stops dispatch's automated first build from committing code before it has written its required run configuration, catching a skipped setup step before any work lands instead of after a full build cycle.
+* No user-visible change.
+* A dispatched record's second pipeline call no longer re-runs QA stories that already passed on the same commit.
+* Wrap-up loads less instruction text on a typical run.
+* `/specify` now suggests a diagram when shaping a single record, not only when decomposing a design doc.
+* Fixed stray backslashes in the browse command's argument summary in the help reference card.
+* No user-visible change -- documentation accuracy only.
+* No user-visible change: this repo's own unattended agent configuration now blocks package publishing and reads of credential files.
+* No user-visible change — this hardens the Friction reflect lens's own input data against misattributed events from an unrelated piece of work.
+* The residue sweep no longer reports already-published release tags as missing when the local checkout hasn't fetched them.
+* The single-record auto-merge fast lane now refuses to merge unless its content-judgment check is confirmed to have run and passed.
+* Review reproduction pairing no longer drops a finding both agents reported when one agent also reported a second issue on the same line.
+* Finished feature runs now end with a "Try it" walkthrough that says where to go, what to do and what to expect, even for low-risk changes.
+* Flagged when two concurrent backlog refine runs grant auto-merge differently on the same record.
+* Fixed a module load-order hazard in the security-hardening code-health check.
+* Hardened the PR-checklist composer so a two-call dispatch split always starts every phase row, closing a drift this record's own run hit.
+* Fixed friction logging so guard refusals in a manually entered worktree are recorded.
+* Silenced a misleading error printed during merge-subject composition, added optional commit-scope support, and stopped counting human-confirmed close-out merges as auto-merges.
+* `verify/args.js`'s argument parsing restructured for clarity; no CLI-facing behavior change.
+* Review's reproduction pairs now confirm a finding both agents reported a few lines apart within the same statement, instead of leaving it unconfirmed.
+* No user-visible change: clarified where design-wrapper's review mode finds its seed-capture procedure.
+* Count QA story YAML files as test surface, so story-only changes get the lighter fast-lane ceremony and an accurate merge-check blast radius.
+* No user-facing change. This produces an internal recommendation on self-evolving skill and harness patterns.
+* No user-facing change. This produces an internal go/no-go on listing claude-tweaks on Anthropic's plugin portal.
+* No user-facing change. This produces an internal recommendation on continuous security scanning.
+* No user-facing change unless the recommendation is positive. In that case, claude-tweaks ships its first Claude Code mod, for the capability the recommendation names.
+* No user-facing change. This records a decision on whether claude-tweaks adopts Claude Code's organization-level tool approval ceiling.
+* Make review's test-quality agents anchor coverage findings at the code under test, so two agents finding the same gap now confirm each other.
+* Fixed: reconcile no longer skips every check as "no-remote" in a checkout with a working origin but no local origin/HEAD (a fresh cloud or Routine clone, or a git init + remote add repo) — it repairs origin/HEAD once with a bounded git remote set-head, remembers a failed repair for the cache TTL, and reports it with git's own message.
+* Made the pull-request state lookup report a misused call as invalid arguments instead of a misleading network failure, and documented how dispatch close-out must call it.
+* Design pre-build loads Impeccable's current craft guidance again, instead of reporting missing reference files and building the brief without it.
+* Add a plan-audit check that warns before a build starts when the plan leaves a clause of an acceptance criterion uncovered.
+* Verification runs can now time out a hung test file instead of hanging forever.
+* Interrupting a baseline verification run now cleans up its scratch worktree, and leftovers are reported on the next run.
+* Code review's parallel reviewers are now told never to run your test suites or start servers, and the review reports any server they leave running.
+* Under PR-first runs, the test and review gates now fail when the run's own pull request already has a failing CI check, instead of passing on local results alone.
+* Fixed closing a pipeline run by its short run id, and made a failed close report a non-zero exit code.
+* The release preflight no longer reports "nothing to release" when feature commits arrive through GitHub merge commits under release-please.
+* Switched dispatch's first build/test call to Claude's more capable model profile, reducing how often it skips the pipeline's required safety checks.
+* The worktree-reap long-path fallback now refuses to force-delete when a registered worktree's path cannot be resolved, instead of treating it as already removed.
+* Verification baseline checks now run faster on large failure sets by batching their per-file git probes.
+* Baseline-adjudicated verification no longer fails a build on a one-off flaky extra failure in a file that already fails at base.
+* No user-visible change: internal verification-runner behavior for environments with known,
+* No user-visible change — internal test/CLI reliability fix for the visual-decide stop command in containers without a reaping init.
+* Add a plan-authoring check so a build plan that gives an existing function a new dependency also lists every test that calls it, before any task runs.
+* Clarify that a pre-existing defect in a file the build touches goes through the deferral gate's fix-now test, so "pre-existing" alone no longer defers it.
+* No user-visible change — adds a cross-platform regression test for Windows drive-root glob handling.
+* Local-merge releases now support java/ruby/dotnet manifest bumps directly, instead of requiring the `simple` + `extra-files` config workaround.
+* Scheduled dispatch runs no longer stop in cloud sandboxes that block GitHub's GraphQL API; they switch to the GitHub MCP tools instead.
+* Flaky-test retries are now refused when a failure cannot be attributed to a specific test file.
+* Fixed the pre-PR bookkeeping guard blocking writes to gitignored scratch files, which could stop an agent from writing the draft PR body.
+* No user-visible change.
+* No user-visible change — adds a Linux-runnable test pinning the Windows forward-slash temp path output.
+* The worktree-always gate now also catches file writes made by plain shell redirection (`> file`, `>> file`) from the main checkout.
+* No user-visible change — agent harness reliability fix.
+* No user-visible change — agent harness reliability fix.
+
 ## [6.141.0](https://github.com/thn-inc/claude-tweaks/compare/v6.140.1...v6.141.0) (2026-10-16)
 
 
