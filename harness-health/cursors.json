@@ -182,5 +182,9 @@
   "skill:merge-shape-landed-proof": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792177515155
+  },
+  "skill:plan-audit-check-addition": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792214416286
   }
 }
