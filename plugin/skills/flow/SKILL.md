@@ -1,7 +1,7 @@
 ---
 name: flow
 description: Use when you want to run an automated build → test → review → polish → wrap-up pipeline on a work record without stopping between steps. Accepts record references (#N) only — design docs must be decomposed via /claude-tweaks:specify first.
-argument-hint: "#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]"
+argument-hint: "#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [parallel] [cleanup-only] [step1,step2,step3]"
 ---
 
 # Flow — Automated Pipeline
@@ -29,12 +29,12 @@ Run multiple lifecycle steps in sequence without stopping between them. Each ste
 
 ## Input
 
-`$ARGUMENTS` is parsed as `#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]` — see Syntax and Arguments below for what each token resolves to.
+`$ARGUMENTS` is parsed as `#N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [parallel] [cleanup-only] [step1,step2,step3]` — see Syntax and Arguments below for what each token resolves to.
 
 ## Syntax
 
 ```
-/claude-tweaks:flow #N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [cleanup-only] [step1,step2,step3]
+/claude-tweaks:flow #N[,#M...] [worktree|current-branch] [no-stories] [no-polish] [no-deepen] [no-creative] [auto|interactive|hybrid|confirm] [keep-going] [parallel] [cleanup-only] [step1,step2,step3]
 ```
 
 All bracketed tokens are optional and order-independent. `worktree` is the default git strategy when neither `worktree` nor `current-branch` is set. `keep-going` applies to multi-record runs only. Design doc paths are rejected at Step 2.7 — run `/claude-tweaks:specify` first.
@@ -57,6 +57,7 @@ All bracketed tokens are optional and order-independent. `worktree` is the defau
 | `interactive` | No | Opt out of auto entirely — skills prompt in-flow as standalone; the Manifesto is skipped. Highest friction. |
 | `hybrid` | No | Manifesto approval gate runs; downstream skills still prompt on reversibility/confidence-floor or severity-ceiling failures. Between `auto` and `interactive`. |
 | `keep-going` | No | **Multi-spec only.** Continue the run after a HARD-GATE failure in one spec — remaining specs still run, committing into the same shared worktree. Failed specs surface in the consolidated Review Console's "Not run / Failed" footer. Use when specs are genuinely independent (no `blocked-by:` edges). The default is to stop on first failure because spec N+1 may build on spec N's correctness — `keep-going` inverts that safety, so it's opt-in. See `multi-spec.md`. On a single-spec/single-record run, `keep-going` has nothing to continue past — treat it as a no-op and note: "`keep-going` has no effect on a single-target run — it only applies when multiple specs/records are given." |
+| `parallel` | No | **Multi-spec only, opt-in (#2677).** Build and test mutually independent records concurrently in per-spec worktrees, in dependency waves; review, polish and wrap-up stay sequential in the shared worktree, with one PR and one console. See `multispec-parallel-waves.md`. Without it, a multi-spec run is unchanged; it has no effect on a single-record run or under `interactive`. |
 | `cleanup-only` | No | Valid only when the resolved step list includes `wrap-up` (e.g. `/claude-tweaks:flow {target} wrap-up cleanup-only`) — a dedicated teardown-only entry point (#298): the caller's teardown-only follow-up call needs `wrap-up`'s cleanup route (`[IL-116]`) but not its full review/reflection semantics. Under `cleanup-only`, `/claude-tweaks:wrap-up` skips Phases 1-4 (reflection, routing, settle, close) and runs only `cleanup-procedures.md`'s cleanup items; `/flow`'s own Step 5 treats the run the same way it already treats a step list where `wrap-up` is *absent* — skip the nothing-left-behind ledger gate and the Creative/Depth surveys, render the "Flow: Steps Complete" note (see `steps-and-gates.md`'s "Partial step lists" section). On a step list that does not include `wrap-up`, the flag is a no-op — note it in the pipeline output, the same convention `keep-going` uses for its own no-op case: "`cleanup-only` has no effect — `wrap-up` is not in the step list." **Does not exempt Step 1.5** — this flag is read only after Step 1's materialize hard gate has already run, so routing a teardown call through `/flow {target} wrap-up cleanup-only` for a record whose triggering failure *was* that gate reproduces the identical STOP rather than reaching cleanup (`#1766`). `/claude-tweaks:dispatch`'s own teardown call sidesteps this by invoking `/claude-tweaks:wrap-up {target} cleanup-only` directly, never through `/flow` — see `dispatch/two-call-gate.md` §5. |
 | `[steps]` | No | Step argument(s). Single step = resume from that step onward. Comma-separated steps = run exactly those steps. Default (no steps): `build,test,review,polish,wrap-up` (re-verify is bundled with polish). |
 
@@ -66,7 +67,7 @@ Flow always uses **subagent** execution strategy — its purpose is hands-off au
 
 ### Input resolution
 
-1. **Record reference(s)** (e.g., `#123` or `#123,#456`; under `work-backend: local-files`, drop the `#`) → **Record mode** — resolved, shape-gated, and materialized via `materialize.md` in this skill's directory before the pipeline proper starts; an unshaped record stops the run with a pointer to `/claude-tweaks:specify #{n}`. Checked first, since a leading `#` (or, under `work-backend: local-files`, a bare id that resolves to an existing record) unambiguously means record mode. `/claude-tweaks:dispatch` is the primary caller of this form (`PIPELINE_RUN_DIR="{minted-run-dir}" /claude-tweaks:flow #{n}[,#{m}...]`) — a human can also run it directly against any record carrying no live claim. A single record runs the standard single-spec pipeline below, built from the materialized file. Multiple records (`#A,#B`) run **Multi-spec mode** (below), each materializing to its own file under the shared run's `spec-{id}/work/` subdirectory (see `materialize.md`'s Multi-record layout and `multi-spec.md`) — they run sequentially in one terminal (see Multi-Spec Sequential Flow below); for true parallel execution, use separate terminals with `worktree` mode. When `/claude-tweaks:dispatch` is the caller (a bundle group — see `dispatch/SKILL.md` Step 5), the run identity it minted and threaded in as `PIPELINE_RUN_DIR` is what every record's `/wrap-up` release step reads (`basename($PIPELINE_RUN_DIR)`) — no separate value to thread.
+1. **Record reference(s)** (e.g., `#123` or `#123,#456`; under `work-backend: local-files`, drop the `#`) → **Record mode** — resolved, shape-gated, and materialized via `materialize.md` in this skill's directory before the pipeline proper starts; an unshaped record stops the run with a pointer to `/claude-tweaks:specify #{n}`. Checked first, since a leading `#` (or, under `work-backend: local-files`, a bare id that resolves to an existing record) unambiguously means record mode. `/claude-tweaks:dispatch` is the primary caller of this form (`PIPELINE_RUN_DIR="{minted-run-dir}" /claude-tweaks:flow #{n}[,#{m}...]`) — a human can also run it directly against any record carrying no live claim. A single record runs the standard single-spec pipeline below, built from the materialized file. Multiple records (`#A,#B`) run **Multi-spec mode** (below), each materializing to its own file under the shared run's `spec-{id}/work/` subdirectory (see `materialize.md`'s Multi-record layout and `multi-spec.md`) — they run sequentially in one terminal (see Multi-Spec Sequential Flow below); for true parallel execution, use separate terminals with `worktree` mode, or the opt-in `parallel` token for in-run waves (`multispec-parallel-waves.md`). When `/claude-tweaks:dispatch` is the caller (a bundle group — see `dispatch/SKILL.md` Step 5), the run identity it minted and threaded in as `PIPELINE_RUN_DIR` is what every record's `/wrap-up` release step reads (`basename($PIPELINE_RUN_DIR)`) — no separate value to thread.
 2. **Topic name** (e.g., `meal planning`) → search the configured `work-backend` for a matching record. If found, use record mode. If only a design doc exists at `docs/superpowers/specs/*-design.md`, **stop and route to `/claude-tweaks:specify`** (see Step 2.7) — design docs are no longer executable directly by `/flow`.
 3. **Design doc path** → **rejected** at Step 2.7 with a routing message to `/claude-tweaks:specify`. Design-mode flow was removed because it bypassed the granularity contract — design docs describe multi-phase programs, not agent-sized work units.
 
@@ -93,6 +94,7 @@ If no UI files changed, or `no-stories` is set, the stories step is skipped.
 /claude-tweaks:flow 42 no-creative                                  → full pipeline, skip the end-of-run creative-opportunities survey
 /claude-tweaks:flow 42,45,48                                        → multi-spec sequential, all specs in one shared worktree
 /claude-tweaks:flow 42,45,48 keep-going                             → multi-spec, continue past HARD-GATE failures (independent specs only)
+/claude-tweaks:flow 42,45,48 parallel                               → multi-spec, independent records build+test concurrently in waves; one PR
 /claude-tweaks:flow meal planning                                   → resolve to spec by name (rejected if only design doc exists)
 /claude-tweaks:flow docs/superpowers/specs/migration-design.md      → REJECTED — run /specify first; flow only accepts record references and specs (auto does not silence this)
 ```
@@ -202,16 +204,17 @@ On successful completion of all steps (`wrap-up` in the step list), read `summar
 
 ## Multi-Spec Sequential Flow
 
-When multiple record references are provided (e.g., `#42,#45,#48`), flow runs each record's pipeline **sequentially** in one terminal. Each completes its full pipeline (build → test → review → polish → wrap-up) before the next begins.
+When multiple record references are provided (e.g., `#42,#45,#48`), flow runs each record's pipeline **sequentially** in one terminal (the opt-in `parallel` token is the one exception — `multispec-parallel-waves.md`). Each completes its full pipeline (build → test → review → polish → wrap-up) before the next begins.
 
 **Pre-flight enrichments (v4.6.4+):**
 - **Dependency-aware ordering** — reads each target's `blocked-by:` dependency declaration (see `materialize.md`'s Populating the header), builds a DAG, hard-fails on cycles, and offers (or auto-applies in `auto` mode) topological re-ordering when the user's order violates the graph.
+- **Merge-state gate (#2733)** — a target whose text requires an in-run prerequisite already merged to the integration branch is split out (with its in-run dependents) before claiming, logged, and given a re-run command — never asked; see `multispec-merge-gate.md`.
 - **Cross-spec conflict detection** — pre-flight scans each spec's `Files:` declarations; surfaces overlapping pairs as a footer line in the Pipeline Preview. Warning, not hard-fail.
 
 **Failure handling:**
 - **Default:** a HARD-GATE failure in one spec stops the remaining specs (compounding-risk safety).
 - **`keep-going`:** opt-in flag that continues the run past HARD-GATE failures. Failed specs surface in the consolidated Review Console's "Not run / Failed" footer.
-- **Shared worktree:** in `worktree` mode a sequential multi-spec run uses **one shared worktree for the whole run**, not one per spec. `/flow` creates it once up front (from the current local HEAD), runs every spec inside it (per-spec builds skip creation via `MULTISPEC_SHARED_WORKTREE=1`), and finishes the single branch once at the end. Per-spec worktrees apply only to separate-terminal parallel runs.
+- **Shared worktree:** in `worktree` mode a sequential multi-spec run uses **one shared worktree for the whole run**, not one per spec. `/flow` creates it once up front (from the current local HEAD), runs every spec inside it (per-spec builds skip creation via `MULTISPEC_SHARED_WORKTREE=1`), and finishes the single branch once at the end. Per-spec worktrees apply only to separate-terminal parallel runs. Under the opt-in `parallel` token, a wave's independent records build and test in per-spec worktrees and merge back into the shared branch — see `multispec-parallel-waves.md`.
 
 **Bookend architecture for multi-spec (v4.6.3+):** in `auto` or `hybrid` mode, per-spec Wrap-Up Review Consoles are **deferred** — `/flow` sets `MULTISPEC_REVIEW_DEFER=1` when invoking each spec's `/wrap-up`. After all specs complete (or `keep-going` finishes the run), `/flow` runs **one consolidated Review Console** that reads every per-spec `decisions.md` + `staged/` and surfaces all approvals in one batch. This preserves the bookend promise (Manifesto at start, one Review Console at end) regardless of N. See `multispec-review-console.md`.
 
