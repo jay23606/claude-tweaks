@@ -220,5 +220,8 @@
   },
   "doc:plans/2026-10-14-record-1350-ledger": {
     "lastAuditedMs": 1792131653215
+  },
+  "doc:decisions/0022-unattended-runs-keep-network-egress": {
+    "lastAuditedMs": 1792217762275
   }
 }
