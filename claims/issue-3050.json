@@ -1,7 +1,7 @@
 {
-  "released": true,
-  "runId": "2026-10-16T190307-record-2734",
-  "reason": "abandoned: spec #3050 (dispatch first call bypassed /flow; unreviewed work kept on branch worktree-dispatch-record-2734)",
-  "releasedAt": "2026-10-17T06:11:51.876Z",
-  "link": "https://github.com/thn-inc/claude-tweaks/tree/worktree-dispatch-record-2734"
+  "runId": "2026-10-17T073340-spec-3050",
+  "sessionId": "82e7b9ad-2cef-47ed-9c48-ca4063e76e9f",
+  "claimedAt": "2026-10-17T07:35:07.913Z",
+  "ttlHours": 72,
+  "host": "Thomass-MacBook-Pro-3376.local"
 }
