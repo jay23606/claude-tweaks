@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-17T18:32:19.605Z",
-  "runId": "2026-10-17T183053-dispatch-standalone",
+  "computedAt": "2026-10-17T18:36:06.049Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -201,36 +201,6 @@
       {
         "number": 3312,
         "updatedAt": "2026-10-17T09:03:47Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3311,
-        "updatedAt": "2026-10-17T16:50:30Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3310,
-        "updatedAt": "2026-10-17T06:28:26Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3309,
-        "updatedAt": "2026-10-17T06:28:42Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3308,
-        "updatedAt": "2026-10-17T06:27:58Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3307,
-        "updatedAt": "2026-10-17T06:27:50Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3306,
-        "updatedAt": "2026-10-17T06:31:47Z",
         "state": "OPEN"
       },
       {
@@ -445,7 +415,7 @@
       },
       {
         "number": 2734,
-        "updatedAt": "2026-10-17T06:09:32Z",
+        "updatedAt": "2026-10-17T18:35:30Z",
         "state": "OPEN"
       }
     ]
@@ -6255,90 +6225,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n**Existing mechanism, found during shaping.** `_shared/autonomy-ceiling.md` already documents a *per-run* escape hatch, distinct from `consoleAutoResolve`: an explicit Manifesto `confirm`/`hybrid` override can set `merge-authorization` for that one run — \"always requiring a live answer... regardless of the project's ceiling setting,\" never settable via `policy.yml`. The same passage states plainly: \"an `unattended`-ceiling project still needs `consoleAutoResolve` (or this lever) to actually skip the terminal click — raising the ceiling alone does not, by itself, answer this lever.\" This confirms the gap precisely: `consoleAutoResolve` is granted automatically at `unattended` and resolves every *other* Review Console section with zero clicks, but `merge-authorization`'s `ask` default is either a deliberate carve-out `consoleAutoResolve` does not override, or (less likely, given how explicitly this is documented) a genuine implementation gap — Deliverable 1 below needs to settle which, since the doc reads as intentional design, not an oversight, but the actual session cost (a 7.5h stall) argues the design should be revisited regardless of original intent.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n3. `npm test` passes.\n\n## Technical Approach\n\nWhichever way Deliverable 1 resolves, the change site is `bin/lib/issues/autonomy.js`'s `bookkeepingPermissions(ceiling)` (the single source of truth `_shared/autonomy-ceiling.md`'s Bookkeeping capabilities table documents) plus `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution path — the same three places every existing `unattended`-only capability (`opsAckAutoAcknowledge`, `consoleAutoResolve`, `refineAutoApply`, `ledgerRouteRemainder`) already threads through, so a new `mergeAuthorizationAutoResolve`-shaped capability (if the decision favors extension) follows the identical pattern rather than inventing a new mechanism. If the decision instead favors the command-line opt-in flag (Deliverable 3's middle ground), that's a `/flow` argument-parsing change plus a one-line Manifesto lever override, independent of the `bookkeepingPermissions()` table.\n\n### Key Files\n\n- `plugin/skills/flow/manifesto.md` — the `merge-authorization: ask` default (line ~181) and the \"Never a `policy.yml` default\" rule\n- `plugin/skills/_shared/autonomy-ceiling.md` — `bookkeepingPermissions()`'s documented table, and the existing per-run confirm/hybrid override this record's investigation found (the \"this lever\" passage) — the natural place to add a new capability row if the decision favors extension\n- `plugin/bin/lib/issues/autonomy.js` — `bookkeepingPermissions(ceiling)`'s actual code, the source of truth the markdown table documents\n\n## Gotchas\n\n- The existing confirm/hybrid per-run override is a real, already-working mechanism for pre-authorizing one run's merge — don't present this record as \"there's no way to do this today\" in a build; the gap is specifically that `auto` mode + `unattended` ceiling can't reach the same outcome without reopening the whole Manifesto gate.\n- `_shared/autonomy-ceiling.md`'s own prose reads like the current `ask`-always default for merge-authorization was a deliberate, considered design choice (it's called out explicitly, not silently absent) — treat \"was this intentional\" as a real open question for Deliverable 1, not an assumed bug, even though the session cost (7.5h stall) argues for revisiting it.\n\n## Original request\n\nflow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall\n\nSurface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n\n## Release Note\n\nDecided whether an `unattended` autonomy ceiling should extend to merge-authorization, closing the gap where a fully green, reviewed `/flow` run still stalls on a single manual merge click.\n",
-        "createdAt": "2026-09-21T04:53:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: ready for dispatch",
-            "color": "0e8a16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Size: medium effort",
-            "color": "fbca04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMTcg",
-            "name": "risk:high",
-            "description": "Scoring: high blast radius — human review required",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: standard review",
-            "color": "c5def5"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2734,
-        "state": "OPEN",
-        "title": "flow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall",
-        "updatedAt": "2026-10-17T06:09:32Z",
-        "facets": {
-          "origin": null,
-          "risk": "high",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: backend\n\n## Current State\n\n`wrap-up-engine.js verify`'s `acceptance-labeling` check (`plugin/bin/lib/wrap-up/engine-verify.js`, registered at ~L679 as of 2026-10-17; the original report's ~L511-547 has since moved) fails a sub-issue that was wrapped up correctly whenever its parent's acceptance gate is not yet due.\n\nFor each resolved issue the check calls `resolveParent()`. When a parent exists it takes `target = parent`, then requires `demo:pending` on that target unconditionally (~L743: `failing.push(\\`#${target}: missing demo:pending label\\`)`). It never enumerates the parent's sub-issues and never calls `parentGateState({ subIssues, parentLabels })` (`plugin/bin/lib/issues/acceptance.js:100`). The Parent-Gate Procedure (`plugin/skills/wrap-up/verification-brief-parent-gate.md`, \"Evaluate the gate\") documents the `incomplete` state as a deliberate no-op: siblings are still open, so no label lands on the sub-issue or the parent.\n\nObserved (reported against 6.129.0, re-confirmed in the current source): with parent #P holding eight sub-issues, one closed and seven open (including the run's own #S), `verify` renders `| acceptance-labeling | fail | #P: missing demo:pending label |` and exits 3. `plugin/skills/wrap-up/execution-and-verification.md` treats that as BLOCKED, so no closure line is written. This hits every wrap-up of a sub-issue that isn't the last open one.\n\nThe parent path also skips the oversight-floor check. Its non-parent counterpart is `oversightExemptSet` (~L146), which already exempts below-floor records from `demo:pending`.\n\n## Deliverables\n\n1. In the `acceptance-labeling` check, after a parent target resolves, enumerate the parent's sub-issues and compute `parentGateState({ subIssues, parentLabels })`. Treat the run's own resolved records as CLOSED (self-inclusion: they are being closed by this wrap-up).\n2. Require `demo:pending` plus a Verification Brief on the parent only when the computed state is one where the Parent-Gate Procedure would have labeled it (`due`/`gated`/`resolved`) **and** the parent-path oversight floor is exceeded (`maxRiskTier` + `exceedsOversightFloor(..., { sizeFloor: null })`). Otherwise return `skip` with the reason (e.g. `parent gate #P not due — 6 sibling sub-issue(s) open`, or `parent #P below oversight floor`).\n3. A sub-issue enumeration failure renders the check `unknown` (a gather failure), never `fail`, matching the file's existing could-not-gather convention.\n4. In `execution-and-verification.md`, state that `verify --run-dir` must be passed the original (pre-archive) run-dir path. Passing the archive path after Section B archived the run makes `run-dir-archived` report `original path still present`.\n\n## Acceptance Criteria\n\n- A unit test drives the check with a resolvable parent whose sub-issues include open siblings (gate `incomplete`) and asserts `result: 'skip'` with a detail naming the parent and the open-sibling count. It must not return `fail`.\n- A unit test with every sibling closed (gate `due`) and the parent above the oversight floor but missing `demo:pending` still asserts `fail` (`#P: missing demo:pending label`), so the check keeps catching a genuinely ungated parent.\n- A unit test with a due gate but a parent below the oversight floor asserts `skip`.\n- A unit test where sub-issue enumeration throws asserts `result: 'unknown'`.\n- `execution-and-verification.md` carries the pre-archive `--run-dir` note.\n- `npm test` passes in full.\n\n## Release Note\n\nWrap-up verification no longer blocks closing a sub-issue just because its parent's acceptance gate isn't due yet.\n\n## Technical Approach\n\nReuse the existing primitives rather than re-deriving gate logic: `parentGateState` from `acceptance.js`, and the parent-path oversight-floor helpers the Parent-Gate Procedure already uses. Fetch sub-issues through the same `deps.gh` seam `resolveParent` uses, so the check stays testable with the injected runner. Keep the existing non-parent path and the `oversightExemptSet` narrowing unchanged. The new logic only applies once `resolved.parent` is non-null, and it runs before the `demo:pending` label read.\n\n### Key Files\n\n- `plugin/bin/lib/wrap-up/engine-verify.js` — `acceptance-labeling` check: compute the parent gate state and floor before requiring `demo:pending`\n- `plugin/bin/lib/issues/acceptance.js` — `parentGateState` (consumed, not changed)\n- `plugin/skills/wrap-up/execution-and-verification.md` — pre-archive `--run-dir` note\n- `plugin/skills/wrap-up/verification-brief-parent-gate.md` — source of truth for the gate states and the floor rule (read, not changed)\n- `tests/bin-lib/wrap-up/engine-verify.test.js` — new parent-gate cases beside the existing `acceptance-labeling` tests\n\n## Gotchas\n\n- Self-inclusion matters. At verify time the run's own sub-issue may still be OPEN on GitHub (closure happens via the merge or a later step), so counting it as open would make the gate permanently `incomplete` for the last sibling and hide a genuinely due gate.\n- Several sub-issues in one run can share one parent. The existing dedupe-by-target loop must still check that parent once, with every run-resolved sibling treated as closed.\n- Line numbers in the original report (~L511-547) are stale. Locate the check by its `registerCheck('acceptance-labeling', …)` call.\n\n## Original request\n\nengine-verify.js: acceptance-labeling false-fails a sub-issue whose parent gate isn't due yet\n\n**Summary:** `wrap-up-engine.js verify`'s acceptance-labeling check fails a sub-issue that was wrapped up correctly when its parent gate isn't due yet. That blocks the closure line.\n\n**Kind:** Defect\n\n**Affected component:** `bin/lib/wrap-up/engine-verify.js` (`acceptance-labeling` check), invoked by `/claude-tweaks:wrap-up` Phase 4 \"Verify execution\"\n\n**Repro steps:**\n1. In a `work-backend: github-issues`, `work-links: native` project, take a parent record #P with eight sub-issues. One is closed and the other seven are open, including the one being run (#S).\n2. Run `/claude-tweaks:flow #S` through to wrap-up (in a private project, pr-first, PR merged).\n3. At Phase 4's acceptance-labeling step, `verification-brief.md` routes #S to the Parent-Gate Procedure. `parentGateState` evaluates `incomplete` because siblings are still open. Per `verification-brief-parent-gate.md` \"Evaluate the gate\", no label is applied to #S or #P. This is correct.\n4. Run `node bin/wrap-up-engine.js verify --run-dir <project-root>/.claude-tweaks/pipelines/<run-id> --base <base-sha>`.\n\n**Expected vs. actual:**\nExpected: `acceptance-labeling` renders `skip` (or `pass`) with a detail like \"parent gate #P not due — 6 sibling sub-issue(s) open\", since `incomplete` is a documented no-op.\nActual: `| acceptance-labeling | fail | #P: missing demo:pending label |`, exit 3. `execution-and-verification.md` treats that as BLOCKED, so no closure line is written. This hits every wrap-up of a sub-issue that isn't the last one.\n\n**Cause:** `engine-verify.js` ~L511-547 resolves `target = parent` via `resolveParent()` and then requires `demo:pending` on the target unconditionally. It never enumerates the parent's sub-issues and never calls `parentGateState({ subIssues, parentLabels })` (`bin/lib/issues/acceptance.js`). It also skips the parent-path oversight-floor check (`maxRiskTier` + `exceedsOversightFloor(..., { sizeFloor: null })`), which is the parent-path counterpart of the `oversightExemptSet` exemption.\n\n**Suggested fix:** after resolving a parent target, enumerate its sub-issues and compute `parentGateState`. For self-inclusion, treat the run's own resolved records as CLOSED. Require `demo:pending` plus a brief only when the state is `due`/`gated`/`resolved` and the risk floor is exceeded. Otherwise return `skip` with the reason.\n\n**Secondary (minor):** if Section B has already archived the run and `--run-dir` is given the archive path, `run-dir-archived` reports `original path still present: <path>`. The check has to be passed the original (pre-archive) path, and `execution-and-verification.md` could say so explicitly.\n\n**Definition:** Clear\n\n**Plugin version:** 6.129.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-7093a21b -->\n",
         "createdAt": "2026-10-16T14:09:45Z",
         "labels": [
@@ -6796,21 +6682,18 @@
     {
       "number": 3379,
       "blockedBy": [
-        3310,
         3123
       ]
     },
     {
       "number": 3378,
       "blockedBy": [
-        3310,
         3377
       ]
     },
     {
       "number": 3377,
       "blockedBy": [
-        3310,
         3375
       ]
     }
