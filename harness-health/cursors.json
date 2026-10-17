@@ -182,5 +182,13 @@
   "skill:merge-shape-landed-proof": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792221208274
+  },
+  "skill:test": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792227996494
+  },
+  "skill:subagent-dispatch-core": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792227998399
   }
 }
