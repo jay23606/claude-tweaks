@@ -290,5 +290,9 @@
   "plugin/bin/lib/transcript-judge": {
     "lastSweptMs": 1792120113115,
     "lastHash": "6bde05e38517749742fe96938e634ef4e379b233"
+  },
+  "plugin/bin/lib/pr-checks": {
+    "lastSweptMs": 1792206542333,
+    "lastHash": "3affd1f8576d0fba5b0a36e46dfd83d552f195d5"
   }
 }
