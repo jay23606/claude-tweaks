@@ -1,43 +1,5 @@
 [
   {
-    "runId": "2026-10-16T20:59:02.860Z",
-    "runAt": "2026-10-16T20:59:03.806Z",
-    "fingerprints": []
-  },
-  {
-    "runId": "2026-10-16T20:59:06.653Z",
-    "runAt": "2026-10-16T20:59:07.467Z",
-    "fingerprints": []
-  },
-  {
-    "runId": "2026-10-16T20:59:10.307Z",
-    "runAt": "2026-10-16T20:59:11.086Z",
-    "fingerprints": []
-  },
-  {
-    "runId": "2026-10-16T21:04:24.036Z",
-    "runAt": "2026-10-16T21:04:24.953Z",
-    "fingerprints": [
-      "harnesshealth-a0188cb6",
-      "harnesshealth-c6ecbf94"
-    ]
-  },
-  {
-    "runId": "2026-10-16T21:04:30.911Z",
-    "runAt": "2026-10-16T21:04:31.877Z",
-    "fingerprints": []
-  },
-  {
-    "runId": "2026-10-16T21:04:34.288Z",
-    "runAt": "2026-10-16T21:04:35.153Z",
-    "fingerprints": []
-  },
-  {
-    "runId": "2026-10-16T21:04:38.188Z",
-    "runAt": "2026-10-16T21:04:38.988Z",
-    "fingerprints": []
-  },
-  {
     "runId": "2026-10-16T21:06:42.314Z",
     "runAt": "2026-10-16T21:06:43.119Z",
     "fingerprints": []
@@ -485,6 +447,49 @@
   {
     "runId": "2026-10-17T20:30:13.907Z",
     "runAt": "2026-10-17T20:30:15.727Z",
+    "fingerprints": []
+  },
+  {
+    "runId": "2026-10-17T20:31:04.611Z",
+    "runAt": "2026-10-17T20:31:05.993Z",
+    "fingerprints": [
+      "harnesshealth-9e3d1b43"
+    ]
+  },
+  {
+    "runId": "2026-10-17T20:31:10.995Z",
+    "runAt": "2026-10-17T20:31:12.117Z",
+    "fingerprints": [
+      "harnesshealth-d78d0d82"
+    ]
+  },
+  {
+    "runId": "2026-10-17T20:31:16.944Z",
+    "runAt": "2026-10-17T20:31:18.798Z",
+    "fingerprints": [
+      "harnesshealth-b8d761e9"
+    ]
+  },
+  {
+    "runId": "2026-10-17T20:31:23.414Z",
+    "runAt": "2026-10-17T20:31:24.442Z",
+    "fingerprints": []
+  },
+  {
+    "runId": "2026-10-17T20:31:37.516Z",
+    "runAt": "2026-10-17T20:31:38.785Z",
+    "fingerprints": [
+      "harnesshealth-7ca6537a"
+    ]
+  },
+  {
+    "runId": "2026-10-17T21:02:02.443Z",
+    "runAt": "2026-10-17T21:02:03.866Z",
+    "fingerprints": []
+  },
+  {
+    "runId": "2026-10-17T21:02:14.915Z",
+    "runAt": "2026-10-17T21:02:16.574Z",
     "fingerprints": []
   }
 ]
