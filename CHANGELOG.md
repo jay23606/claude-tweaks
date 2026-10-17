@@ -76,6 +76,24 @@ Three conventions follow from how this repo works, and all are visible below:
 * wrap-up Section C step 2: the carrier-commit glob reads… ([#3365](https://github.com/thn-inc/claude-tweaks/issues/3365)) ([e900eda](https://github.com/thn-inc/claude-tweaks/commit/e900eda34bfc684d5dc4006382a7058642bf484b)), closes [#3368](https://github.com/thn-inc/claude-tweaks/issues/3368)
 * wrap-up verify false-fails a leave-open (pending-review)… ([#3373](https://github.com/thn-inc/claude-tweaks/issues/3373)) ([1b80994](https://github.com/thn-inc/claude-tweaks/commit/1b80994379f65c84ba79e3f881a9c5f8abc37420))
 
+### Highlights
+* No user-visible change.
+* Verification, wrap-up planning and review-context building now give correct results when run from a subfolder of your project, instead of silently running everything or seeing nothing.
+* Issues built on a local-merge project now close when their branch merges, and wrap-up's verification flags a missing closing keyword instead of skipping the check.
+* Pipeline re-verification after a journey-documentation-only change now runs only the tests that read journey files, instead of the whole suite.
+* Updated the superpowers compatibility pin to 7.0.0 and added checks that guard the upstream text the build dispatch relies on.
+* Multi-spec runs now stop cleanly when record pre-flight fails, and cloud runs without `gh` get real record and overlap data instead of none.
+* Wrap-up no longer reports a false BLOCKED when a pipeline run correctly parks its pull request for a human merge.
+* Dispatch no longer chains a record to every record its files transitively overlap with; each record builds on its own, waiting only while a record that shares a file with it is mid-build.
+* Run-comment readers, /claude-tweaks:demo included, now ignore marker comments from anyone who is not an owner, member, or collaborator on the repository.
+* Dispatched pipeline runs now always start in hands-off mode, so they no longer get stuck behind the configuration safeguard in projects that turned off automatic mode.
+* Flaky results from baseline verification now count toward the flaky-allowlist escalation threshold.
+* Refresh a pull request's spec summary when the build changes a premise, so reviewers never read a description the code no longer matches.
+* The PR checklist's `polish` row now follows one rule for every run: it always starts present, and runs that skip polish remove it, instead of documentation promising an omission the tooling never made.
+* No user-visible change — this hardens `docs-health`'s internal commit-verification path for the `--budget > 1` parallel-judge case; the `verify-commit` CLI's own output contract is unchanged.
+* No user-visible change.
+* `/flow` runs under `worktree-always` now create their open-items ledger in the worktree before building, so early findings are never dropped.
+
 ## [6.143.0](https://github.com/thn-inc/claude-tweaks/compare/v6.142.0...v6.143.0) (2026-10-17)
 
 
