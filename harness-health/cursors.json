@@ -61,11 +61,11 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792184807258
+    "lastAuditedMs": 1792191802119
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792179577400
+    "lastAuditedMs": 1792191803282
   },
   "skill:work-record-facet-rename": {
     "lastAuditedSha": null,
@@ -182,9 +182,5 @@
   "skill:merge-shape-landed-proof": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792177515155
-  },
-  "skill:plan-audit-check-addition": {
-    "lastAuditedSha": null,
-    "lastAuditedMs": 1792214416286
   }
 }
