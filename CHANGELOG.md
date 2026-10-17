@@ -70,6 +70,16 @@ Three conventions follow from how this repo works, and all are visible below:
 * teardown-run and residue.js: post-merge cleanup reports a… ([#3023](https://github.com/thn-inc/claude-tweaks/issues/3023)) ([5c8e2a2](https://github.com/thn-inc/claude-tweaks/commit/5c8e2a2e062601616ed38eddad9524901c4f9184))
 * verify.js --baseline ignores paths quoted from nested TAP and absent from the checkout ([#3153](https://github.com/thn-inc/claude-tweaks/issues/3153), [#3156](https://github.com/thn-inc/claude-tweaks/issues/3156)) ([584f71f](https://github.com/thn-inc/claude-tweaks/commit/584f71fb42bb63cd260bb971f4e2a00a2ad24b4e))
 
+### Highlights
+* Added an option to build independent records in parallel during a multi-record run.
+* Visual review no longer recommends a browser walkthrough when a change only touches non-UI code.
+* No user-visible change.
+* Told worktree sessions to resolve the plugin root and session id to literal values once, so harness guard refusals stop recurring.
+* N/A — documentation correction; no behavior change.
+* Post-merge cleanup no longer reports a worktree as removed when its folder is still on disk, and no longer proposes CHANGELOG fixes that already exist upstream.
+* Multi-spec pipeline runs keep every spec's Verification Brief and timing on the shared PR instead of the last spec's replacing the earlier ones.
+* Baseline test adjudication no longer reports phantom failures from test fixtures that spawn their own test runs.
+
 ## [6.142.0](https://github.com/thn-inc/claude-tweaks/compare/v6.141.0...v6.142.0) (2026-10-17)
 
 
