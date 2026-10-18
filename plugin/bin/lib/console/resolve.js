@@ -48,7 +48,7 @@ const SECTION_MAP = [
   [/^review-unconfirmed-/, SECTIONS.LOW],
   [/^review-(contested|debate)-/, SECTIONS.CONTESTED],
   [/\.patch$/, SECTIONS.PENDING],
-  [/^(polish-suggestion|visual-review|design-decision|build-deviation|simplify|deepen)-/, SECTIONS.PENDING],
+  [/^(polish-suggestion|visual-review|design-decision|build-deviation|simplify|deepen|sdd-ruling)-/, SECTIONS.PENDING],
   [/^wrap-up-skill(-|\b)/, SECTIONS.SKILL],
   // release-backfill- retired #2257 (git describe --contains replaced the
   // staged-backfill mechanism entirely — nothing stages that prefix anymore).
@@ -76,7 +76,7 @@ const SECTION_MAP = [
 const CANONICAL_PREFIXES = [
   'review-unconfirmed-',
   'review-contested-', 'review-debate-',
-  'polish-suggestion-', 'visual-review-', 'design-decision-', 'build-deviation-', 'simplify-', 'deepen-',
+  'polish-suggestion-', 'visual-review-', 'design-decision-', 'build-deviation-', 'simplify-', 'deepen-', 'sdd-ruling-',
   'wrap-up-skill-',
   'wrap-up-doc-', 'tidy-doc-',
   'wrap-up-claude-md-', 'wrap-up-adr-',
