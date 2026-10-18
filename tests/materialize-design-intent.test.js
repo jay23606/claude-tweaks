@@ -13,6 +13,7 @@ const path = require('path');
 const { gitRepo } = require('./helpers/git-fixtures');
 const wtDetect = require('../plugin/bin/lib/hooks/worktree-detect');
 const { run } = require('../plugin/bin/materialize');
+const { DESIGN_INTENT_VALUES } = require('../plugin/bin/lib/issues/materialize-format');
 
 const N = 3018;
 
@@ -66,7 +67,7 @@ function fakeDepsNoGh() {
   };
 }
 
-function materializeWithBody(body) {
+function materializeWithBody(body, labels = [{ name: 'ceremony:standard' }]) {
   const repo = gitRepo();
   return withCwd(repo, () => {
     const recordFile = path.join(repo, 'record.json');
@@ -74,7 +75,7 @@ function materializeWithBody(body) {
       number: N,
       title: 'Design-intent record',
       body,
-      labels: [{ name: 'ceremony:standard' }],
+      labels,
       url: 'https://example.invalid/3018',
     }));
     const deps = fakeDepsNoGh();
@@ -99,8 +100,17 @@ test('unknown Design-intent value exits 1 naming the record and value, writes no
   const stderr = deps.calls.stderr.join('');
   assert.match(stderr, new RegExp(`Record #${N}`));
   assert.ok(stderr.includes('sparkly'), `expected stderr to name the bad value: ${stderr}`);
+  assert.ok(stderr.includes('("quiet, sparkly")'), `expected stderr to echo the raw line value: ${stderr}`);
+  assert.ok(stderr.includes(`(allowed: ${DESIGN_INTENT_VALUES.join(', ')})`), `expected stderr to list the enum: ${stderr}`);
+  assert.ok(stderr.includes(`/claude-tweaks:specify #${N}`), `expected stderr to point at /specify: ${stderr}`);
   assert.strictEqual(fs.existsSync(path.join(runDir, 'work')), false, 'no work/ file should be written');
   assert.strictEqual(deps.calls.stdout.join(''), '', 'no success envelope should be printed');
+});
+
+test('an invalid Design-intent line exits 1 before the missing-ceremony exit 2 (#3018)', () => {
+  const { exitCode, deps } = materializeWithBody(shapedBody('Design-intent: sparkly'), []);
+  assert.strictEqual(exitCode, 1, deps.calls.stderr.join(''));
+  assert.ok(deps.calls.stderr.join('').includes('invalid Design-intent'));
 });
 
 test('none mixed with another intent exits 1 (#3018)', () => {

@@ -118,7 +118,7 @@ Every field except `surface`/`design-intent`/`ui-stack`/`design-seed` (next sect
 
 ```
 Surface: {web | mobile | desktop | backend | infra | terminal}
-Design-intent: {bold | quiet | minimal | delightful | onboarding | none}
+Design-intent: {one or more of bold | quiet | minimal | delightful | onboarding, comma-separated — or none alone}
 Ui-stack: {free-form component-library/styling-approach string, or an explicit no-preference answer}
 Design-seed: {opaque token — never written by /specify; see below}
 ```

@@ -43,14 +43,15 @@ test('polish multi-intent paragraph reads the materialized header comma list and
   assert.ok(para.includes('invoke commands in the order declared'), 'keeps the dispatch-order sentence');
 });
 
-test('materialize.md describes the design-intent normalization', () => {
-  const text = read(MATERIALIZE);
-  assert.match(text, /splits on[\s\S]{0,200}trims/i, 'CLI splits on , and trims each value');
+test('materialize.md lift-rule paragraph describes the design-intent normalization', () => {
+  const para = read(MATERIALIZE).split('\n\n').find((p) => p.includes('is the one field not copied verbatim'));
+  assert.ok(para, 'no lift-rule paragraph naming design-intent as the one non-verbatim field');
+  assert.match(para, /splits on[\s\S]{0,200}trims/i, 'CLI splits on , and trims each value');
 });
 
-test('materialize.md hard gate names the invalid Design-intent exit', () => {
-  const text = read(MATERIALIZE);
-  assert.match(text, /invalid `Design-intent:`[\s\S]{0,300}exits 1/i, 'invalid value makes bin/materialize.js exit 1');
+test('materialize.md hard-gate bullet names the invalid Design-intent exit', () => {
+  const bullet = lineStarting(read(MATERIALIZE), '- **Invalid `Design-intent:`**');
+  assert.match(bullet, /exits 1/i, 'invalid value makes bin/materialize.js exit 1');
 });
 
 // Code-twin pin: the closed Design-intent vocabulary is restated as a `a | b | c`
@@ -72,5 +73,5 @@ test('the Design-intent enum restated in skill prose equals policy-schema.js', (
   const materializeFence = lineStarting(read(MATERIALIZE), 'Design-intent: {');
   assert.deepEqual(pipeList(specTemplate), withoutNone, 'spec-template.md lists every intent except none (none is stated separately)');
   assert.deepEqual(pipeList(preSteps), all, 'design-pre-steps.md lists the full enum');
-  assert.deepEqual(pipeList(materializeFence), all, 'materialize.md metadata example lists the full enum');
+  assert.deepEqual(pipeList(materializeFence), withoutNone, 'materialize.md metadata example lists every intent except none (none is stated separately)');
 });
