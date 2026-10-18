@@ -14,15 +14,20 @@
 // bin/lib/release/subject.js's composeSubject() output. Skill prose reaches
 // the composer only through this CLI — the pure module has no shell surface.
 //
-// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--shell] [--help]
+// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--title-out <path> --body-out <path> | --shell] [--help]
 // Numbers may be comma-joined and/or space-separated; the subject record is
 // the lowest number, and the body carries one `Fixes #n` line per number.
 // Output: JSON {"title","body"} by default; `--shell` prints two POSIX sh
 // assignments, SUBJECT_TITLE='…' then SUBJECT_BODY='…' (single-quoted, '
 // escaped as '\''); the body value spans physical lines, so consume it with
-// `eval "$(…)"`, never by line splitting.
+// `eval "$(…)"`, never by line splitting. `--title-out <path> --body-out <path>`
+// writes the title (no trailing newline) and the body byte-exact to those files
+// and still prints the JSON line — the form merge sites use with
+// `gh pr merge -t "$(cat …)" --body-file …`, so merge text never passes through
+// shell parsing. The two flags go together and cannot be combined with --shell.
 // Exit codes (Split-1/2, mirroring bin/resolve-blockers.js): 0 composed; 1
-// malformed invocation (including --range with --pr, or commit-scope-paths
+// malformed invocation (including --range with --pr, --title-out without
+// --body-out or the reverse, either with --shell, or commit-scope-paths
 // set with neither) OR a policy misconfiguration (a malformed
 // commit-scope-paths entry, a commit-scope token composeSubject rejects) OR a
 // record that cannot be composed (no resolvable Type, `breaking` label with no
@@ -30,7 +35,7 @@
 // stderr); 2 `gh` absent or owner/repo unresolvable (no --repo and no readable
 // origin remote); 3 an external read failed — a `gh issue view` call, the
 // `git diff --name-only -z` behind --range, or the `gh pr diff --name-only`
-// behind --pr.
+// behind --pr — OR a --title-out/--body-out write failed (stderr names the path).
 // --range is read with -z and --end-of-options so a C-quoted (non-ASCII) path
 // still matches its prefix and a dash-leading value can never be read as a git option.
 // Every side effect goes through deps so tests never touch gh or git
@@ -49,6 +54,7 @@
 // record) differently from "bad invocation" (a caller bug).
 'use strict';
 
+const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { composeSubject, ComposeSubjectError } = require('./release/subject');
 const {
@@ -61,7 +67,7 @@ const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('./shared-primitives');
 const { readCommitScope, readListKey } = require('./policy');
 const { parseScopePaths, resolveCommitScope, CommitScopeError } = require('./commit-scope');
 
-const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--shell] [--help]\n';
+const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--title-out <path> --body-out <path> | --shell] [--help]\n';
 // Decision (#2319): kept at the single-call convention, not widened. Each
 // `gh issue view` call below fetches exactly one record — unlike
 // fetch-sub-issues.js's 30000ms bound, which covers a single batched
@@ -84,18 +90,21 @@ function errMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
+// Value flags whose option key is not their name with `--` stripped.
+const FILE_OUT_KEYS = { '--title-out': 'titleOut', '--body-out': 'bodyOut' };
+
 function parseArgs(argv) {
-  const opts = { numbers: [], repo: null, tag: null, scope: null, range: null, pr: null, shell: false, help: false };
+  const opts = { numbers: [], repo: null, tag: null, scope: null, range: null, pr: null, shell: false, help: false, titleOut: null, bodyOut: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { opts.help = true; return opts; }
     if (a === '--shell') { opts.shell = true; continue; }
-    if (a === '--repo' || a === '--tag' || a === '--scope' || a === '--range' || a === '--pr') {
+    if (a === '--repo' || a === '--tag' || a === '--scope' || a === '--range' || a === '--pr' || a === '--title-out' || a === '--body-out') {
       const v = argv[i + 1];
       if (v === undefined || v.startsWith('--')) return { error: `missing value for ${a}` };
       if (a === '--pr' && !/^\d+$/.test(v)) return { error: `invalid --pr value: ${v}` };
       if (a === '--range' && !/^[^\s-][^\s]*\.\.\.[^\s-][^\s]*$/.test(v)) return { error: `invalid --range value: ${v} — expected <base>...<head>` };
-      opts[a.slice(2)] = v;
+      opts[FILE_OUT_KEYS[a] || a.slice(2)] = v;
       i++;
       continue;
     }
@@ -108,6 +117,8 @@ function parseArgs(argv) {
   }
   if (opts.numbers.length === 0) return { error: 'missing <n> argument' };
   if (opts.range !== null && opts.pr !== null) return { error: '--range and --pr are mutually exclusive' };
+  if ((opts.titleOut === null) !== (opts.bodyOut === null)) return { error: '--title-out and --body-out must be passed together' };
+  if (opts.shell && opts.titleOut !== null) return { error: '--title-out/--body-out cannot be combined with --shell' };
   opts.numbers = [...new Set(opts.numbers)].sort((a, b) => a - b);
   return opts;
 }
@@ -225,6 +236,7 @@ const realDeps = {
   readCommitScope: () => readCommitScope(process.cwd()),
   readCommitScopePaths: () => readListKey(process.cwd(), 'commit-scope-paths'),
   gitRunner: (args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true }),
+  writeFile: (p, text) => fs.writeFileSync(p, text, 'utf8'),
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
 };
@@ -350,6 +362,15 @@ function run(argv, deps = realDeps) {
     if (!(err instanceof ComposeSubjectError)) throw err;
     deps.stderr(`compose-subject.js: ${errMessage(err)}\n`);
     return 1;
+  }
+
+  if (opts.titleOut !== null) {
+    for (const [p, text] of [[opts.titleOut, composed.title], [opts.bodyOut, composed.body]]) {
+      try { deps.writeFile(p, text); } catch (err) {
+        deps.stderr(`compose-subject.js: could not write ${p}: ${errMessage(err)}\n`);
+        return 3;
+      }
+    }
   }
 
   if (opts.shell) {

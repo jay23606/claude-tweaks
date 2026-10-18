@@ -17,15 +17,16 @@ const RECORDS = {
   2265: { number: 2265, title: 'Unrecognized native type', body: '## Overview\n\nEpic-typed but stale-labeled.\n\n## Release Note\n\nUnrecognized type test note.\n', labels: [{ name: 'type:feature' }], issueType: { name: 'Epic' } },
   2266: { number: 2266, title: 'Shaping-mode record', body: '## Current State\n\nToday X is Y. More.\n\n## Release Note\n\nUpdated shaping-mode current state.\n', labels: [{ name: 'type:task' }], issueType: null },
   2270: { number: 2270, title: 'Second task in an all-task bundle', body: '## Overview\n\nAnother task.\n\n## Release Note\n\nAdded another task path.\n', labels: [{ name: 'type:task' }], issueType: null },
+  2271: { number: 2271, title: "Cost $HOME `x` it's", body: '## Overview\n\nShell-hostile title.\n\n## Release Note\n\nRound-trips shell-hostile titles.\n', labels: [{ name: 'type:bug' }], issueType: null },
   2250: { number: 2250, title: 'Lowest is a task', body: '## Overview\n\nTask overview.\n\n## Release Note\n\nAdded task overview support.\n', labels: [{ name: 'type:task' }], issueType: null },
   2290: { number: 2290, title: 'No release note', body: '## Overview\n\nSomething.\n', labels: [{ name: 'type:task' }], issueType: null },
 };
 
 function fakeDeps({
   records = RECORDS, ghAvailable = () => true, remoteUrl = () => 'git@github.com:acme/repo.git', failView = false,
-  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null,
+  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null, failWrite = false,
 } = {}) {
-  const out = { stdout: '', stderr: '', calls: [], gitCalls: [] };
+  const out = { stdout: '', stderr: '', calls: [], gitCalls: [], writes: [] };
   const deps = {
     ghAvailable,
     remoteUrl,
@@ -50,6 +51,10 @@ function fakeDeps({
       if (changedFiles instanceof Error) throw changedFiles;
       if (changedFiles === null) throw new Error('gitRunner must not be called');
       return changedFiles;
+    },
+    writeFile: (p, text) => {
+      out.writes.push({ path: p, text });
+      if (failWrite) throw new Error('EACCES: permission denied');
     },
     stdout: (s) => { out.stdout += s; },
     stderr: (s) => { out.stderr += s; },
@@ -208,6 +213,57 @@ test('--shell prints two eval-able sh assignments; a real eval round-trip recove
   assert.equal(recoveredBody, jsonComposed.body);
 
   assert.equal(shellQuote("a'b"), "'a'\\''b'");
+});
+
+test('--title-out/--body-out write the composed title and body to files byte-exact; stdout still carries the JSON', () => {
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 0, out.stderr);
+  const composed = JSON.parse(out.stdout);
+  assert.deepEqual(out.writes, [{ path: '/t/title.txt', text: composed.title }, { path: '/t/body.md', text: composed.body }]);
+  assert.ok(!composed.title.endsWith('\n'));
+});
+
+test('--title-out round-trips a title with $, backtick and quote through gh-style -t "$(cat file)" unchanged', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-subject-files-'));
+  try {
+    const titlePath = path.join(dir, 'title.txt');
+    const bodyPath = path.join(dir, 'body.md');
+    const { deps, out } = fakeDeps();
+    deps.writeFile = realDeps.writeFile;
+    assert.equal(run(['2271', '--title-out', titlePath, '--body-out', bodyPath], deps), 0, out.stderr);
+    const result = require('node:child_process').spawnSync(
+      'sh',
+      ['-c', 'printf "%s" "$(cat "$1")"', '_', titlePath],
+      { encoding: 'utf8' },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, "fix: Cost $HOME `x` it's (#2271)");
+    assert.equal(fs.readFileSync(bodyPath, 'utf8'), JSON.parse(out.stdout).body);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--title-out without --body-out, --body-out without --title-out, or either with --shell exits 1 and writes nothing', () => {
+  const cases = [
+    [['2262', '--title-out', '/t/title.txt'], /--title-out and --body-out/],
+    [['2262', '--body-out', '/t/body.md'], /--title-out and --body-out/],
+    [['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md', '--shell'], /--shell/],
+  ];
+  for (const [argv, expected] of cases) {
+    const { deps, out } = fakeDeps();
+    assert.equal(run(argv, deps), 1, argv.join(' '));
+    assert.equal(out.writes.length, 0, argv.join(' '));
+    assert.match(out.stderr, expected);
+  }
+});
+
+test('a failing write exits 3 naming the path', () => {
+  const { deps, out } = fakeDeps({ failWrite: true });
+  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
+  assert.match(out.stderr, /could not write \/t\/title\.txt/);
+  assert.equal(out.stdout, '');
 });
 
 test('exit 1: record with no resolvable type, or breaking without a ## Breaking Change section', () => {
