@@ -52,3 +52,25 @@ test('materialize.md hard gate names the invalid Design-intent exit', () => {
   const text = read(MATERIALIZE);
   assert.match(text, /invalid `Design-intent:`[\s\S]{0,300}exits 1/i, 'invalid value makes bin/materialize.js exit 1');
 });
+
+// Code-twin pin: the closed Design-intent vocabulary is restated as a `a | b | c`
+// list in three skill files. policy-schema.js is the canonical copy; a value
+// added to or removed from it must fail here, not drift into records that
+// /specify writes and materialization then rejects.
+function pipeList(line) {
+  const match = /[a-z]+(?: \| [a-z]+)+/.exec(line);
+  assert.ok(match, `no a | b | c list in: ${line}`);
+  return match[0].split(' | ').sort();
+}
+
+test('the Design-intent enum restated in skill prose equals policy-schema.js', () => {
+  const { DESIGN_INTENT_VALUES } = require('../plugin/bin/lib/issues/materialize-format');
+  const all = [...DESIGN_INTENT_VALUES].sort();
+  const withoutNone = all.filter((v) => v !== 'none');
+  const specTemplate = lineStarting(read('plugin/skills/specify/spec-template.md'), 'Design-intent: {');
+  const preSteps = lineStarting(read('plugin/skills/specify/design-pre-steps.md'), 'A free-text "Other" answer');
+  const materializeFence = lineStarting(read(MATERIALIZE), 'Design-intent: {');
+  assert.deepEqual(pipeList(specTemplate), withoutNone, 'spec-template.md lists every intent except none (none is stated separately)');
+  assert.deepEqual(pipeList(preSteps), all, 'design-pre-steps.md lists the full enum');
+  assert.deepEqual(pipeList(materializeFence), all, 'materialize.md metadata example lists the full enum');
+});

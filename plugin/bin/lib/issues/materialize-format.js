@@ -141,8 +141,11 @@ function normalizeDesignIntent(raw) {
 // normalizeDesignIntent sets designIntentError instead, naming the raw line value.
 function liftMetadata(body) {
   const text = typeof body === 'string' ? body : '';
-  const blankAt = text.indexOf('\n\n');
-  const block = blankAt === -1 ? text : text.slice(0, blankAt);
+  // \r?\n\r?\n: a CRLF body (GitHub web-UI edits) ends its metadata block at
+  // '\r\n\r\n', which a bare '\n\n' search never finds — the whole body would
+  // then be scanned for metadata lines.
+  const blankMatch = /\r?\n\r?\n/.exec(text);
+  const block = blankMatch ? text.slice(0, blankMatch.index) : text;
   const out = {};
   // [ \t]* (not \s*) before every capture group deliberately: \s matches
   // \n, so a greedy \s* on a bare "Field:" line (no value) would consume

@@ -472,3 +472,7 @@ test('normalizeDesignIntent: enum comes from policy-schema (#3018)', () => {
   for (const v of values) assert.deepEqual(normalizeDesignIntent(v), { ok: true, values: [v] });
   assert.equal(normalizeDesignIntent('onboarding, delightful').ok, true);
 });
+test('liftMetadata: a CRLF body ends its metadata block at the CRLF blank line (#3018)', () => {
+  const body = 'Surface: web\r\n\r\n## Current State\r\nDesign-intent: sparkly\r\nx';
+  assert.deepEqual(liftMetadata(body), { surface: 'web' });
+});
