@@ -74,6 +74,16 @@ function fakeOriginGit(extra) {
   };
 }
 
+// #3222: acceptance-labeling enumerates a resolved parent's sub-issues via
+// `gh api --paginate repos/{o}/{r}/issues/{n}/sub_issues --jq ...`, one JSON
+// object per output line (the shape the live probe against #3374 printed).
+function subIssuesGh(subs) {
+  return subs.map((s) => JSON.stringify({ number: s.number, state: s.state, labels: s.labels })).join('\n');
+}
+function isSubIssuesCall(args) {
+  return args[0] === 'api' && args.includes('--paginate') && /issues\/\d+\/sub_issues$/.test(args[2]);
+}
+
 test('renderVerifyTable renders pass/fail bare and skip/unknown with folded detail', () => {
   const md = renderVerifyTable([
     { check: 'plans-ledger', result: 'pass', detail: '' },
@@ -1630,6 +1640,7 @@ test('acceptance-labeling check redirects to a resolvable parent, never checking
     calls.push(args);
     if (args[0] === '--version') return 'gh version 2.0.0';
     if (isGraphqlCall(args)) return parentGraphqlResponse(parentQueryNumber(args), 898);
+    if (isSubIssuesCall(args)) return subIssuesGh([{ number: 900, state: 'closed', labels: ['risk:high'] }]);
     if (args.includes('labels,comments')) {
       return JSON.stringify({ labels: [{ name: 'demo:pending' }], comments: [{ body: '## Verification Brief\n### Confirmed\n', authorAssociation: 'MEMBER' }] });
     }
@@ -1652,6 +1663,9 @@ test('acceptance-labeling check queries a shared parent exactly once for two sub
     calls.push(args);
     if (args[0] === '--version') return 'gh version 2.0.0';
     if (isGraphqlCall(args)) return parentGraphqlResponse(parentQueryNumber(args), 898);
+    if (isSubIssuesCall(args)) {
+      return subIssuesGh([{ number: 900, state: 'closed', labels: ['risk:high'] }, { number: 901, state: 'open', labels: ['risk:high'] }]);
+    }
     if (args.includes('labels,comments')) {
       return JSON.stringify({ labels: [{ name: 'demo:pending' }], comments: [{ body: '## Verification Brief\n### Confirmed\n', authorAssociation: 'MEMBER' }] });
     }
@@ -1663,6 +1677,209 @@ test('acceptance-labeling check queries a shared parent exactly once for two sub
   const issueCalls = calls.filter((a) => a[0] === 'issue' && a.includes('labels,comments'));
   assert.strictEqual(issueCalls.length, 1, 'parent #898 must only be checked once despite two sub-issues resolving to it');
   assert.strictEqual(row.detail, '');
+});
+
+// #3222: a resolvable-parent record's gate is read from the parent's sub-issues
+// (parentGateState) and the oversight floor, not from the parent's demo:pending
+// label alone. Every case resolves its parent to #898.
+function parentGateRow({ records, subIssues, parentLabels = [], subIssuesReply, policyRaw }) {
+  const runDir = makeTmpDir('verify-acceptance-parentgate-');
+  const repoRoot = makeCleanRepoRoot();
+  if (policyRaw !== undefined) {
+    fs.mkdirSync(path.join(repoRoot, '.claude-tweaks'));
+    fs.writeFileSync(path.join(repoRoot, '.claude-tweaks', 'policy.yml'), policyRaw);
+  }
+  for (const n of records) writeSpecFile(runDir, String(n), n);
+  const calls = [];
+  const fakeGh = (args) => {
+    calls.push(args);
+    if (args[0] === '--version') return 'gh version 2.0.0';
+    if (isGraphqlCall(args)) return parentGraphqlResponse(parentQueryNumber(args), 898);
+    if (isSubIssuesCall(args)) return subIssuesReply ? subIssuesReply() : subIssuesGh(subIssues);
+    if (args.includes('labels,comments')) return JSON.stringify({ labels: parentLabels.map((name) => ({ name })), comments: [] });
+    return '';
+  };
+  const result = runVerify({ runDir, base: 'main', repoRoot, deps: { git: fakeOriginGit(), gh: fakeGh } });
+  return { row: result.rows.find((r) => r.check === 'acceptance-labeling'), calls };
+}
+
+test('AC1.1/AC1.2: acceptance-labeling skips (never fails) a sub-issue whose parent gate is incomplete', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:high'] },
+      { number: 901, state: 'closed', labels: ['risk:high'] },
+      { number: 902, state: 'open', labels: ['risk:high'] },
+      { number: 903, state: 'open', labels: ['risk:high'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'skip', row.detail);
+  assert.match(row.detail, /parent gate #898 not due — 2 sibling sub-issue\(s\) open/);
+});
+
+test('AC2.1: acceptance-labeling still fails a due, above-floor parent missing demo:pending', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:high'] },
+      { number: 901, state: 'closed', labels: ['risk:high'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#898: missing demo:pending label/);
+});
+
+test('AC3.1: acceptance-labeling skips a due parent below the oversight floor', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:medium'] },
+      { number: 901, state: 'closed', labels: ['risk:medium'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'skip', row.detail);
+  assert.match(row.detail, /parent #898 below oversight floor/);
+});
+
+test('AC4.1: acceptance-labeling renders unknown when sub-issue enumeration throws, never reading the parent labels', () => {
+  const { row, calls } = parentGateRow({
+    records: [900],
+    subIssuesReply: () => { throw new Error('gh: HTTP 502'); },
+  });
+  assert.strictEqual(row.result, 'unknown', row.detail);
+  assert.match(row.detail, /#900: gh api sub_issues failed for parent #898/);
+  assert.strictEqual(calls.filter((a) => a[0] === 'issue' && a.includes('labels,comments')).length, 0);
+});
+
+test('acceptance-labeling renders unknown when sub-issue enumeration returns nothing', () => {
+  const { row } = parentGateRow({ records: [900], subIssuesReply: () => '' });
+  assert.strictEqual(row.result, 'unknown', row.detail);
+  assert.match(row.detail, /no sub-issues enumerated for parent #898/);
+});
+
+test('acceptance-labeling counts every run sub-issue of a shared parent as closed, enumerating that parent once', () => {
+  const { row, calls } = parentGateRow({
+    records: [900, 901],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:high'] },
+      { number: 901, state: 'open', labels: ['risk:high'] },
+      { number: 902, state: 'closed', labels: ['risk:high'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#898: missing demo:pending label/);
+  assert.strictEqual(calls.filter((a) => isSubIssuesCall(a)).length, 1, 'parent #898 must be enumerated once for two run sub-issues');
+});
+
+test('acceptance-labeling fails closed on an unscored sibling when the parent gate is due', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:low'] },
+      { number: 901, state: 'closed', labels: [] },
+    ],
+  });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#898: missing demo:pending label/);
+});
+
+test('acceptance-labeling reads the parent floor as the highest sub-issue risk tier, not the first or last valid one', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:low'] },
+      { number: 901, state: 'closed', labels: ['risk:high'] },
+      { number: 902, state: 'closed', labels: ['risk:low'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#898: missing demo:pending label/);
+});
+
+test('acceptance-labeling takes the oversight floor from policy.yml: risk-floor medium requires a due risk:medium parent to carry demo:pending', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    policyRaw: 'risk-floor: medium\n',
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:medium'] },
+      { number: 901, state: 'closed', labels: ['risk:medium'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#898: missing demo:pending label/);
+});
+
+test('acceptance-labeling falls back to the default high floor when policy.yml sets an invalid risk-floor', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    policyRaw: 'risk-floor: bogus\n',
+    subIssues: [
+      { number: 900, state: 'open', labels: ['risk:medium'] },
+      { number: 901, state: 'closed', labels: ['risk:medium'] },
+    ],
+  });
+  assert.strictEqual(row.result, 'skip', row.detail);
+  assert.match(row.detail, /parent #898 below oversight floor/);
+});
+
+// Two run records under different parents: #898 stays incomplete (open
+// sibling #901) while #899 is due, so each row's detail must carry the not-due
+// skip reason alongside the due parent's outcome.
+function twoParentRow({ dueParentLabels, dueParentComments }) {
+  const runDir = makeTmpDir('verify-acceptance-twoparents-');
+  writeSpecFile(runDir, '900', 900);
+  writeSpecFile(runDir, '910', 910);
+  const parentOf = { 900: 898, 910: 899 };
+  const subsOf = {
+    898: [
+      { number: 900, state: 'open', labels: ['risk:high'] },
+      { number: 901, state: 'open', labels: ['risk:high'] },
+    ],
+    899: [
+      { number: 910, state: 'open', labels: ['risk:high'] },
+      { number: 911, state: 'closed', labels: ['risk:high'] },
+    ],
+  };
+  const fakeGh = (args) => {
+    if (args[0] === '--version') return 'gh version 2.0.0';
+    if (isGraphqlCall(args)) {
+      const n = parentQueryNumber(args);
+      return parentGraphqlResponse(n, parentOf[n]);
+    }
+    if (isSubIssuesCall(args)) return subIssuesGh(subsOf[Number(args[2].match(/issues\/(\d+)\/sub_issues$/)[1])]);
+    if (args.includes('labels,comments')) {
+      if (args[2] === '899') return JSON.stringify({ labels: dueParentLabels.map((name) => ({ name })), comments: dueParentComments });
+      return JSON.stringify({ labels: [], comments: [] });
+    }
+    return '';
+  };
+  const result = runVerify({ runDir, base: 'main', repoRoot: makeCleanRepoRoot(), deps: { git: fakeOriginGit(), gh: fakeGh } });
+  return result.rows.find((r) => r.check === 'acceptance-labeling');
+}
+
+test('acceptance-labeling pass detail carries the not-due skip reason of a sibling parent', () => {
+  const row = twoParentRow({
+    dueParentLabels: ['demo:pending'],
+    dueParentComments: [{ body: '## Verification Brief\n### Confirmed\n', authorAssociation: 'MEMBER' }],
+  });
+  assert.strictEqual(row.result, 'pass', row.detail);
+  assert.match(row.detail, /parent gate #898 not due — 1 sibling sub-issue\(s\) open/);
+});
+
+test('acceptance-labeling fail detail carries the not-due skip reason alongside the missing demo:pending line', () => {
+  const row = twoParentRow({ dueParentLabels: [], dueParentComments: [] });
+  assert.strictEqual(row.result, 'fail', row.detail);
+  assert.match(row.detail, /#899: missing demo:pending label/);
+  assert.match(row.detail, /parent gate #898 not due — 1 sibling sub-issue\(s\) open/);
+});
+
+test('acceptance-labeling renders unknown when a sub-issue line carries no string state', () => {
+  const { row } = parentGateRow({
+    records: [900],
+    subIssuesReply: () => JSON.stringify({ number: 900, labels: ['risk:high'] }),
+  });
+  assert.strictEqual(row.result, 'unknown', row.detail);
+  assert.match(row.detail, /could not parse sub_issues output for parent #898/);
 });
 
 test('acceptance-labeling check passes via the pr-first pointer+brief form (full brief on the PR, pointer on the issue)', () => {
