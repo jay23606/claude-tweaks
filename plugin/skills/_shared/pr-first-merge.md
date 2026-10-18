@@ -324,7 +324,12 @@ the result:
 1. **Command failed with an auto-merge-not-enabled signature** — stderr contains the literal
    captured GitHub GraphQL wording `Auto merge is not allowed for this repository` (captured
    verbatim on this repo, PR #1401, 2026-08-24: `GraphQL: Auto merge is not allowed for this
-   repository (enablePullRequestAutoMerge)`), or the looser paraphrase — `auto-merge` and
+   repository (enablePullRequestAutoMerge)`), or
+   `Protected branch rules not configured for this branch` (captured on this repo 2026-10-18,
+   auto-merge allowed, no branch protection on the default branch:
+   `GraphQL: Pull request Protected branch rules not configured for this branch (enablePullRequestAutoMerge)`;
+   GitHub returns the same wording for a conflicting PR, so re-read `mergeStateStatus` first and
+   take the Conflict path when it reads `DIRTY`), or the looser paraphrase — `auto-merge` and
    (`not allowed` or `not enabled`) — for a differently-worded GitHub response to the same
    repository setting ("Allow auto-merge") being off:
 
