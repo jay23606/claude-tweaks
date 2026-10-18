@@ -5,6 +5,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 
 const { readText } = require('./helpers/read-skill');
@@ -28,6 +29,11 @@ const PRE_LOCAL_SITE = `git merge --no-ff {branch} -m "[auto-merge] {one-line su
 
 Fixes #{issue}
 Fixes #{second-issue}"`;
+// The pre-#3347 pr-first Step 3 fence (eval-composed via --shell), byte-for-byte from 294eac138.
+const PRE_3347_PR_FIRST_FENCE = `SUBJECT_EXPORTS=$(node "\${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
+eval "$SUBJECT_EXPORTS"
+gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash \\
+  -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"`;
 const PRE_WORKTREE_MERGE_SITE = `   git merge --no-ff {branch} -m "Merge {branch} — specs {list}
 
    Fixes #{issue}
@@ -42,14 +48,14 @@ const PRE_WORKTREE_RANGELESS_CALL = `   SUBJECT_EXPORTS=$(node "\${CLAUDE_PLUGIN
 // local-merge fences read the changed paths from a local `--range {base}...{head}` diff;
 // pr-first fences read them from the PR itself via `--pr {pr-number}` (#3298 final review).
 const LOCAL_COMPOSER_CALL = /SUBJECT_EXPORTS=\$\(node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/compose-subject\.js" [^\n]*--range \{[a-z-]+\}\.\.\.\{[a-z-]+\} --shell\) \|\| exit 1\n[ \t]*eval "\$SUBJECT_EXPORTS"/;
-const PR_FIRST_COMPOSER_CALL = /SUBJECT_EXPORTS=\$\(node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/compose-subject\.js" [^\n]*--pr \{pr-number\} --shell\) \|\| exit 1\n[ \t]*eval "\$SUBJECT_EXPORTS"/;
+const PR_FIRST_COMPOSER_CALL = /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/compose-subject\.js" [^\n]*--pr \{pr-number\} --title-out "\{title-file\}" --body-out "\{body-file\}"/;
 const LOCAL_MERGE_FORM = /git merge --no-ff \{[a-z-]+\} -m "\$SUBJECT_TITLE\n\n\$SUBJECT_BODY"/;
 const STALE_LOCAL_FORM = /git merge --no-ff \{[a-z-]+\} -m "(\[|Merge \{branch\})/;
 const STALE_PR_FIRST_FORM = /gh pr merge \{pr-number\}[^\n]*--merge \\/;
 
 test('pr-first-merge.md: both gh pr merge sites squash and take the composer output', () => {
   const text = read(PR_FIRST);
-  const squashSites = text.match(/gh pr merge \{pr-number\} --repo \{owner\}\/\{repo\} (--auto )?--squash \\\n\s+-t "\$SUBJECT_TITLE" -b "\$SUBJECT_BODY"/g) || [];
+  const squashSites = text.match(/gh pr merge \{pr-number\} --repo \{owner\}\/\{repo\} (--auto )?--squash -t "\$\(cat "\{title-file\}"\)" --body-file "\{body-file\}"/g) || [];
   assert.equal(squashSites.length, 2, 'expected exactly two squash merge sites');
   assert.match(text, PR_FIRST_COMPOSER_CALL);
   assert.doesNotMatch(text, /--range \{/, 'pr-first fences carry no --range');
@@ -73,6 +79,51 @@ for (const rel of LOCAL_SITES) {
     assert.doesNotMatch(text, STALE_LOCAL_FORM, 'no free-form -m subject remains');
   });
 }
+
+// Fenced ```…``` blocks, each as an array of its lines (delimiter lines excluded).
+function fencedBlocks(text) {
+  const blocks = [];
+  let cur = null;
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) {
+      if (cur) { blocks.push(cur); cur = null; } else { cur = []; }
+    } else if (cur) {
+      cur.push(line);
+    }
+  }
+  return blocks;
+}
+
+// The fences that eval-compose compose-subject --shell output into a gh pr merge call.
+function evalComposedMergeFences(blocks) {
+  return blocks.filter((lines) => {
+    const body = lines.join('\n');
+    return /gh pr merge/.test(body)
+      && /compose-subject\.js[^\n]*--shell|eval "\$SUBJECT_EXPORTS"|"\$SUBJECT_(TITLE|BODY)"/.test(body);
+  });
+}
+
+function skillMarkdown(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) return skillMarkdown(p);
+    return e.name.endsWith('.md') ? [p] : [];
+  });
+}
+
+test('AC2.1/AC2.2: no gh pr merge fence in plugin/skills/** eval-composes compose-subject --shell output', () => {
+  const offenders = [];
+  let composing = 0;
+  for (const file of skillMarkdown(path.join(ROOT, 'plugin', 'skills'))) {
+    const blocks = fencedBlocks(readText(file));
+    if (evalComposedMergeFences(blocks).length > 0) offenders.push(path.relative(ROOT, file));
+    composing += blocks.filter((b) => /gh pr merge/.test(b.join('\n')) && /compose-subject\.js/.test(b.join('\n'))).length;
+  }
+  assert.deepEqual(offenders, [], 'gh pr merge fences that eval compose-subject --shell output');
+  assert.ok(composing >= 2, `expected >= 2 gh pr merge fences that run compose-subject.js, found ${composing}`);
+  // go-red proof: the same function flags the frozen pre-#3347 fence
+  assert.equal(evalComposedMergeFences([PRE_3347_PR_FIRST_FENCE.split('\n')]).length, 1);
+});
 
 test('go-red proof: the frozen pre-change local-merge forms match the stale pattern and not the new one', () => {
   for (const pre of [PRE_LOCAL_SITE, PRE_WORKTREE_MERGE_SITE]) {

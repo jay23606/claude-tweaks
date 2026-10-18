@@ -289,11 +289,12 @@ merge (capture (a)), so the confirmation itself carries the choice: wait for gre
 **Creation-time caller:** `tidy/SKILL.md`'s Step 7.5 `pr-first` branch invokes only this step's initial `gh pr merge --auto` call at PR-creation time, with the degrade chain below replaced by leave-unarmed + report — see that step's own text for the full routing.
 
 ```bash
-SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-eval "$SUBJECT_EXPORTS"
-gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash \
-  -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" MERGE_TITLE=merge-title-{pr-number}.txt MERGE_BODY=merge-body-{pr-number}.md
+node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --title-out "{title-file}" --body-out "{body-file}"
+gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash -t "$(cat "{title-file}")" --body-file "{body-file}"
 ```
+
+Run each line as its own Bash call (the degrade fence below too), pasting the two paths the first line prints literally into `{title-file}`/`{body-file}`: a fresh shell per call drops variables. A non-zero composer exit stops before any merge. The composed text reaches `gh` only through those files, never via `eval` or a shell variable, which garbled #3325's squash commit.
 
 `{tag}` is `auto-merge` for the dispatch/headless path (`dispatch/settle-and-merge.md`'s Auto-merge
 gate), `fast-lane` for the interactive single-record short-circuit triggered by a live `auto:merge`
@@ -327,10 +328,8 @@ the result:
      behavior):
 
      ```bash
-     SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-     eval "$SUBJECT_EXPORTS"
-     gh pr merge {pr-number} --repo {owner}/{repo} --squash \
-       -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+     node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --title-out "{title-file}" --body-out "{body-file}"
+     gh pr merge {pr-number} --repo {owner}/{repo} --squash -t "$(cat "{title-file}")" --body-file "{body-file}"
      ```
 
    - under `merge-when-green` or `wait` — do not merge immediately: degrade to Step 2.5's `wait`
