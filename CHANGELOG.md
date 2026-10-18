@@ -95,6 +95,54 @@ Three conventions follow from how this repo works, and all are visible below:
 * transcript-judge: a self-assessment watermark can claim… ([#2916](https://github.com/thn-inc/claude-tweaks/issues/2916)) ([b3aa5ac](https://github.com/thn-inc/claude-tweaks/commit/b3aa5ac071f79f3390e99522468caa8e7590a32a))
 * Unattended Review Console: pending and contested items… ([#3370](https://github.com/thn-inc/claude-tweaks/issues/3370)) ([2a0b7f6](https://github.com/thn-inc/claude-tweaks/commit/2a0b7f65af882264c89f61b66fe8337eb20c6394))
 
+### Highlights
+* Wrap-up verification no longer blocks closing a sub-issue just because its parent's acceptance gate isn't due yet.
+* Review: two-agent lens findings that agree on substance are no longer lost to line-anchor or wording differences.
+* Cap each file in /review's shared lens bundle at 64 KB and always stub lockfiles and `.jsonl`, so lens agents can read the bundle on ordinary feature diffs.
+* No user-visible change — agent harness reliability fix.
+* Cut review overhead for small fast-lane builds: plans made of fully written-out tasks are now authored as one batch, reviewed once plus the final branch review.
+* Build pipelines now bring every load-bearing SDD ruling to a human at the wrap-up Review Console, to ratify or reverse in one batch decision, instead of filing it as a silent ledger observation.
+* Internal hardening: plugin filesystem readers share one symlink- and case-safe path helper.
+* Wrap-up verification now checks the closing keyword on runs approved with "Approve all", instead of silently skipping it.
+* A multi-spec run's per-spec wrap-up no longer reads its deferred-cleanup list as permission to skip acceptance labeling.
+* `/claude-tweaks:build` now tells plans to find every reader of a value from its read call sites, so a reader sweep no longer misses readers that match on plain text.
+* Multispec `pr-first` teardown no longer archives the run directory before later cleanup steps (ephemeral server teardown, issue claim release) have finished reading it.
+* Shaping a record no longer proposes absorbing it into an unrelated record that merely mentions the same skill.
+* Pipeline merges wait until every CI workflow for the pushed commit has reported, not only the ones that reported first.
+* Multi-spec runs now release claims and restore parked records correctly before their branch merges, and design checks see the record's surface.
+* No user-visible change.
+* Dispatched pipeline runs stay hands-off even if the dispatched agent paraphrases its command line.
+* Fixed: the Wrap-Up Review Console now names the file each curation finding touched instead of showing "undefined".
+* No user-visible change: confirmed the review and polish double-apply of a staged design finding was already fixed in 6.130.0.
+* Wrap-up decides which records a run may close in one place, so a closing keyword is never stamped for a record the run did not build.
+* Unattended dispatch drains in gh-absent sandboxes now also hold back a record while a file-sharing neighbour is mid-build.
+* Dispatch's sequential-execution guidance now names the same teardown command the two-call gate actually uses.
+* Runner-owned flaky retries now apply only to `node --test` (spec/TAP) output; jest/vitest/pytest failures fail closed (`no-accounting-guard: summary`) and route to a single whole-suite re-run, since their output has no failure-accounting guard.
+* Builds run from an isolated worktree can now complete the dispatch-prompt sampling check without a manual workaround.
+* No user-visible change: a bookkeeping gate accepts paraphrased, but substantively equivalent, claim-log lines instead of requiring byte-exact phrasing.
+* Run /build's journey capture and doc sync before its final verification, so /test no longer re-runs the full suite after every docs-touching build.
+* Document how a spec built outside /flow rejoins the pipeline, and warn that closing a multi-spec run before its consolidated wrap-up loses that wrap-up.
+* No user-visible change.
+* No user-visible change.
+* Merge commits can carry a Conventional-Commits scope on every merge path, resolved from one documented project setting instead of being invented at the merge fence.
+* No user-visible change — contributor conventions documented.
+* Pipeline runs on records filed by health sweeps now get a ceremony level matched to the work instead of always defaulting to standard.
+* Fixed QA runs so navigation steps that point at the app's own pinned address follow the resolved app URL, and stories that would reach another local server are flagged (and skipped in worktrees) instead of touching a server the run does not own.
+* No user-visible change — internal fix to a /specify decomposition-mode skill fence so it does not crash when executed as a separate Bash call (the actual execution model), rather than relying on a shell variable that does not survive across Bash tool invocations.
+* Fix: a multi-spec /flow run keeps its shared ledger until batch curation has used it.
+* Staged items an unattended run could not resolve on its own are now shown to you before the run closes, instead of disappearing into the archive.
+* Small agent-filed records can now take build's micro-plan fast path instead of a full planning dispatch.
+* Review lens agents now anchor a weak or non-discriminating test finding at one agreed location, so a real test-quality finding both agents report is no longer dropped to low-confidence.
+* Fixed /feedback so a session evaluated only by its fallback self-assessment is judged again from the start next time, instead of skipping content that was never judged.
+* Stop `/build` from silently dropping a plan's browser or manual verification step: steps beyond the test run now run or are logged as skipped.
+* The Pipeline Manifesto now describes the `none` review auto-apply ceiling correctly: it stages every non-critical finding.
+* Fix the reconciler releasing an unfinished record's claim when its run's PR merges without closing it.
+* Removed the old fixed skill-size ceilings and the merge-size prediction; skill size limits now live in one place and track the real read limit.
+* Internal test-suite hardening: wrap-up verify's probe tests no longer leak checks into later tests.
+* Added a per-dispatch cost breakdown by model tier and role to the run summary, and a session-start notice when a project's superpowers install is older than the version claude-tweaks is verified against.
+* No user-visible change yet: adds an internal size check that blocks only skill files too large for a single read.
+* No user-visible change.
+
 ## [6.144.0](https://github.com/thn-inc/claude-tweaks/compare/v6.143.0...v6.144.0) (2026-10-17)
 
 
