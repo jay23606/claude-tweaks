@@ -57,11 +57,11 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792278520366
+    "lastAuditedMs": 1792303006984
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792277467141
+    "lastAuditedMs": 1792303015827
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -194,9 +194,5 @@
   "skill:plan-audit-check-addition": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792270937961
-  },
-  "skill:post-merge-workflow-live-probe": {
-    "lastAuditedSha": null,
-    "lastAuditedMs": 1792300530266
   }
 }
