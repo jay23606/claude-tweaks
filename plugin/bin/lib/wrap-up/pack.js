@@ -358,7 +358,7 @@ function withTimeout(fn, ms) {
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
 // #3327: a `deferred` row must name where its work went — a `staged/…` proposal
-// or a record reference (_shared/ledger-format.md's `deferred` definition). A
+// or a record reference (_shared/ledger-format.md's Resolution-text requirements). A
 // triage-only Resolution is parked with no trace, so it is flagged. A record
 // reference is an issue/PR URL path (`gh issue create` prints URLs) or a `#N`
 // token — except the run's own record numbers (`excludeRecords`: the run's

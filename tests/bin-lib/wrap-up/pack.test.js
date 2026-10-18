@@ -759,6 +759,16 @@ test('AC1.1: parseLedger defaults excludeRecords to [] — a one-arg call counts
   assert.deepStrictEqual(parseLedger(text, { excludeRecords: [1535] }).deferredUnstagedItems, ['1']);
 });
 
+test("AC1.1: a pipe inside a deferred row's Resolution stays in the Resolution cell (#3327)", () => {
+  const text = [
+    '| 1 | build | a | deferred | triage a | b → staged/ledger-record-foo.md |',
+    '| 2 | build | b | deferred | triage a | b |',
+  ].join('\n');
+  const one = parseLedger(text);
+  assert.strictEqual(one.deferredUnstaged, 1);
+  assert.deepStrictEqual(one.deferredUnstagedItems, ['2']);
+});
+
 test('AC1.1: deferredUnstagedItems are qualified by the counted file across multiple ledgers (#3327)', async () => {
   const { pack } = await probeLedgers({
     '2026-09-05-a-ledger.md': ['| 2 | build | a | deferred | — |', '| 3 | build | b | deferred | → #900 |'],
