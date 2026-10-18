@@ -39,7 +39,9 @@ const { execFileSync } = require('child_process');
 const {
   parseRecordFacets, extractFingerprint, extractVerifiedAsOf, extractPremiseCheck, extractTemplateStamp, parseDependencies,
 } = require('./lib/issues/record');
-const { shapeGate, liftMetadata, composeHeader, composeFile, DESIGN_INTENT_VALUES } = require('./lib/issues/materialize-format');
+const {
+  shapeGate, liftMetadata, composeHeader, composeFile, describeDesignIntentError,
+} = require('./lib/issues/materialize-format');
 const { findSiblingPremiseDisproof } = require('./lib/issues/sibling-premise');
 const wtDetect = require('./lib/hooks/worktree-detect');
 const {
@@ -370,11 +372,8 @@ function run(argv, deps = realDeps) {
   const meta = liftMetadata(record.body);
   if (meta.designIntentError) {
     const err = meta.designIntentError;
-    const detail = err.reason === 'none-mixed'
-      ? '"none" cannot be combined with other intents'
-      : `unknown value(s) ${err.invalid.join(', ')} (allowed: ${DESIGN_INTENT_VALUES.join(', ')})`;
     deps.stderr(
-      `materialize.js: Record #${opts.n} has an invalid Design-intent: line ("${err.raw}") — ${detail} — `
+      `materialize.js: Record #${opts.n} has an invalid Design-intent: line ("${err.raw}") — ${describeDesignIntentError(err)} — `
       + `fix the record's Design-intent: line (run \`/claude-tweaks:specify #${opts.n}\`).\n`,
     );
     return 1;

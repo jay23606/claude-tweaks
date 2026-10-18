@@ -132,6 +132,14 @@ function normalizeDesignIntent(raw) {
   return { ok: true, values };
 }
 
+// designIntentError (liftMetadata's) -> the reason clause every gate that rejects the
+// line names — materialization (bin/materialize.js) and write time (compose-record).
+function describeDesignIntentError(err) {
+  return err.reason === 'none-mixed'
+    ? '"none" cannot be combined with other intents'
+    : `unknown value(s) ${err.invalid.join(', ')} (allowed: ${DESIGN_INTENT_VALUES.join(', ')})`;
+}
+
 // body -> { surface?, designIntent?, designIntentError?, uiStack?, designSeed? } — read from
 // the leading metadata block (every line before the first blank line). Legacy `Surface:
 // frontend` reads as `web`; `Surface: mixed` is retired and passed through
@@ -210,5 +218,5 @@ function composeFile({ header, n, title, body }) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, DESIGN_INTENT_VALUES, sectionText, shapeGate, normalizeDesignIntent, liftMetadata, composeHeader, composeFile, stripCodeSpans,
+  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, DESIGN_INTENT_VALUES, sectionText, shapeGate, normalizeDesignIntent, describeDesignIntentError, liftMetadata, composeHeader, composeFile, stripCodeSpans,
 };
