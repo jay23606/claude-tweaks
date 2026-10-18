@@ -629,6 +629,8 @@ test('gatherPack: the ledger probe counts rows by status and phase from the work
     files: ['docs/plans/2026-09-05-spec-1535-ledger.md'],
     unrecognized: 0,
     unrecognizedValues: [],
+    deferredUnstaged: 0,
+    deferredUnstagedItems: [],
   });
 });
 
@@ -674,6 +676,47 @@ test('gatherPack: the ledger probe reports zero unrecognized rows when every sta
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
   assert.strictEqual(pack.ledger.value.unrecognized, 0);
   assert.deepStrictEqual(pack.ledger.value.unrecognizedValues, []);
+});
+
+// #3327: a `deferred` row must name where its work went — a `staged/…` proposal
+// or a `#N` record reference. A triage-only Resolution is parked with no trace.
+test('AC1.1: a deferred row with no staged/ path and no #N reference is reported as deferredUnstaged (#3327)', async () => {
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'wrap-up-pack-tree-'));
+  fs.mkdirSync(path.join(tree, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(path.join(tree, 'docs', 'plans', '2026-09-05-spec-1535-ledger.md'), [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    '| 1 | review | a | open | — |',
+    '| 2 | review | b | deferred | Origin: SDD Task 1 review; files: a.md. Trigger: next edit |',
+    '| 3 | build | c | deferred | — |',
+    '| 4 | build | see #77 | Deferred | triage: leave |',
+  ].join('\n'));
+  const runDir = fixtureRunDir();
+  const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
+  state.worktree = tree;
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 3);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, ['2', '3', '4']);
+  assert.strictEqual(pack.ledger.value.open, 1);          // flagged rows never become open
+  assert.strictEqual(pack.ledger.value.unrecognized, 0);  // …nor unrecognized
+});
+
+test('AC2.1: a deferred row naming staged/… or #N stays terminal (#3327)', async () => {
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'wrap-up-pack-tree-'));
+  fs.mkdirSync(path.join(tree, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(path.join(tree, 'docs', 'plans', '2026-09-05-spec-1535-ledger.md'), [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    '| 1 | review | a | deferred | parked → `staged/ledger-record-foo.md` |',
+    '| 2 | review | b | deferred | → backlog #123 |',
+    '| 3 | build | c | deferred | reversed → thn-inc/claude-tweaks#456 |',
+  ].join('\n'));
+  const runDir = fixtureRunDir();
+  const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
+  state.worktree = tree;
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 0);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, []);
 });
 
 test('gatherPack: a ledger whose DATE prefix contains the record number is not this record\'s ledger (#1930 review M5)', async () => {

@@ -357,12 +357,19 @@ function withTimeout(fn, ms) {
 // "terminal" the way it was before this fix.
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
+// #3327: a `deferred` row must name where its work went — a `staged/…` proposal
+// or a `#N` record reference (_shared/ledger-format.md's `deferred` definition).
+// A triage-only Resolution is parked with no trace, so it is flagged.
+const LEDGER_DEFERRED_STAGED_RE = /\bstaged\//;
+const LEDGER_DEFERRED_RECORD_RE = /#\d+/;
+
 function parseLedger(text) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
   let open = 0;
   let unrecognized = 0;
   const unrecognizedValues = new Set();
+  const deferredUnstagedItems = [];
   for (const row of rows) {
     const cells = row.split('|').slice(1, -1).map((c) => c.trim());
     const phase = cells[1] || 'unknown';
@@ -374,8 +381,17 @@ function parseLedger(text) {
     } else if (!LEDGER_TERMINAL_STATUSES.has(status)) {
       unrecognized += 1; byPhase[phase].unrecognized += 1; unrecognizedValues.add(cells[3] || '');
     }
+    if (status === 'deferred') {
+      const resolution = cells.slice(4).join('|');
+      if (!LEDGER_DEFERRED_STAGED_RE.test(resolution) && !LEDGER_DEFERRED_RECORD_RE.test(resolution)) {
+        deferredUnstagedItems.push(cells[0]);
+      }
+    }
   }
-  return { open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues] };
+  return {
+    open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues],
+    deferredUnstaged: deferredUnstagedItems.length, deferredUnstagedItems,
+  };
 }
 
 // A ledger filename names record {n} only at a `-{n}-` or `-{n}.` boundary. A
@@ -429,6 +445,7 @@ function ledgerProbe(inputs, deps) {
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
+    deferredUnstaged: 0, deferredUnstagedItems: [],
   };
   const unrecognizedValuesSet = new Set();
   for (const f of files) {
@@ -438,6 +455,7 @@ function ledgerProbe(inputs, deps) {
     if (text === null) continue;
     const one = parseLedger(text);
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
+    totals.deferredUnstaged += one.deferredUnstaged; totals.deferredUnstagedItems.push(...one.deferredUnstagedItems);
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
