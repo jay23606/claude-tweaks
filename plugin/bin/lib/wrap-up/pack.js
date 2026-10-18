@@ -358,12 +358,27 @@ function withTimeout(fn, ms) {
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
 // #3327: a `deferred` row must name where its work went — a `staged/…` proposal
-// or a `#N` record reference (_shared/ledger-format.md's `deferred` definition).
-// A triage-only Resolution is parked with no trace, so it is flagged.
+// or a record reference (_shared/ledger-format.md's `deferred` definition). A
+// triage-only Resolution is parked with no trace, so it is flagged. A record
+// reference is an issue/PR URL path (`gh issue create` prints URLs) or a `#N`
+// token — except the run's own record numbers (`excludeRecords`: the run's
+// origin, not a carrying record) and a `#N` preceded by the word `item` (a
+// ledger-item cross-reference, not a record).
 const LEDGER_DEFERRED_STAGED_RE = /\bstaged\//;
-const LEDGER_DEFERRED_RECORD_RE = /#\d+/;
+const LEDGER_DEFERRED_URL_RE = /\/(?:issues|pull)\/\d+/;
+const LEDGER_DEFERRED_HASH_RE = /#(\d+)/g;
 
-function parseLedger(text) {
+function namesRecordReference(resolution, excludeRecords) {
+  if (LEDGER_DEFERRED_URL_RE.test(resolution)) return true;
+  for (const m of resolution.matchAll(LEDGER_DEFERRED_HASH_RE)) {
+    if (excludeRecords.includes(Number(m[1]))) continue;
+    if (/\bitem\s*$/i.test(resolution.slice(0, m.index))) continue;
+    return true;
+  }
+  return false;
+}
+
+function parseLedger(text, { excludeRecords = [] } = {}) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
   let open = 0;
@@ -383,7 +398,7 @@ function parseLedger(text) {
     }
     if (status === 'deferred') {
       const resolution = cells.slice(4).join('|');
-      if (!LEDGER_DEFERRED_STAGED_RE.test(resolution) && !LEDGER_DEFERRED_RECORD_RE.test(resolution)) {
+      if (!LEDGER_DEFERRED_STAGED_RE.test(resolution) && !namesRecordReference(resolution, excludeRecords)) {
         deferredUnstagedItems.push(cells[0]);
       }
     }
@@ -416,8 +431,10 @@ function ledgerProbe(inputs, deps) {
   // shape. That file, when present, is authoritative; the docs/plans/ glob
   // below is only the fallback for every other run (#2563 AC4).
   const runDirLedgerText = readText(deps, path.join(inputs.runDir, 'ledger.md'));
+  const ownRecords = (inputs.records || []).map(Number);
   if (runDirLedgerText !== null) {
-    return { ...parseLedger(runDirLedgerText), files: ['ledger.md'] };
+    const one = parseLedger(runDirLedgerText, { excludeRecords: ownRecords });
+    return { ...one, deferredUnstagedItems: one.deferredUnstagedItems.map((i) => `ledger.md#${i}`), files: ['ledger.md'] };
   }
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
@@ -453,9 +470,9 @@ function ledgerProbe(inputs, deps) {
     // readdir snapshot and this read is skipped, not a whole-probe failure.
     const text = readText(deps, path.join(dir, f));
     if (text === null) continue;
-    const one = parseLedger(text);
+    const one = parseLedger(text, { excludeRecords: ownRecords });
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
-    totals.deferredUnstaged += one.deferredUnstaged; totals.deferredUnstagedItems.push(...one.deferredUnstagedItems);
+    totals.deferredUnstaged += one.deferredUnstaged; totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${path.posix.join('docs', 'plans', f)}#${i}`));
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
