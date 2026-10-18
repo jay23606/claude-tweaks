@@ -24,13 +24,13 @@ const lineStarting = (text, prefix) => {
 
 test('manifesto Design intent (4) row states the header list is authoritative over the run lever', () => {
   const row = lineStarting(read(MANIFESTO), '| **Design intent** (4)');
-  assert.match(row, /run[- ]level default/i, 'names the lever as a run-level default');
+  assert.match(row, /run[- ]level setting/i, 'names the lever as a run-level setting');
   assert.match(row, /header.{0,80}authoritative/i, 'names the per-record header list as authoritative');
 });
 
 test('manifesto Design intent recommendation row says the lever is run-level only', () => {
   const row = lineStarting(read(MANIFESTO), '| Design intent | `none`');
-  assert.match(row, /run-level default only/i, 'Why column limits the lever to a run-level default');
+  assert.match(row, /run-level setting only/i, 'Why column limits the lever to a run-level setting');
 });
 
 test('polish multi-intent paragraph reads the materialized header comma list and ignores empty entries', () => {
