@@ -85,7 +85,7 @@ Run `_shared/premise-verification.md`'s check against the composed `## Current S
 in this session's already-fetched snapshot (`_shared/record-queue-fetch.md` — invalidate first,
 per that file's staleness rule, when this is not the first record shaped in the current
 session/batch). This is a screen, not a verdict (memory: similarity scores are
-normalization-sensitive) — the finder never blocks shaping on its own signal alone.
+normalization-sensitive) — the finder never blocks shaping on a single signal.
 
 When it returns no candidates, proceed straight to composition below. When it returns one or
 more, render a three-column table in the shaping output before proceeding —
@@ -99,11 +99,11 @@ line if the record doesn't already carry one). A candidate surfaced here is wort
 attention even when shaping proceeds normally.
 
 Then decide refusal with `shapingRefusal` (`bin/lib/issues/near-duplicate.js`, #3141). It refuses
-only on a hit whose signals include `title-similarity` and whose candidate is `ready` **and** in
-flight: a live claim (`classifyClaimBlob` reads its `claims/issue-{n}.json` blob as `live`) or an
+only on a hit scoring **at least 2 signals** (`MIN_REFUSAL_SCORE`, #3366), `title-similarity` among
+them, whose candidate is `ready` **and** in flight: a live claim (`classifyClaimBlob` reads its `claims/issue-{n}.json` blob as `live`) or an
 open linked PR (the same `closedByPullRequestsReferences` connection dispatch's open-PR exclusion
-reads — `record.js`'s `buildLinkedPRQuery` / `partitionByOpenLinkedPR`). File and anchor overlap
-alone never refuse, and `bot:in-progress` is not evidence: it is a projection that outlives the
+reads — `record.js`'s `buildLinkedPRQuery` / `partitionByOpenLinkedPR`). A score-1 candidate is
+surfaced in the table and the `**Related:**` line only; file and anchor overlap alone never refuse, and `bot:in-progress` is not evidence: it is a projection that outlives the
 build. Build the state and decide in one call. First resolve this run's two session-scoped paths
 (`_shared/session-tmp-root.md` — `eval "$(node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" NEAR_DUP_HITS=specify-near-dup-hits.json NEAR_DUP_SNAPSHOT=specify-near-dup-snapshot.json)"`
 prints them) and write the finder's output and the candidates' snapshot entries there as JSON —
@@ -113,14 +113,14 @@ Then run the call below; its first line re-resolves the same two paths:
 ```bash
 eval "$(node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" NEAR_DUP_HITS=specify-near-dup-hits.json NEAR_DUP_SNAPSHOT=specify-near-dup-snapshot.json)"
 node -e "
-const { shapingRefusal, buildShapingState } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/issues/near-duplicate.js');
+const { shapingRefusal, buildShapingState, MIN_REFUSAL_SCORE } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/issues/near-duplicate.js');
 const { createClaimReader } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/issues/claim-store.js');
 const { buildLinkedPRQuery, normalizeLabelNames } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/issues/record.js');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const [hits, snapshot] = [JSON.parse(fs.readFileSync(process.argv[1], 'utf8')), JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))];
 const labelsByNumber = Object.fromEntries(snapshot.map((r) => [r.number, r.labels]));
-const numbers = hits.filter((h) => Number.isInteger(h.number) && h.signals.includes('title-similarity') && normalizeLabelNames(labelsByNumber[h.number] || []).includes('ready')).map((h) => h.number);
+const numbers = hits.filter((h) => Number.isInteger(h.number) && h.signals.length >= MIN_REFUSAL_SCORE && h.signals.includes('title-similarity') && normalizeLabelNames(labelsByNumber[h.number] || []).includes('ready')).map((h) => h.number);
 const claimContentByNumber = {};
 const unreadable = [];
 let linkedPRRepoData = null;
@@ -146,7 +146,7 @@ console.log(JSON.stringify(result));
 " "$NEAR_DUP_HITS" "$NEAR_DUP_SNAPSHOT"
 ```
 
-Only a title-similar `ready` candidate can refuse, so the call reads claims and linked PRs for those
+Only a title-similar `ready` candidate scoring at least 2 signals can refuse, so the call reads claims and linked PRs for those
 alone (one `git fetch` in total, chained through the first read's tip) and skips both reads when
 there are none. A failed claim read (the git read falls back to the contents API) — including an unresolved repo
 slug, which is never read as an absent claim — or a failed linked-PR query leaves that candidate
@@ -176,8 +176,8 @@ which is `ready` with an in-flight build: {evidence} — "live claim by run {cla
 Report this record's Actions Performed row as `refused — proposed Absorb into #{candidate}`
 rather than `shaped` — the same per-record failure-isolation posture a write/read-back failure
 already uses on a batch (below): the rest of the batch keeps shaping. This is the one automatic
-refusal the finder's signal authorizes on its own; every other candidate (no title-similar, `ready`,
-in-flight match per `shapingRefusal`) is surfaced via the table and `**Related:**` append only, mirroring the
+refusal the finder's signals authorize — and only in combination, never a single signal; every other candidate (no title-similar, `ready`,
+in-flight match scoring at least 2 signals per `shapingRefusal`) is surfaced via the table and `**Related:**` append only, mirroring the
 refusal grounds an earlier sweep applied by hand for the same reason (#1944).
 
 ### Dependency-narration check

@@ -115,6 +115,23 @@ test('the shaping-mode.md refusal fence runs and refuses nothing when no hit is 
   const out = execFileSync(process.execPath, ['-e', code, hits, snapshot], { encoding: 'utf8' });
   assert.deepStrictEqual(JSON.parse(out.trim()), { refuse: false });
   fs.rmSync(dir, { recursive: true, force: true });
+  // #3366: the fence's candidate filter carries the same floor as shapingRefusal, via the constant.
+  assert.ok(code.includes('h.signals.length >= MIN_REFUSAL_SCORE'), 'the fence filter must use MIN_REFUSAL_SCORE');
+});
+
+test('AC3.1/AC3.2: shaping-mode.md refusal paragraph names the minimum score of 2 (#3366)', () => {
+  const start = SHAPING_MODE.indexOf('Near-duplicate candidate check (#1944)');
+  const end = SHAPING_MODE.indexOf('### Dependency-narration check', start);
+  assert.ok(start !== -1 && end !== -1, 'Near-duplicate section anchors must exist');
+  const section = SHAPING_MODE.slice(start, end);
+  assert.match(section, /at least 2 signals/);
+  // Anchored to the refusal paragraph itself: other mentions of the floor must not mask its removal.
+  assert.match(section, /scoring\s+\*{0,2}at least 2 signals\*{0,2}\s+\(`MIN_REFUSAL_SCORE`/);
+  assert.match(section, /A\s+score-1\s+candidate\s+is\s+surfaced\s+in\s+the\s+table\s+and\s+the\s+`\*\*Related:\*\*`\s+line\s+only/);
+  assert.doesNotMatch(section, /never blocks shaping on its own signal alone/);
+  assert.doesNotMatch(section, /the one automatic\s+refusal the finder's signal authorizes on its own/);
+  const mod = require('../plugin/bin/lib/issues/near-duplicate');
+  assert.strictEqual(mod.MIN_REFUSAL_SCORE, 2);
 });
 
 test('next-mode-shape.md describes the same refusal condition (#3141)', () => {
@@ -123,6 +140,7 @@ test('next-mode-shape.md describes the same refusal condition (#3141)', () => {
   const section = NEXT_MODE_SHAPE.slice(start, start + 900);
   assert.match(section, /shapingRefusal/);
   assert.match(section, /title-similar/);
+  assert.match(section, /at least 2 signals/);
 });
 
 function refusalFenceBody() {
@@ -153,11 +171,11 @@ test('AC1.1: an unreadable claim is reported on the output and the happy path st
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'near-dup-unreadable-'));
   const hits = path.join(dir, 'hits.json');
   const snapshot = path.join(dir, 'snapshot.json');
-  // #7 is title-similar and ready, so the fence reads its claim. An empty PATH makes gh and git
+  // #7 is title-similar, scores 2 signals (the #3366 floor) and is ready, so the fence reads its claim. An empty PATH makes gh and git
   // unavailable: the slug is unresolved and the git leg fails, so the read is a failure, never an
   // absent claim, and #7 is reported as unreadable while staying not in flight.
   try {
-    fs.writeFileSync(hits, JSON.stringify([{ number: 7, title: 'Similar', signals: ['title-similarity'] }]));
+    fs.writeFileSync(hits, JSON.stringify([{ number: 7, title: 'Similar', signals: ['title-similarity', 'body-anchor-overlap'] }]));
     fs.writeFileSync(snapshot, JSON.stringify([{ number: 7, labels: ['ready'] }]));
     const out = execFileSync(process.execPath, ['-e', code, hits, snapshot], { encoding: 'utf8', env: { ...process.env, PATH: dir } });
     assert.deepStrictEqual(JSON.parse(out.trim()), { refuse: false, unreadable: [7] });
