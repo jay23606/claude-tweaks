@@ -7,7 +7,7 @@ description: Use when writing or reviewing code that reads `node --test` spec or
 
 ## Overview
 
-`plugin/bin/verify.js --baseline <ref>` (#3043) turns a failing test run into a pass when every failure also fails at the base commit. That verdict is only as sound as the parser behind it: `testTree`, `failingTestsByFile`, `specEntryCount`, `cancelledCount` and `countUnmatchedFailures` in `plugin/bin/lib/verify/extract.js`, consumed by `plugin/bin/lib/verify/baseline.js`. The flaky-retry hook (#3066) trusts the same failing-file list: `plugin/bin/verify.js` re-runs only the named files, so `unattributedFailureCount` must report 0 before `plugin/bin/lib/verify/flaky.js`'s `planRetry` will retry. Each rule below was a fail-open hole in that parser, reproduced by a reviewer with a real Node v24 log before it was closed. A display-only reader can afford a misread. A reader whose output gates a pass cannot.
+`plugin/bin/verify.js --baseline <ref>` (#3043) turns a failing test run into a pass when every failure also fails at the base commit. That verdict is only as sound as the parser behind it: `testTree`, `failingTestsByFile`, `specEntryCount`, `cancelledCount` and `countUnmatchedFailures` in `plugin/bin/lib/verify/extract.js`, consumed by `plugin/bin/lib/verify/baseline.js`. The flaky-retry hook (#3066) trusts the same failing-file list: `plugin/bin/verify.js` re-runs only the named files, so `unattributedFailureCount` must report 0 before `plugin/bin/lib/verify/flaky.js`'s `planRetry` will retry (only spec and TAP logs can; every other family reports `null` and `planRetry` refuses it). Each rule below was a fail-open hole in that parser, reproduced by a reviewer with a real Node v24 log before it was closed. A display-only reader can afford a misread. A reader whose output gates a pass cannot.
 
 The general principle — a parse that cannot be trusted must say so — is `parse-signal-discipline`. This skill holds the Node-specific facts that principle needs.
 
@@ -55,7 +55,7 @@ The listing and `ℹ fail` do not count the same things — a cancelled test, fo
 The flaky-retry hook applies this accounting too, through `unattributedFailureCount` (#3066). A retry re-runs only the named files, so an undercounted list would let a retried pass clear a failure nothing re-ran. A positive count makes `planRetry` refuse with `unattributed-failures: {N}`. Its checks differ from `adjudicate`'s in two ways:
 
 - TAP gets an entry check as well: `tapBlockCount` must equal `# fail` + `# cancelled`, as spec entries must equal `ℹ fail` + `ℹ cancelled`.
-- Any family other than spec or tap returns 0. A `summary` log keeps the retry eligibility it already had, with no accounting guard.
+- Any family other than spec or tap returns `null` (#3204) — no accounting guard exists, so a caller must never read it as accounted. `planRetry` refuses with `no-accounting-guard: {family}` (`baseline.js`'s `adjudicate` applies the same refusal).
 
 ### Node's runner-level diagnostics are visible only in the log
 
@@ -81,6 +81,7 @@ An uncaught error from async work that outlived its test is reported as a separa
 - The comparison is by test identity, not by failure reason. A test that already fails at base covers any failure of the same test at HEAD. `plugin/skills/test/verification.md`'s "What it cannot see" states this limit, and the hosted CI check stays the authoritative gate.
 - A wholly file-level load failure counts as baseline only when its normalized isolated HEAD log equals the base log (`normalizeLog` strips roots and durations), not merely when it fails at the same `1:1` site.
 - `verify.js --stamp-status` exposes three related but distinct booleans: `match` (an unconditional full clean pass — deliberately `false` whenever `baselineAdjudicated` is `true`, even when `sha === head`), `verifiedHead` (HEAD is actually verified, by either path — this is the field Skip-if-recent and `/review` Step 1.5 read), and `baselineAdjudicated` (this pass relied on baseline adjudication). A reader checking only `match` can misread a legitimate baseline-adjudicated pass as "doesn't match HEAD, re-run" — check `verifiedHead` for pass/fail and `baselineAdjudicated` for which path produced it.
+- Pass both `unattributedCount` and `family` from any new `planRetry` caller. Its default `unattributedCount = 0` reads an omitted count as accounted, so a caller that forgets it retries with no accounting guard. `plugin/bin/verify.js` is the only caller today and passes both.
 
 ## Common Operations
 
@@ -102,6 +103,7 @@ node --test --test-reporter=tap tests/bin-lib/verify/extract.test.js   # capture
 | Treating an extracted failing-file list as complete | A failure whose entry names no file drops out, and the rest classify as a pass over a failure nothing checked |
 | Reading a test's absence from a re-run as a pass | A child killed mid-file, a skip, or a filter produces the same absence |
 | Applying an accounting check to spec output only when a new consumer reuses it | #3066's first TAP branch returned before checking that the summary counts parsed, so a truncated TAP log read as fully accounted. Carry every check over for spec and TAP alike, and test each family's truncated-log case |
+| Returning the "accounted" value for a family the accounting cannot check | #3066's `unattributedFailureCount` returned 0 for every family but spec/tap, so `planRetry` retried a jest/pytest/vitest log's named files unguarded. It now returns `null` and `planRetry` refuses with `no-accounting-guard: {family}` (#3204). Give "cannot check" its own value |
 | Reading `tapLines`' `owner` as "this line is inside the failure" | Ownership outlives the YAML terminator so `tapBlocks` stays byte-identical. A stderr line after one test's closed block then reads as that test's, and an excerpt opens at the wrong `not ok` (#3404) |
 | Normalizing or matching only the spec form of a run-specific line (`ℹ duration_ms`) | Node writes TAP whenever stdout is not a TTY, so every child run `verify.js` spawns is TAP. `normalizeLog` stripped spec's `ℹ duration_ms` and the YAML `duration_ms:` key but not TAP's `# duration_ms` summary line, so a whole-file failure never matched its base log, on any platform, and came back attributable (#3316, `7a49b742f`). Give every reporter-specific rule its TAP twin and a TAP fixture |
 
