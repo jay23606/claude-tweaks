@@ -56,7 +56,7 @@ A lever is **suppressed** (hidden from the Manifesto) when no skill in the resol
 | Lever | Suppressed when |
 |---|---|
 | **Overlap** (3) | `/specify` not in the pipeline (always suppressed for `/flow` — specs already exist) |
-| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless) |
+| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless). The `design-intent` lever is a run-level default for records whose header carries no `design-intent:`; a record's header list (`design-intent: quiet, minimal`) is authoritative per record, and polish dispatches every value in it (`design-wrapper/modes/polish.md`), never the single-valued lever. |
 | **Tidy aggressiveness** (8) | Always suppressed by `/flow` — `/tidy` is not an allowed flow step (`steps-and-gates.md`'s Allowed Steps table lists it unconditionally under "Not allowed in flow") and can never be added to a step list. Still written to `config.yml` (per the "suppression is a UI affordance" rule below) since a standalone `/tidy` run can independently resolve this run directory. Kept in the canonical lever count for stable numbering. |
 | **Auto-fix threshold** (6) | `/test` not in the step list |
 | **Review auto-apply ceiling** (7) | `/review` not in the step list |
@@ -144,7 +144,7 @@ I've pre-filled recommendations from project policy + sensible defaults. The Rec
 | Mode | `auto` | Step 1's resolved mode |
 | Scope-creep | `add-to-plan` | Never silently drops mentioned work |
 | Overlap | `companion` | Safest: never overwrite or silently extend; create a new spec |
-| Design intent | `none` | No creative direction unless user opts in |
+| Design intent | `none` | No creative direction unless user opts in; run-level default only — a record's header list overrides it |
 | Leftover routing | `defer` | Reversible at the Review Console |
 | Auto-fix threshold | `lint+type` | Mechanical fixes only; semantic failures need judgment |
 | Review auto-apply ceiling | ceiling-conditional: `medium` when the resolved `autonomy` ceiling is `unattended`, `low` otherwise (`_shared/autonomy-ceiling.md`) | Auto LOW, stage MED and HIGH, prompt Critical; an unattended run has nobody to answer staged MED, so the default raises there. Computed here, not only in `step3-routing.md` — writing it to `config.yml` resolves as `source: run-config` downstream, and a flat `low` here would make step3's ceiling branch (fires only on `source: default`) unreachable for the runs it targets |
