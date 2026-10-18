@@ -56,7 +56,7 @@ A lever is **suppressed** (hidden from the Manifesto) when no skill in the resol
 | Lever | Suppressed when |
 |---|---|
 | **Overlap** (3) | `/specify` not in the pipeline (always suppressed for `/flow` — specs already exist) |
-| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless). The `design-intent` lever is a single-valued run-level setting that polish never reads; a record's header list (`design-intent: quiet, minimal`) is authoritative per record, and polish dispatches every value in it (`design-wrapper/modes/polish.md`). |
+| **Design intent** (4) | All records have `design-intent:` locked in their materialized header (or body metadata), OR all records are non-frontend (polish auto-skips regardless). The `design-intent` lever is a single-valued run-level setting that polish never reads, and `config.yml`'s `design-intent` keeps one enum value (the policy/default value), never the header list — `set-config.js` rejects a comma list there; a record's header list (`design-intent: quiet, minimal`) is authoritative per record, and polish dispatches every value in it (`design-wrapper/modes/polish.md`). |
 | **Tidy aggressiveness** (8) | Always suppressed by `/flow` — `/tidy` is not an allowed flow step (`steps-and-gates.md`'s Allowed Steps table lists it unconditionally under "Not allowed in flow") and can never be added to a step list. Still written to `config.yml` (per the "suppression is a UI affordance" rule below) since a standalone `/tidy` run can independently resolve this run directory. Kept in the canonical lever count for stable numbering. |
 | **Auto-fix threshold** (6) | `/test` not in the step list |
 | **Review auto-apply ceiling** (7) | `/review` not in the step list |
@@ -134,7 +134,7 @@ I've pre-filled recommendations from project policy + sensible defaults. The Rec
 | `policy` | From `.claude-tweaks/policy.yml`'s `auto-mode:` key (resolver envelope `source: "policy"`) |
 | `dispatch` | Mode only: Step 1 rung 2 (`dispatched: true`) — render `auto (dispatched run)`; log `source: dispatch binding` |
 | `default` | Hardcoded sensible default |
-| `header` | Locked by the materialized header (`materialize.md`) — e.g. `surface:`/`design-intent:` — or, for `ceremony-profile`, by the record's `ceremony:*` label, else the Manifesto's ceremony-check verdict — or the record body's `Surface:`/`Design-intent:` metadata lines (e.g., `design-intent:` set on every record in the run) |
+| `header` | Locked by the materialized header (`materialize.md`) — e.g. `surface:`/`design-intent:` (a header list locks the record, never lever 4, which stays single-valued) — or, for `ceremony-profile`, by the record's `ceremony:*` label, else the Manifesto's ceremony-check verdict — or the record body's `Surface:`/`Design-intent:` metadata lines (e.g., `design-intent:` set on every record in the run) |
 | `preflight.json` | The pack, when adopted (#1931) |
 
 ## Recommendation defaults (when no arg and no policy)

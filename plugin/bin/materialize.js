@@ -10,8 +10,8 @@
 // branch here); that driver still uses the skill's own inline read.
 // Prints one JSON envelope on success. Exit 0 on success; 1 when the
 // record's own body fails the shape gate or its Design-intent: line names a
-// value outside the policy enum (points at /claude-tweaks:specify, same as
-// the skill does); 2 on a malformed invocation, an unanchored
+// value outside the policy enum or mixes `none` with another value (points at
+// /claude-tweaks:specify, same as the skill does); 2 on a malformed invocation, an unanchored
 // --run-dir (#790/[IL-127] — a foreign-checkout shadow, or a path with no
 // determinable git repository root; #959 — a --run-dir resolving INSIDE the
 // current linked worktree is anchored-equivalent and accepted, since this

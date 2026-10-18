@@ -10,7 +10,7 @@ const { POLICY_KEYS } = require('../policy-schema');
 
 const REQUIRED_SECTIONS = ['## Current State', '## Deliverables', '## Acceptance Criteria', '## Release Note'];
 // The Design-intent enum, read once from the policy schema (never restated here).
-const DESIGN_INTENT_VALUES = POLICY_KEYS.find((k) => k.key === 'design-intent').values;
+const DESIGN_INTENT_VALUES = Object.freeze([...POLICY_KEYS.find((k) => k.key === 'design-intent').values]);
 // One entry per placeholder marker; the gate's combined regex is their union, so
 // compose.js can name which marker matched without a second implementation (#2827).
 const PLACEHOLDER_PATTERNS = [
