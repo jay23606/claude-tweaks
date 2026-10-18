@@ -177,3 +177,9 @@ git commit -m "Document the Design-intent header list as authoritative over the 
 ### Task 4: Full suite
 
 - [ ] **Step 1: Run the full test suite (AC5.1)** — run `npm test` with output redirected to a `.txt` file in the session scratchpad (never `.log`, never `/tmp`), then read its `ℹ fail` summary line and confirm `0`.
+
+## As-built deviations (Common Step 4.5, all Beneficial)
+
+- `normalizeDesignIntent` also dedupes repeated intents in first-seen order (not in the spec) so polish never dispatches a command twice.
+- The final whole-branch review fix wave (ddeb2c20e) also edited `plugin/skills/specify/design-pre-steps.md` (drop `none` when combined with other picks; free-text answers must map to the enum) and `plugin/skills/specify/spec-template.md` (comma-list form), so the producer cannot write a list the new gate rejects.
+- `plugin/skills/flow/materialize.md` states the normalization and hard stop for both drivers (the `local-files` path follows the prose, not the CLI), and `manifesto.md` states that `config.yml`'s `design-intent` stays one enum value.
