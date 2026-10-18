@@ -6,21 +6,24 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
 const path = require('path');
+const { readText } = require('./helpers/read-skill');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+
+function read(rel) {
+  return readText(path.join(REPO_ROOT, rel));
+}
 
 const MANIFESTO = 'plugin/skills/flow/manifesto.md';
 const POLISH = 'plugin/skills/design-wrapper/modes/polish.md';
 const MATERIALIZE = 'plugin/skills/flow/materialize.md';
 
-const lineStarting = (text, prefix) => {
+function lineStarting(text, prefix) {
   const line = text.split('\n').find((l) => l.startsWith(prefix));
   assert.ok(line, `no line starting with ${prefix}`);
   return line;
-};
+}
 
 test('manifesto Design intent (4) row states the header list is authoritative over the run lever', () => {
   const row = lineStarting(read(MANIFESTO), '| **Design intent** (4)');
