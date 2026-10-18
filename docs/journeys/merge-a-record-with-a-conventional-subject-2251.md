@@ -34,7 +34,7 @@ files:
 - **Red flags:** A merge attempted after the composer printed an error; gh error text printed ahead of a composed subject on a successful run; a merge commit with an empty subject or a body missing its `Fixes #N` line or its `Release-Note:` paragraph.
 
 ### 2. The merge lands with the composed message — `gh pr merge --squash` or `git merge --no-ff`
-- **URL:** `gh pr merge {pr} --squash -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"` (pr-first) or `git merge --no-ff {branch} -m "$SUBJECT_TITLE\n\n$SUBJECT_BODY"` (local-merge)
+- **URL:** `node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {n} --tag {tag} --pr {pr-number} --title-out "{title-file}" --body-out "{body-file}"`, then `gh pr merge {pr} --squash -t "$(cat "{title-file}")" --body-file "{body-file}"` (pr-first) or `git merge --no-ff {branch} -m "$SUBJECT_TITLE\n\n$SUBJECT_BODY"` (local-merge)
 - **Action:** The maintainer reads the resulting commit on the integration branch.
 - **Should feel:** Predictable — the same grammar no matter which of the six sites produced it.
 - **Should understand:** pr-first squashes so the integration branch carries exactly one conventional commit per PR (release-please walks every reachable commit); local-merge stays `--no-ff` because the local engine reads first-parent only. The title is cut at a word boundary with `…` when `{prefix}: {title}` plus ` (#N)` would exceed 72 characters; the `(#N)` suffix is never truncated.

@@ -24,6 +24,10 @@ file's own local-merge fallback section.
 `integration-model` resolves `pr-first` for this run. Absent either — fall to the citing file's
 local-merge section instead of this procedure.
 
+## Never rewrite the integration branch
+
+Never force-push to, `git reset`, `commit-tree`-and-push, or otherwise rewrite the published `{integration-branch}` on `origin`, on any outcome and for any reason, including repairing a botched merge message. The PR's recorded `mergeCommit`, merged-PR landed-proofs and release tooling key on the commit GitHub created, so a rewrite orphans them and re-authors that commit (#3325 → `9c9f5e722`, #3347). On a malformed merge message (stray text, duplicated body, missing `Fixes` line), leave the commit as landed, log `AUTO {time} — Step 3: merge commit {sha} message malformed ({defect}); left as landed, integration branch not rewritten. Reversibility: n/a.` to `decisions.md`, and report `DONE_WITH_CONCERNS` naming the sha and defect for a human. This covers the published branch only: `local-merge`'s undo of an unpushed local merge, and a local ref realigned *to* origin (`_shared/git-discipline.md`), are not rewrites of it.
+
 ## Step 1: Acceptance labeling — before the merge, unconditionally
 
 Run `wrap-up/verification-brief.md` starting from its **Routing** section, exactly as the
@@ -294,7 +298,7 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --p
 gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash -t "$(cat "{title-file}")" --body-file "{body-file}"
 ```
 
-Run each line as its own Bash call (the degrade fence below too), pasting the two paths the first line prints literally into `{title-file}`/`{body-file}`: a fresh shell per call drops variables. A non-zero composer exit stops before any merge. The composed text reaches `gh` only through those files, never via `eval` or a shell variable, which garbled #3325's squash commit.
+Run each line as its own Bash call (the degrade fence below too), pasting each printed path's quoted value (not the `VAR=` prefix) literally into `{title-file}`/`{body-file}`: a fresh shell per call drops variables. A non-zero composer exit stops before any merge. The composed text reaches `gh` only through those files, never via `eval` or a shell variable, which garbled #3325's squash commit.
 
 `{tag}` is `auto-merge` for the dispatch/headless path (`dispatch/settle-and-merge.md`'s Auto-merge
 gate), `fast-lane` for the interactive single-record short-circuit triggered by a live `auto:merge`

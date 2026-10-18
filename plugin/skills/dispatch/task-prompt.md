@@ -376,6 +376,7 @@ on merged-PR evidence instead — the same mechanism the next sentence already d
 `armed`/`pending-review` complete none of those three; the reconciler finishes them later, on
 merged-PR evidence, whichever trigger point observes it first. There is no `ready-to-merge` value
 under this model — the merge already happened, or didn't, by the time you report.
+Whatever the outcome, follow `{minted-run-dir}/context/merge.md`'s "Never rewrite the integration branch" section (if that bundle is absent, read `_shared/pr-first-merge.md` directly).
 
 **`integration-model: local-merge`** — report `ready-to-merge` when the group's Auto-merge gate
 passed both layers and you already applied acceptance labeling for every member -- never

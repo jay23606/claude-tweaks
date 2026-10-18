@@ -271,3 +271,41 @@ test('#3028: human-approved is registered in Step 3, named at close-out step 5, 
   const jq = scan.split('3. **Auto-merged this week**')[1].split('```bash')[1].split('```')[0];
   assert.doesNotMatch(jq, /human-approved/, 'the metric jq filter is unchanged — human-approved is not counted');
 });
+
+// #3347: the integration branch is never rewritten. The rule is stated once, in its own
+// section; the dispatch second-call template cites it through the composed merge bundle.
+function assertNoRewriteRule(text) {
+  const start = text.indexOf('## Never rewrite the integration branch');
+  assert.ok(start !== -1, 'the "## Never rewrite the integration branch" heading must exist');
+  const next = text.indexOf('\n## ', start + 1);
+  const slice = text.slice(start, next === -1 ? undefined : next);
+  for (const re of [/force-push/, /\breset\b/, /rewrite/, /DONE_WITH_CONCERNS/, /decisions\.md/, /#3325/]) {
+    assert.match(slice, re);
+  }
+}
+
+// Frozen pre-#3347 Precondition section (through the start of Step 1), byte-for-byte from 294eac138.
+const PRE_3347_MERGE_HEAD = `## Precondition
+
+\`run-state.json\` carries a \`pr\` object (\`_shared/pr-run-comments.md\`'s gate) AND
+\`integration-model\` resolves \`pr-first\` for this run. Absent either — fall to the citing file's
+local-merge section instead of this procedure.
+
+`;
+
+test('AC1.1: pr-first-merge.md states the integration-branch no-rewrite rule', () => {
+  assertNoRewriteRule(MERGE);
+});
+
+test('AC1.1 go-red: the pre-#3347 file (no such section) fails the same assertion', () => {
+  assert.throws(() => assertNoRewriteRule(PRE_3347_MERGE_HEAD));
+});
+
+test('AC1.2: task-prompt.md second-call template cites the rule via the merge bundle, not a restatement', () => {
+  const second = TASK_PROMPT.slice(TASK_PROMPT.indexOf('## Second call'));
+  const citing = second.split('\n').filter((l) => l.includes('"Never rewrite the integration branch"'));
+  assert.equal(citing.length, 1, 'exactly one citing line in the second-call slice');
+  assert.match(citing[0], /`\{minted-run-dir\}\/context\/merge\.md`'s "Never rewrite the integration branch"/);
+  assert.match(citing[0], /\(if that bundle is absent, read `_shared\/pr-first-merge\.md` directly\)/);
+  assert.doesNotMatch(second, /force-push/, 'the second-call slice cites the rule, it does not restate it');
+});
