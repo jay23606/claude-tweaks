@@ -194,5 +194,9 @@
   "skill:plan-audit-check-addition": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792270937961
+  },
+  "skill:post-merge-workflow-live-probe": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792300530266
   }
 }
