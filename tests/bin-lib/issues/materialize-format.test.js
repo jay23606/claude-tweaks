@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  shapeGate, liftMetadata, composeHeader, composeFile, sectionText, stripCodeSpans,
+  shapeGate, liftMetadata, composeHeader, composeFile, sectionText, stripCodeSpans, normalizeDesignIntent,
 } = require('../../../plugin/bin/lib/issues/materialize-format');
 const wtDetect = require('../../../plugin/bin/lib/hooks/worktree-detect');
 
@@ -435,4 +435,40 @@ test('materialize CLI: a record whose only markers sit in ## Original request ma
   assert.equal(code, 0);
   const expectedFile = path.join(runDir, 'work', '1-spec.md');
   assert.ok(written[expectedFile].includes('## Original request'));
+});
+
+// ---- Design-intent multi-value (#3018) --------------------------------------
+
+test('liftMetadata: a comma-separated Design-intent list lifts every value (#3018)', () => {
+  const lifted = liftMetadata('Surface: web\nDesign-intent: quiet, minimal\n\n## Current State\nx');
+  assert.equal(lifted.designIntent, 'quiet, minimal');
+  const header = composeHeader({ record: 1, origin: 'human', ceremony: 'standard', grants: {}, designIntent: lifted.designIntent });
+  assert.match(header, /^design-intent: quiet, minimal$/m);
+});
+test('liftMetadata: extra spaces, tabs and a trailing comma normalize (#3018)', () => {
+  assert.equal(liftMetadata('Design-intent: quiet ,\tminimal,\n\nx').designIntent, 'quiet, minimal');
+});
+test('liftMetadata: duplicate intents dedupe in first-seen order (#3018)', () => {
+  assert.equal(liftMetadata('Design-intent: bold, quiet, bold\n\nx').designIntent, 'bold, quiet');
+});
+test('liftMetadata: a separators-only Design-intent line lifts nothing (#3018)', () => {
+  const lifted = liftMetadata('Surface: web\nDesign-intent: ,\n\nx');
+  assert.deepEqual(lifted, { surface: 'web' });
+});
+test('liftMetadata: an unknown intent yields designIntentError naming it, no designIntent (#3018)', () => {
+  const lifted = liftMetadata('Design-intent: quiet, sparkly\n\nx');
+  assert.equal('designIntent' in lifted, false);
+  assert.deepEqual(lifted.designIntentError, { raw: 'quiet, sparkly', invalid: ['sparkly'], reason: 'unknown' });
+});
+test('liftMetadata: mixed-case intent is unknown (strict enum) (#3018)', () => {
+  assert.deepEqual(liftMetadata('Design-intent: Quiet\n\nx').designIntentError.invalid, ['Quiet']);
+});
+test('liftMetadata: none combined with another intent is an error (#3018)', () => {
+  assert.deepEqual(liftMetadata('Design-intent: none, bold\n\nx').designIntentError, { raw: 'none, bold', invalid: ['none'], reason: 'none-mixed' });
+});
+test('normalizeDesignIntent: enum comes from policy-schema (#3018)', () => {
+  const { POLICY_KEYS } = require('../../../plugin/bin/lib/policy-schema');
+  const values = POLICY_KEYS.find((k) => k.key === 'design-intent').values;
+  for (const v of values) assert.deepEqual(normalizeDesignIntent(v), { ok: true, values: [v] });
+  assert.equal(normalizeDesignIntent('onboarding, delightful').ok, true);
 });
