@@ -472,7 +472,9 @@ function ledgerProbe(inputs, deps) {
     if (text === null) continue;
     const one = parseLedger(text, { excludeRecords: ownRecords });
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
-    totals.deferredUnstaged += one.deferredUnstaged; totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${path.posix.join('docs', 'plans', f)}#${i}`));
+    const displayPath = path.posix.join('docs', 'plans', f);
+    totals.deferredUnstaged += one.deferredUnstaged;
+    totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${displayPath}#${i}`));
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
