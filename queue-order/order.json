@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-18T19:36:55.947Z",
+  "computedAt": "2026-10-18T19:45:26.641Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -200,7 +200,7 @@
       },
       {
         "number": 3352,
-        "updatedAt": "2026-10-17T09:02:59Z",
+        "updatedAt": "2026-10-18T19:37:55Z",
         "state": "OPEN"
       },
       {
@@ -485,7 +485,7 @@
       },
       {
         "number": 2734,
-        "updatedAt": "2026-10-17T18:41:08Z",
+        "updatedAt": "2026-10-18T19:44:14Z",
         "state": "OPEN"
       }
     ]
@@ -3087,84 +3087,6 @@
         "state": "OPEN",
         "title": "ledger row parsers ignore GFM's escaped pipe, so an open row can count as unrecognized",
         "updatedAt": "2026-10-17T09:47:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 2\n\n**Category:** tangential\n\nOrigin: reflect light from #2927\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/claude-tweaks-statusline.js`'s `renderGit` (line 204) runs `execSync('git status --porcelain -b', { cwd })` on every statusline render. It passes no `--no-optional-locks` flag and no `GIT_OPTIONAL_LOCKS=0`. A plain `git status` takes the index lock opportunistically to refresh its stat cache.\n\nThe statusline re-renders around every tool call. In a worktree-isolated session, the session's own index-writing git commands race that render and fail with `fatal: Unable to create '.../.git/worktrees/{name}/index.lock': File exists`. The colliding commands are the Bash tool's plain `git merge`, `git add` and `git commit`. The lock is gone a moment later, so the failure looks stale. That misleads an agent into deleting the lock, or into blaming `npm test`, the cause the existing guidance names.\n\nObserved on #2927's run, 2026-10-17:\n- `git merge origin/main` (the post-creation catch-up) failed 4 times in a row.\n- `git commit` and several `git add` calls failed, and passed only on retry.\n- The same commands run from a node `execFileSync` wrapper succeeded on the first attempt.\n- `ps` showed a `git status --porcelain -b` process during the failures.\n\n## Deliverables\n\n1. Make `renderGit`'s status call lock-free: `git --no-optional-locks status --porcelain -b`, or `env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }`. Keep the existing branch/dirty parsing unchanged.\n2. Add a test that pins the lock-free form, for example by asserting that the exec runner receives the flag or env. Follow the existing statusline test's injectable-runner seam if there is one; otherwise add the minimal seam.\n\n## Acceptance Criteria\n\n- The statusline's git status call never takes `.git/index.lock`: the command carries `--no-optional-locks`, or the spawn env sets `GIT_OPTIONAL_LOCKS=0`.\n- The branch and dirty-dot rendering is unchanged for clean, dirty, detached and no-commits repos.\n- `npm test` passes in full.\n\n## Release Note\n\nThe statusline no longer makes your own git commands fail with an index.lock error while it refreshes.\n\n_Filed by `reflect`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
-        "createdAt": "2026-10-17T07:19:57Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3352,
-        "state": "OPEN",
-        "title": "statusline git status takes the index lock and races worktree git writes",
-        "updatedAt": "2026-10-17T09:02:59Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -7430,7 +7352,7 @@
         "number": 2734,
         "state": "OPEN",
         "title": "flow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall",
-        "updatedAt": "2026-10-17T18:41:08Z",
+        "updatedAt": "2026-10-18T19:44:14Z",
         "facets": {
           "origin": null,
           "risk": "high",
