@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-18T20:38:58.183Z",
+  "computedAt": "2026-10-18T21:28:19.956Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -335,7 +335,7 @@
       },
       {
         "number": 3327,
-        "updatedAt": "2026-10-17T09:04:03Z",
+        "updatedAt": "2026-10-18T20:40:20Z",
         "state": "OPEN"
       },
       {
@@ -4485,78 +4485,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full (batch) from #3072,#3003\n\nDefer-reason: tangential\n\n**Related:** #3297\n\n## Current State\n\n`_shared/ledger-format.md` defines `deferred` as \"staged as a work record proposal … resolved at the run's Queue writes surface\", and requires the resolution text to name the origin, affected files, and revisit trigger. `wrap-up/nothing-left-behind.md`'s bulk-resolve fast path checks only `acknowledged` rows for a staged proposal, and `bin/lib/wrap-up/pack.js` `parseLedger` counts every `deferred` row as terminal.\n\nSuperpowers' subagent-driven-development parks minor findings in the ledger as `deferred` with only a triage reason. In run 2026-10-16T172900-spec-3072-3003, seven such rows passed #3072's wrap-up gate. They were caught only at the final spec's gate (ledger item 21); otherwise they would have been dropped silently.\n\n## Deliverables\n\nHave `parseLedger` and the fast path flag any `deferred` row whose resolution names neither a staged-proposal path nor a record reference.\n\nRoute a flagged row to the resolve gate's Phase 2, or stage a proposal for it, instead of bulk-resolving it.\n\n## Acceptance Criteria\n\nA pack test whose ledger holds a `deferred` row with no `staged/…` path and no `#N` reference reports it (e.g. `deferredUnstaged: 1`), and the fast path no longer treats that ledger as fully resolved.\n\nA `deferred` row that names `staged/…` or `#N` stays terminal.\n\n## Release Note\n\nWrap-up no longer lets a \"deferred\" ledger item close without a staged follow-up.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T21:36:08Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3327,
-        "state": "OPEN",
-        "title": "wrap-up: the ledger bulk-resolve fast path accepts deferred rows with no staged proposal",
-        "updatedAt": "2026-10-17T09:04:03Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
