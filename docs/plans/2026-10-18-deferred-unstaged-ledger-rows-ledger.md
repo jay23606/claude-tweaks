@@ -4,7 +4,7 @@
 |---|-------|------|--------|------------|
 | 1 | build | SDD Task 1 minor: ledger-format `→ backlog` producers (ledgerNarrowing / ledgerRouteRemainder / Phase 3 Keep) wrote no staged path or record reference | fixed | 1139338e2 (final-review M1: each producer now names `staged/ledger-record-{slug}.md` in Resolution) |
 | 2 | build | SDD Task 1 minor: the pack.js comment above the #3327 constants cites "_shared/ledger-format.md's `deferred` definition" loosely (the wording sits in the Resolution-text requirements paragraph) | deferred | Origin: SDD Task 1 review; files: plugin/bin/lib/wrap-up/pack.js. Final whole-branch review triage: leave. Trigger: next edit of that comment |
-| 3 | build | SDD Task 1 minor: no test pins a `\|` inside a deferred row's Resolution (cells.slice(4).join handles it) | deferred | Origin: SDD Task 1 review; files: tests/bin-lib/wrap-up/pack.test.js. Final whole-branch review triage: leave. Trigger: any change to parseLedger's cell split |
+| 3 | build | SDD Task 1 minor: no test pins a pipe character inside a deferred row's Resolution (cells.slice(4).join handles it) | deferred | Origin: SDD Task 1 review; files: tests/bin-lib/wrap-up/pack.test.js. Final whole-branch review triage: leave. Trigger: any change to parseLedger's cell split |
 | 4 | build | SDD Task 2 minor: ledger-format Terminal / Non-terminal status lines did not name the incomplete-deferral exception | fixed | 1139338e2 (final-review I3) |
 | 5 | build | SDD Task 2 minor: incomplete-deferral settling-write parenthetical omitted `fixed` / Acknowledge | fixed | 1139338e2 (now an illustrative "e.g." list) |
 | 6 | build | SDD Task 2 minor: Phase 3 Defer/Keep branch text said only "update status to deferred" | fixed | 1139338e2 (final-review M1) |
