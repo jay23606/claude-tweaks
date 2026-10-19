@@ -93,7 +93,7 @@ function failingNamesAt({ checkRuns, statuses, runs } = {}) {
 function applyBaseComparison(verdict, base) {
   if (verdict.state !== 'red') return verdict;
   if (!base || base.reason) {
-    return { ...verdict, state: 'red', baseSha: base?.sha ?? null, baseReason: base?.reason || 'base not read' };
+    return { ...verdict, baseSha: base?.sha ?? null, baseReason: base?.reason || 'base not read' };
   }
   const failing = verdict.failing.map((f) => ({ ...f, inherited: f.name != null && base.failing.includes(f.name) }));
   const state = failing.length > 0 && failing.every((f) => f.inherited) ? 'inherited-red' : 'red';
