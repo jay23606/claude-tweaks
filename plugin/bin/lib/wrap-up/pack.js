@@ -426,9 +426,10 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
       }
     }
     if (phase.toLowerCase() === 'build' && (status === 'deferred' || status === 'open')) {
+      const item = cells[2] || '';
       const resolution = cells.slice(4).join('|');
-      const reasonLivesElsewhere = LEDGER_DEFERRED_STAGED_RE.test(cells[2] || '') || LEDGER_DEFERRED_STAGED_RE.test(resolution)
-        || LEDGER_SDD_RULING_ITEM_RE.test(cells[2] || '') || namesRecordReference(resolution, excludeRecords);
+      const reasonLivesElsewhere = LEDGER_DEFERRED_STAGED_RE.test(item) || LEDGER_DEFERRED_STAGED_RE.test(resolution)
+        || LEDGER_SDD_RULING_ITEM_RE.test(item) || namesRecordReference(resolution, excludeRecords);
       if (!reasonLivesElsewhere && !hasValidDeferReason(resolution)) missingDeferReasonItems.push(cells[0]);
     }
   }
