@@ -448,7 +448,7 @@ function ledgerProbe(inputs, deps) {
   const dir = path.join(inputs.worktree, 'docs', 'plans');
   const candidates = deps.readdir(dir).filter((f) => f.endsWith('-ledger.md'));
   if (candidates.length === 0) {
-    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [] };
+    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [] };
   }
   // Ownership decides which docs/plans ledgers belong to this run (#2887). A
   // ledger this branch's diff against the merge base adds, or that sits

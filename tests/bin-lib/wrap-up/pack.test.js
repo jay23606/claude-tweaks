@@ -732,7 +732,8 @@ async function probeLedgers(files, { records = [1535] } = {}) {
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  return { pack: await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() }), runDir, tree };
+  const owned = Object.keys(files).map((name) => `docs/plans/${name}`);
+  return { pack: await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(owned) }) }), runDir, tree };
 }
 
 // #3327: a `deferred` row must name where its work went — a `staged/…` proposal
@@ -977,7 +978,7 @@ test('no docs/plans ledgers reports zeros without consulting git', async () => {
   const base = ownedGit([]);
   const deps = okDeps({ git: (args, opts) => { gitCalls.push(args); return base(args, opts); } });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
-  assert.deepStrictEqual(pack.ledger.value, { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [] });
+  assert.deepStrictEqual(pack.ledger.value, { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [] });
   assert.ok(!gitCalls.some((a) => a[0] === 'diff' || a[0] === 'ls-files'), `no ownership git call: ${JSON.stringify(gitCalls)}`);
 });
 
