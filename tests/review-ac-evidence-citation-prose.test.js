@@ -36,6 +36,10 @@ function assertAcEvidenceCitation(line) {
     line.includes("cite it as the criterion's evidence instead of re-executing the check"),
     'cites the entry instead of re-running the check',
   );
+  assert.ok(
+    line.includes('its `evidence/` log is present and matches it'),
+    'cites the entry only when its evidence/ log is present and matches it',
+  );
   assert.ok(line.includes('AC-evidence persistence check'), 'names the build-side AC-evidence persistence check');
   assert.ok(line.includes('evidence, not proof'), 'keeps the entry evidence, not proof');
   assert.ok(line.includes(UNSET_PHRASE), 'keeps the standalone unset-$PIPELINE_RUN_DIR path unchanged');
@@ -68,13 +72,39 @@ test('AC2.1 (#3079): negative control — rewording "evidence, not proof" fails 
   assert.throws(() => assertAcEvidenceCitation(mutated));
 });
 
-test('AC2.1 (#3079): the second-call dispatch template checks AC evidence entries against their evidence/ log', () => {
-  const lines = fs
-    .readFileSync(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'task-prompt.md'), 'utf8')
-    .split(/\r?\n/);
-  const stampIdx = lines.findIndex((l) => l.includes('verify.js --stamp-status'));
-  const hitIdx = lines.findIndex((l) => l.includes('`AC evidence` entry') && l.includes('evidence/ log it cites'));
-  assert.ok(stampIdx >= 0, 'stamp-status line present');
-  assert.ok(hitIdx >= 0, 'AC evidence entry line present');
-  assert.ok(hitIdx > stampIdx, 'AC evidence line sits after the verify.js --stamp-status line');
+test('AC2.1 (#3079): negative control — rewording the "its evidence/ log is present and matches it" clause fails the pin', () => {
+  const mutated = LIVE_LINE.replace('its `evidence/` log is present and matches it', 'it exists');
+  assert.notStrictEqual(mutated, LIVE_LINE, 'control must actually reword the clause');
+  assert.throws(() => assertAcEvidenceCitation(mutated));
+});
+
+// The second-call template carries the stamp-status guidance twice (an earlier mention and
+// the CRITICAL paragraph's closing line), so the anchor is the closing line's own opening
+// words, never the first `verify.js --stamp-status` hit.
+const STAMP_LINE_PREFIX = 'A runner-written pass stamp matching HEAD (`verify.js --stamp-status`) is the raw artifact';
+const TASK_PROMPT_LINES = fs
+  .readFileSync(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'task-prompt.md'), 'utf8')
+  .split(/\r?\n/);
+
+function assertAcEvidenceDirectlyAfterStamp(lines) {
+  const stampHits = lines.flatMap((l, i) => (l.startsWith(STAMP_LINE_PREFIX) ? [i] : []));
+  assert.strictEqual(stampHits.length, 1, 'expected exactly one closing stamp-status line');
+  const next = lines[stampHits[0] + 1] ?? '';
+  assert.ok(
+    next.includes('`AC evidence` entry') && next.includes('evidence/ log it cites'),
+    'the AC evidence line sits directly after the closing stamp-status line',
+  );
+}
+
+test('AC2.1 (#3079): the second-call dispatch template checks AC evidence entries against their evidence/ log, directly after the stamp line', () => {
+  assertAcEvidenceDirectlyAfterStamp(TASK_PROMPT_LINES);
+});
+
+test('AC2.1 (#3079): negative control — an AC evidence line moved away from the stamp line fails the placement pin', () => {
+  const stampIdx = TASK_PROMPT_LINES.findIndex((l) => l.startsWith(STAMP_LINE_PREFIX));
+  const moved = TASK_PROMPT_LINES.slice();
+  const [acLine] = moved.splice(stampIdx + 1, 1);
+  moved.push(acLine);
+  assert.notDeepStrictEqual(moved, TASK_PROMPT_LINES, 'control must actually move the line');
+  assert.throws(() => assertAcEvidenceDirectlyAfterStamp(moved));
 });

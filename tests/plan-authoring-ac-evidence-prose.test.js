@@ -40,6 +40,10 @@ function assertAcEvidenceCheck(text) {
   assert.ok(p.includes('plain Bash redirect'), 'writes the log with a plain Bash redirect');
   assert.ok(p.includes('mkdir -p'), 'creates the evidence directory first');
   assert.ok(p.includes('single-quoted'), 'passes --text single-quoted');
+  assert.ok(
+    p.includes('contains a single quote closes the quoting, writes `\\\'`, and reopens it'),
+    'covers a command shape that itself contains a single quote',
+  );
   assert.ok(p.includes(KEY_PHRASE), 'separates the check code from its recorded result');
   assert.ok(p.includes('no run directory'), 'names the no-run-directory design-mode fallback');
   assert.ok(p.includes('review/code-mode-steps.md'), 'names the review consumer');
