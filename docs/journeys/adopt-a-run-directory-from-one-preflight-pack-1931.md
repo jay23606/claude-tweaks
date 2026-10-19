@@ -6,6 +6,7 @@ files:
   - plugin/skills/flow/steps-and-gates.md
   - plugin/skills/flow/manifesto.md
   - plugin/skills/flow/SKILL.md
+  - plugin/skills/_shared/git-discipline.md
   - tests/bin-lib/flow/preflight.test.js
   - tests/bin-lib/flow/preflight-cli.test.js
   - tests/flow-preflight-conformance.test.js
@@ -43,7 +44,14 @@ files:
 
 ### 4. Read the rest of the second call's facts from their fields
 - **URL:** `jq '{spec, pr, stamp, changedFiles}' "$PIPELINE_RUN_DIR/preflight.json"`
-- **Action:** `spec` names the materialized header; `pr` carries the PR record and its phase checklist (`{phase, done}` rows from the body's phases span) or `value: null` when the run has no PR yet; `stamp` is `verify.js --stamp-status`'s object; `changedFiles` is `verify.js --changed-files`' set — against the run's own stamp anchor when one is usable, else the integration branch the pack passes.
+- **Action:** `spec` names the materialized header; `pr` carries the PR record, its phase checklist (`{phase, done}` rows from the body's phases span), and its mergeability (`mergeable`, `mergeStateStatus` — `null` when the forge omits them — and `conflictNote`, step 5) or `value: null` when the run has no PR yet; `stamp` is `verify.js --stamp-status`'s object; `changedFiles` is `verify.js --changed-files`' set — against the run's own stamp anchor when one is usable, else the integration branch the pack passes.
 - **Should feel:** Change analysis and the skip-if-recent decision start from facts already on disk.
 - **Should understand:** `pr.ok === false` means the probe itself failed (`gh` absent while a PR number is recorded) — the `gh`-absent MCP/no-forge path; never fabricate checklist state. `stamp`/`changedFiles` run in the worktree `run-state.json` names, bounded like every pack subprocess.
 - **Red flags:** `pr.ok: true, value: null` on a `pr-first` run that has pushed — `run-state.json` lost its `pr` field; a `changedFiles` probe erroring with "could not resolve a base" — the integration-branch policy is unset and no stamp anchors the run.
+
+### 5. Catch a run PR that turned CONFLICTING between the two calls (#3014)
+- **URL:** `jq '.pr.value | {state, mergeable, mergeStateStatus, conflictNote}' "$PIPELINE_RUN_DIR/preflight.json"`; `plugin/skills/flow/steps-and-gates.md`'s "A run PR that turned CONFLICTING between calls" paragraph
+- **Action:** When `pr.value.conflictNote` is non-null (an `OPEN` PR reading `CONFLICTING`), print it verbatim before any later phase, log one `AUTO` decision, and catch the branch up per `_shared/git-discipline.md`'s Post-push merge-state check, **Catch-up (`auto`)**. If that merge itself conflicts: list the paths (`git diff --name-only --diff-filter=U`), `merge --abort`, log the abort, and stop as a HARD-GATE naming them, with the `PIPELINE_RUN_DIR="{run-dir}" /claude-tweaks:flow "{target}" {step}` resume form.
+- **Should feel:** The conflict a sibling merge created while the first call was finishing shows up as one plain line at the start of the second call — not as a green stamp and an empty checks list that read like "CI pending" until someone thinks to run `gh pr view --json mergeable`.
+- **Should understand:** The line is `Run PR #{n} is CONFLICTING with {integration branch} — CI will not run on it until the conflict is resolved.` — the `PR_CONFLICT_NOTE` constant in `bin/lib/flow/preflight.js`, rendered verbatim in the prose and pinned equal by `tests/flow-preflight-conformance.test.js`. `MERGEABLE`, `UNKNOWN` (GitHub still computing — never polled or re-read), a `null` field, a closed or merged PR, `pr.ok === false`, or `pr.value === null` print and log nothing. A catch-up that advanced HEAD invalidates the first call's stamp; the Auto-insert `test` rule puts `test` before `review`, so the re-verify needs no extra step. The stop is registered in `_shared/auto-mode-contract.md`'s HARD-GATE row.
+- **Red flags:** Review running on a run whose PR reads `CONFLICTING` with no conflict line printed; a conflict line for a closed PR; the adoption path resolving a catch-up conflict itself instead of stopping (that latitude belongs to the phase-exit check, not here); a stop that names no conflicting paths; a second `test` run queued on top of the auto-inserted one.
