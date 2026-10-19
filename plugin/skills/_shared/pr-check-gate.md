@@ -21,8 +21,10 @@ authority; this gate never replaces it. The reader also lists the workflow runs 
 `_shared/pr-first-merge.md`'s Step 2.5 (a run not yet completed is pending, a failing one red), and a
 failed runs read is `read-failed` unless the rollup is already red (#3405).
 
-On a `red` read the reader also reads the integration branch tip (`_shared/integration-branch.md`
-via the shared resolver) — its check runs, commit statuses and workflow runs — and flags each
+On a `red` read the reader also reads the tip of the branch the PR merges into (its own
+`baseRefName`; the integration branch from `_shared/integration-branch.md`'s shared resolver only
+when the PR view carries none — the branch compared is printed as `baseBranch`) — its check runs,
+commit statuses and workflow runs — and flags each
 `failing[]` entry `inherited: true` when a check of the same name is failing there, `false`
 (attributable) otherwise. When every failing entry is inherited the state is `inherited-red`; when
 the base cannot be read the state stays `red` with `baseReason` and no `inherited` flags — never
@@ -37,7 +39,7 @@ log), and only after the caller's own local verification has passed:
 node "${CLAUDE_PLUGIN_ROOT}/bin/pr-checks.js" --run "$PIPELINE_RUN_DIR"
 ```
 
-One plain command; it prints `{state, failing, pending, headRefOid, localHead, pr, reason?, baseSha?, baseReason?}` and
+One plain command; it prints `{state, failing, pending, headRefOid, localHead, pr, reason?, baseBranch?, baseSha?, baseReason?}` and
 exits 0 in every state. Exit 2 or 3 is a tooling problem with the read itself — treat it exactly
 like `read-failed` below.
 
@@ -53,15 +55,16 @@ like `read-failed` below.
   entry not flagged `inherited` (the attributable checks) — its name and url — "PR #{pr} check
   `{name}` is failing at {headRefOid short} ({url})" — as the failure card's finding; those alone
   are the cause. List any `inherited: true` entries after them as "also failing on
-  {integration-branch} at {baseSha short} — inherited, catch up rather than debug the diff". With
+  {baseBranch} at {baseSha short} — inherited, catch up rather than debug the diff". With
   `baseReason` present, every failing check is treated as attributable and the card says the base
   comparison could not run (`{baseReason}`). A green local run is not evidence against it: fix
   forward, push, and re-run the gate.
 - **`inherited-red`** — pass, with a caveat: `TEST_PASSED` is set and carries the caveat; `/review`
   Step 1.5 proceeds. Log one entry:
-  `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/test|/review}" --step "PR-check gate" --reversibility high --text "PR #{pr} checks red at {headRefOid short}, but every failing check ({names}) is also failing on {integration-branch} at {baseSha short} — inherited, passed with caveat"`.
+  `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/test|/review}" --step "PR-check gate" --reversibility high --text "PR #{pr} checks red at {headRefOid short}, but every failing check ({names}) is also failing on {baseBranch} at {baseSha short} — inherited, passed with caveat"`.
   The merge gate (`_shared/pr-first-merge.md` Step 2.5) keeps its own read and still sees these
-  checks red — this pass never authorizes a merge.
+  checks red — this pass never authorizes a merge. This read does not report still-pending checks
+  on an `inherited-red` result; the merge gate's own bounded watch settles them.
 - **`pending`** or **`stale`** — pass, with a caveat: `TEST_PASSED` is set and carries the caveat
   naming the pending checks (or the unpushed HEAD), and one entry is logged:
   `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/test|/review}" --step "PR-check gate" --reversibility high --text "PR #{pr} checks {state} at {headRefOid short} ({pending names, or 'HEAD not yet pushed'}) — passed with caveat"`.

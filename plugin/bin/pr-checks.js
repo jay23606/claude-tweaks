@@ -11,14 +11,18 @@
 //   node bin/pr-checks.js --run <run-dir> [--help]
 //
 // Prints one JSON line: {state, failing:[{name,url,inherited?}], pending:[name],
-// headRefOid, localHead, pr, reason?, baseSha?, baseReason?}. state is red |
-// inherited-red | pending | stale | green | no-ci | read-failed | no-pr |
-// gh-absent.
+// headRefOid, localHead, pr, reason?, baseBranch?, baseSha?, baseReason?}. state
+// is red | inherited-red | pending | stale | green | no-ci | read-failed | no-pr
+// | gh-absent.
 //
-// A `red` read also reads the integration-branch tip's checks (#3258) and marks
-// each failing check `inherited` when it also fails there; every failing check
-// inherited is `inherited-red`. A failed base read leaves plain `red` with a
-// baseReason -- never green. Only `red` triggers the base read.
+// A `red` read also reads the base branch tip's checks (#3258) and marks each
+// failing check `inherited` when it also fails there; every failing check
+// inherited is `inherited-red`. The base is the branch the PR merges into (its
+// `baseRefName`), the integration-branch resolver only when the PR view carries
+// none; `baseBranch` names the branch actually compared. A failed base read
+// leaves plain `red` with a baseReason -- never green. Only `red` triggers the
+// base read. A failed head-runs read that would leave a non-red verdict
+// (including inherited-red) is `read-failed`: the read is partial.
 //
 // Status is data: exit 0 in every state, including no-pr and read-failed.
 // 2 malformed invocation; 3 run dir missing or not anchored under the main
@@ -35,7 +39,8 @@ const { hasPullRequestCi } = require('./lib/merge-verification');
 const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('./lib/shared-primitives');
 
 const USAGE = 'usage: pr-checks.js --run <run-dir> [--help]\n'
-  + '  prints {state, failing, pending, headRefOid, localHead, pr, reason?, baseSha?, baseReason?};\n'
+  + '  prints {state, failing, pending, headRefOid, localHead, pr, reason?, baseBranch?, baseSha?, baseReason?};\n'
+  + '  baseBranch: the branch compared on a red read -- the PR\'s own base, else the integration branch;\n'
   + '  state: red | inherited-red | pending | stale | green | no-ci | read-failed | no-pr | gh-absent\n'
   + '  exit 0 in every state; 2 malformed invocation; 3 run dir missing or not anchored\n';
 
@@ -69,25 +74,27 @@ function errText(e) {
   return [e && e.message, e && e.stderr, e && e.stdout].filter(Boolean).join(' ').trim() || String(e);
 }
 
-// The integration-branch tip's failing check names (#3258): { sha, failing } on
-// a full read, { sha, reason } at the first failed step. Never throws -- the
-// caller maps a reason to plain red, so a failed read can only keep a verdict
-// red, never soften it.
-function readBase(deps, repoRoot) {
-  let branch = null;
-  try { branch = deps.integrationBranch(repoRoot); } catch { branch = null; }
-  if (typeof branch !== 'string' || !branch) return { sha: null, reason: 'integration branch unresolvable' };
+// The base branch tip's failing check names (#3258): { branch, sha, failing } on
+// a full read, { branch, sha, reason } at the first failed step. The base is the
+// branch the PR actually merges into (`baseRefName`); the integration-branch
+// resolver is only the fallback when the PR view carried none. Never throws --
+// the caller maps a reason to plain red, so a failed read can only keep a
+// verdict red, never soften it.
+function readBase(deps, repoRoot, prBase) {
+  let branch = typeof prBase === 'string' && prBase ? prBase : null;
+  if (!branch) { try { branch = deps.integrationBranch(repoRoot); } catch { branch = null; } }
+  if (typeof branch !== 'string' || !branch) return { branch: null, sha: null, reason: 'integration branch unresolvable' };
   let sha = null;
   try {
     const out = String(deps.gh(['api', `repos/{owner}/{repo}/commits/${branch}`, '--jq', '.sha'])).trim();
-    if (!/^[0-9a-f]{40}$/.test(out)) return { sha: null, reason: `base sha unreadable: ${out.slice(0, 200)}` };
+    if (!/^[0-9a-f]{40}$/.test(out)) return { branch, sha: null, reason: `base sha unreadable: ${out.slice(0, 200)}` };
     sha = out;
     const checkRuns = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=100`])).check_runs;
     const statuses = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/status`])).statuses;
     const runs = JSON.parse(deps.gh(['run', 'list', '--commit', sha, '--limit', '100', '--json', 'name,workflowName,status,conclusion,url']));
-    return { sha, failing: failingNamesAt({ checkRuns, statuses, runs }) };
+    return { branch, sha, failing: failingNamesAt({ checkRuns, statuses, runs }) };
   } catch (e) {
-    return { sha, reason: `base read failed: ${errText(e)}` };
+    return { branch, sha, reason: `base read failed: ${errText(e)}` };
   }
 }
 
@@ -120,7 +127,7 @@ function run(argv, overrides = {}) {
     return report(deps, { state: 'read-failed', pr: n, reason: `local HEAD unreadable: ${errText(e)}` });
   }
   let view;
-  try { view = JSON.parse(deps.gh(['pr', 'view', String(n), '--json', 'headRefOid,statusCheckRollup'])); } catch (e) {
+  try { view = JSON.parse(deps.gh(['pr', 'view', String(n), '--json', 'headRefOid,statusCheckRollup,baseRefName'])); } catch (e) {
     return report(deps, { state: 'read-failed', pr: n, localHead, reason: `gh pr view failed: ${errText(e)}` });
   }
   // The full 40-char sha: an abbreviated --commit lists no runs (#3405).
@@ -143,11 +150,18 @@ function run(argv, overrides = {}) {
   let hasPrCi = false;
   try { hasPrCi = Boolean(deps.hasPullRequestCi(repoRoot)); } catch { hasPrCi = false; }
   const verdict = classifyRollup({ rollup: view && view.statusCheckRollup, headRefOid, localHead, hasPrCi, headRuns });
-  // A failed runs read cannot conclude green/pending, but a rollup that is already red is conclusive on its own.
-  if (runsFailure && verdict.state !== 'red') return report(deps, { state: 'read-failed', pr: n, localHead, reason: runsFailure });
   // Only a red verdict reads the base tip (#3258): green/pending/stale never change on it.
-  const final = verdict.state === 'red' ? applyBaseComparison(verdict, readBase(deps, repoRoot)) : verdict;
-  return report(deps, { ...final, localHead, pr: n });
+  let final = verdict;
+  let baseBranch = null;
+  if (verdict.state === 'red') {
+    const base = readBase(deps, repoRoot, view && view.baseRefName);
+    baseBranch = base.branch;
+    final = applyBaseComparison(verdict, base);
+  }
+  // A failed runs read cannot conclude a pass-class verdict (green/pending/inherited-red): a failing run
+  // absent from the rollup would be invisible. Only a verdict still red is conclusive on its own.
+  if (runsFailure && final.state !== 'red') return report(deps, { state: 'read-failed', pr: n, localHead, reason: runsFailure });
+  return report(deps, { ...final, ...(verdict.state === 'red' ? { baseBranch } : {}), localHead, pr: n });
 }
 
 module.exports = { run, parseArgs };

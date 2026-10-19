@@ -93,7 +93,7 @@ test('red at HEAD: reads pr.number from run-state.json and reports the failing c
   assert.equal(j.pr, 7);
   assert.equal(j.localHead, HEAD);
   assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test' }]);
-  assert.deepEqual(h.ghCalls[0], ['pr', 'view', '7', '--json', 'headRefOid,statusCheckRollup']);
+  assert.deepEqual(h.ghCalls[0], ['pr', 'view', '7', '--json', 'headRefOid,statusCheckRollup,baseRefName']);
 });
 
 test('no pr in run-state.json is no-pr and never calls gh (local-merge / standalone fail-open)', () => {
@@ -346,4 +346,46 @@ test('green, pending and stale verdicts never read the base tip', () => {
     assert.equal(h.json().state, state);
     assert.equal(calls.some((a) => a[0] === 'api'), false);
   }
+});
+
+test('the PR\'s own baseRefName is the comparison base, not the resolver branch', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, {
+    ...f.over,
+    integrationBranch: () => 'main',
+    gh: (args) => {
+      if (args[0] === 'pr') return JSON.stringify({ headRefOid: HEAD, baseRefName: 'dev', statusCheckRollup: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'FAILURE', detailsUrl: 'https://ci.example/test' }] });
+      if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/commits/dev') { f.calls.push(args); return `${BASE_SHA}\n`; }
+      return f.over.gh(args);
+    },
+  });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseBranch, 'dev');
+  assert.equal(f.calls.some((a) => a[1] === 'repos/{owner}/{repo}/commits/dev'), true);
+  assert.equal(f.calls.some((a) => a[1] === 'repos/{owner}/{repo}/commits/main'), false);
+});
+
+test('with no baseRefName the integration-branch resolver is the fallback base', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, redWithBase(['test'], ['test']).over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseBranch, 'main');
+});
+
+test('a failed head-runs read plus a base comparison that concludes inherited-red is read-failed (partial read)', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, {
+    ...f.over,
+    gh: (args) => { if (args[0] === 'run' && args[3] === HEAD) throw new Error('HTTP 503'); return f.over.gh(args); },
+  });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'read-failed');
+  assert.match(j.reason, /^gh run list failed:/);
 });
