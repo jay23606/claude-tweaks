@@ -68,6 +68,68 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --sta
 
 Standalone `/build` (no run dir): list the skip in the Step 7 handoff instead (`build/handoff-template.md`'s inline-skip listing).
 
+### Post-push merge-state check
+
+After every successful phase-exit push — never after a failed one — read the run PR's merge
+state. A PR that conflicts with the integration branch gets no `pull_request` workflow runs from
+GitHub, so its checks list shows nothing at all, which reads exactly like "CI pending" (#2986);
+the cheapest point to learn it is the first phase exit after the base moved, not the merge
+decision. One plain command:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --phase {build|test|review|polish|wrap-up}
+```
+
+It reads `run-state.json`'s `pr.number` and the PR through `bin/lib/reconcile/pr-state.js`'s
+`resolvePrStateByNumber` — one read — prints `{state, pr, mergeable, mergeStateStatus, phase,
+logged, reason?}`, and exits 0 in every state; exit 2 or 3 is a tooling problem with the read
+itself — route it like `read-failed`. `local-merge` and `current-branch` runs never reach this
+check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no-pr`.
+
+- **`conflicting`** (`mergeStateStatus: DIRTY` or `mergeable: CONFLICTING`) — the CLI has
+  already written one `AUTO` entry to `decisions.md` naming the PR and the phase. Say it in the
+  phase output: "PR #{pr} conflicts with `{integration-branch}` at {phase} exit — no
+  `pull_request` CI runs until the branch is caught up." Then route on the run's mode
+  (`_shared/auto-mode-contract.md`):
+  - **`auto`** — run the catch-up below before the next phase starts.
+  - **`interactive` / `hybrid`** — surface that line and the catch-up commands below, and
+    continue: no new stop — the next phase starts as it would have.
+  - **At wrap-up's exit** there is no next phase; a conflict at merge time is
+    `_shared/pr-first-merge.md`'s Conflict path, unchanged.
+- **`no-conflict`**, **`unknown`**, **`no-pr`** — nothing to do, nothing to log. `unknown` is
+  GitHub's asynchronous mergeability computation not finished yet (common straight after a
+  push): no signal, never read as a conflict, and never re-read — this check costs the phase one
+  read and no more.
+- **`read-failed`**, **`gh-absent`** (and exit 2/3) — fail open: the phase proceeds unchanged.
+  Write one `SKIP` entry per `_shared/auto-decision-log.md`'s degrade-trace rule, the convention
+  `_shared/pr-check-gate.md` applies to its own failed read:
+  `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status SKIP --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility n/a --text "condition: pr-merge-state.js {state}{: reason} → fallback: no merge-state signal this phase"`.
+
+Like the push itself, this degrades per attempt and never persists — nothing is written to
+`run-state.json`, so the next phase exit's check runs regardless.
+
+**Catch-up (`auto`).** Merge the integration branch in; never rebase — the run branch is already
+public behind its PR, and a rebase would need the force push the Git Rules forbid. Merging into
+a PR branch does not invert `main`'s first-parent chain the way "Catching a branch up with
+`main`" below warns about: that happens only when a branch is pushed *as* `main`, and this one
+lands through its PR's own merge. Resolve `{integration-branch}` per
+`_shared/integration-branch.md`. One plain command per Bash call:
+
+1. `git -C "{worktree-path}" status --porcelain` — any output: do not catch up. Surface the
+   conflict line and the commands as `interactive` does, and log one `SKIP` (`--text "condition:
+   uncommitted changes in the worktree → fallback: catch-up not run"`).
+2. `git -C "{worktree-path}" fetch origin {integration-branch}`
+3. `git -C "{worktree-path}" merge origin/{integration-branch}` — a conflict is resolved per
+   "Merge conflict resolution" below (never reset or discard; verify after resolving — when the
+   next phase is `test`, its own verification is that run).
+4. If HEAD is unchanged, the forge's conflict state was stale and there is nothing to push; log
+   it and stop. Otherwise `git -C "{worktree-path}" push origin {branch}` — the re-push is what
+   lets GitHub run the PR's `pull_request` workflows — and log:
+   `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility high --text "caught PR #{pr}'s branch up with origin/{integration-branch} before the next phase ({before short} → {after short}); re-pushed"`.
+
+A failed fetch, merge command, or push here degrades exactly like a failed phase-exit push: log
+it and let the next phase start; the next phase exit's check reads the state again.
+
 ## Catching a branch up with `main`
 
 A long-running branch has to be realigned with `main` before it merges (`[IL-20]`), and there are two ways to do it. They are not equivalent, and the difference outlives the branch:
