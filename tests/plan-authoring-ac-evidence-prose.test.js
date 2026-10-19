@@ -57,7 +57,7 @@ test('AC1.1 (#3079): negative control — the pre-change file (paragraph absent)
 });
 
 test('AC1.1 (#3079): negative control — rewording the code-vs-result distinction fails the pin', () => {
-  const mutated = TEXT.replace(KEY_PHRASE, 'governs both a check\'s code and its result');
+  const mutated = TEXT.replace(KEY_PHRASE, "governs both a check's code and its result");
   assert.notStrictEqual(mutated, TEXT, 'control must actually reword the phrase');
   assert.throws(() => assertAcEvidenceCheck(mutated));
 });
