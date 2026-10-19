@@ -86,12 +86,19 @@ function readBase(deps, repoRoot, prBase) {
   if (typeof branch !== 'string' || !branch) return { branch: null, sha: null, reason: 'integration branch unresolvable' };
   let sha = null;
   try {
-    const out = String(deps.gh(['api', `repos/{owner}/{repo}/commits/${branch}`, '--jq', '.sha'])).trim();
+    // A ref name may legally carry `#` or `%`; encode each path segment so the tip read cannot resolve another branch.
+    const refPath = branch.split('/').map(encodeURIComponent).join('/');
+    const out = String(deps.gh(['api', `repos/{owner}/{repo}/commits/${refPath}`, '--jq', '.sha'])).trim();
     if (!/^[0-9a-f]{40}$/.test(out)) return { branch, sha: null, reason: `base sha unreadable: ${out.slice(0, 200)}` };
     sha = out;
-    const checkRuns = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=100`])).check_runs;
-    const statuses = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/status`])).statuses;
-    const runs = JSON.parse(deps.gh(['run', 'list', '--commit', sha, '--limit', '100', '--json', 'name,workflowName,status,conclusion,url']));
+    const checkRunsPage = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=100`]));
+    const statusPage = JSON.parse(deps.gh(['api', `repos/{owner}/{repo}/commits/${sha}/status?per_page=100`]));
+    const checkRuns = checkRunsPage.check_runs;
+    const statuses = statusPage.statuses;
+    // One page only: a truncated list would drop failing names and under-report what is inherited, so say so instead.
+    if (Array.isArray(checkRuns) && checkRunsPage.total_count > checkRuns.length) return { branch, sha, reason: `base check-runs truncated: ${checkRuns.length} of ${checkRunsPage.total_count}` };
+    if (Array.isArray(statuses) && statusPage.total_count > statuses.length) return { branch, sha, reason: `base statuses truncated: ${statuses.length} of ${statusPage.total_count}` };
+    const runs = JSON.parse(deps.gh(['run', 'list', '--commit', sha, '--limit', '100', '--json', 'databaseId,name,workflowName,status,conclusion,url']));
     return { branch, sha, failing: failingNamesAt({ checkRuns, statuses, runs }) };
   } catch (e) {
     return { branch, sha, reason: `base read failed: ${errText(e)}` };

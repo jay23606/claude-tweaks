@@ -88,6 +88,7 @@ test('AC1.1: inherited-red passes with a caveat and an AUTO line naming the base
   assert.match(b, /caveat/i);
   assert.match(b, /--status AUTO/);
   assert.ok(b.includes('{baseSha short}'), 'AUTO text names the base sha');
+  assert.ok(b.includes('({names})'), 'AUTO text names the inherited checks');
   assert.match(b, /`TEST_PASSED` is set/);
 });
 
@@ -99,8 +100,9 @@ test('AC2.1: red names only checks not flagged inherited as the cause', () => {
 });
 
 test('AC3.1: the gate states an unreadable base stays red, never green', () => {
-  assert.match(GATE, /`baseReason`/);
-  assert.match(GATE, /stays `red`/);
+  const red = section(GATE, /\*\*`red`\*\*/, /\n- \*\*/);
+  assert.match(red, /`baseReason`/);
+  assert.match(GATE, /the state stays `red` with `baseReason`/);
 });
 
 test('every state pr-checks.js can print is routed by a bullet in the gate (code twin)', () => {

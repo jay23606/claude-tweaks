@@ -77,6 +77,23 @@ function classifyRollup({ rollup, headRefOid, localHead, hasPrCi, headRuns } = {
   return result('green', headRefOid);
 }
 
+// Only the newest run of a workflow counts at the base tip: `gh run list --commit`
+// returns every run for the sha, so a failure a later run of the same workflow
+// superseded would otherwise mark a real PR failure inherited (check-runs and
+// statuses are already latest-per-name from the API). A row with no numeric
+// `databaseId` is kept as-is — never hidden, so it can only keep a verdict red.
+function newestRunPerWorkflow(runs) {
+  const newest = new Map();
+  const kept = [];
+  for (const r of runs) {
+    const key = r && (r.workflowName || r.name);
+    if (!key || !Number.isFinite(r.databaseId)) { kept.push(r); continue; }
+    const cur = newest.get(key);
+    if (!cur || r.databaseId > cur.databaseId) newest.set(key, r);
+  }
+  return [...kept, ...newest.values()];
+}
+
 // Names failing at the integration-branch tip, from the three REST reads the
 // CLI makes there (check-runs, commit statuses, workflow runs). First-seen
 // order, de-duplicated; an unnamed row is never a name to match against.
@@ -84,7 +101,7 @@ function failingNamesAt({ checkRuns, statuses, runs } = {}) {
   for (const [field, value] of [['checkRuns', checkRuns], ['statuses', statuses], ['runs', runs]]) {
     if (!Array.isArray(value)) throw new Error(`malformed base read: ${field}`);
   }
-  const rows = [...checkRuns.map(normalizeHeadRun), ...statuses.map(normalizeEntry), ...runs.map(normalizeHeadRun)];
+  const rows = [...checkRuns.map(normalizeHeadRun), ...statuses.map(normalizeEntry), ...newestRunPerWorkflow(runs).map(normalizeHeadRun)];
   return [...new Set(rows.filter((e) => e.name != null && FAILING_CONCLUSIONS.includes(e.conclusion)).map((e) => e.name))];
 }
 

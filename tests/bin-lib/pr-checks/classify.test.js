@@ -188,7 +188,7 @@ test('failingNamesAt: a failed commit status counts; in-progress and null-named 
   assert.deepEqual(names, ['ci/legacy']);
 });
 
-test('failingNamesAt: a non-array field throws (CLI maps it to plain red)', () => {
+test('failingNamesAt: a non-array field throws (the CLI turns the throw into plain red — cli.test.js "a malformed base listing")', () => {
   assert.throws(() => failingNamesAt({ checkRuns: {}, statuses: [], runs: [] }), /malformed base read/);
 });
 
@@ -224,9 +224,19 @@ test('a base check still in progress is not failing there, so the PR failure is 
 });
 
 test('a null-named failing entry is never inherited', () => {
-  const r = applyBaseComparison({ state: 'red', failing: [{ name: null, url: null }], pending: [], headRefOid: HEAD }, { sha: BASE, failing: [] });
+  const r = applyBaseComparison({ state: 'red', failing: [{ name: null, url: null }], pending: [], headRefOid: HEAD }, { sha: BASE, failing: [null] });
   assert.equal(r.state, 'red');
   assert.equal(r.failing[0].inherited, false);
+});
+
+test('failingNamesAt: only the newest run of a workflow counts; a run row without a databaseId is kept', () => {
+  const failed = (databaseId, workflowName) => ({ databaseId, name: workflowName, workflowName, status: 'completed', conclusion: 'failure' });
+  const passed = (databaseId, workflowName) => ({ ...failed(databaseId, workflowName), conclusion: 'success' });
+  const names = (runs) => failingNamesAt({ checkRuns: [], statuses: [], runs });
+  assert.deepEqual(names([failed(5, 'ci'), passed(9, 'ci')]), []);
+  assert.deepEqual(names([passed(5, 'ci'), failed(9, 'ci')]), ['ci']);
+  assert.deepEqual(names([failed(5, 'ci'), passed(9, 'other')]), ['ci']);
+  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }, passed(9, 'ci')]), ['ci']);
 });
 
 test('non-red verdicts pass through unchanged (same object)', () => {

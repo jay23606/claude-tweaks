@@ -28,7 +28,7 @@ when the PR view carries none — the branch compared is printed as `baseBranch`
 commit statuses and workflow runs — and flags each
 `failing[]` entry `inherited: true` when a check of the same name is failing there, `false`
 (attributable) otherwise. When every failing entry is inherited the state is `inherited-red`; when
-the base cannot be read the state stays `red` with `baseReason` and no `inherited` flags — never
+the base cannot be read in full (a failed read, or a listing cut short by paging) the state stays `red` with `baseReason` and no `inherited` flags — never
 green (#3258).
 
 ## When it runs
