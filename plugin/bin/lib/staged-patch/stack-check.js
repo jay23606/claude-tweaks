@@ -29,7 +29,7 @@ function defaultGit(args, { cwd, binary = false }) {
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
-  const r = spawnSync('git', args, { cwd, encoding: binary ? 'buffer' : 'utf8', env });
+  const r = spawnSync('git', args, { cwd, encoding: binary ? 'buffer' : 'utf8', env, windowsHide: true });
   return { status: r.status, stdout: r.stdout || (binary ? Buffer.alloc(0) : ''), stderr: r.stderr ? r.stderr.toString() : '' };
 }
 

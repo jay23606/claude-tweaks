@@ -243,7 +243,7 @@ test('a content-and-mode change is not re-derived', (t) => {
   const modder = gitFixture(t);
   modder.runOk('config', 'core.fileMode', 'true');
   fs.writeFileSync(path.join(modder.dir, 'f.txt'), BASE.replace('l1\n', 'l1-edit\n'));
-  fs.chmodSync(path.join(modder.dir, 'f.txt'), 0o755);
+  fs.chmodSync(path.join(modder.dir, 'f.txt'), 0o755); // root-safe: makes a mode-change diff for git to capture, not a permission simulation
   const d = modder.git('diff');
   assert.equal(d.status, 0, d.stderr);
   const p = stage(dir, 'mode.patch', d.stdout);
