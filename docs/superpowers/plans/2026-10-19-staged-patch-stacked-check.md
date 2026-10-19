@@ -150,3 +150,8 @@
 - Overlapping context (`l2`→`L2` then `l5`→`L5`): second fails stacked; `git merge-file -p ours base theirs` exits 0 with both edits.
 - Same-anchor `git merge-file` exits 1 with conflict markers.
 - `git apply --numstat -z` prints `1\t1\tf.txt\0` for a one-line modification; `--summary` prints nothing for a pure modification.
+
+## As-built deviations (Common Step 4.5 — both Beneficial)
+
+1. **The console judges staged patches by the same stacked walk.** The spec scoped the change to the staging gate; a re-derived patch only applies on top of its earlier patch, so `bin/lib/console/resolve.js`'s `readSnapshot` now takes a stacked verdict (`checkPatchStack`, from `stack-check.js`'s `stackVerdicts`) when supplied, and `staged-patch.md`'s post-Step-5 re-check runs the Stacked check (commit 2ce922000). Without it the Release Note's "no longer silently falls back to the description path" would not hold for a re-derived patch.
+2. **The staging sites name the Stacked check.** `review/step3-routing.md`, `test/fix-mode.md`, `test/SKILL.md`, `_shared/multi-agent-coordination.md`, `deepen/SKILL.md` now say the patch is validated per the Staging-time gate — `git apply --check`, then its Stacked check — so AC1's "reported at staging time" is reachable from each site's own wording (commit 3e7be524c).
