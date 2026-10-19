@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T06:13:01.841Z",
+  "computedAt": "2026-10-19T06:57:52.110Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -11,16 +11,6 @@
       {
         "number": 3522,
         "updatedAt": "2026-10-19T03:54:01Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3521,
-        "updatedAt": "2026-10-19T05:15:46Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3519,
-        "updatedAt": "2026-10-19T03:53:38Z",
         "state": "OPEN"
       },
       {
@@ -224,11 +214,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3438,
-        "updatedAt": "2026-10-19T04:22:32Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3431,
         "updatedAt": "2026-10-18T06:43:21Z",
         "state": "OPEN"
@@ -276,11 +261,6 @@
       {
         "number": 3353,
         "updatedAt": "2026-10-17T09:47:41Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3352,
-        "updatedAt": "2026-10-18T19:37:55Z",
         "state": "OPEN"
       },
       {
@@ -554,13 +534,8 @@
         "state": "OPEN"
       },
       {
-        "number": 2870,
-        "updatedAt": "2026-10-19T04:52:42Z",
-        "state": "OPEN"
-      },
-      {
         "number": 2869,
-        "updatedAt": "2026-10-17T06:09:39Z",
+        "updatedAt": "2026-10-19T06:14:33Z",
         "state": "OPEN"
       },
       {
@@ -6804,96 +6779,6 @@
           "origin": "capture",
           "risk": "low",
           "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3044 (item 1 of the original request — the AC-forwarding sample's sanctioned writer — is already its own `ready` record; out of scope here)\n\n## Current State\n\nThe original report bundles four friction points from one `/flow` run on 6.132.0 (Windows, worktree-isolated). Checked against this tree:\n\n1. **AC-forwarding sample path unwritable from a worktree session** — already shaped as #3044, which covers exactly this. Excluded from this record.\n2. **`computeDiffFacts` input shape vs its documented call — confirmed.** `plugin/skills/build/dispatch.md:19` says to compute diff facts \"via `bin/lib/dispatch/ceremony-derive.js`'s `computeDiffFacts` over the branch's `git diff --numstat` output\". `plugin/skills/wrap-up/ceremony-derivation.md:30` uses the same phrasing. But `computeDiffFacts(files)` (`plugin/bin/lib/dispatch/ceremony-derive.js:25-29`) takes the parsed `[{path, additions, deletions}]` array, which `parseNumstat` produces. `parseNumstat` is exported from `plugin/bin/lib/blast-radius-cli.js:40,145`. Neither doc names the parser, so following the prose literally passes a raw string and throws.\n3. **Circular-dependency warnings on the documented security-hardening invocation — confirmed, but the false-clean claim is not reproduced.** Running `plugin/skills/review/focus-criterion-passes.md:12`'s direct `require` of `candidates-security-hardening.js` emits `Accessing non-existent property 'listTrackedSourceFiles' … inside circular dependency`, along with the same warning for `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp` and `listTrackedFiles`. The cause is require order. `candidates-security-hardening.js:143-144` requires `./candidates-dead-code` before `./focus-generators`. `candidates-experiment-cleanup.js:60-61` does the same and also emits warnings when required directly. The ordering rule documented at `candidates-abstraction-police.js:56-68` says to require the registry first, because otherwise Node hands a sibling generator a partially loaded `candidates-dead-code` exports object and its helpers bind to `undefined`. On this repo, `scanSecurityHardening(process.cwd())` still returns a non-empty `{candidates: [...]}`. The scan itself therefore works here, and the generator actually affected by the half-loaded exports is `candidates-abstraction-police.js` in that same process.\n4. **`log-decision.js --reversibility` rejects the documented qualifier form — confirmed.** `plugin/bin/log-decision.js:51` accepts only `high|med|low|n/a`. Meanwhile `plugin/skills/_shared/pr-early-run-lifecycle.md:154,307,333` mandates log lines such as `Reversibility: high (branch can be reset/force-pushed).`, and `plugin/bin/lib/log-decision/append.js:51` renders `Reversibility: ${reversibility}.`. The sanctioned writer cannot produce the documented line.\n\n## Deliverables\n\n1. **Item 2:** in `build/dispatch.md:19` and `wrap-up/ceremony-derivation.md:30`, state that the numstat output is parsed with `parseNumstat` (`bin/lib/blast-radius-cli.js`) before `computeDiffFacts` is called. Give a one-line runnable `node -e` composing the two.\n2. **Item 3:** fix the require order in `candidates-security-hardening.js` and `candidates-experiment-cleanup.js` so `./focus-generators` is required before `./candidates-dead-code`, matching `candidates-abstraction-police.js`'s documented rule. Add a regression test: requiring each `candidates-*.js` module directly in a fresh `node` process emits no `inside circular dependency` warning.\n3. **Item 4:** make `log-decision.js --reversibility` accept a tier with a trailing parenthetical qualifier (`high (branch can be reset/force-pushed)`). Validate the tier against the existing enum and render the qualifier verbatim, so the written line matches `pr-early-run-lifecycle.md`'s mandated form. A bare tier keeps working unchanged. Check that `claim-log.js`'s `ACTION_RE` (`plugin/bin/lib/log-decision/claim-log.js:23`) still parses lines that carry a qualifier.\n\n## Acceptance Criteria\n\n- `build/dispatch.md` and `wrap-up/ceremony-derivation.md` name `parseNumstat` as the step between `git diff --numstat` and `computeDiffFacts`.\n- `node -e \"require('./plugin/bin/lib/code-health/candidates-security-hardening.js')\" 2>&1 | grep -c \"circular dependency\"` prints `0`, and the same holds for every other `candidates-*.js` module. A test pins this.\n- `log-decision.js --reversibility \"high (branch can be reset/force-pushed)\"` exits 0 and writes `Reversibility: high (branch can be reset/force-pushed).`. `--reversibility \"bogus (x)\"` still exits non-zero. Tests cover both cases.\n- `npm test` passes in full.\n\n## Release Note\n\nFixed misleading circular-dependency warnings from code-health scanners and let the decision logger record reversibility notes the pipeline docs require.\n\n## Technical Approach\n\nThe three items are independent, small, and touch disjoint files, so build them as three separate commits. Item 3: swap the two require lines in each offending module. The warning test spawns `node -e \"require(...)\"` per module and asserts that stderr contains no `circular dependency` string. Item 4: parse `^(high|med|low|n/a)(\\s+\\(.+\\))?$`, validate group 1 against `REVERSIBILITY`, and pass the full string through to `formatEntry`. Item 2 is prose only.\n\n### Key Files\n\n- `plugin/skills/build/dispatch.md` — name `parseNumstat` before `computeDiffFacts` (line 19)\n- `plugin/skills/wrap-up/ceremony-derivation.md` — same correction (line 30)\n- `plugin/bin/lib/code-health/candidates-security-hardening.js` — require `./focus-generators` before `./candidates-dead-code`\n- `plugin/bin/lib/code-health/candidates-experiment-cleanup.js` — same require-order fix\n- `plugin/bin/log-decision.js` — accept a tier with a trailing parenthetical qualifier\n- `plugin/bin/lib/log-decision/append.js` — render the qualifier verbatim\n- `plugin/bin/lib/log-decision/claim-log.js` — confirm `ACTION_RE` tolerates a qualifier\n- `tests/bin-lib/code-health/candidates-security-hardening.test.js` — add the no-circular-warning assertion (or a sibling test covering every `candidates-*.js`)\n\n## Gotchas\n\n- ASSUMPTION — verify at build: the reporter's `[]` result from `scanSecurityHardening` on their own repo was a legitimate zero-match rather than a cycle-induced false clean. It was not reproduced here (the scan returns candidates on this repo), and this run's return shape (`{candidates}`) differs from the array the reporter saw on 6.132.0. Confirm by running the scan against a fixture containing an `api/` route with a known finding, both before and after the require-order fix.\n- Do not fix item 3 by suppressing Node warnings. The undefined bindings are real for whichever generator loads mid-cycle.\n- Item 1 belongs to #3044. Do not fold a sample-file writer into this record.\n\n## Original request\n\nFour friction points in a /flow build-review-wrap-up run under worktree isolation (claude-tweaks 6.132.0)\n\nComponent: claude-tweaks plugin (skills/build/dispatch.md, bin/lib/dispatch/ceremony-derive.js, bin/lib/code-health/candidates-security-hardening.js, bin/log-decision.js)\nKind: defect\n\n## Summary\n\nA single-record `/claude-tweaks:flow` run (worktree-isolated session, Windows, plugin 6.132.0) hit four plugin-side issues. Item 3 is the most important: it looks like a silent false-clean in review's Step 6.6 security-hardening pass.\n\n## 1. `build/dispatch.md`'s AC-forwarding sample path is unwritable from a worktree session\n\n`skills/build/dispatch.md` (\"Standing AC-forwarding verification\") tells the run to copy the first reviewer prompt to `$PIPELINE_RUN_DIR/sdd-dispatch-sample.txt`. In a worktree-isolated session the harness's Write tool refuses that path (\"Edit the worktree copy of this file instead of the shared-checkout path\"), because the run dir is anchored in the main checkout. Workaround used: write inside the worktree, then `cp`. Suggest: document a sanctioned writer (as for `log-decision.js`/`stage-item.js`), or name a worktree-local sample path.\n\n## 2. `computeDiffFacts` input shape vs. its documented call\n\n`skills/build/dispatch.md` (\"Whole-branch review model\") says to compute diff facts \"via `bin/lib/dispatch/ceremony-derive.js`'s `computeDiffFacts` over the branch's `git diff --numstat` output\". The function expects the parsed `{path, additions, deletions}[]` array (`blast-radius-cli.js`'s `parseNumstat` shape). Passing the raw numstat string throws `TypeError: (files || []).map is not a function` at `bin/lib/issues/blast-radius.js:91`. Suggest: export or document the parser in the same sentence, or have `resolve-profile.js` accept `--numstat`.\n\n## 3. `scanSecurityHardening` appears to fail silently on a circular import\n\nRunning review Step 6.6's documented invocation:\n\n```\nnode -e \"const {scanSecurityHardening}=require('<plugin>/bin/lib/code-health/candidates-security-hardening.js'); console.log(JSON.stringify(scanSecurityHardening(process.cwd())))\"\n```\n\nprinted `[]`, preceded by repeated warnings: `Accessing non-existent property 'listTrackedSourceFiles' of module exports inside circular dependency` (also `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp`, `listTrackedFiles`). It returned 0 candidates repo-wide on a repo with an `api/` routes tree. If those helpers resolve to `undefined` because of the cycle, every per-review security-hardening pass reports a false clean. Suggest: break the cycle (lazy require), and have the pass fail loudly when its helpers are unresolved.\n\n## 4. `log-decision.js --reversibility` rejects the documented parenthesised form\n\n`_shared/pr-early-run-lifecycle.md`'s mandatory log lines read e.g. `Reversibility: high (branch can be reset/force-pushed).` Passing that as `--reversibility \"high (branch can be reset/force-pushed)\"` fails: `--reversibility must be one of high|med|low|n/a`. Suggest: accept a trailing parenthetical, or document that the qualifier goes into `--text`.\n\n## Environment\n\nclaude-tweaks 6.132.0; Claude Code on Windows 11, Git Bash; worktree-isolated session (`worktree-always` policy).\n\n**Plugin version:** 6.132.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-c8c954ba -->\n",
-        "createdAt": "2026-10-01T16:30:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2869,
-        "state": "OPEN",
-        "title": "Four friction points in a /flow build-review-wrap-up run under worktree isolation (claude-tweaks 6.132.0)",
-        "updatedAt": "2026-10-17T06:09:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
           "ceremony": "standard",
           "solutionUnjustified": false,
           "breaking": false,
