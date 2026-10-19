@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { FAILING_CONCLUSIONS } = require('../plugin/bin/lib/pr-checks/classify');
+const { FAILING_CONCLUSIONS, classifyRollup } = require('../plugin/bin/lib/pr-checks/classify');
 
 const ROOT = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8').replace(/\r\n/g, '\n');
@@ -118,4 +118,44 @@ test('every state pr-checks.js can print is routed by a bullet in the gate (code
 test('/test names inherited-red in its PR-check gate bullet', () => {
   const pb = section(TEST_SKILL, /\*\*Pipeline behavior:\*\*/, /\n## /);
   assert.ok(pb.includes('`inherited-red`'), 'test/SKILL.md Pipeline behavior names inherited-red');
+});
+
+// #3257: Step 2.5 normalizes StatusContext entries before the red/pending
+// rules, and its state → verdict prose must agree with classifyRollup.
+function statusContextBlock(text) {
+  // Step 3's post-merge report also names StatusContext; only Step 2.5's paragraph names the code twin.
+  return text.split('\n\n').find((b) => b.includes('`StatusContext`') && b.includes('`normalizeEntry`'));
+}
+
+function assertStatusContextNormalization(text) {
+  const block = statusContextBlock(text);
+  assert.ok(block, 'pr-first-merge.md Step 2.5 names StatusContext normalization');
+  assert.ok(text.indexOf(block) > text.indexOf('**Read state first'), 'StatusContext paragraph sits inside Step 2.5');
+  assert.ok(text.indexOf(block) < text.indexOf('entry with `conclusion` in'), 'StatusContext paragraph precedes the red/pending rules');
+  assert.ok(block.includes('bin/lib/pr-checks/classify.js'), 'StatusContext paragraph names the code twin');
+  const verdicts = {};
+  for (const m of block.matchAll(/((?:`[A-Z]+`(?: or |, ))*`[A-Z]+`) → (red|pending|green)/g)) {
+    for (const [, state] of m[1].matchAll(/`([A-Z]+)`/g)) verdicts[state] = m[2];
+  }
+  assert.equal(verdicts.FAILURE, 'red');
+  assert.equal(verdicts.ERROR, 'red');
+  assert.equal(verdicts.SUCCESS, 'green');
+  assert.equal(verdicts.PENDING, 'pending');
+  assert.equal(verdicts.EXPECTED, 'pending');
+  for (const [state, verdict] of Object.entries(verdicts)) {
+    const rollup = [{ __typename: 'StatusContext', context: 'ci/x', state, targetUrl: null }];
+    const got = classifyRollup({ rollup, headRefOid: 'h', localHead: 'h', hasPrCi: true }).state;
+    assert.equal(got, verdict, `classifyRollup(${state}) matches the prose verdict`);
+  }
+}
+
+test('AC1.1/AC2.1: Step 2.5 normalizes StatusContext before the red/pending rules — FAILURE red, SUCCESS green, matching normalizeEntry (#3257)', () => {
+  assertStatusContextNormalization(MERGE);
+});
+
+test('AC2.1 go-red control: removing the StatusContext paragraph fails the pin', () => {
+  const block = statusContextBlock(MERGE);
+  const mutated = block ? MERGE.replace(block, '') : MERGE;
+  assert.notEqual(mutated, MERGE, 'the StatusContext paragraph is present to remove');
+  assert.throws(() => assertStatusContextNormalization(mutated), /names StatusContext normalization/);
 });

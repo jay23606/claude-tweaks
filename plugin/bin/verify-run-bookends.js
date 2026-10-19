@@ -3,19 +3,26 @@
 // build/test call, closing #1728's core gap: a `gh`-absent (MCP-transport)
 // sandbox has no CLI-enforced guarantee that the claim/materialize/PR-open
 // bookends actually landed before the calling agent self-reports
-// DONE/build-test-ok. `flow/claim-targets.md`'s manual MCP procedure and
+// DONE/build-test-ok. Five bookends are confirmed: `worktree` (stamped in
+// run-state.json), `pr` (recorded, required only under pr-first), `claim` (a
+// live claim for this run per target), `materialize` (each target's
+// work/{n}-spec.md committed at the worktree's HEAD, #2912) and `claim-log`
+// (the canonical Step 2.8 `claimed #{n}` decisions.md line per target, #2912).
+// Every `missing` entry carries a `remedy` — the literal command that lands
+// it. `flow/claim-targets.md`'s manual MCP procedure and
 // `_shared/pr-early-run-lifecycle.md`'s MCP fallback (#929) already document
 // how to perform each bookend correctly, but nothing mechanically confirms
 // they were actually followed — this is that confirmation, run by direct
 // inspection rather than trusting the call's own narrative (#1728's own
 // Acceptance Criteria).
 //
-// Reads: run-state.json (`worktree`, `pr`) and this run's own `config.yml`
-// (`integration-model`) from `--run <dir>`; the live claim state for each
-// `--targets` issue via git (never `gh` — `claims-git-cas.js`'s
-// `readClaimBlobGit`, the same git-CAS read `claim-store.js` already uses on
-// the `gh`-present path, so this check works identically whether `gh` is on
-// PATH or not).
+// Reads: run-state.json (`worktree`, `pr`), this run's own `config.yml`
+// (`integration-model`) and `decisions.md` (the claim-log line) from
+// `--run <dir>`; the live claim state for each `--targets` issue via git
+// (never `gh` — `claims-git-cas.js`'s `readClaimBlobGit`, the same git-CAS
+// read `claim-store.js` already uses on the `gh`-present path, so this check
+// works identically whether `gh` is on PATH or not); and each target's
+// committed spec via `git cat-file` at the recorded worktree's HEAD.
 //
 // Usage: node bin/verify-run-bookends.js --run <dir> --targets <n,n,...> [--help]
 // Exit 0 = every bookend confirmed — {ok:true, confirmed:{...}}.
@@ -29,10 +36,18 @@ const fs = require('fs');
 const path = require('path');
 const { readClaimBlobGit } = require('./lib/issues/claims-git-cas');
 const { classifyClaimBlob } = require('./lib/issues/claims');
+const { execFileSync } = require('child_process');
 const { GIT_TIMEOUT_MS } = require('./lib/shared-primitives');
+const { RUN_ID_RE } = require('./lib/hooks/context');
+const { hasCanonicalClaimLogFor } = require('./lib/log-decision/claim-log');
+const { lstatType } = require('./lib/path-guard');
+
+const PLUGIN_ROOT = path.resolve(__dirname, '..');
+const SPEC_RUN_DIR_RE = /^spec-\d+$/;
 
 const USAGE = 'usage: verify-run-bookends.js --run <dir> --targets <n,n,...> [--help]\n'
-  + '  exit 0 = every bookend confirmed (worktree stamp, PR under pr-first, and a live claim per target)\n'
+  + '  exit 0 = every bookend confirmed (worktree stamp, PR under pr-first, a live claim, a committed work/{n}-spec.md\n'
+  + '           and the canonical Step 2.8 claim-log line per target)\n'
   + '  exit 1 = one or more missing/unconfirmed -- {ok:false, missing:[...]}\n'
   + '  exit 2 = malformed invocation\n';
 
@@ -79,6 +94,62 @@ function readConfigIntegrationModel(runDir) {
   }
 }
 
+function readDecisions(runDir) {
+  try {
+    return fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+// Repo-relative paths a target's materialized spec can live at. A `spec-{n}`
+// run dir nests under its parent run id; a run dir that is itself the run id
+// holds the spec at `work/` (single-spec) or under `spec-{n}/work/`. A
+// multi-target parent run is a bundle, which never uses flat `work/`.
+function specCandidatePaths(runDir, issue, multiTarget) {
+  const base = path.basename(runDir);
+  const parent = path.basename(path.dirname(runDir));
+  const root = '.claude-tweaks/pipelines';
+  if (SPEC_RUN_DIR_RE.test(base) && RUN_ID_RE.test(parent)) {
+    return [`${root}/${parent}/${base}/work/${issue}-spec.md`];
+  }
+  const nested = `${root}/${base}/spec-${issue}/work/${issue}-spec.md`;
+  return multiTarget ? [nested] : [`${root}/${base}/work/${issue}-spec.md`, nested];
+}
+
+// true = git exited 0; false = git ran and exited non-zero; null = git did not
+// get to answer (timeout, or a spawn error such as ENOENT) — "absent" would be
+// a claim the probe cannot make.
+function gitProbe(worktree, args, exec) {
+  try {
+    exec('git', ['-C', worktree, ...args], { stdio: 'ignore', windowsHide: true, timeout: GIT_TIMEOUT_MS });
+    return true;
+  } catch (err) {
+    if (err && (err.signal || err.code === 'ETIMEDOUT' || typeof err.code === 'string')) return null;
+    return false;
+  }
+}
+
+// true = committed at HEAD; false = provably not (git ran, HEAD resolves, no
+// candidate path in it); null = could not determine (no worktree, or git
+// could not run or timed out) — the caller reports that as its own reason,
+// never as done. `exec` is injectable for tests.
+function isSpecCommitted({
+  runDir, worktree, issue, multiTarget,
+}, exec = execFileSync) {
+  if (typeof worktree !== 'string' || !worktree) return null;
+  const worktreeType = lstatType(worktree).type;
+  if (worktreeType !== 'directory' && worktreeType !== 'symlink') return null;
+  let undetermined = false;
+  for (const rel of specCandidatePaths(runDir, issue, multiTarget)) {
+    const found = gitProbe(worktree, ['cat-file', '-e', `HEAD:${rel}`], exec);
+    if (found === true) return true;
+    if (found === null) undetermined = true;
+  }
+  if (undetermined) return null;
+  return gitProbe(worktree, ['rev-parse', '--verify', 'HEAD'], exec) === true ? false : null;
+}
+
 function readRunState(runDir) {
   try {
     return JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
@@ -98,15 +169,26 @@ function run(argv, deps) {
   if (!targets) { deps.stderr(USAGE); return 2; }
 
   const missing = [];
-  const runId = path.basename(opts.runDir);
+  const { runDir } = opts;
+  const runId = path.basename(runDir);
+  const hooks = `node "${PLUGIN_ROOT}/bin/hooks.js"`;
+  const claimRemedy = (n) => `node "${PLUGIN_ROOT}/bin/claim-targets.js" --run-id "${runId}" --targets ${n} --run "${runDir}" (gh-absent: flow/claim-targets.md's MCP claim procedure)`;
+  // A bundle's parent run dir holds each member's spec under spec-{n}/; a spec-{N} run dir already is that dir.
+  const bundleParent = targets.length > 1 && !SPEC_RUN_DIR_RE.test(runId);
+  const materializeRemedy = (n) => `node "${PLUGIN_ROOT}/bin/materialize.js" ${n} --run-dir "${runDir}"${bundleParent ? ` --multi-record-slug ${n}` : ''} [--record-json <path> when gh is absent] then commit work/${n}-spec.md`;
 
-  const runState = deps.readRunState(opts.runDir);
-  if (!runState || !runState.worktree) missing.push({ bookend: 'worktree' });
+  const runState = deps.readRunState(runDir);
+  if (!runState || !runState.worktree) {
+    missing.push({ bookend: 'worktree', remedy: `${hooks} record-worktree --run "${runDir}" "<worktree>"` });
+  }
 
-  const integrationModel = deps.readIntegrationModel(opts.runDir);
+  const integrationModel = deps.readIntegrationModel(runDir);
   const prRequired = integrationModel === 'pr-first';
   if (prRequired && (!runState || !runState.pr)) {
-    missing.push({ bookend: 'pr' });
+    missing.push({
+      bookend: 'pr',
+      remedy: `_shared/pr-early-run-lifecycle.md push-and-open-draft-PR, then ${hooks} record-pr --run "${runDir}" <number> <url>`,
+    });
   }
 
   for (const issue of targets) {
@@ -118,7 +200,7 @@ function run(argv, deps) {
       const reason = read.timedOut
         ? `read-failed: ${read.failure} (timed out after ${GIT_TIMEOUT_MS} ms)`
         : `read-failed: ${read.failure}`;
-      missing.push({ bookend: 'claim', issue, reason });
+      missing.push({ bookend: 'claim', issue, reason, remedy: claimRemedy(issue) });
       continue;
     }
     const content = read.absent ? null : read.content;
@@ -134,7 +216,34 @@ function run(argv, deps) {
     const confirmed = Boolean(identity && identity.runId === runId);
     if (!confirmed) {
       const identityNote = identity ? ` runId=${identity.runId}` : '';
-      missing.push({ bookend: 'claim', issue, reason: `state=${classified.state}${identityNote}` });
+      missing.push({ bookend: 'claim', issue, reason: `state=${classified.state}${identityNote}`, remedy: claimRemedy(issue) });
+    }
+  }
+
+  const claimMissing = new Set(missing.filter((m) => m.bookend === 'claim').map((m) => m.issue));
+  const worktree = runState && typeof runState.worktree === 'string' ? runState.worktree : null;
+  const decisions = deps.readDecisions(runDir);
+  for (const issue of targets) {
+    const committed = deps.isSpecCommitted({
+      runDir, worktree, issue, multiTarget: bundleParent,
+    });
+    if (committed !== true) {
+      missing.push({
+        bookend: 'materialize',
+        issue,
+        reason: committed === false ? 'not-committed' : 'undetermined',
+        remedy: materializeRemedy(issue),
+      });
+    }
+    if (!hasCanonicalClaimLogFor(decisions, issue)) {
+      missing.push({
+        bookend: 'claim-log',
+        issue,
+        reason: 'no canonical Step 2.8 line',
+        remedy: claimMissing.has(issue)
+          ? 'covered by the claim remedy above (claim-targets.js --run writes the canonical line)'
+          : `node "${PLUGIN_ROOT}/bin/log-decision.js" --run "${runDir}" --section "/flow" --step "Step 2.8" --status AUTO --reversibility high --text "claimed #${issue} (bin/claim-targets.js, transport: {git|contents-api|mcp})"`,
+      });
     }
   }
 
@@ -144,7 +253,9 @@ function run(argv, deps) {
   }
   deps.stdout(JSON.stringify({
     ok: true,
-    confirmed: { worktree: true, pr: prRequired ? true : 'n/a', claims: targets },
+    confirmed: {
+      worktree: true, pr: prRequired ? true : 'n/a', claims: targets, materialize: targets, claimLog: targets,
+    },
   }));
   return 0;
 }
@@ -153,6 +264,8 @@ const realDeps = {
   readRunState,
   readIntegrationModel: readConfigIntegrationModel,
   readClaimBlobGit,
+  isSpecCommitted,
+  readDecisions,
   now: Date.now,
   stdout: (s) => process.stdout.write(`${s}\n`),
   stderr: (s) => process.stderr.write(s),

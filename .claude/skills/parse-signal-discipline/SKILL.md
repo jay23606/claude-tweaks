@@ -281,6 +281,21 @@ When mechanizing a prose heuristic into a deterministic check:
     State what the oracle cannot see, as the helper's header does: a mis-parse whose stripped text
     still compiles passes unseen. Pin the planted mis-parse through every scan that calls the
     verdict, not only through the helper's own tests.
+16. **A precondition probe does not cover the main probe's own failure to run.** Some tools exit
+    with one code for both "not found" and "could not run", so item 8's exit-code branch has
+    nothing to split on: `git cat-file -e HEAD:<path>` exits 128 for a path missing from HEAD and
+    128 again outside a repository. `plugin/bin/verify-run-bookends.js`'s `materialize` bookend
+    (#2912) asks whether each target's `work/{n}-spec.md` is committed at the worktree's HEAD. Its
+    first version handled the shared 128 with a second probe — `rev-parse --verify HEAD` had to
+    succeed before a failed `cat-file` read as "not committed" — which guarded a broken repository.
+    But its helper returned `false` for every throw, so a `cat-file` that timed out, followed by a
+    `rev-parse` that succeeded, still reported the spec as not committed. Review caught it, and
+    `gitProbe` now returns `null` when git never answered (`err.signal` set, or a string `err.code`
+    such as `ETIMEDOUT` or `ENOENT`; a non-zero exit carries only a numeric `status`), and any
+    `null` makes `isSpecCommitted` report `undetermined`. Give every probe its own could-not-run
+    arm, classified by the thrown error's shape, and pin "main probe times out, precondition probe
+    succeeds" with its own assertion (`tests/verify-run-bookends.test.js`'s
+    `catFileTimeoutRevParseOk`).
 
 ## When to use
 

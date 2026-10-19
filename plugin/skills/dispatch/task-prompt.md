@@ -183,6 +183,15 @@ shape `bin/lib/dispatch/artifact-verdict.js`'s `deriveTestVerdict` pins). Never 
 from narrative or memory of an earlier pass in this same call -- if the artifact does not exist
 or does not match HEAD, re-run the check before reporting.
 
+Bookends (every transport, #2912): before reporting `DONE`/`build-test-ok`, also run
+`node "{plugin-root}/bin/verify-run-bookends.js" --run "{minted-run-dir}" --targets {comma-joined issue numbers}`.
+Exit 0 is required. On exit 1, run each `missing` entry's `remedy` (substituting its `<...>` and
+`{...}` placeholders) -- committed spec, worktree stamp, draft PR under pr-first, canonical
+`Step 2.8: claimed #{n}` line, live claim -- then re-run it; if it still exits 1, report
+`OUTCOME: build-test-blocked` / `STATUS: BLOCKED`, never `DONE`. Exit 2 is a malformed invocation,
+not a missing bookend: correct the `--run`/`--targets` arguments and re-run, never report `DONE`
+on it.
+
 OUTPUT FORMAT (required) -- return ONLY these lines, no preamble:
 
 GROUP: {comma-joined issue numbers}
@@ -378,6 +387,7 @@ on merged-PR evidence instead — the same mechanism the next sentence already d
 `armed`/`pending-review` complete none of those three; the reconciler finishes them later, on
 merged-PR evidence, whichever trigger point observes it first. There is no `ready-to-merge` value
 under this model — the merge already happened, or didn't, by the time you report.
+Whatever the outcome, follow `{minted-run-dir}/context/merge.md`'s "Never rewrite the integration branch" section (if that bundle is absent, read `_shared/pr-first-merge.md` directly).
 
 **`integration-model: local-merge`** — report `ready-to-merge` when the group's Auto-merge gate
 passed both layers and you already applied acceptance labeling for every member -- never

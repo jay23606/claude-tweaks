@@ -11,11 +11,10 @@ wrap-up are spent on top of it. Callers cite this file; neither restates it.
 **Classification authority.** The red/pending/empty/green rules are
 `_shared/pr-first-merge.md`'s Step 2.5, applied in that order by `bin/lib/pr-checks/classify.js`
 (any failing check is red — the rollup does not mark which checks are required, and the merge gate
-already treats every failing check as red). This read adds two things the merge gate does not need:
-`stale` — the PR's `headRefOid` is not local HEAD, so nothing is concluded — and StatusContext
-normalization, which makes a failed StatusContext entry read as `red` here; the merge gate's literal
-rule, with no such normalization, would hold that same entry `pending` forever (it never carries a
-`status`/`conclusion` pair to complete). The merge gate keeps its own read and stays the final
+already treats every failing check as red). This read adds one thing the merge gate does not need:
+`stale`, meaning the PR's `headRefOid` is not local HEAD, so nothing is concluded. StatusContext
+normalization (a failed StatusContext entry reads `red`, a passing one green) is shared with the merge
+gate, which normalizes the same way before its rules apply. The merge gate keeps its own read and stays the final
 authority; this gate never replaces it. The reader also lists the workflow runs for the PR head
 (`gh run list --commit {headRefOid}`) and classifies them by the head-run cross-check in
 `_shared/pr-first-merge.md`'s Step 2.5 (a run not yet completed is pending, a failing one red), and a

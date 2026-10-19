@@ -82,15 +82,17 @@ test('the Phase-checklist update runs the Spec-summary refresh with trigger, not
   assert.match(step, /nothing it does not show/);
   assert.match(step, /`uncovered`/);
   assert.match(step, /`reason`/);
+  assert.match(step, /--summary-file/);
+  assert.match(step, /bin\/pr-checklist\.js/);
 });
 
-test('the Refresh paragraph precedes the gh pr edit invocation it feeds (M1)', () => {
+test('the Refresh paragraph precedes the MCP write it feeds (M1)', () => {
   const update = section(REFRESH, '## Phase-checklist update (every phase exit)', '## Pre-merge title/description refresh');
   const refreshIdx = update.indexOf('**Refresh the Spec summary after a premise reversal (#3050).**');
-  const ghEditIdx = update.indexOf('gh pr edit {number} --repo');
+  const writeIdx = update.indexOf('mcp__github__update_pull_request');
   assert.ok(refreshIdx !== -1, 'Refresh paragraph must exist');
-  assert.ok(ghEditIdx !== -1, 'gh pr edit invocation must exist');
-  assert.ok(refreshIdx < ghEditIdx, `Refresh paragraph (${refreshIdx}) must precede gh pr edit (${ghEditIdx})`);
+  assert.ok(writeIdx !== -1, 'MCP write must exist');
+  assert.ok(refreshIdx < writeIdx, `Refresh paragraph (${refreshIdx}) must precede the MCP write (${writeIdx})`);
 });
 
 test('the pre-merge refresh step 1 still re-runs the whole update, Spec summary included', () => {

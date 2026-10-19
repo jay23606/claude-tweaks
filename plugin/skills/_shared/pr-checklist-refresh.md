@@ -32,58 +32,58 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
   **Succeeds** (upstream is set but no PR — a rarer case, e.g. an interrupted `gh pr create`): skip
   this phase's checklist update as before; do not attempt recovery blind against a branch state
   this section cannot fully diagnose.
-- **Set**: read the current body — `gh pr view {number} --json body` when `gh` is present,
-  `mcp__github__pull_request_read` (`get` method) when it is absent
-  (`_shared/github-write-transport.md`'s Detection rule).
+- **Set**, `gh` present: one call does the whole update —
+
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/bin/pr-checklist.js" --run "{run-dir}" --phase {phase} --fixes {n}[,{m}...]
+  ```
+
+  `{run-dir}`: a bundle's parent run dir, else this run's own;
+  `--remove` drops a skipped phase's row at its would-be exit. It reads `run-state.json`'s `pr`,
+  runs `repairPrBody` (logging any restore), flips or removes the one row, runs the Spec-summary
+  check below, verifies the body's first line names this run, and writes via `gh pr edit`. Exit codes:
+  - **0**, by `action`: `written`/`no-op` done, but a flip's `row-absent`/`no-phases-span` checked
+    nothing → warn; `logFailed` → hand-log the restore line (`bin/log-decision.js`); `no-pr` → the
+    degraded-run recovery above; `gh-absent` → MCP below.
+  - **4** (run marker mismatch, nothing written): log `AUTO {time} — PR checklist refresh: refused
+    on PR #{number} — run marker mismatch ({stderr}). Reversibility: n/a.`; never edit by hand.
+  - **5** (`gh` failed): the "Best-effort" warning below.
+  - **2**, **3**: a bad call (flags, `--summary-file`, run dir) — fix, re-run.
+
+  **Refresh the Spec summary after a premise reversal (#3050).** `bin/pr-checklist.js` reads this
+  run's `premise reversed:` entries ("Premise-reversal decisions" below) and reports, under `summary`,
+  which the `### Spec summary` heading's note lacks as `uncovered`/`reason`. Empty `uncovered`
+  (`no-reversals`, or `already-noted` — every reversal already noted) → Spec summary stays
+  byte-unchanged. Non-empty → write a one-paragraph summary to a session temp file
+  (`bin/session-tmp-resolve.js`, e.g. `PR_SUMMARY_REVISION=pr-summary-revision-{run-id}.md`) with
+  the Write tool — this run's diff, nothing it does not show, covering every spec in a bundle —
+  and re-run it with `--summary-file {file}`: the row is already checked, so only the
+  note changes — one `Revised during build: {original claim} → {implemented behavior}` above the
+  paragraph. Best-effort: a re-run with `summary.changed` `false` and non-empty `uncovered` logs
+  a warning to `decisions.md` naming the `reason`; the row is written — never a phase-exit or
+  merge blocker.
+
+  **`gh` absent (MCP).** Read the body with `mcp__github__pull_request_read` (`get` method)
+  (`_shared/github-write-transport.md`'s Detection rule), then:
 
   **Repair before locating anything (#2997).** Run `repairPrBody` (`bin/lib/flow/pr-body.js` —
   the same module `_shared/pr-early-run-lifecycle.md`'s Step 3 composes with) against the body
   this read returned, unconditionally — it is a no-op when every marker is already present, so
-  calling it every time costs nothing. When it restores anything (the #2996 shape: a PR opened
-  without the template, or with some markers stripped), use its returned body for the rest of
-  this update and log one line naming what came back: `AUTO {time} — PR checklist refresh:
-  restored {restored.join(', ')} on PR #{number} (body carried none/some of the expected
-  markers). Reversibility: high (gh pr edit).` This replaces the former best-effort skip on a
+  calling it every time costs nothing. When it restores anything (the #2996 shape), use its
+  returned body for the rest of this update and log one line naming what came back:
+  `AUTO {time} — PR checklist refresh: restored {restored.join(', ')} on PR #{number} (body
+  carried none/some of the expected markers). Reversibility: high (gh pr edit).` This replaces the former best-effort skip on a
   missing delimiter pair — a missing marker is now restored, never silently left absent.
 
-  Locate the checklist span using
-  whichever delimiter pair this (possibly-repaired) body actually carries: the
-  `<!-- phases-start -->`/`<!-- phases-end -->` pair on a `gh`-present read (the real body,
-  unsanitized); the `[claude-tweaks-phases-start]`/`[claude-tweaks-phases-end]` pair on a
-  `gh`-absent MCP read (the HTML-comment pair is invisibly stripped from what this read
-  returns, per `_shared/pr-early-run-lifecycle.md`'s Root cause section, even though it still
-  exists in the stored body). Flip that phase's checklist row from
-  `- [ ] {phase}` to `- [x] {phase}` inside whichever span was found, leaving everything else —
-  including the *other* delimiter pair, which this read may not even show — untouched, then
-  write back through the same transport that did the read, to
-  `/tmp/pr-checklist-{run-id}-{n}.md` — scoped by `{run-id}`, same reason as `_shared/pr-early-run-lifecycle.md`'s
-  Step 3 path.
-
-  **Refresh the Spec summary after a premise reversal (#3050).** After writing that file and
-  before the run-id re-read and `gh pr edit` (or the MCP write) below, run `node
+  Locate the `[claude-tweaks-phases-start]`/`[claude-tweaks-phases-end]` pair (an MCP read strips
+  the HTML-comment pair, per `_shared/pr-early-run-lifecycle.md`'s Root cause section) and flip
+  that phase's row from `- [ ] {phase}` to `- [x] {phase}` inside it (drop it for a skipped
+  phase), touching nothing else. Write the body to a session temp file `{body-file}` (`bin/session-tmp-resolve.js`,
+  e.g. `PR_CHECKLIST_BODY=pr-checklist-{run-id}-{n}.md`) with the Write tool, then run `node
   "${CLAUDE_PLUGIN_ROOT}/bin/revise-pr-summary.js" --run-dir "{run-dir}" --body-file
-  /tmp/pr-checklist-{run-id}-{n}.md` — `{run-dir}` is the parent run dir with `manifest.yml` for
-  a bundle, else this run's own dir. Reads this run's `premise reversed:` entries
-  ("Premise-reversal decisions" below) and reports which the `### Spec summary` note lacks, as
-  `uncovered`/`reason`. Empty `uncovered` (`no-reversals`, or `already-noted` — every reversal
-  already noted) → write the body as composed: Spec summary stays byte-unchanged. Non-empty
-  `uncovered` → write a one-paragraph summary to a session temp file (`bin/session-tmp-resolve.js`,
-  e.g. `PR_SUMMARY_REVISION=pr-summary-revision-{run-id}.md`) with the Write tool — this run's
-  diff, nothing it does not show, covering every spec in a bundle — then re-run with
-  `--summary-file {file} --out /tmp/pr-checklist-{run-id}-{n}.md`. Locates the span by its
-  `### Spec summary` heading to the next heading, writing one `Revised during build: {original
-  claim} → {implemented behavior}` note above the paragraph, entries `; `-joined onto any
-  existing note so sibling-spec entries survive. Best-effort: a non-zero exit (stderr carries the
-  cause, no JSON), or the apply run's `changed: false` with non-empty `uncovered`, logs a warning
-  to `decisions.md` naming that cause or the `reason`; the update writes the checklist-only body —
-  never a phase-exit or merge blocker.
-
-  Re-read that file's first line back before `gh pr edit` and confirm it still names
-  this run's `{run-id}`; hard-stop this update on a mismatch rather than push a wrong body:
-
-  ```bash
-  gh pr edit {number} --repo {host}/{owner}/{repo} --body-file /tmp/pr-checklist-{run-id}-{n}.md
-  ```
+  {body-file}`; on non-empty `uncovered`, re-run with `--summary-file {file} --out {body-file}`; a
+  non-zero exit → warn, write checklist-only. Re-read that file's first line back before the write and
+  confirm it still names this run's `{run-id}`; hard-stop on a mismatch rather than push a wrong body.
 
 <!-- when: transport=mcp -->
   `gh`-absent: `mcp__github__update_pull_request` with the same composed body — unsanitized
@@ -94,17 +94,15 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
   Compose-then-write-once — read, patch the checklist section in memory, write the whole body
   back in one call. Never a partial/streaming edit.
 
-**Best-effort, like the phase-exit push it follows.** A failed `gh pr edit` logs a warning to
-`decisions.md` and the phase continues — the next phase's own checklist update naturally
-re-flips every row still unchecked from prior phases, since it reads the live body fresh each
-time rather than tracking a local diff.
+**Best-effort, like the phase-exit push it follows.** A failed `gh pr edit` (the CLI's exit 5) logs a
+warning to `decisions.md` and the phase continues — its row stays unchecked until the pre-merge
+refresh below re-runs this procedure for that phase.
 
 **Multi-spec runs share one PR.** A dispatch bundle or a `/flow` multi-spec run has multiple
 records built on the same branch behind the same draft PR, so this procedure's checklist rows
 are **cumulative across every spec in the run, never reset per spec** — see
 `flow/multispec-pr-checklist.md` for the full rationale and the per-spec status source
-(`manifest.yml`'s `specs[].status`) a maintainer should read instead when they need spec-level,
-not run-level, granularity.
+(`manifest.yml`'s `specs[].status`) to read instead for spec-level granularity.
 
 **Premise-reversal decisions (#3050).** The one `decisions.md` entry shape the Spec-summary
 refresh above reads. It is written through `bin/log-decision.js` (`--status AUTO`): to the run's
@@ -130,14 +128,15 @@ were composed at run start (`_shared/pr-early-run-lifecycle.md`'s Step 3) and th
 reflects whichever phases had exited as of each best-effort `gh pr edit` (Phase-checklist update
 above), not necessarily every phase this run actually completed.
 
-1. Re-run the Phase-checklist update procedure above once more, unconditionally, its Spec-summary refresh included — idempotent
-   (a phase whose own update already landed re-flips the same rows to the same values); this is
-   the final catch-all for any phase whose own best-effort update silently failed. **Multi-spec
+1. Re-run the Phase-checklist update procedure above once more, unconditionally, its Spec-summary refresh included — once per
+   phase this run exited (`--remove` for a skipped one), each call re-flipping its own row and a
+   no-op when that row already landed; this is the final catch-all for any phase whose own
+   best-effort update failed. **Multi-spec
    deferred polish-row removal:** if the `polish` row is present and still unchecked
    (`- [ ] polish`) at this point, check every spec's outcome in the parent `manifest.yml`'s
    `specs[]`; when no spec in the run ever ran polish (every spec's `surface:` was non-frontend —
    `backend` or `infra` — or `no-polish`/`ceremony-profile: fast-lane` applied run-wide), remove
-   the row here — the deferred counterpart to `_shared/pr-early-run-lifecycle.md`'s multi-spec
+   the row here (`--phase polish --remove`) — the deferred counterpart to `_shared/pr-early-run-lifecycle.md`'s multi-spec
    skip-rule scoping (see `flow/multispec-pr-checklist.md`).
    A single-record run never reaches this branch — its row was already removed or checked at
    polish's own would-be exit.
@@ -177,9 +176,8 @@ above), not necessarily every phase this run actually completed.
 Best-effort, like the phase-checklist update it extends — a failed `gh pr edit` at any step above
 logs a warning and the merge proceeds; a stale title or an unchecked-but-present checklist row is
 cosmetic, never a merge blocker. A **missing** run marker, phases pair, or `Fixes` block is not
-cosmetic (#2997): step 1 above already repairs it via `repairPrBody` before this refresh reaches
-step 2's rewrite, so by the time step 2 runs, a span to replace always exists — restoration is
-mechanical and happens before the merge sequence runs, never a new pipeline stop.
+cosmetic (#2997): step 1 above already repairs it via `repairPrBody`, so step 2's rewrite always
+finds a span to replace — mechanical, never a new pipeline stop.
 
 ## Merge-time gh-absent degrade
 

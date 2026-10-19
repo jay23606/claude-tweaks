@@ -24,6 +24,10 @@ file's own local-merge fallback section.
 `integration-model` resolves `pr-first` for this run. Absent either — fall to the citing file's
 local-merge section instead of this procedure.
 
+## Never rewrite the integration branch
+
+Never force-push to, `git reset`, `commit-tree`-and-push, or otherwise rewrite the published `{integration-branch}` on `origin`, on any outcome and for any reason, including repairing a botched merge message. The PR's recorded `mergeCommit`, merged-PR landed-proofs and release tooling key on the commit GitHub created, so a rewrite orphans them and re-authors that commit (#3325 → `9c9f5e722`, #3347). On a malformed merge message (stray text, duplicated body, missing `Fixes` line), leave the commit as landed, log per `_shared/auto-decision-log.md` `AUTO {HH:MM:SS} — Step 3: merge commit {sha} message malformed ({defect}); left as landed, integration branch not rewritten. Reversibility: n/a.` to `decisions.md`, and report `DONE_WITH_CONCERNS` naming the sha and defect for a human. This covers the published branch only: `local-merge`'s undo of an unpushed local merge, and a local ref realigned *to* origin (`_shared/git-discipline.md`), are not rewrites of it.
+
 ## Step 1: Acceptance labeling — before the merge, unconditionally
 
 Run `wrap-up/verification-brief.md` starting from its **Routing** section, exactly as the
@@ -144,6 +148,8 @@ gh run list --repo {owner}/{repo} --commit {headRefOid} --limit 100 --json name,
 ```
 
 A failed or unparseable runs read is the `state-read-failed` report, same as the first bullet. An empty runs list adds nothing. The code twin is `bin/lib/pr-checks/classify.js`'s `classifyRollup` (with `headRuns`), which applies the same order.
+
+**`StatusContext` entries are normalized first.** A legacy commit-status entry (`StatusContext` — `context`/`state`/`targetUrl`, no `status` or `conclusion`) is read by its `state` before the rules below apply: `FAILURE` or `ERROR` → red, `PENDING` or `EXPECTED` → pending (as is any other unfinished state), `SUCCESS` → green — completed, never pending. The code twin is `bin/lib/pr-checks/classify.js`'s `normalizeEntry`.
 
 Classify from both reads, in this order:
 
@@ -391,7 +397,7 @@ the result:
    ```
 
    - `state: MERGED`: outcome `merged`. **Read `statusCheckRollup` before reporting it green
-     (#2705) — never infer "merged once CI passed" from `state` alone.** All entries
+     (#2705) — never infer "merged once CI passed" from `state` alone.** A `StatusContext` entry is read by its `state` first, as in Step 2.5 (`SUCCESS`, `FAILURE`, `ERROR` concluded; `PENDING`, `EXPECTED` not). All entries
      `COMPLETED`+`SUCCESS`/`NEUTRAL`/`SKIPPED` → report "merged, {names} concluded {conclusions}";
      any entry still non-`COMPLETED` → report "merged — {name} had not concluded at merge time;
      this repo has no required checks (see Signatures below), so `--auto` did not wait on it";

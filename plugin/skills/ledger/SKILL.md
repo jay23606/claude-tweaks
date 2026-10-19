@@ -76,7 +76,7 @@ Append a row to the ledger table.
 - **Status** — typically `open` for new items, `observation` for informational QA caveats
 
 **Optional:**
-- **Resolution** — pre-filled for `observation` items, `—` for `open` items
+- **Resolution** — pre-filled for `observation` items, `—` for `open` items, except a `build`-phase `open` or `deferred` row, which carries its `Defer-reason:` here (`build/SKILL.md` Common Step 4, `_shared/deferral-gate.md`)
 
 **De-duplication:** per `_shared/ledger-format.md`'s De-duplication on Append rule — same phase + substantially similar description = skip the add and say so, never silently.
 
@@ -103,7 +103,7 @@ The critical gate that prevents dropped work — three phases (Phase 1 fix-exhau
 
 Delete the ledger file after all items are resolved — `node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" delete-ledger --run "$PIPELINE_RUN_DIR"` (#2544; exits 0, and reports `not found` rather than failing when the ledger is already gone). Called at `/claude-tweaks:wrap-up`'s Phase 4 execution step (planned in that phase's cleanup-planning step) — except a multi-spec `auto`/`hybrid` run's shared ledger, which `/claude-tweaks:flow` deletes once in `flow/multispec-review-console.md`'s Shared teardown step 0 (#3420).
 
-Only delete when the resolve gate has passed — all items must have terminal statuses.
+Only delete when the resolve gate has passed — all items must have terminal statuses (an incomplete deferral — a `deferred` row naming no staged path or record reference — is not terminal).
 
 ## Standalone Usage
 

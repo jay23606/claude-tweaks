@@ -50,6 +50,16 @@ function seedCase1(fx) {
   fs.writeFileSync(path.join(fx.runDir, 'work', '7-spec.md'), '---\nrecord: 7\n---\n');
 }
 
+test('AC2.1: a dispatched run dir carrying call 1\'s full bookend set adopts as case 1, not case 3 (#2912)', () => {
+  const fx = mainRoot();
+  seedCase1(fx);
+  fs.writeFileSync(path.join(fx.runDir, 'run-state.json'), JSON.stringify({ worktree: '/w/tree', status: 'active', dispatched: true, pr: { number: 1901, branch: 'feat-branch' } }));
+  const claim = '## /flow\n- AUTO 18:42:06 — Step 2.8: claimed #7 (bin/claim-targets.js, transport: git). Reversibility: high.\n';
+  fs.writeFileSync(path.join(fx.runDir, 'decisions.md'), `${claim}\n## /build\n- AUTO 18:50:00 — Step 1: build started. Reversibility: high.\n`);
+  const a = computeAdoption({ runDir: fx.runDir, mainRoot: fx.root, cwd: fx.root, deps: deps(fx) });
+  assert.strictEqual(a.case, 1);
+});
+
 test('case 1: anchored dir with config.yml → adopt, the case-1 literal, OK freshness/inventory, twelve levers with sources, stamp match, changed files (#1931 AC1)', async () => {
   const fx = mainRoot();
   seedCase1(fx);
