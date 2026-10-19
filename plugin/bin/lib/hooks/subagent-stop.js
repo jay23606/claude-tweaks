@@ -109,18 +109,32 @@
 //    outstanding. A nested dispatcher that yields after intervening tool calls,
 //    its marker-less prompt never having asked for INTERIM_STATUS, was graded
 //    (and blocked) mid-wait. countPendingDispatches reads the live-verified
-//    shapes (subagents/agent-a39fe70648c970fc6.jsonl): a launch is a user entry
-//    with `toolUseResult.isAsync: true` carrying `agentId` and the launching
-//    `tool_use_id`; a completion is an entry with `origin.kind:
-//    'task-notification'` whose string body carries `<task-id>` /
-//    `<tool-use-id>`. A launch is pending when neither of its ids appears in any
-//    completion (correlated by id, never by count, so a background-Bash
-//    notification cannot complete an agent launch). Any indeterminate shape
-//    (unparseable line, id-less launch or notification, missing timestamp)
+//    shapes (subagents/agent-a39fe70648c970fc6.jsonl, agent-a5b308ad6074b371c.jsonl):
+//    a launch is a user entry with `toolUseResult.isAsync: true` carrying
+//    `agentId` and the launching `tool_use_id`; a completion's
+//    `<task-notification>` body (carrying `<task-id>` / `<tool-use-id>`)
+//    arrives in one of two carriers — a user entry with `origin.kind:
+//    'task-notification'` and a string `message.content`, or (Claude Code
+//    2.1.283 and later) an `attachment` entry of type `queued_command` with a
+//    string `prompt`. An `api-request-blob` entry (2.1.302) echoes the
+//    request and repeats those notifications; its ids are collected too, which
+//    can only lower the count. A launch is pending when neither of its ids
+//    appears in any completion (correlated by id, never by count, so a
+//    background-Bash notification cannot complete an agent launch). A worker
+//    fork's transcript repeats its parent's history up to a `<fork-boilerplate>`
+//    user entry; the count restarts there, so only the fork's own launches
+//    count. Any indeterminate shape (unparseable line, id-less launch or
+//    notification, missing timestamp, `<task-notification>` or
+//    `<fork-boilerplate>` in any other carrier — a quoting tool_result included)
 //    yields null, which run() grades exactly as before — never a blanket
 //    exemption. Bounded by PENDING_DISPATCH_MAX_AGE_MS (60 minutes, mirroring
 //    flow/claim-targets.md's liveness default): a launch older than that is
-//    presumed hung and no longer hides a real contract violation.
+//    presumed hung and no longer hides a real contract violation. Residual
+//    risk: within those 60 minutes a hung child (one that never reports) still
+//    hides a violating final reply, and nothing re-grades it after the window
+//    closes. A skip-count ceiling would not close this: a hung child leaves
+//    that skipped yield as the agent's last stop, so there is no later stop
+//    for a ceiling to grade.
 'use strict';
 const fs = require('fs');
 const ctxLib = require('./context');
@@ -288,6 +302,25 @@ function isAsyncWaitSignal(entry) {
 // 60 minutes mirrors flow/claim-targets.md's liveness judgment default.
 const PENDING_DISPATCH_MAX_AGE_MS = 60 * 60 * 1000;
 
+// #3015: a worker fork's transcript opens with its parent's full history, then
+// this user entry: a `Fork started` tool_result plus a text block opening with
+// `<fork-boilerplate>` (live-verified, every one of 188 fork transcripts).
+// Launches and completions before it are the parent's, not the fork's.
+function isForkBoundary(entry) {
+  const content = entry.type === 'user' && entry.message && entry.message.content;
+  return Array.isArray(content) && content.some((c) => c && c.type === 'text' && typeof c.text === 'string' && c.text.startsWith('<fork-boilerplate>'));
+}
+
+// #3015: the text a recognized completion carrier holds its <task-notification>
+// in — `undefined` when `entry` is no carrier, a non-string when the carrier's
+// body has drifted from the live-verified shape (header comment, source 6).
+function notificationCarrierBody(entry, line) {
+  if (entry.origin && entry.origin.kind === 'task-notification') return entry.message && entry.message.content;
+  if (entry.attachment && entry.attachment.type === 'queued_command' && typeof entry.attachment.prompt === 'string') return entry.attachment.prompt;
+  if (entry.type === 'api-request-blob' && line.includes('<task-notification>')) return line;
+  return undefined;
+}
+
 // #3015: how many of this transcript's async `Agent` launches (before the
 // reply at `replyIndex`) have no completion notification yet? `lines` is the
 // raw transcript split on '\n'. -> number, or `null` when the shape is
@@ -296,14 +329,16 @@ const PENDING_DISPATCH_MAX_AGE_MS = 60 * 60 * 1000;
 function countPendingDispatches(lines, replyIndex) {
   let replyTs;
   try { replyTs = Date.parse(JSON.parse(lines[replyIndex]).timestamp); } catch { return null; }
-  const launches = [];
-  const completed = new Set();
+  let launches = [];
+  let completed = new Set();
   for (let i = 0; i < replyIndex; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
     let entry;
     try { entry = JSON.parse(line); } catch { return null; }
     if (!entry || typeof entry !== 'object') continue;
+    if (isForkBoundary(entry)) { launches = []; completed = new Set(); continue; }
+    if (line.includes('<fork-boilerplate>')) return null; // a fork marker in a carrier not recognized above
     if (entry.toolUseResult && entry.toolUseResult.isAsync === true) {
       const content = entry.message && entry.message.content;
       const first = Array.isArray(content) ? content[0] : null;
@@ -311,14 +346,17 @@ function countPendingDispatches(lines, replyIndex) {
       const toolUseId = first && typeof first.tool_use_id === 'string' && first.tool_use_id ? first.tool_use_id : null;
       if (!agentId && !toolUseId) return null;
       launches.push({ agentId, toolUseId, ts: Date.parse(entry.timestamp) });
+      continue;
     }
-    if (entry.origin && entry.origin.kind === 'task-notification') {
-      const body = entry.message && entry.message.content;
-      if (typeof body !== 'string') return null;
-      const ids = [...body.matchAll(/<(?:task-id|tool-use-id)>([^<]+)<\/(?:task-id|tool-use-id)>/g)].map((m) => m[1].trim());
-      if (!ids.length) return null;
-      for (const id of ids) completed.add(id);
+    const body = notificationCarrierBody(entry, line);
+    if (body === undefined) {
+      if (line.includes('<task-notification>')) return null; // a notification in a carrier not recognized above
+      continue;
     }
+    if (typeof body !== 'string') return null;
+    const ids = [...body.matchAll(/<(?:task-id|tool-use-id)>([^<]+)<\/(?:task-id|tool-use-id)>/g)].map((m) => m[1].trim());
+    if (!ids.length) return null;
+    for (const id of ids) completed.add(id);
   }
   let pending = 0;
   for (const l of launches) {
@@ -330,20 +368,20 @@ function countPendingDispatches(lines, replyIndex) {
   return pending;
 }
 
-// -> { text: string|null, asyncWaitCheckpoint: boolean, pendingDispatches: number }.
+// -> { text: string|null, asyncWaitCheckpoint: boolean, lines?, replyIndex? }.
 // `asyncWaitCheckpoint` is true only when `text` is non-null AND the nearest
 // earlier parseable transcript line is an isAsyncWaitSignal hit — i.e. this
 // reply is reacting to "a background dispatch just launched or reported in",
-// not to genuine content (#2041). `pendingDispatches` is the #3015 count of
-// still-outstanding in-turn async dispatches (0 when none or indeterminate).
+// not to genuine content (#2041). `lines`/`replyIndex` (present whenever
+// `text` is) let run() compute the #3015 pending-dispatch count lazily.
 function lastAssistantText(transcriptPath) {
   let raw;
-  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 }; }
+  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false }; }
   const lines = raw.split('\n');
   // Scan from the tail and stop at the first assistant message found — the
   // last assistant message is almost always near the end of a long-running
-  // transcript, so this avoids JSON.parse-ing every earlier line just to
-  // confirm none of them is the true last one.
+  // transcript, so finding it never JSON.parse-s the earlier lines (only
+  // run()'s #3015 count does, and only for a reply no cheaper check settled).
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
     if (!line.trim()) continue;
@@ -366,9 +404,9 @@ function lastAssistantText(transcriptPath) {
     // result comes back, so this narration precedes the eventual final
     // reply rather than being it. Grading it here is the same category of
     // misfire as the tool-call-only case above: nothing to grade yet (#1329).
-    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
+    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false };
     const texts = msg.content.filter((c) => c && c.type === 'text' && typeof c.text === 'string');
-    if (!texts.length) return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
+    if (!texts.length) return { text: null, asyncWaitCheckpoint: false };
     // Look at the nearest earlier parseable line — what this reply is
     // actually reacting to. Blank/unparseable lines are skipped, same
     // tolerance the outer scan already applies.
@@ -381,9 +419,9 @@ function lastAssistantText(transcriptPath) {
       asyncWaitCheckpoint = isAsyncWaitSignal(priorEntry);
       break;
     }
-    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint, pendingDispatches: countPendingDispatches(lines, i) || 0 };
+    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint, lines, replyIndex: i };
   }
-  return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
+  return { text: null, asyncWaitCheckpoint: false };
 }
 
 function run(ctx) {
@@ -410,7 +448,7 @@ function run(ctx) {
   // transcriptPath is already a confirmed non-empty string (checked above),
   // so a straight equality test already implies mainTranscriptPath is one too.
   if (ctx.input.transcript_path === transcriptPath) return {};
-  const { text, asyncWaitCheckpoint, pendingDispatches } = lastAssistantText(transcriptPath);
+  const { text, asyncWaitCheckpoint, lines, replyIndex } = lastAssistantText(transcriptPath);
   if (typeof text !== 'string') return {}; // unreadable -> best-effort no-op
   const trimmedText = text.trim();
   const firstLine = trimmedText.split('\n')[0].slice(0, 120);
@@ -455,8 +493,9 @@ function run(ctx) {
   if (isInterimProgressReply(trimmedText)) return {};
   // #3015: a yield while this agent's own in-turn async Agent dispatches are
   // still pending is not its final reply. Bounded (PENDING_DISPATCH_MAX_AGE_MS);
-  // null (indeterminate transcript shape) grades as today.
-  if (pendingDispatches > 0) return {};
+  // null (indeterminate transcript shape) grades as today. Computed only here,
+  // after every cheaper skip, since it parses the whole transcript.
+  if (countPendingDispatches(lines, replyIndex) > 0) return {};
   if (toolUseCount === 0) {
     ctxLib.appendEvent(ownedRun.dir, 'zero-tool-use-verdict', { firstLine }, ownedRun.attribution);
   }
