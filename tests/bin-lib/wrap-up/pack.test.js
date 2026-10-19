@@ -1431,17 +1431,22 @@ test('#3399: parkedAtShaping is true for a record when any of its header files c
   assert.deepStrictEqual(res.parkedAtShaping, { 5: true });
 });
 
+// okDeps with pr-checks.js answered by `onPrChecks(args)`; every other command takes the okDeps default.
+function depsWithPrChecks(onPrChecks) {
+  return okDeps({
+    execFile: async (cmd, args) => {
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return onPrChecks(args);
+      return okDeps().execFile(cmd, args);
+    },
+  });
+}
+
 test('pr probe attaches the pr-checks.js --pr verdict as ci (#3469)', async () => {
   const runDir = fixtureRunDir();
   const seen = [];
-  const deps = okDeps({
-    execFile: async (cmd, args) => {
-      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) {
-        seen.push(args);
-        return { stdout: '{"state":"pending","pending":["test"],"failing":[]}\n', stderr: '' };
-      }
-      return okDeps().execFile(cmd, args);
-    },
+  const deps = depsWithPrChecks((args) => {
+    seen.push(args);
+    return { stdout: '{"state":"pending","pending":["test"],"failing":[]}\n', stderr: '' };
   });
   const pack = await gatherPack({ runDir, cwd: '/w/tree', only: ['pr'], deps });
   assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
@@ -1452,12 +1457,7 @@ test('pr probe attaches the pr-checks.js --pr verdict as ci (#3469)', async () =
 });
 
 test('pr probe: a failed pr-checks.js spawn is ci read-failed, pr still ok (#3469)', async () => {
-  const deps = okDeps({
-    execFile: async (cmd, args) => {
-      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) throw new Error('spawn node ENOENT');
-      return okDeps().execFile(cmd, args);
-    },
-  });
+  const deps = depsWithPrChecks(() => { throw new Error('spawn node ENOENT'); });
   const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
   assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
   assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
@@ -1466,12 +1466,7 @@ test('pr probe: a failed pr-checks.js spawn is ci read-failed, pr still ok (#346
 });
 
 test('pr probe: unparseable pr-checks.js output is ci read-failed (#3469)', async () => {
-  const deps = okDeps({
-    execFile: async (cmd, args) => {
-      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return { stdout: 'not json\n', stderr: '' };
-      return okDeps().execFile(cmd, args);
-    },
-  });
+  const deps = depsWithPrChecks(() => ({ stdout: 'not json\n', stderr: '' }));
   const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
   assert.strictEqual(pack.pr.ok, true);
   assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
