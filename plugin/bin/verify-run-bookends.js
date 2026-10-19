@@ -42,6 +42,7 @@ const { RUN_ID_RE } = require('./lib/hooks/context');
 const { hasCanonicalClaimLogFor } = require('./lib/log-decision/claim-log');
 
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
+const SPEC_RUN_DIR_RE = /^spec-\d+$/;
 
 const USAGE = 'usage: verify-run-bookends.js --run <dir> --targets <n,n,...> [--help]\n'
   + '  exit 0 = every bookend confirmed (worktree stamp, PR under pr-first, a live claim, a committed work/{n}-spec.md\n'
@@ -108,7 +109,7 @@ function specCandidatePaths(runDir, issue, multiTarget) {
   const base = path.basename(runDir);
   const parent = path.basename(path.dirname(runDir));
   const root = '.claude-tweaks/pipelines';
-  if (/^spec-\d+$/.test(base) && RUN_ID_RE.test(parent)) {
+  if (SPEC_RUN_DIR_RE.test(base) && RUN_ID_RE.test(parent)) {
     return [`${root}/${parent}/${base}/work/${issue}-spec.md`];
   }
   const nested = `${root}/${base}/spec-${issue}/work/${issue}-spec.md`;
@@ -165,20 +166,20 @@ function run(argv, deps) {
   if (!targets) { deps.stderr(USAGE); return 2; }
 
   const missing = [];
-  const runId = path.basename(opts.runDir);
-  const runDir = opts.runDir;
+  const { runDir } = opts;
+  const runId = path.basename(runDir);
   const hooks = `node "${PLUGIN_ROOT}/bin/hooks.js"`;
   const claimRemedy = (n) => `node "${PLUGIN_ROOT}/bin/claim-targets.js" --run-id "${runId}" --targets ${n} --run "${runDir}" (gh-absent: flow/claim-targets.md's MCP claim procedure)`;
   // A bundle's parent run dir holds each member's spec under spec-{n}/; a spec-{N} run dir already is that dir.
-  const bundleParent = targets.length > 1 && !/^spec-\d+$/.test(runId);
+  const bundleParent = targets.length > 1 && !SPEC_RUN_DIR_RE.test(runId);
   const materializeRemedy = (n) => `node "${PLUGIN_ROOT}/bin/materialize.js" ${n} --run-dir "${runDir}"${bundleParent ? ` --multi-record-slug ${n}` : ''} [--record-json <path> when gh is absent] then commit work/${n}-spec.md`;
 
-  const runState = deps.readRunState(opts.runDir);
+  const runState = deps.readRunState(runDir);
   if (!runState || !runState.worktree) {
     missing.push({ bookend: 'worktree', remedy: `${hooks} record-worktree --run "${runDir}" "<worktree>"` });
   }
 
-  const integrationModel = deps.readIntegrationModel(opts.runDir);
+  const integrationModel = deps.readIntegrationModel(runDir);
   const prRequired = integrationModel === 'pr-first';
   if (prRequired && (!runState || !runState.pr)) {
     missing.push({

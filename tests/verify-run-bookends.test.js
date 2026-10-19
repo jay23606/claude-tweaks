@@ -17,6 +17,10 @@ const {
 
 const canonicalClaim = (n) => `## /flow\n- AUTO 09:41:32 — Step 2.8: claimed #${n} (bin/claim-targets.js, transport: git). Reversibility: high.\n`;
 
+function gitIn(cwd) {
+  return (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd, stdio: 'pipe' });
+}
+
 const RUN_DIR = '/repo/.claude-tweaks/pipelines/2026-09-17T001731-record-1728';
 const RUN_ID = '2026-09-17T001731-record-1728';
 const NOW = Date.parse('2026-09-17T01:00:00.000Z');
@@ -228,6 +232,11 @@ test('multiple targets: one unconfirmed target is reported without masking the c
 });
 
 const OWN_CLAIM = { 1728: { content: liveMarker(RUN_ID), absent: false, failure: null } };
+const BUNDLE_TARGETS = '1728,1729';
+const BUNDLE_CLAIMS = {
+  1728: { content: liveMarker(RUN_ID), absent: false, failure: null },
+  1729: { content: liveMarker(RUN_ID), absent: false, failure: null },
+};
 
 test('AC1.1: a target whose spec is not committed -> exit 1, missing materialize bookend with a materialize.js remedy', () => {
   const deps = captured(makeDeps({ claims: OWN_CLAIM, isSpecCommitted: () => false }));
@@ -248,7 +257,7 @@ test('isSpecCommitted returning null -> missing materialize with reason "undeter
 test('AC1.1: realDeps.isSpecCommitted is true only for a spec committed at HEAD', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-spec-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd: root, stdio: 'pipe' });
+  const git = gitIn(root);
   git('init', '-q');
   fs.writeFileSync(path.join(root, 'README.md'), 'x\n');
   git('add', 'README.md');
@@ -309,13 +318,8 @@ test('every missing entry carries a remedy string', () => {
 });
 
 test('all bookends confirmed -> payload.confirmed.materialize and .claimLog list the targets', () => {
-  const deps = captured(makeDeps({
-    claims: {
-      1728: { content: liveMarker(RUN_ID), absent: false, failure: null },
-      1729: { content: liveMarker(RUN_ID), absent: false, failure: null },
-    },
-  }));
-  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728,1729'], deps), 0);
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 0);
   const { confirmed } = JSON.parse(deps.out[0]);
   assert.deepStrictEqual(confirmed.materialize, [1728, 1729]);
   assert.deepStrictEqual(confirmed.claimLog, [1728, 1729]);
@@ -343,11 +347,6 @@ test('realDeps.readDecisions reads decisions.md and returns null when absent', (
 });
 
 // #2912 final review: remedies must be runnable as printed, on either transport.
-const BUNDLE_TARGETS = '1728,1729';
-const BUNDLE_CLAIMS = {
-  1728: { content: liveMarker(RUN_ID), absent: false, failure: null },
-  1729: { content: liveMarker(RUN_ID), absent: false, failure: null },
-};
 
 test('a bundle-shaped materialize remedy carries the literal run dir and --multi-record-slug, never the placeholder', () => {
   const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS, isSpecCommitted: () => false }));
@@ -395,7 +394,7 @@ test('a claim-log remedy defers to the claim remedy when the same issue\'s claim
 test('a two-target parent run with a spec committed only at flat work/{n}-spec.md reports materialize missing (real git)', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-bundle-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd: root, stdio: 'pipe' });
+  const git = gitIn(root);
   git('init', '-q');
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
   const flatRel = `.claude-tweaks/pipelines/${RUN_ID}/work/1729-spec.md`;
