@@ -481,8 +481,8 @@ function corroborateCrossLens(unconfirmedByLens) {
 
   const directMatch = (i, j) => {
     if (!sameLocation(nodes[i].finding, nodes[j].finding, LINE_TOLERANCE_CORROBORATION)) return false;
-    const score = substanceSimilarity(nodes[i].finding, nodes[j].finding);
-    return score !== null && score >= SUBSTANCE_SIMILARITY_MIN;
+    // Missing text (`null`) never corroborates, unlike the reproduction pairing.
+    return sameSubstance(nodes[i].finding, nodes[j].finding) === true;
   };
 
   const parent = nodes.map((_, i) => i);
