@@ -44,7 +44,7 @@ Uses `/superpowers:subagent-driven-development` and `/superpowers:executing-plan
 
 Stories include `source_files:` and `journey:` fields for change-aware scoping and coverage tracking. Supports auth profiles (`stories/auth.yml`), self-healing CSS selectors, and parallel orchestration across browser sessions. Auto-triggered by `/claude-tweaks:flow` when UI files changed.
 
-**`/claude-tweaks:test`** — Mechanical "does it work?" gate. Runs types, lint, and tests from your project. In QA mode, validates story YAML files against the running app with enriched reporting — 5 finding categories (code-bug, stale-selector, ux-issue, flaky-env, story-bug), severity levels, and suggested fixes. Supports scoping by journey, tag, affected files, or retry of previous failures.
+**`/claude-tweaks:test`** — Mechanical "does it work?" gate. Runs types, lint, and tests from your project. In QA mode, validates story YAML files against the running app with enriched reporting — 5 finding categories (code-bug, stale-selector, ux-issue, flaky-env, story-bug), severity levels, and suggested fixes. Supports scoping by journey, tag, affected files, or retry of previous failures. Inside a `pr-first` pipeline run it also reads the run PR's CI checks at HEAD before passing (`_shared/pr-check-gate.md`): a red check this run caused fails the gate like a local test failure, a PR red only on checks already failing at its base branch's tip passes with a logged caveat, and a pending check or unpushed HEAD passes with a caveat.
 
 ```
 /claude-tweaks:test                        → standard suite (types + lint + tests)
