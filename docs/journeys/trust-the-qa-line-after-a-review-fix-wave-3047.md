@@ -40,10 +40,10 @@ files:
 
 ### 4. Read the stale qualifier when the re-run cannot happen
 - **URL:** The same QA Validation status line and verdict comment.
-- **Action:** In a headless run with no dev server or browser, the re-run self-skips, or it errors. The status then reads `{status} — ran before the review's fix wave ({N} commits since); stories touching changed files: {ids}`. When uncommitted edits remain, it reads `({N} commits since, plus uncommitted edits)`.
+- **Action:** In a headless run with no dev server or browser, the re-run self-skips, or it errors. It can also stop without running (`No QA stories affected by current changes.`, an unresolved base), or run but report an intersected story SKIPPED. The status then reads `{status} — ran before the review's fix wave ({N} commits since); stories touching changed files: {ids}`. When uncommitted edits remain, it reads `({N} commits since, plus uncommitted edits)`.
 - **Should feel:** Honest. The user knows the evidence is older than the code, and which stories to re-check by hand.
-- **Should understand:** The qualifier renders only when an applied wave touched a story's `source_files` and the re-run did not happen. It never renders for a wave that touched no story file.
-- **Red flags:** A bare "QA: ALL PASSED" after a wave that touched story files and was never re-run. "0 commits since" with no mention of uncommitted Fix-now edits.
+- **Should understand:** The qualifier renders only when an applied wave touched a story's `source_files` and the re-run did not happen or left such a story unexecuted. It never renders for a wave that touched no story file.
+- **Red flags:** A bare "QA: ALL PASSED" after a wave that touched story files and was never re-run, or whose re-run reported a touched story SKIPPED. "0 commits since" with no mention of uncommitted Fix-now edits.
 
 ## Origin
 - Created during build of #3047, which added the review Step 6.7 post-fix-wave QA re-run and the stale-QA qualifier.
