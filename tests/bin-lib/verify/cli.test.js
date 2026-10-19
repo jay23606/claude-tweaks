@@ -1793,6 +1793,15 @@ test('AC2.1 preExisting: a pytest summary log is never adjudicated through preEx
   await assertPreExistingRefused(log, 'no-accounting-guard: summary');
 });
 
+test('preExisting: a fully attributed jest log covered by the allowlist is adjudicated (#3480)', async () => {
+  const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Test Suites: 1 failed, 2 passed, 3 total', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
+  const r = preExistingRepo({ log });
+  const { code, stderr } = await runCli(r.args, { cwd: r.repo });
+  assert.strictEqual(code, 0, stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], matched: ['tests/known-shallow.test.js'] });
+});
+
 test('AC1.3 preExisting: unattributed failures sum across failing checks — types and lint with one each refuse as unattributed-failures: 2 (#3481)', async () => {
   const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
     'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');

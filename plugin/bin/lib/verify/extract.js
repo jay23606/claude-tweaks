@@ -576,12 +576,15 @@ function summaryDialect(text) {
   return jest ? 'jest' : 'vitest';
 }
 
-// jest's `Jest: "global" coverage threshold for lines (100%) not met: 66.66%`
-// and vitest's `ERROR: Coverage for lines (50%) does not meet global
-// threshold (100%)`: a failing check that no `FAIL` line names, so retrying
-// the named files would clear a check that still fails (#3480).
+// jest's three coverage-failure wordings (CoverageReporter.js: `Jest: "global"
+// coverage threshold for lines (100%) not met: 66.66%`, a negative threshold's
+// `Jest: Uncovered count for lines (5) exceeds global threshold (2)`, and a
+// path/glob group with no data, `Jest: Coverage data for X was not found.`) and
+// vitest's `ERROR: Coverage for lines (50%) does not meet global threshold
+// (100%)`: a failing check that no `FAIL` line names, so retrying the named
+// files would clear a check that still fails (#3480).
 const COVERAGE_THRESHOLD_RES = [
-  /^Jest: .*coverage threshold for .* not met/gm,
+  /^Jest: (?:.*coverage threshold for .* not met|Uncovered count for .* exceeds|Coverage data for .* was not found)/gm,
   /^ERROR: Coverage for .* does not meet .*threshold/gm,
 ];
 

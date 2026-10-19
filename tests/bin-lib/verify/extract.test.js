@@ -575,6 +575,15 @@ test('unattributedFailureCount: a jest FAIL line naming a non-test file is unatt
   assert.strictEqual(unattributedFailureCount(log, 'summary'), 1);
 });
 
+for (const line of [
+  'Jest: Uncovered count for lines (5) exceeds global threshold (2)',
+  'Jest: Coverage data for ./src/utils/ was not found.',
+]) {
+  test(`unattributedFailureCount: a fully attributed jest log plus "${line}" is unattributed (#3480)`, () => {
+    assert.strictEqual(unattributedFailureCount(`${readDialect('jest-attributed.txt')}\n${line}\n`, 'summary'), 1);
+  });
+}
+
 test('unattributedFailureCount: an ANSI-coloured vitest log is accounted the same as its plain twin (#3480)', () => {
   const plain = readDialect('vitest-attributed.txt');
   const coloured = plain.replace(' FAIL ', ' \x1b[31mFAIL\x1b[39m ').replace(' Test Files ', '\x1b[2m Test Files \x1b[22m');
