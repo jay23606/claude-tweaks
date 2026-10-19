@@ -217,23 +217,22 @@ function teardownRun(runDir, opts = {}) {
     lines.push('state: closed' + (state.wrapupSeen ? '' : ' (no wrap-up event recorded)'));
   }
 
-  // `root === null` means mainCheckoutRoot couldn't find a `.git` walking up from `runDir` (or hit
-  // an unreadable/unparseable gitdir) — every remaining step needs a real root to run git against,
-  // so skip them all individually here (same try/skip/report posture as every other step) rather
-  // than letting a null root reach runGit and produce a confusing downstream failure.
-  if (!root) {
-    lines.push("archive: skipped — teardown-run does not archive (archival is the caller's own last cleanup step: hooks.js archive-run)");
-    lines.push('worktree: skipped — could not determine main checkout root from run dir');
-    lines.push('branch: skipped — could not determine main checkout root from run dir');
-    lines.push('remote ref: skipped — could not determine main checkout root from run dir');
-    return { lines };
-  }
-
   // Step 2 (archive) — teardown-run never archives (#3490). Archival is archive-run's job, gated by
   // the console (#1130), and runs as the caller's own last cleanup step after the later items
   // (ephemeral dev server teardown, issue claim release) that still need $RUN_DIR to resolve. This
   // line stays so the output names where archival lives.
   lines.push("archive: skipped — teardown-run does not archive (archival is the caller's own last cleanup step: hooks.js archive-run)");
+
+  // `root === null` means mainCheckoutRoot couldn't find a `.git` walking up from `runDir` (or hit
+  // an unreadable/unparseable gitdir) — every remaining step needs a real root to run git against,
+  // so skip them all individually here (same try/skip/report posture as every other step) rather
+  // than letting a null root reach runGit and produce a confusing downstream failure.
+  if (!root) {
+    lines.push('worktree: skipped — could not determine main checkout root from run dir');
+    lines.push('branch: skipped — could not determine main checkout root from run dir');
+    lines.push('remote ref: skipped — could not determine main checkout root from run dir');
+    return { lines };
+  }
 
   // Step 3 (worktree removal) — never forced; a locked worktree means either a live session
   // (including this session's own ground, per [IL-58] — that removal path is ExitWorktree only)
