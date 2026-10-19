@@ -100,3 +100,18 @@ test('verification.md Skip-if-recent Mismatch re-stamps HEAD through the runner,
   assert.ok(row, 'the scoping table names the build→test VERIFICATION_SHA mismatch site');
   assert.ok(row.includes('scoped (`none` on a bookkeeping-only delta)'), row);
 });
+
+test('test/fix-mode.md re-verifies a fix through the stamping runner, never a failed-checks-only re-run (#3284)', () => {
+  const f = read('plugin/skills/test/fix-mode.md');
+  assert.ok(f.includes('#3284'));
+  assert.ok(f.includes('--no-stamp'), 'a narrowed iteration run must be named as never-stamping');
+  assert.ok(f.includes('verification.md'), 'the stamped re-verification points at verification.md Step 2');
+  // A failed-checks-only re-run is a partial set: it cannot stamp, so the fix
+  // commit's HEAD would be left unstamped and the dispatched second call would
+  // re-trigger /claude-tweaks:test.
+  const bare = f.match(/re-run the failed checks/gi) || [];
+  assert.strictEqual(bare.length, 0, 'no site may re-verify by re-running only the failed checks');
+  // Auto-fix flow + the three Interactive fix bullets each point at the one statement.
+  const pointers = f.split('re-verify per Re-verification above').length - 1;
+  assert.ok(pointers >= 4, `expected >=4 pointers to the Re-verification paragraph, got ${pointers}`);
+});
