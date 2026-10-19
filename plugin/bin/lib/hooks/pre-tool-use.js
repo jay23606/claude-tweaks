@@ -682,7 +682,10 @@ function shadowPipelineRunDir(targetPath) {
   const resolved = path.resolve(targetPath);
   const { repoRoot, isLinkedWorktree, indeterminate } = wtDetect.repoInfo(resolved);
   if (indeterminate || !repoRoot || !isLinkedWorktree) return null;
-  const pipelinesDir = path.join(repoRoot, PIPELINE_STATE_DIR);
+  // realTarget (below) now returns path-guard's case-canonical (.native) form,
+  // so the root it is compared against is canonicalised the same way (#3495);
+  // repoRoot is the JS form, which echoes casing on a case-insensitive volume.
+  const pipelinesDir = path.join(canonicalRealpath(repoRoot) || repoRoot, PIPELINE_STATE_DIR);
   // realTarget follows an existing symlink chain the same way the policy.yml
   // exemption does; falls back to the literal resolved path when nothing
   // exists yet (a brand-new mkdir target has no leaf, sometimes not even a
