@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { selectEntry } = require('../../plugin/bin/lib/installed-plugins');
+const { selectEntry, readInstalledPlugins } = require('../../plugin/bin/lib/installed-plugins');
 
 // #3380: selectEntry moved out of impeccable-engine so the superpowers version
 // resolver can share it. These tests pin the rule Impeccable already relied on
@@ -127,4 +127,85 @@ test('selectEntry: non-object entries are skipped', () => {
   const root = tmpRoot();
   mkdirs(path.join(root, 'proj'));
   assert.equal(selectEntry([null, 'x', user], path.join(root, 'proj'), depsFor('/nowhere')), user);
+});
+
+function readerDeps(home, env) {
+  return { readFile: (p) => fs.readFileSync(p, 'utf8'), homedir: () => home, env };
+}
+
+test('readInstalledPlugins: CLAUDE_CONFIG_DIR wins over {home}/.claude', () => {
+  const root = tmpRoot();
+  const home = path.join(root, 'home');
+  const cfg = path.join(root, 'cfg');
+  const homeFile = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
+  const cfgFile = path.join(cfg, 'plugins', 'installed_plugins.json');
+  mkdirs(path.dirname(homeFile), path.dirname(cfgFile));
+  fs.writeFileSync(homeFile, JSON.stringify({ plugins: { home: true } }));
+  fs.writeFileSync(cfgFile, JSON.stringify({ plugins: { cfg: true } }));
+  const r = readInstalledPlugins(readerDeps(home, { CLAUDE_CONFIG_DIR: cfg }));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data, { plugins: { cfg: true } });
+  assert.equal(r.file, cfgFile);
+});
+
+test('readInstalledPlugins: env without CLAUDE_CONFIG_DIR, an empty CLAUDE_CONFIG_DIR, and an absent deps.env all read {home}/.claude', () => {
+  const root = tmpRoot();
+  const home = path.join(root, 'home');
+  const homeFile = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
+  mkdirs(path.dirname(homeFile));
+  fs.writeFileSync(homeFile, JSON.stringify({ plugins: { home: true } }));
+  for (const env of [{}, { CLAUDE_CONFIG_DIR: '' }]) {
+    const r = readInstalledPlugins(readerDeps(home, env));
+    assert.deepEqual(r.data, { plugins: { home: true } }, JSON.stringify(env));
+    assert.equal(r.file, homeFile);
+  }
+  const saved = process.env.CLAUDE_CONFIG_DIR;
+  process.env.CLAUDE_CONFIG_DIR = path.join(root, 'nonexistent');
+  try {
+    const r = readInstalledPlugins({ readFile: (p) => fs.readFileSync(p, 'utf8'), homedir: () => home });
+    assert.deepEqual(r.data, { plugins: { home: true } });
+    assert.equal(r.file, homeFile);
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = saved;
+  }
+});
+
+test('readInstalledPlugins: a CLAUDE_CONFIG_DIR with no plugins file does not fall back to home', () => {
+  const root = tmpRoot();
+  const home = path.join(root, 'home');
+  const cfg = path.join(root, 'cfg');
+  const homeFile = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
+  const file = path.join(cfg, 'plugins', 'installed_plugins.json');
+  mkdirs(path.dirname(homeFile), cfg);
+  fs.writeFileSync(homeFile, JSON.stringify({ plugins: {} }));
+  const r = readInstalledPlugins(readerDeps(home, { CLAUDE_CONFIG_DIR: cfg }));
+  assert.equal(r.ok, false);
+  assert.equal(r.detail, `not found: ${file}`);
+  assert.equal(r.file, file);
+});
+
+test('readInstalledPlugins: malformed JSON -> malformed JSON (...) detail', () => {
+  const root = tmpRoot();
+  const home = path.join(root, 'home');
+  const file = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
+  mkdirs(path.dirname(file));
+  fs.writeFileSync(file, '{nope');
+  const r = readInstalledPlugins(readerDeps(home, {}));
+  assert.equal(r.ok, false);
+  assert.match(r.detail, /^malformed JSON \(/);
+  assert.equal(r.file, file);
+});
+
+test('readInstalledPlugins: a non-ENOENT read error passes its message through', () => {
+  const r = readInstalledPlugins({
+    readFile: () => {
+      throw Object.assign(new Error('EACCES: denied'), { code: 'EACCES' });
+    },
+    homedir: () => '/nowhere',
+    env: {},
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.detail, 'EACCES: denied');
+  assert.match(r.file, /installed_plugins\.json$/);
 });
