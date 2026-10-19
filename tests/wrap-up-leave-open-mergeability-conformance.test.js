@@ -10,7 +10,24 @@ const ROOT = path.join(__dirname, '..');
 const read = (...p) => readText(path.join(ROOT, ...p));
 const EXEC = read('plugin', 'skills', 'wrap-up', 'execution-and-verification.md');
 const GIT_DISCIPLINE = read('plugin', 'skills', '_shared', 'git-discipline.md');
+const WRAP_SUMMARY = read('plugin', 'skills', 'wrap-up', 'summary-template.md');
+const FLOW_SUMMARY = read('plugin', 'skills', 'flow', 'summary-template.md');
 const HEADING = '**Leave-open mergeability re-check';
+
+function flatten(text) {
+  return text.replace(/\s+/g, ' ');
+}
+
+// Returns an assertion that `flatText` contains a needle, naming the pin that failed.
+function pinsIn(flatText) {
+  return (needle, msg) => assert.ok(flatText.includes(needle), `${msg}: missing ${JSON.stringify(needle)}`);
+}
+
+// Go-red controls: a mutation that changes nothing would prove nothing.
+function assertMutated(original, mutated) {
+  assert.ok(mutated !== original, 'the control must actually mutate the text');
+  return mutated;
+}
 
 function leaveOpenParagraph(text) {
   const start = text.indexOf(HEADING);
@@ -19,12 +36,12 @@ function leaveOpenParagraph(text) {
   const verify = text.indexOf('### Verify execution');
   assert.ok(phaseExit !== -1 && phaseExit < start && start < verify,
     'the paragraph sits after the Phase exit paragraph and before ### Verify execution');
-  return text.slice(start, verify).replace(/\s+/g, ' ');
+  return flatten(text.slice(start, verify));
 }
 
 function assertLeaveOpenParagraph(text) {
   const p = leaveOpenParagraph(text);
-  const has = (needle, msg) => assert.ok(p.includes(needle), `${msg}: missing ${JSON.stringify(needle)}`);
+  const has = pinsIn(p);
   // Triggers and exclusions.
   has("`merge.resolution` reads `leave-open`", 'trigger: console.json leave-open');
   has('"Approve all, leave PR open"', 'trigger: attended leave-open choice');
@@ -66,23 +83,19 @@ test('AC1.1/AC2.1/AC3.1: execution-and-verification.md carries the leave-open me
 });
 
 test('go-red control: dropping the files-before-abort listing makes the shared assertion throw', () => {
-  const mutated = EXEC.replace('diff --name-only --diff-filter=U', 'diff --stat');
-  assert.ok(mutated !== EXEC, 'the control must actually mutate the text');
+  const mutated = assertMutated(EXEC, EXEC.replace('diff --name-only --diff-filter=U', 'diff --stat'));
   assert.throws(() => assertLeaveOpenParagraph(mutated), /AC2\.1/);
 });
 
 test('go-red control: a re-check that never reads late, or reads the archived-away path, makes the shared assertion throw', () => {
-  const noLateRead = EXEC.replace('take one read\nof its own, as the last call', 'reuse it anyway\nas the last call');
-  assert.ok(noLateRead !== EXEC, 'the control must actually mutate the text');
+  const noLateRead = assertMutated(EXEC, EXEC.replace('take one read\nof its own, as the last call', 'reuse it anyway\nas the last call'));
   assert.throws(() => assertLeaveOpenParagraph(noLateRead), /late read: one read, placed last/);
-  const staleRun = EXEC.replace('--run "{run-dir}" --phase wrap-up', '--run "$PIPELINE_RUN_DIR" --phase wrap-up');
-  assert.ok(staleRun !== EXEC, 'the control must actually mutate the text');
+  const staleRun = assertMutated(EXEC, EXEC.replace('--run "{run-dir}" --phase wrap-up', '--run "$PIPELINE_RUN_DIR" --phase wrap-up'));
   assert.throws(() => assertLeaveOpenParagraph(staleRun), /late read: the command/);
 });
 
 function assertGitDisciplineException(text) {
-  const flat = text.replace(/\s+/g, ' ');
-  const has = (needle, msg) => assert.ok(flat.includes(needle), `${msg}: missing ${JSON.stringify(needle)}`);
+  const has = pinsIn(flatten(text));
   has('no catch-up runs there, in any mode — the merge path (`_shared/pr-first-merge.md`) owns a conflict from there', 'merge path keeps wrap-up exit');
   has("`wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it, in every mode — only git's own auto-merge runs",
     'modes: the wrap-up-exit bullet names the leave-open exception in every mode');
@@ -96,16 +109,12 @@ test('git-discipline.md names the leave-open exception at wrap-up exit and keeps
 });
 
 test('go-red control: dropping the never-re-read exception makes the git-discipline assertion throw', () => {
-  const mutated = GIT_DISCIPLINE.replace('The one exception is an `unknown` at', 'An `unknown` at');
-  assert.ok(mutated !== GIT_DISCIPLINE, 'the control must actually mutate the text');
+  const mutated = assertMutated(GIT_DISCIPLINE, GIT_DISCIPLINE.replace('The one exception is an `unknown` at', 'An `unknown` at'));
   assert.throws(() => assertGitDisciplineException(mutated), /late read: the never-re-read bullet/);
 });
 
-const WRAP_SUMMARY = read('plugin', 'skills', 'wrap-up', 'summary-template.md');
-const FLOW_SUMMARY = read('plugin', 'skills', 'flow', 'summary-template.md');
-
 function assertVerdictRule(text) {
-  const flat = text.replace(/\s+/g, ' ');
+  const flat = flatten(text);
   const start = flat.indexOf('**Leave-open mergeability (#3483).**');
   const state = flat.indexOf('### State');
   assert.ok(start !== -1 && start < state, 'AC2.1: the Verdict rule sits before ### State');
@@ -118,7 +127,7 @@ function assertVerdictRule(text) {
 }
 
 function assertResumeRow(text) {
-  const flat = text.replace(/\s+/g, ' ');
+  const flat = flatten(text);
   const row = '— resume to re-offer the merge decision, PR #{n} {is ready | is blocked} — mergeability: {outcome}';
   const first = flat.indexOf(row);
   assert.ok(first !== -1, 'AC1.2: the Next Actions resume row names the mergeability outcome');
@@ -142,13 +151,10 @@ test('AC1.2: flow summary resume-to-merge row names the mergeability outcome', (
 });
 
 test('go-red control: an unnamed resume row or a softened Verdict makes the shared assertions throw', () => {
-  const row = FLOW_SUMMARY.split('{is ready | is blocked} — mergeability: {outcome}').join('is ready');
-  assert.ok(row !== FLOW_SUMMARY, 'the control must actually mutate the text');
+  const row = assertMutated(FLOW_SUMMARY, FLOW_SUMMARY.split('{is ready | is blocked} — mergeability: {outcome}').join('is ready'));
   assert.throws(() => assertResumeRow(row), /AC1\.2/);
-  const undirty = FLOW_SUMMARY.replace('only when it starts with `DIRTY`', 'for every outcome');
-  assert.ok(undirty !== FLOW_SUMMARY, 'the control must actually mutate the text');
+  const undirty = assertMutated(FLOW_SUMMARY, FLOW_SUMMARY.replace('only when it starts with `DIRTY`', 'for every outcome'));
   assert.throws(() => assertResumeRow(undirty), /AC3\.1/);
-  const verdict = WRAP_SUMMARY.replace('never "everything shipped"', 'usually not "everything shipped"');
-  assert.ok(verdict !== WRAP_SUMMARY, 'the control must actually mutate the text');
+  const verdict = assertMutated(WRAP_SUMMARY, WRAP_SUMMARY.replace('never "everything shipped"', 'usually not "everything shipped"'));
   assert.throws(() => assertVerdictRule(verdict), /AC2\.1/);
 });
