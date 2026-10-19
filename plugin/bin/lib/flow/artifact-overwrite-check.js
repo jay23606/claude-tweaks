@@ -161,7 +161,9 @@ function parseHunks(diffOutput) {
       continue;
     }
     if (!current) continue;
-    if (line.startsWith('---') || line.startsWith('+++')) continue; // file-level diff headers
+    // No file-header skip here: `---`/`+++` headers precede the first `@@` (swallowed by the
+    // `!current` guard above), so inside a hunk a `---` line is a deleted `--` line, e.g. a
+    // YAML frontmatter delimiter (`-` + `---`).
     if (line.startsWith('-')) {
       const lineNo = current.oldStart + current.deletedLines.length;
       current.deletedLines.push({ lineNo, content: line.slice(1) });
@@ -194,7 +196,9 @@ function normalizeStepMarkup(line) {
 }
 
 // Test 3 above: the hunk's deleted and added lines are equal once step markup
-// is normalized (blank lines dropped). A deletion-only hunk never qualifies.
+// is normalized (blank lines dropped on both sides, so a hunk that deletes only
+// blank lines also qualifies — no content is lost). A hunk that deletes content
+// lines with no counterpart added never qualifies.
 function isStepMarkupReformat(hunk) {
   if (hunk.deletedLines.length === 0) return false;
   const removed = hunk.deletedLines.map((d) => normalizeStepMarkup(d.content)).filter((l) => l.length > 0);
@@ -290,7 +294,7 @@ function checkArtifactOverwrite(opts) {
       const diffOut = git(['diff', '--no-color', '-U0', `${commit}~1`, commit, '--', path], cwd);
       const hunks = parseHunks(diffOut);
 
-      let blame = null; // lazily fetched — only needed when a hunk isn't a list reflow
+      let blame = null; // lazily fetched — only needed when a hunk isn't a list reflow or step-markup reformat
       let overwrite = false;
       let culprit = null;
 

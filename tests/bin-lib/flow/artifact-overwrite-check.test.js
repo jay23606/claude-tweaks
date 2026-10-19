@@ -191,6 +191,20 @@ test('isStepMarkupReformat: a deletion-only hunk is not a reformat', () => {
   assert.strictEqual(isStepMarkupReformat(hunks[0]), false);
 });
 
+test('parseHunks + isStepMarkupReformat: a conversion that also deletes a `---` frontmatter delimiter is not a reformat', () => {
+  const diff = [
+    '--- a/docs/journeys/demo.md',
+    '+++ b/docs/journeys/demo.md',
+    '@@ -1,2 +1 @@',
+    '----',
+    '-1. **Read the banner** — A session starts.',
+    '+### 1. Read the banner — A session starts.',
+  ].join('\n');
+  const hunks = parseHunks(diff);
+  assert.deepStrictEqual(hunks[0].deletedLines.map((d) => d.content), ['---', '1. **Read the banner** — A session starts.']);
+  assert.strictEqual(isStepMarkupReformat(hunks[0]), false);
+});
+
 // --- Synthetic-repo tests: the real algorithm against real git history ---
 
 test('add-then-append history (0 deletions) passes clean', () => {
