@@ -24,8 +24,12 @@ const { classifyDiffFiles, blastRadiusSummary } = require('../issues/blast-radiu
 // Standard to Capable — still the safe direction.
 // #3477: run `2026-10-17T194130-record-3005` (#3005's four prose files plus
 // one test) derived `fast-lane` when it should not have.
+// The directory names are exported so tests can pin the prose twins that
+// restate them (`build/micro-plan.md`, `wrap-up/ceremony-derivation.md`).
+const PROMPT_PROSE_DIRS = Object.freeze(['skills', 'agents', 'commands']);
+const PROMPT_PROSE_RE = new RegExp(`(^|/)(${PROMPT_PROSE_DIRS.join('|')})/.+\\.md$`, 'i');
 function isPromptProsePath(path) {
-  return /(^|\/)(skills|agents|commands)\/.+\.md$/i.test(path);
+  return PROMPT_PROSE_RE.test(path);
 }
 
 // Docs-only surface: markdown that is not prompt prose. Deliberately broader
@@ -98,4 +102,4 @@ function shouldDerive({ mode, ceremonyProfile } = {}) {
   return mode === 'auto' && ceremonyProfile === 'standard';
 }
 
-module.exports = { computeDiffFacts, deriveCeremonyProfile, isDocsPath, isPromptProsePath, shouldDerive };
+module.exports = { computeDiffFacts, deriveCeremonyProfile, isDocsPath, isPromptProsePath, PROMPT_PROSE_DIRS, shouldDerive };

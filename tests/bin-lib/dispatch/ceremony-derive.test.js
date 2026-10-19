@@ -1,7 +1,9 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { computeDiffFacts, deriveCeremonyProfile, isDocsPath, isPromptProsePath, shouldDerive } = require('../../../plugin/bin/lib/dispatch/ceremony-derive');
+const fs = require('node:fs');
+const path = require('node:path');
+const { computeDiffFacts, deriveCeremonyProfile, isDocsPath, isPromptProsePath, PROMPT_PROSE_DIRS, shouldDerive } = require('../../../plugin/bin/lib/dispatch/ceremony-derive');
 
 // #1545 evidence shape: a +75/-2 test file plus its own materialized
 // work/{n}-spec.md doc — a mix of test + docs files, zero production files.
@@ -151,4 +153,20 @@ test('isPromptProsePath: other markdown stays docs, including basenames that mer
     assert.equal(isDocsPath(p), true, p);
   }
   assert.equal(isPromptProsePath('plugin/skills/foo/helper.js'), false, 'non-markdown is never prompt prose');
+});
+
+// #3477: two prose twins restate the directory set isPromptProsePath keys on.
+// Pinned against PROMPT_PROSE_DIRS (which builds the regex), so adding or
+// dropping a directory in the code fails here until both twins are updated.
+test('the prose twins name exactly the directories PROMPT_PROSE_DIRS lists', () => {
+  const ticked = PROMPT_PROSE_DIRS.map((d) => `\`${d}/\``);
+  const list = `${ticked.slice(0, -1).join(', ')}, or ${ticked[ticked.length - 1]}`;
+  const root = path.join(__dirname, '..', '..', '..', 'plugin', 'skills');
+  for (const rel of ['build/micro-plan.md', 'wrap-up/ceremony-derivation.md']) {
+    const prose = fs.readFileSync(path.join(root, rel), 'utf8');
+    assert.ok(prose.includes(list), `${rel} must contain the phrase: ${list}`);
+  }
+  for (const d of PROMPT_PROSE_DIRS) {
+    assert.equal(isPromptProsePath(`x/${d}/a.md`), true, `${d}/ is prompt prose`);
+  }
 });
