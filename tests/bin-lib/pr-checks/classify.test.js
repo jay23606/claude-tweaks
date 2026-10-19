@@ -214,6 +214,7 @@ test('AC3.1: an unreadable base leaves plain red, never green, with baseReason a
   assert.equal(r.baseSha, null);
   assert.deepEqual(r.failing, v.failing);
   assert.equal(applyBaseComparison(v, undefined).state, 'red');
+  assert.equal(applyBaseComparison(v, undefined).baseReason, 'base not read');
 });
 
 test('a base check still in progress is not failing there, so the PR failure is attributable', () => {

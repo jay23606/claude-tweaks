@@ -96,6 +96,7 @@ test('AC2.1: red names only checks not flagged inherited as the cause', () => {
   const red = section(GATE, /\*\*`red`\*\*/, /\n- \*\*/);
   assert.match(red, /`inherited`/);
   assert.match(red, /attributable/i);
+  assert.match(red, /those alone\s+are the cause/, 'only the attributable checks are named as the cause');
   assert.ok(!red.includes('separate follow-up record'), 'stale deferral note removed');
 });
 
