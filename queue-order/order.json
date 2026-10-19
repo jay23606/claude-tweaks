@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T17:45:43.004Z",
+  "computedAt": "2026-10-19T18:35:50.759Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -460,7 +460,7 @@
       },
       {
         "number": 3014,
-        "updatedAt": "2026-10-17T06:10:29Z",
+        "updatedAt": "2026-10-19T17:47:12Z",
         "state": "OPEN"
       },
       {
@@ -6681,96 +6681,6 @@
         "state": "OPEN",
         "title": "review: a fix's re-verify rebuilds the app under the run's still-live ephemeral server, and nothing in the fix path reads `ephemeral-server.txt`",
         "updatedAt": "2026-10-17T06:10:56Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2775, #2783, #2868, #2912, #2914, #2994, #3003, #3012, #3132\n\n## Current State\n\nWhen `/claude-tweaks:flow` adopts an inherited run directory, as `/claude-tweaks:dispatch`'s second call (`review,polish,wrap-up`) does, it gathers facts once via `bin/flow-preflight.js` (`plugin/skills/flow/steps-and-gates.md:56-60`). The pack's `pr` probe (`plugin/bin/lib/flow/preflight.js:263-268`) runs `gh pr view {n} --json state,isDraft,body` and returns `{number, url, branch, state, isDraft, checklist}`. It never reads `mergeable` or `mergeStateStatus`.\n\nIn the reported run (plugin 6.136.0), the integration branch moved between the two dispatch calls. A sibling PR edited the same two lines of two skill docs, so the run's PR became `CONFLICTING`. GitHub runs no `pull_request` CI on a conflicting PR, so the checks list held only the label workflow. The second call's verification stamp and the first call's decisions log both read green. The conflict surfaced only because the reviewer ran an ad-hoc `gh pr view --json mergeable`. Nothing in the pack, the adoption path, or `/review` Step 1.5 (`plugin/skills/review/code-mode-steps.md:57`) looks at mergeability.\n\n## Deliverables\n\n1. Extend the pack's `pr` probe to request `mergeable,mergeStateStatus` alongside `state,isDraft,body`, and return both fields. A forge or `gh` that omits them yields `null` for that field, never an error that fails the whole `pr` probe.\n2. On the adopted-run path (`steps-and-gates.md`'s \"Adopting an inherited run directory\"), when the pack's `pr.mergeable` is `CONFLICTING`, print one visible line before any later phase runs: `Run PR #{n} is CONFLICTING with {integration branch} — CI will not run on it until the conflict is resolved.` Log it as an `AUTO` decision. Then reconcile per the existing catch-up procedure: merge the integration branch into the run branch, then re-verify. This is the same remedy `_shared/worktree-catchup-no-run-dir.md` and the phase-exit pushes already use. Cite the existing procedure; do not restate it.\n3. When the merge in deliverable 2 itself conflicts, stop as a HARD-GATE failure with the conflicting paths named, rather than continuing to review on a stamp that no longer describes a mergeable tree.\n\n## Acceptance Criteria\n\n- A unit test feeds the `pr` probe a `gh` stub returning `mergeable: CONFLICTING` and asserts the pack's `pr` carries `mergeable` and `mergeStateStatus`. A stub omitting both asserts `null` values and `ok: true`.\n- A test or conformance assertion pins the adopted-run path's `CONFLICTING` line and its routing to the catch-up procedure. It goes red against the current `steps-and-gates.md`.\n- A `MERGEABLE` or `UNKNOWN` PR produces no new line, no new decision entry, and no behavior change. A test asserts this.\n- Existing `tests/bin-lib/flow/preflight.test.js`, `tests/bin-lib/flow/preflight-cli.test.js`, and `tests/flow-preflight-conformance.test.js` pass, updated only where they pin the `pr` field's exact key set.\n- `npm test` passes in full.\n\n## Release Note\n\nA resumed pipeline run now notices when its pull request has picked up a merge conflict since the last call, and catches up before reviewing.\n\n## Technical Approach\n\nKeep the change inside the probe that already reads the PR. One more pair of JSON fields on the same `gh pr view` call adds no new network round-trip. The adoption-path handling is prose in `steps-and-gates.md`, keyed off the pack field, so the decision stays mechanical and is never re-derived by hand. `UNKNOWN` is GitHub's transient value while it computes mergeability, so it must stay a no-op, as the original request asks. The merge gate re-reads mergeability at merge time anyway.\n\n### Key Files\n\n- `plugin/bin/lib/flow/preflight.js` — `pr` probe (`:263-268`) requests and returns `mergeable`/`mergeStateStatus`\n- `plugin/skills/flow/steps-and-gates.md` — \"Adopting an inherited run directory\" (`:56`) surfaces a `CONFLICTING` PR and routes to catch-up\n- `tests/bin-lib/flow/preflight.test.js` — `pr` probe field assertions\n- `tests/flow-preflight-conformance.test.js` — adoption-path prose pin\n\n## Gotchas\n\n- The pack field set may be pinned by conformance tests and consumed by other readers of `preflight.json`. Add fields; never rename or drop `state`/`isDraft`/`checklist`.\n- `mergeable` is computed lazily by GitHub. A first read right after a push often returns `UNKNOWN`. Do not poll in the probe, because the pack has a probe timeout (`PROBE_TIMEOUT_MS`, `preflight.js:284`).\n- #3013 (ready) adds a PR-check read to `/test` and `/review` Step 1.5. A conflicting PR has no CI, so an empty check rollup there would read as pending. These two records cover different signals. Keep the `CONFLICTING` handling on the adoption path, as this record specifies, and do not fold it into #3013's check read.\n\n## Original request\n\nflow-preflight's pr probe omits mergeable state, so a two-call dispatch resume misses a PR that turned CONFLICTING between calls\n\n**Kind:** Gap\n\n**Affected component:** bin/flow-preflight.js (pr probe), skills/flow/steps-and-gates.md (Adopting an inherited run directory)\n\n## Current State\n\nOn a `/claude-tweaks:dispatch` two-call handoff (`build,test`, then `review,polish,wrap-up` against the same `PIPELINE_RUN_DIR`), the second call's `flow-preflight.js` pack reports `pr: {number, url, branch, state, isDraft, checklist}`. It does not report `mergeable`. In one run the integration branch moved between the two calls. A sibling PR edited the same two lines of two skill docs, so the run's PR was `CONFLICTING`. The forge then ran no `pull_request` CI on it (GitHub skips CI on conflicting PRs). The second call's verification stamp and the first call's decisions log both read green. The conflict surfaced only because the reviewer ran an ad-hoc `gh pr view --json mergeable` and found just the label workflow in the checks list. Nothing in the pack or in review Step 1.5/2 checks it.\n\n## Deliverables\n\n- Add `mergeable` (and `mergeStateStatus` where the forge supports it) to the pack's `pr` probe.\n- When it reads `CONFLICTING`, surface it on the adopted-run path, before review's test gate trusts a stamp. Either say how to reconcile (merge the integration branch in, then re-verify) or make it an explicit gate.\n\n## Acceptance Criteria\n\n- A resumed run whose PR is `CONFLICTING` prints a visible line naming the conflict before review starts.\n- A `MERGEABLE` or `UNKNOWN` PR changes nothing.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-69e5f7f7 -->\n",
-        "createdAt": "2026-10-07T04:17:46Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3014,
-        "state": "OPEN",
-        "title": "flow-preflight's pr probe omits mergeable state, so a two-call dispatch resume misses a PR that turned CONFLICTING between calls",
-        "updatedAt": "2026-10-17T06:10:29Z",
         "facets": {
           "origin": null,
           "risk": "medium",
