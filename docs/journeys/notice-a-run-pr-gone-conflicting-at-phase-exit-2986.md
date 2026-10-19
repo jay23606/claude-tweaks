@@ -10,7 +10,7 @@ files:
 
 **Persona:** a maintainer of a `pr-first` project running a long `/claude-tweaks:flow #N` or a `/claude-tweaks:dispatch` firing, while sibling records keep merging into the integration branch. One of them touches the same files, and the run's draft PR quietly starts to conflict.
 **Goal:** find out at the first phase exit after the base moved that the PR conflicts, before test, review and the merge decision run on a tree that cannot merge. In `auto`, get the branch caught up without being asked.
-**Entry point:** any phase exit's push (`build`, `test`, `review`, `polish`, `wrap-up`) under `_shared/git-discipline.md`'s Phase-exit push section, which then runs `node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --phase {phase}`.
+**Entry point:** any phase exit's push (`build`, `test`, `review`, `polish`, `wrap-up`) of a run whose draft PR `_shared/pr-early-run-lifecycle.md` opened at run start, under `_shared/git-discipline.md`'s Phase-exit push section, which then runs `node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --phase {phase}`.
 **Success state:**
 - A conflicting PR gets one phase-output line and one `AUTO` line in `decisions.md` naming the PR and the phase.
 - In `auto`, the next phase starts on a branch merged up to the integration branch and re-pushed, so the PR's `pull_request` CI runs again.
@@ -23,7 +23,7 @@ files:
 - **URL:** `plugin/skills/_shared/git-discipline.md` "Post-push merge-state check"
 - **Action:**
   - After a successful push, the phase runs `bin/pr-merge-state.js`.
-  - The CLI reads `run-state.json`'s `pr.number` and calls `resolvePrStateByNumber` once.
+  - The CLI reads `run-state.json`'s `pr.number` and calls `bin/lib/reconcile/pr-state.js`'s `resolvePrStateByNumber` once.
   - It prints one JSON line, `{state, pr, mergeable, mergeStateStatus, phase, logged, reason?}`, and exits 0.
 - **Should feel:** Invisible when nothing is wrong. There is no prompt, and the phase is never slowed past one resolver call.
 - **Should understand:**
