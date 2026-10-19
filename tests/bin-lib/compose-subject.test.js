@@ -54,7 +54,7 @@ function fakeDeps({
     },
     writeFile: (p, text) => {
       out.writes.push({ path: p, text });
-      if (failWrite) throw new Error('EACCES: permission denied');
+      if (failWrite === true || failWrite === p) throw new Error('EACCES: permission denied');
     },
     unlink: (p) => {
       out.unlinks.push(p);
@@ -267,6 +267,14 @@ test('a failing write exits 3 naming the path', () => {
   const { deps, out } = fakeDeps({ failWrite: true });
   assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
   assert.match(out.stderr, /could not write \/t\/title\.txt/);
+  assert.equal(out.stdout, '');
+});
+
+test('a body write failing after the title was written exits 3 naming the body path', () => {
+  const { deps, out } = fakeDeps({ failWrite: '/t/body.md' });
+  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
+  assert.deepEqual(out.writes.map((w) => w.path), ['/t/title.txt', '/t/body.md']);
+  assert.match(out.stderr, /could not write \/t\/body\.md/);
   assert.equal(out.stdout, '');
 });
 

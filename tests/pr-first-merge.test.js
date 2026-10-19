@@ -269,7 +269,9 @@ function step3Items(step3Body) {
 
 function classifyStderr(stderr, items) {
   for (let i = 0; i < 4; i++) {
-    const literals = [...items[i].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+    // Drop fenced code blocks first: their triple backticks would pair up as bogus inline literals.
+    const prose = items[i].replace(/^[ \t]*```[\s\S]*?^[ \t]*```/gm, '');
+    const literals = [...prose.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
     if (literals.some((lit) => stderr.includes(lit))) return i + 1;
   }
   return 5;
@@ -357,7 +359,7 @@ function assertNoRewriteRule(text) {
   assert.ok(start !== -1, 'the "## Never rewrite the integration branch" heading must exist');
   const next = text.indexOf('\n## ', start + 1);
   const slice = text.slice(start, next === -1 ? undefined : next);
-  for (const re of [/force-push/, /\breset\b/, /rewrite/, /DONE_WITH_CONCERNS/, /decisions\.md/, /#3325/]) {
+  for (const re of [/force-push/, /\breset\b/, /commit-tree/, /DONE_WITH_CONCERNS/, /decisions\.md/, /#3325/]) {
     assert.match(slice, re);
   }
 }
@@ -377,6 +379,11 @@ test('AC1.1: pr-first-merge.md states the integration-branch no-rewrite rule', (
 
 test('AC1.1 go-red: the pre-#3347 file (no such section) fails the same assertion', () => {
   assert.throws(() => assertNoRewriteRule(PRE_3347_MERGE_HEAD));
+});
+
+test('AC1.1 go-red: a heading with a body that drops the rule fails on its tokens, not just the heading check', () => {
+  const stub = '## Never rewrite the integration branch\n\nBe careful with the integration branch.\n\n## Step 1: next\n';
+  assert.throws(() => assertNoRewriteRule(stub), /force-push/);
 });
 
 test('AC1.2: task-prompt.md second-call template cites the rule via the merge bundle, not a restatement', () => {

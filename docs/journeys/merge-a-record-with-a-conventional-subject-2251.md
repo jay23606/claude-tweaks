@@ -48,7 +48,7 @@ files:
 - **Red flags:** A bundle containing a `type:feature` record that merged as `chore:`.
 
 ### 4. A breaking record announces itself — `/claude-tweaks:specify` shaping mode, then the merge
-- **URL:** `/claude-tweaks:specify #N` (the Compatibility bullet in `shaping-mode-stamping.md`), then the same merge fence as step 1
+- **URL:** `/claude-tweaks:specify #N` (the Compatibility bullet in `shaping-mode-stamping.md`), then the merge fence for the path in use — the local-merge or pr-first form from step 1
 - **Action:** When the shaped Acceptance Criteria name a contract change (a removed or renamed public flag, exported function, hook payload field, schema field, or `_shared/*.md` convention), shaping mode stamps the `breaking` label and writes a `## Breaking Change` section stating what consumers must change. At merge time the composer emits `feat!: {title} (#N)` and appends `BREAKING CHANGE: {that section}` as the body's last paragraph.
 - **Should feel:** Deliberate — the label is a read of the spec's own language, never an inference from a diff, and an unlabelled record reads as "not breaking" by default.
 - **Should understand:** The footer's text is the record's own section, verbatim; a `breaking` record with no section is a shaping defect that fails composition (step 1's exit 1), never a merge with an empty footer.
