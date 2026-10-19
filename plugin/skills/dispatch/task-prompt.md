@@ -53,7 +53,9 @@ that needs no resolution, only inclusion:
    clause carve-out (#2533) — make that reply's last non-empty line
    `INTERIM_STATUS: {one-line progress note}`, never `STATUS: {WORD}`, which is reserved for your
    genuine final reply. An unmarked interim reply is graded by the `SubagentStop` hook as a final
-   reply missing its status line and logged as a false-positive `contract-violation`. Forward
+   reply missing its status line and logged as a false-positive `contract-violation`, unless your
+   own async `Agent` launches are still pending in your transcript (#3015) — the marker stays
+   required, since that exemption covers only pending launches. Forward
    this marker rule, with the rest of this item, to any nested dispatch that itself dispatches.
 8. **Selected at** (#3131) — one literal line, `Selected at: {ISO}`: the modification time of
    this firing's session-scoped `dispatch-groups.json` (`queue-pull-script.md`'s output, resolved

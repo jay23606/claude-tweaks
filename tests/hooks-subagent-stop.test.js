@@ -425,7 +425,7 @@ test('#3015 AC2.1: the same transcript with every launched dispatch completed, e
   cleanupRetries(sessionId);
 });
 
-test('#3015 AC3.1: INTERIM_STATUS and immediately-after-async-signal replies behave as today with nothing pending', () => {
+test('#3015 AC3.1: INTERIM_STATUS and immediately-after-async-signal replies behave as today', () => {
   const sessionId = `cr-3015-ac3-${process.pid}`;
   cleanupRetries(sessionId);
   const done = [...launches3(), notification('a1', 'toolu_1', 3), notification('a2', 'toolu_2', 3), notification('a3', 'toolu_3', 3), ...readCall(4)];
@@ -433,8 +433,12 @@ test('#3015 AC3.1: INTERIM_STATUS and immediately-after-async-signal replies beh
   let r = runOn(writeTranscript([...done, reply('Drafting.\nINTERIM_STATUS: drafting the summary', 5)]), { session_id: sessionId, agent_id: 'p3a' });
   assert.deepStrictEqual(r.out, {});
   assert.strictEqual(r.events.length, 0);
-  // (b) one launch, reply immediately after the launch ack (#2041)
+  // (b) one launch still pending, reply immediately after the launch ack (#2041 and #3015 both skip it)
   r = runOn(writeTranscript([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), reply('Launched; waiting.', 1)]), { session_id: sessionId, agent_id: 'p3b' });
+  assert.deepStrictEqual(r.out, {});
+  assert.strictEqual(r.events.length, 0);
+  // (b2) nothing pending, reply immediately after the last completion notification: only the #2041 signal exempts it
+  r = runOn(writeTranscript([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('a1', 'toolu_1', 1), reply('Lens back; summarising.', 2)]), { session_id: sessionId, agent_id: 'p3b2' });
   assert.deepStrictEqual(r.out, {});
   assert.strictEqual(r.events.length, 0);
   // (c) all completed, canonical status
@@ -444,7 +448,7 @@ test('#3015 AC3.1: INTERIM_STATUS and immediately-after-async-signal replies beh
   cleanupRetries(sessionId);
 });
 
-test('#3015 AC4.1: verbatim live-transcript lines — launch ack, attachment- and origin-shaped completions, request echo', () => {
+test('#3015 AC4.1: live-transcript lines — verbatim launch ack, attachment- and origin-shaped completions, request echo (the origin case pairs a helper-built launch with the verbatim completion)', () => {
   const replyAt = (iso) => JSON.stringify({ ...reply('x'), timestamp: iso });
   const bayReply = replyAt('2026-10-01T14:57:21.835Z');
   assert.strictEqual(substop.countPendingDispatches([REAL_LAUNCH_ACK, bayReply], 1), 1, 'the real launch ack is a pending launch');
@@ -452,6 +456,9 @@ test('#3015 AC4.1: verbatim live-transcript lines — launch ack, attachment- an
   const originLaunch = JSON.stringify(launchAck('a8f3ba2495443dea5', 'toolu_016xwSa23pdEq8WP2bRyYjCU', 0));
   assert.strictEqual(substop.countPendingDispatches([originLaunch, REAL_ORIGIN_COMPLETION, replyAt(at(5))], 2), 0, 'the real origin-shaped notification completes its launch');
   assert.strictEqual(substop.countPendingDispatches([REAL_LAUNCH_ACK, REAL_REQUEST_ECHO, bayReply], 2), 1, 'a request echo is a recognized carrier (not indeterminate) and its unrelated ids complete nothing');
+  // A request echo repeating this launch's notification completes it (the echo's task-id swapped for the launch's agentId).
+  const echoOfLaunch = REAL_REQUEST_ECHO.replace('b8v2jr81f', 'a85038b4cf4ed1e1b');
+  assert.strictEqual(substop.countPendingDispatches([REAL_LAUNCH_ACK, echoOfLaunch, bayReply], 2), 0, 'a request echo carrying the launch\'s id completes it');
 });
 
 test('#3015 bound: a launch older than 60 minutes with no completion no longer exempts a non-compliant reply', () => {
@@ -462,12 +469,31 @@ test('#3015 bound: a launch older than 60 minutes with no completion no longer e
   assert.strictEqual(out.json.decision, 'block');
   const lines59 = toLines(mk(59));
   assert.strictEqual(substop.countPendingDispatches(lines59, lines59.length - 1), 1);
+  // Exactly at the bound the launch still counts (the cutoff is strictly older than 60 minutes).
+  const lines60 = toLines(mk(60));
+  assert.strictEqual(substop.countPendingDispatches(lines60, lines60.length - 1), 1);
   cleanupRetries(sessionId);
 });
 
 test('#3015 countPendingDispatches: correlates a completion by tool-use-id alone', () => {
   const lines = toLines([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('other', 'toolu_1', 1), reply('x', 2)]);
   assert.strictEqual(substop.countPendingDispatches(lines, 3), 0);
+});
+
+test('#3015 countPendingDispatches: correlates a completion by agent id alone', () => {
+  const lines = toLines([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('a1', 'other', 1), reply('x', 2)]);
+  assert.strictEqual(substop.countPendingDispatches(lines, 3), 0);
+});
+
+test('#3015 countPendingDispatches: a plain (non-async) tool result is not a launch, so a non-compliant reply after it is still blocked', () => {
+  const plainResult = { type: 'user', timestamp: at(1), message: { role: 'user', content: [{ tool_use_id: 'toolu_bash1', type: 'tool_result', content: 'ok' }] }, toolUseResult: { stdout: 'ok', stderr: '', interrupted: false } };
+  const entries = [agentCall('toolu_bash1', 0), plainResult, reply('Done with everything.', 2)];
+  assert.strictEqual(substop.countPendingDispatches(toLines(entries), entries.length - 1), 0);
+  const sessionId = `cr-3015-plain-${process.pid}`;
+  cleanupRetries(sessionId);
+  const { out } = runOn(writeTranscript(entries), { session_id: sessionId, agent_id: 'parent-plain' });
+  assert.strictEqual(out.json.decision, 'block');
+  cleanupRetries(sessionId);
 });
 
 test('#3015 countPendingDispatches: a background-Bash notification does not complete an unrelated agent launch', () => {
@@ -487,6 +513,9 @@ test('#3015 countPendingDispatches: returns null for an id-less task-notificatio
 
   const noTs = launchAck('a1', 'toolu_1', 0); delete noTs.timestamp;
   assert.strictEqual(substop.countPendingDispatches(toLines([noTs, reply('x', 2)]), 1), null);
+
+  // A reply with no timestamp cannot be aged against a still-pending launch.
+  assert.strictEqual(substop.countPendingDispatches(toLines([launchAck('a1', 'toolu_1', 0), reply('x')]), 1), null);
 
   // run(): an indeterminate shape falls back to today's grading, never a blanket exemption.
   const sessionId = `cr-3015-null-${process.pid}`;
