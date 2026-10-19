@@ -838,8 +838,6 @@ test('F2: verify compares against "$BASE"; the base step reads PUSH_BEFORE and f
   assert.match(step, /GITHUB_OUTPUT/);
 });
 
-// Runs the literal `id: base` run body (dedented) in a fixture repo, the way the
-// runner does (bash --noprofile --norc -eo pipefail), and reads back `base=`.
 const SKIP_NO_BASH = spawnSync('bash', ['--version'], { stdio: 'ignore' }).status === 0 ? false : 'bash not available';
 const ZERO_SHA = '0000000000000000000000000000000000000000';
 function fixtureRepo() {
@@ -850,12 +848,14 @@ function fixtureRepo() {
   const A = commit('A');
   git('checkout', '-q', '-b', 'feature');
   const B = commit('fix');
-  const C = commit('C');
+  commit('C');
   git('update-ref', 'refs/remotes/origin/main', A);
-  return { dir, git, commit, A, B, C, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
+  return { dir, git, commit, A, B, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
 }
-function runBaseStep(t, { repo, env }) {
-  if (SKIP_NO_BASH) { t.skip(SKIP_NO_BASH); return null; }
+
+// Runs the literal `id: base` run body (dedented) in a fixture repo, the way the
+// runner does (bash --noprofile --norc -eo pipefail), and reads back `base=`.
+function runBaseStep({ repo, env }) {
   const body = runScripts(stepContaining(jobBlock('windows'), 'id: base'))[0].split('\n').slice(1);
   const indent = Math.min(...body.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
   const script = body.map((l) => l.slice(indent)).join('\n');
@@ -877,67 +877,47 @@ function runBaseStep(t, { repo, env }) {
   }
 }
 
-test('AC1.1: a workflow_dispatch run on a feature branch baselines against the merge-base with origin/main, not HEAD^1', (t) => {
+test('AC1.1: a workflow_dispatch run on a feature branch baselines against the merge-base with origin/main, not HEAD^1', { skip: SKIP_NO_BASH }, (t) => {
   const fx = fixtureRepo();
-  try {
-    const r = runBaseStep(t, { repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'main' } });
-    if (!r) return;
-    assert.equal(r.base, fx.A);
-    assert.notEqual(r.base, fx.B);
-    assert.match(r.stdout, /Comparison base: [0-9a-f]{40} \(merge-base with origin\/main\)/);
-  } finally {
-    fx.cleanup();
-  }
+  t.after(fx.cleanup);
+  const r = runBaseStep({ repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'main' } });
+  assert.equal(r.base, fx.A);
+  assert.notEqual(r.base, fx.B);
+  assert.match(r.stdout, /Comparison base: [0-9a-f]{40} \(merge-base with origin\/main\)/);
 });
 
-test('dispatch on the integration branch itself falls back to HEAD^1', (t) => {
+test('dispatch on the integration branch itself falls back to HEAD^1', { skip: SKIP_NO_BASH }, (t) => {
   const fx = fixtureRepo();
-  try {
-    fx.git('checkout', '-q', 'main');
-    const M = fx.commit('M');
-    fx.git('update-ref', 'refs/remotes/origin/main', M);
-    const r = runBaseStep(t, { repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'main' } });
-    if (!r) return;
-    assert.equal(r.base, fx.A);
-    assert.match(r.stdout, /\(HEAD\^1 fallback\)/);
-  } finally {
-    fx.cleanup();
-  }
+  t.after(fx.cleanup);
+  fx.git('checkout', '-q', 'main');
+  const M = fx.commit('M');
+  fx.git('update-ref', 'refs/remotes/origin/main', M);
+  const r = runBaseStep({ repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'main' } });
+  assert.equal(r.base, fx.A);
+  assert.match(r.stdout, /\(HEAD\^1 fallback\)/);
 });
 
-test('dispatch with no origin integration ref falls back to HEAD^1', (t) => {
+test('dispatch with no origin integration ref falls back to HEAD^1', { skip: SKIP_NO_BASH }, (t) => {
   const fx = fixtureRepo();
-  try {
-    const r = runBaseStep(t, { repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'nope' } });
-    if (!r) return;
-    assert.equal(r.base, fx.B);
-    assert.match(r.stdout, /HEAD\^1 fallback/);
-  } finally {
-    fx.cleanup();
-  }
+  t.after(fx.cleanup);
+  const r = runBaseStep({ repo: fx.dir, env: { EVENT_NAME: 'workflow_dispatch', PUSH_BEFORE: '', INTEGRATION_BRANCH: 'nope' } });
+  assert.equal(r.base, fx.B);
+  assert.match(r.stdout, /HEAD\^1 fallback/);
 });
 
-test('AC2.1: a push run still baselines against github.event.before', (t) => {
+test('AC2.1: a push run still baselines against github.event.before', { skip: SKIP_NO_BASH }, (t) => {
   const fx = fixtureRepo();
-  try {
-    const r = runBaseStep(t, { repo: fx.dir, env: { EVENT_NAME: 'push', PUSH_BEFORE: fx.A, INTEGRATION_BRANCH: 'main' } });
-    if (!r) return;
-    assert.equal(r.base, fx.A);
-    assert.match(r.stdout, /\(push event before\)/);
-  } finally {
-    fx.cleanup();
-  }
+  t.after(fx.cleanup);
+  const r = runBaseStep({ repo: fx.dir, env: { EVENT_NAME: 'push', PUSH_BEFORE: fx.A, INTEGRATION_BRANCH: 'main' } });
+  assert.equal(r.base, fx.A);
+  assert.match(r.stdout, /\(push event before\)/);
 });
 
-test('AC2.1: push with all-zero before falls back to HEAD^1', (t) => {
+test('AC2.1: push with all-zero before falls back to HEAD^1', { skip: SKIP_NO_BASH }, (t) => {
   const fx = fixtureRepo();
-  try {
-    const r = runBaseStep(t, { repo: fx.dir, env: { EVENT_NAME: 'push', PUSH_BEFORE: ZERO_SHA, INTEGRATION_BRANCH: 'main' } });
-    if (!r) return;
-    assert.equal(r.base, fx.B);
-  } finally {
-    fx.cleanup();
-  }
+  t.after(fx.cleanup);
+  const r = runBaseStep({ repo: fx.dir, env: { EVENT_NAME: 'push', PUSH_BEFORE: ZERO_SHA, INTEGRATION_BRANCH: 'main' } });
+  assert.equal(r.base, fx.B);
 });
 
 test('no ${{ }} is interpolated into any run: script body — inline or block scalar', () => {
