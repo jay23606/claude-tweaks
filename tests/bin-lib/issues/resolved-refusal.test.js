@@ -144,6 +144,27 @@ test('a body edit between the Resolved date and a later comment re-edit re-opens
   assert.deepStrictEqual(result.changes, [{ kind: 'body', at: '2026-10-21T09:00:00Z' }]);
 });
 
+test('a non-round-tripping Resolved date is evidence-unavailable, not suppressed', () => {
+  for (const date of ['2026-13-45', '2026-02-30']) {
+    const body = `**Resolved:** keep — ${date}\n\n<!-- needs-decision: backlog-refine -->`;
+    const result = evaluateResolvedRefusal(fixture({
+      comments: [{ ...fixture().comments[0], body }],
+      bodyLastEditedAt: '2026-10-25T00:00:00Z',
+      labelEvents: [{ action: 'labeled', label: 'risk:high', createdAt: '2026-10-26T00:00:00Z' }],
+    }));
+    assert.strictEqual(result.suppress, false, date);
+    assert.strictEqual(result.reason, 'evidence-unavailable', date);
+    assert.strictEqual(result.annotation, null, date);
+  }
+});
+
+test('an unparseable non-null bodyLastEditedAt is evidence-unavailable, not suppressed', () => {
+  const result = evaluateResolvedRefusal(fixture({ bodyLastEditedAt: 'garbage' }));
+  assert.strictEqual(result.suppress, false);
+  assert.strictEqual(result.reason, 'evidence-unavailable');
+  assert.strictEqual(result.annotation, null);
+});
+
 test('a label event with an unparseable createdAt is evidence-unavailable, not no-change', () => {
   const result = evaluateResolvedRefusal(fixture({
     labelEvents: [{ action: 'labeled', label: 'risk:medium', createdAt: undefined }],
@@ -216,7 +237,10 @@ const CANNED_RESPONSE = JSON.stringify({
           }],
         },
         timelineItems: {
-          nodes: [{ __typename: 'UnlabeledEvent', createdAt: '2026-10-19T03:38:58Z', label: { name: 'needs:decision' } }],
+          nodes: [
+            { __typename: 'LabeledEvent', createdAt: '2026-10-19T12:00:00Z', label: { name: 'risk:medium' } },
+            { __typename: 'UnlabeledEvent', createdAt: '2026-10-19T03:38:58Z', label: { name: 'needs:decision' } },
+          ],
         },
       },
     },
@@ -241,6 +265,7 @@ test('fetchResolvedRefusalEvidence asserts the exact argv and maps label events'
   ]);
   assert.strictEqual(evidence.bodyLastEditedAt, '2026-10-17T17:34:56Z');
   assert.deepStrictEqual(evidence.labelEvents, [
+    { action: 'labeled', label: 'risk:medium', createdAt: '2026-10-19T12:00:00Z' },
     { action: 'unlabeled', label: 'needs:decision', createdAt: '2026-10-19T03:38:58Z' },
   ]);
   assert.strictEqual(evidence.comments.length, 1);

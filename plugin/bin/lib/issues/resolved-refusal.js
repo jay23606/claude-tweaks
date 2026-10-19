@@ -42,6 +42,13 @@ function timeOf(iso) {
   return Date.parse(iso);
 }
 
+// The regex admits any \d{4}-\d{2}-\d{2}; a date that does not round-trip (2026-13-45,
+// 2026-02-30) has no real start of day, so it cannot anchor a change comparison.
+function isRealDate(date) {
+  const ms = timeOf(`${date}T00:00:00Z`);
+  return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === date;
+}
+
 // comments: `gh`/GraphQL-shaped comment nodes; labelEvents: {action, label, createdAt}.
 // bodyLastEditedAt: string | null (never edited) | undefined (evidence missing).
 function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEvents }) {
@@ -77,7 +84,9 @@ function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEven
     return { ...base, reason: 'choice-not-suppressing' };
   }
   if (bodyLastEditedAt === undefined || !Array.isArray(labelEvents)
-    || labelEvents.some((event) => Number.isNaN(timeOf(event.createdAt)))) {
+    || (bodyLastEditedAt !== null && (typeof bodyLastEditedAt !== 'string' || Number.isNaN(timeOf(bodyLastEditedAt))))
+    || labelEvents.some((event) => Number.isNaN(timeOf(event.createdAt)))
+    || !isRealDate(resolved.date)) {
     return { ...base, reason: 'evidence-unavailable' };
   }
 
