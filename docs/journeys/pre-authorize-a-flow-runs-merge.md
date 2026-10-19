@@ -50,4 +50,5 @@ files:
 ## Origin
 - Created during build of #715 (Merge authorization at unattended: Manifesto-time lever, or one-click Recommended at the terminal summary?)
 - Updated during wrap-up of #3298 (merge-subject scope source): step 2a's composer call carries `--pr {pr-number}`, and the subject grammar gained the optional policy-resolved `(scope)`
+- Updated during build of #3347 (pr-first merge safety): step 2a's merge call composes title/body from `--title-out`/`--body-out` files, never `eval` of `--shell` output
 - Related specs: #688/6626896c (shipped the pre-existing terminal one-click Recommended merge option this journey's step 2b covers)
