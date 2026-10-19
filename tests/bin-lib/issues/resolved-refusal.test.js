@@ -281,3 +281,25 @@ test('fetchResolvedRefusalEvidence throws when the response carries errors', () 
   const runner = () => '{"errors":[{"message":"Could not resolve to a Repository"}]}';
   assert.throws(() => fetchResolvedRefusalEvidence({ number: 3214, owner: 'thn-inc', repo: 'claude-tweaks', runner }), /Could not resolve/);
 });
+
+test('fetchResolvedRefusalEvidence passes --hostname right after graphql for a GHE host', () => {
+  const calls = [];
+  const runner = (args) => { calls.push(args); return CANNED_RESPONSE; };
+  fetchResolvedRefusalEvidence({ number: 3214, owner: 'acme', repo: 'widgets', host: 'ghe.example.com', runner });
+  assert.deepStrictEqual(calls[0].slice(0, 4), ['api', 'graphql', '--hostname', 'ghe.example.com']);
+  assert.deepStrictEqual(calls[0].slice(4), [
+    '-f', 'query=' + buildResolvedRefusalQuery(),
+    '-f', 'owner=acme',
+    '-f', 'repo=widgets',
+    '-F', 'number=3214',
+  ]);
+});
+
+test('fetchResolvedRefusalEvidence adds no --hostname for github.com', () => {
+  const calls = [];
+  const runner = (args) => { calls.push(args); return CANNED_RESPONSE; };
+  fetchResolvedRefusalEvidence({ number: 3214, owner: 'acme', repo: 'widgets', host: 'github.com', runner });
+  assert.strictEqual(calls[0].includes('--hostname'), false);
+  assert.deepStrictEqual(calls[0].slice(0, 2), ['api', 'graphql']);
+  assert.strictEqual(calls[0][2], '-f');
+});

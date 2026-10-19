@@ -156,3 +156,11 @@ test('--repo owner/name and host/owner/repo both resolve to -f owner= / -f repo=
   assert.ok(qualified.out.runner[0].includes('owner=acme'));
   assert.ok(qualified.out.runner[0].includes('repo=widgets'));
 });
+
+test('--repo host/owner/repo on a GHE host passes --hostname and the owner/repo variables', () => {
+  const { deps, out } = fakeDeps();
+  assert.strictEqual(run(['3214', '--repo', 'ghe.example.com/acme/widgets'], deps), 0);
+  assert.deepStrictEqual(out.runner[0].slice(0, 4), ['api', 'graphql', '--hostname', 'ghe.example.com']);
+  assert.ok(out.runner[0].includes('owner=acme'));
+  assert.ok(out.runner[0].includes('repo=widgets'));
+});

@@ -65,11 +65,11 @@ function run(argv, deps = realDeps) {
     ? parseRepo(opts.repo.split('/').length >= 3 ? opts.repo : `github.com/${opts.repo}`)
     : parseRepo(remote);
   if (!repoSpec) { deps.stderr('resolved-refusal.js: could not resolve owner/repo — pass --repo owner/name\n'); return 2; }
-  const { owner, repo } = repoSpec;
+  const { owner, repo, host } = repoSpec;
 
   let evidence;
   try {
-    evidence = fetchResolvedRefusalEvidence({ number: opts.number, owner, repo, runner: deps.runner });
+    evidence = fetchResolvedRefusalEvidence({ number: opts.number, owner, repo, host, runner: deps.runner });
   } catch (err) {
     deps.stderr(`resolved-refusal.js: ${err && err.message ? err.message : String(err)}\n`);
     return 1;

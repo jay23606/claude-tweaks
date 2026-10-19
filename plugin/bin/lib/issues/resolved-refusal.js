@@ -134,9 +134,13 @@ function defaultRunner(args) {
 
 // Throws on a gh failure, on a GraphQL `errors` body, or when the issue is missing —
 // the caller fails closed, so a missing issue is never a `suppress: true`.
-function fetchResolvedRefusalEvidence({ number, owner, repo, runner = defaultRunner }) {
+// `gh api` has no --repo slot, so a GitHub Enterprise host travels as --hostname; github.com
+// (or no host) leaves the argv as gh would default it.
+function fetchResolvedRefusalEvidence({ number, owner, repo, host, runner = defaultRunner }) {
+  const hostArgs = host && host !== 'github.com' ? ['--hostname', host] : [];
   const stdout = runner([
     'api', 'graphql',
+    ...hostArgs,
     '-f', 'query=' + buildResolvedRefusalQuery(),
     '-f', 'owner=' + owner,
     '-f', 'repo=' + repo,
