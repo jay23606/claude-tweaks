@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('./helpers/strip-comments');
 
 // Every read-only `git status` under plugin/bin/ must pass the top-level
 // `--no-optional-locks` option (before `status`, after any `-C <path>`). A plain
@@ -31,21 +32,8 @@ function walk(dir) {
   return out;
 }
 
-// Blank out comments (preserving offsets and newlines) so a comment that
-// mentions a call shape never counts either way. One left-to-right pass: a
-// string or template literal is matched first and returned verbatim, so a `/*`
-// or `//` inside a literal (`'/*'`, `` `${dir}/spec-*/work/*` ``) or inside a
-// `//` comment can never open a fake comment that blanks real code. Both comment
-// openers carry a `(?<!\\)` guard: a slash right after a backslash is an escaped
-// slash, never a comment — a regex literal such as `/^origin\//` ends in one, and
-// read as `//` it would blank the rest of its line. A mis-parse can therefore only
-// leave comment text in (a loud false positive), never hide code.
-function stripComments(src) {
-  return src.replace(
-    /'(?:\\[\s\S]|[^'\\\n])*'|"(?:\\[\s\S]|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`|(?<!\\)\/\*[\s\S]*?\*\/|(?<!\\)\/\/[^\n]*/g,
-    (m) => (/^['"`]/.test(m) ? m : m.replace(/[^\n]/g, ' ')),
-  );
-}
+// Comments blanked in one literal-aware pass — see tests/helpers/strip-comments.js
+// — so a comment that mentions a call shape never counts either way.
 
 // 'status' as the subcommand element: first in the array, after an optional
 // `'-C', <expr>,` pair and any top-level `'--…'` options. The -C operand is a
@@ -60,6 +48,7 @@ const GIT_STATUS_CMD = /^git\s+(?:\S+\s+)*?status(?=\s+-|\s*$)/;
 // -> { matched, offenders: [{ line, text }] } for every git status call in `raw`.
 function unflaggedStatusCalls(raw) {
   const src = stripComments(raw);
+  const verdict = stripperVerdict(raw, src);
   const lineOf = (index) => src.slice(0, index).split('\n').length;
   const offenders = [];
   let matched = 0;
@@ -77,6 +66,7 @@ function unflaggedStatusCalls(raw) {
       offenders.push({ line: lineOf(m.index), text: m[0].slice(0, 100) });
     }
   }
+  if (verdict !== 'ok') offenders.push({ line: 0, text: STRIPPER_VERDICT_MESSAGES[verdict] });
   offenders.sort((a, b) => a.line - b.line);
   return { matched, offenders };
 }
@@ -122,6 +112,13 @@ test('scanner flags an unflagged status call and ignores non-git status (proves 
   ].join('\n'));
   assert.deepEqual(clean.offenders, []);
   assert.equal(clean.matched, 2);
+});
+
+test('a comment-stripper mis-parse is reported, not passed as a file with no status calls', () => {
+  assert.deepEqual(unflaggedStatusCalls("const re = /[/*]/; runGit(['status']); /* c */"), {
+    matched: 0,
+    offenders: [{ line: 0, text: 'the comment stripper mis-parsed this file: the stripped text no longer compiles, so live code was blanked and cannot be scanned — see tests/helpers/strip-comments.js' }],
+  });
 });
 
 test('AC1.1/AC1.2/AC2.3: every git status under plugin/bin passes --no-optional-locks before the subcommand', () => {

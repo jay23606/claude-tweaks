@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('./helpers/strip-comments');
 
 // Every child_process call under plugin/bin/ must pass `windowsHide: true`.
 // Node defaults the flag to FALSE, and on Windows a console child of a parent
@@ -31,21 +32,8 @@ function walk(dir) {
   return out;
 }
 
-// Blank out comments (preserving offsets and newlines) so a comment that
-// mentions windowsHide — or a call shape — never counts either way. One
-// left-to-right pass: a string or template literal is matched first and returned
-// verbatim, so a `/*` or `//` inside a literal or inside a `//` comment can never
-// open a fake comment that blanks real code up to the next `*/`. Both comment
-// openers carry a `(?<!\\)` guard: a slash right after a backslash is an escaped
-// slash (a regex literal like `/^origin\//` ends in one), never a comment. A
-// mis-parse can therefore only leave comment text in (a loud false positive),
-// never hide code.
-function stripComments(src) {
-  return src.replace(
-    /'(?:\\[\s\S]|[^'\\\n])*'|"(?:\\[\s\S]|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`|(?<!\\)\/\*[\s\S]*?\*\/|(?<!\\)\/\/[^\n]*/g,
-    (m) => (/^['"`]/.test(m) ? m : m.replace(/[^\n]/g, ' ')),
-  );
-}
+// Comments blanked in one literal-aware pass — see tests/helpers/strip-comments.js
+// — so a comment that mentions windowsHide — or a call shape — never counts either way.
 
 // Text between the paren at `open` and its matching close paren.
 function balanced(src, open, openCh = '(', closeCh = ')') {
@@ -79,6 +67,7 @@ function identifierHidesWindow(src, name) {
 function unhiddenCalls(raw) {
   if (!/child_process/.test(raw)) return [];
   const src = stripComments(raw);
+  const verdict = stripperVerdict(raw, src);
   const local = new Set();
   for (const m of src.matchAll(/(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\(\s*['"](?:node:)?child_process['"]\s*\)/g)) {
     for (const part of m[1].split(',')) {
@@ -101,6 +90,7 @@ function unhiddenCalls(raw) {
     if (/^[A-Za-z_$][\w$]*$/.test(last) && identifierHidesWindow(src, last)) continue;
     out.push({ line: src.slice(0, m.index).split('\n').length, args: args.replace(/\s+/g, ' ').slice(0, 100) });
   }
+  if (verdict !== 'ok') out.push({ line: 0, args: STRIPPER_VERDICT_MESSAGES[verdict] });
   return out;
 }
 
@@ -138,6 +128,15 @@ test('scanner flags an unhidden call and accepts the hidden shapes (proves it ca
     "function execFile(x) { return x; }",
     "const m = /x/.exec(text);",
   ].join('\n')), []);
+});
+
+test('a comment-stripper mis-parse is reported, not passed as a file with no calls', () => {
+  assert.deepEqual(unhiddenCalls([
+    "const cp = require('child_process');",
+    "const x = 'a'; const a = /'/.test(x); const b = 'p//q'; cp.execFileSync('git', [b], {});",
+  ].join('\n')), [{ line: 0, args: 'the comment stripper mis-parsed this file: the stripped text no longer compiles, so live code was blanked and cannot be scanned — see tests/helpers/strip-comments.js' }]);
+  assert.deepEqual(unhiddenCalls("const cp = require('child_process'); const = ;"),
+    [{ line: 0, args: 'this file does not compile as a CommonJS module, so the comment-stripper check cannot judge it — see tests/helpers/strip-comments.js' }]);
 });
 
 test('every child_process call under plugin/bin/ passes windowsHide', () => {

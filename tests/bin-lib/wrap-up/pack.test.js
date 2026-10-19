@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 
 const {
-  gatherPack, resolveInputs, PROBE_NAMES, resolveRecords, headerRecords, closingRecords,
+  gatherPack, resolveInputs, PROBE_NAMES, resolveRecords, headerRecords, closingRecords, parseLedger,
 } = require(path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'wrap-up', 'pack.js'));
 
 // A fixture run dir: run-state.json (pr + worktree), one materialized header, config.yml.
@@ -671,6 +671,8 @@ test('gatherPack: the ledger probe counts rows by status and phase from the work
     unattributedFiles: [],
     unrecognized: 0,
     unrecognizedValues: [],
+    deferredUnstaged: 0,
+    deferredUnstagedItems: [],
   });
 });
 
@@ -716,6 +718,126 @@ test('gatherPack: the ledger probe reports zero unrecognized rows when every sta
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-spec-1535-ledger.md']) }) });
   assert.strictEqual(pack.ledger.value.unrecognized, 0);
   assert.deepStrictEqual(pack.ledger.value.unrecognizedValues, []);
+});
+
+// Helper for the #3327 tests: a worktree whose docs/plans holds the
+// given ledger files, wired into a fixture run dir, probed with only: ['ledger'].
+async function probeLedgers(files, { records = [1535] } = {}) {
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'wrap-up-pack-tree-'));
+  fs.mkdirSync(path.join(tree, 'docs', 'plans'), { recursive: true });
+  for (const [name, rows] of Object.entries(files)) {
+    fs.writeFileSync(path.join(tree, 'docs', 'plans', name), ['| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|', ...rows].join('\n'));
+  }
+  const runDir = fixtureRunDir({ records });
+  const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
+  state.worktree = tree;
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
+  return { pack: await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() }), runDir, tree };
+}
+
+// #3327: a `deferred` row must name where its work went — a `staged/…` proposal
+// or a `#N` record reference. A triage-only Resolution is parked with no trace.
+test('AC1.1: a deferred row with no staged/ path and no #N reference is reported as deferredUnstaged (#3327)', async () => {
+  const { pack } = await probeLedgers({ '2026-09-05-spec-1535-ledger.md': [
+    '| 1 | review | a | open | — |',
+    '| 2 | review | b | deferred | Origin: SDD Task 1 review; files: a.md. Trigger: next edit |',
+    '| 3 | build | c | deferred | — |',
+    '| 4 | build | see #77 | Deferred | triage: leave |',
+  ] });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 3);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, [
+    'docs/plans/2026-09-05-spec-1535-ledger.md#2',
+    'docs/plans/2026-09-05-spec-1535-ledger.md#3',
+    'docs/plans/2026-09-05-spec-1535-ledger.md#4',
+  ]);
+  assert.strictEqual(pack.ledger.value.open, 1);          // flagged rows never become open
+  assert.strictEqual(pack.ledger.value.unrecognized, 0);  // …nor unrecognized
+});
+
+test('AC2.1: a deferred row naming staged/… or #N stays terminal (#3327)', async () => {
+  const { pack } = await probeLedgers({ '2026-09-05-spec-1535-ledger.md': [
+    '| 1 | review | a | deferred | parked → `staged/ledger-record-foo.md` |',
+    '| 2 | review | b | deferred | → backlog #123 |',
+    '| 3 | build | c | deferred | reversed → thn-inc/claude-tweaks#456 |',
+  ] });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 0);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, []);
+});
+
+test('AC2.1: a deferred row naming a record by issue/PR URL stays terminal (#3327)', async () => {
+  const { pack } = await probeLedgers({ '2026-09-05-spec-1535-ledger.md': [
+    '| 1 | review | a | deferred | → backlog https://github.com/o/r/issues/3349 (tangential) |',
+    '| 2 | review | b | deferred | → https://github.com/o/r/pull/77 |',
+  ] });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 0);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, []);
+});
+
+test("AC1.1: a deferred row whose only #N is the run's own record, or a ledger-item cross-reference, is flagged (#3327)", async () => {
+  const { pack } = await probeLedgers({ '2026-09-05-spec-1535-ledger.md': [
+    '| 1 | review | a | deferred | Origin: SDD Task 1 review of #1535; trigger: next edit |',
+    '| 2 | review | b | deferred | same as ledger item #1 — leave |',
+    '| 3 | review | c | deferred | see item #4 |',
+    '| 4 | review | d | deferred | origin #1535, carried by #2000 |',
+  ] });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 3);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, [
+    'docs/plans/2026-09-05-spec-1535-ledger.md#1',
+    'docs/plans/2026-09-05-spec-1535-ledger.md#2',
+    'docs/plans/2026-09-05-spec-1535-ledger.md#3',
+  ]);
+});
+
+test('AC1.1: a deferred row with a truly empty Resolution cell is flagged (#3327)', async () => {
+  const { pack } = await probeLedgers({ '2026-09-05-spec-1535-ledger.md': ['| 2 | build | x | deferred |  |'] });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 1);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, ['docs/plans/2026-09-05-spec-1535-ledger.md#2']);
+});
+
+test('AC1.1: parseLedger defaults excludeRecords to [] — a one-arg call counts the run-own #N as a reference (#3327)', () => {
+  const text = '| 1 | build | a | deferred | origin #1535 |';
+  assert.strictEqual(parseLedger(text).deferredUnstaged, 0);
+  assert.strictEqual(parseLedger(text, { excludeRecords: [1535] }).deferredUnstaged, 1);
+  assert.deepStrictEqual(parseLedger(text, { excludeRecords: [1535] }).deferredUnstagedItems, ['1']);
+});
+
+test("AC1.1: a pipe inside a deferred row's Resolution stays in the Resolution cell (#3327)", () => {
+  const text = [
+    '| 1 | build | a | deferred | triage a | b → staged/ledger-record-foo.md |',
+    '| 2 | build | b | deferred | triage a | b |',
+  ].join('\n');
+  const one = parseLedger(text);
+  assert.strictEqual(one.deferredUnstaged, 1);
+  assert.deepStrictEqual(one.deferredUnstagedItems, ['2']);
+});
+
+test('AC1.1: deferredUnstagedItems are qualified by the counted file across multiple ledgers (#3327)', async () => {
+  const { pack } = await probeLedgers({
+    '2026-09-05-a-ledger.md': ['| 2 | build | a | deferred | — |', '| 3 | build | b | deferred | → #900 |'],
+    '2026-09-05-b-ledger.md': ['| 2 | build | c | deferred | triage: leave |', '| 5 | build | d | deferred | — |'],
+  });
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 3);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems.sort(), [
+    'docs/plans/2026-09-05-a-ledger.md#2',
+    'docs/plans/2026-09-05-b-ledger.md#2',
+    'docs/plans/2026-09-05-b-ledger.md#5',
+  ]);
+});
+
+test('AC1.1: the run-dir ledger.md branch reports deferredUnstaged with ledger.md#N ids and excludes the run record (#3327)', async () => {
+  const { runDir, tree } = await probeLedgers({});
+  fs.writeFileSync(path.join(runDir, 'ledger.md'), [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    '| 1 | build | a | open | — |',
+    '| 2 | build | b | deferred | origin #1535 |',
+    '| 3 | build | c | deferred | → backlog #2000 |',
+    '| 4 | build | d | deferred | — |',
+  ].join('\n'));
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  assert.deepStrictEqual(pack.ledger.value.files, ['ledger.md']);
+  assert.strictEqual(pack.ledger.value.deferredUnstaged, 2);
+  assert.deepStrictEqual(pack.ledger.value.deferredUnstagedItems, ['ledger.md#2', 'ledger.md#4']);
+  assert.strictEqual(pack.ledger.value.open, 1);
 });
 
 test('gatherPack: a ledger whose DATE prefix contains the record number is not this record\'s ledger (#1930 review M5)', async () => {

@@ -1667,11 +1667,12 @@ test('flaky retry: hits accumulate across two runs and a file removed from the a
 // Sibling fixture to flakyRepo (#3129): a tests check that always fails with
 // a TAP failure naming `failingFile`, and a verify-scope.json declaring
 // `preExisting` instead of `flaky` — no retry template, no retry.js spawned
-// at all; the declared allowlist is checked, never re-run.
-function preExistingRepo({ failingFile = 'tests/known-shallow.test.js', preExisting = ['tests/known-shallow.test.js'], extraDecl = {} } = {}) {
+// at all; the declared allowlist is checked, never re-run. `log` (#3481) is
+// the raw string fail.js prints instead of the default TAP block.
+function preExistingRepo({ failingFile = 'tests/known-shallow.test.js', preExisting = ['tests/known-shallow.test.js'], extraDecl = {}, log = null } = {}) {
   const r = tmpGitRepo();
   const tap = ['not ok 1 - a known pre-existing failure', '  ---', '  stack: |-', `    at TestContext.<anonymous> (${failingFile}:12:5)`, '  ...', '# tests 1', '# pass 0', '# fail 1'].join('\n');
-  fs.writeFileSync(path.join(r.repo, 'fail.js'), `process.stdout.write(${JSON.stringify(tap)} + '\\n'); process.exit(1);\n`);
+  fs.writeFileSync(path.join(r.repo, 'fail.js'), `process.stdout.write(${JSON.stringify(log ?? tap)} + '\\n'); process.exit(1);\n`);
   const decl = {
     checks: { tests: 'node fail.js' },
     rules: [{ match: 'src/**', suites: ['tests'], static: true }],
@@ -1733,6 +1734,61 @@ test('preExisting: --stamp-status reads the marker — preExistingAdjudicated:tr
   assert.strictEqual(parsed.preExistingAdjudicated, true);
   assert.strictEqual(parsed.match, false);
   assert.strictEqual(parsed.verifiedHead, true);
+});
+
+// #3481: a preExisting run over `log` is refused with `reason` — no stamp, no effective pass.
+async function assertPreExistingRefused(log, reason, extraDecl = {}) {
+  const r = preExistingRepo({ log, extraDecl });
+  const { code, stdout } = await runCli(r.args, { cwd: r.repo });
+  assert.strictEqual(code, 1);
+  assert.match(stdout, new RegExp(`Pre-existing: not adjudicated — ${reason}`));
+  assert.ok(!fs.existsSync(path.join(r.gitDir, 'claude-tweaks-verify-pass.json')));
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], eligible: false, reason });
+  assert.strictEqual(report.effectivePass, false);
+}
+
+test('AC1.1 preExisting: a spec log whose named files are all covered but which also carries an unattributed failure is refused — unattributed-failures: 1 (#3481)', async () => {
+  const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
+});
+
+test('AC1.2 preExisting: a TAP log whose named file is covered but which also carries an unattributed failure is refused — unattributed-failures: 1 (#3481)', async () => {
+  const log = ['not ok 1 - a known pre-existing failure', '  ---', '  stack: |-', '    at TestContext.<anonymous> (tests/known-shallow.test.js:12:5)', '  ...',
+    'not ok 2 - an unattributed one', '  ---', '  stack: |-', '    some non-frame diagnostic text', '  ...',
+    '# tests 2', '# pass 0', '# fail 2'].join('\n');
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
+});
+
+test('AC2.1 preExisting: a summary-family log is never adjudicated through preExisting — no-accounting-guard: summary (#3481)', async () => {
+  const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
+  await assertPreExistingRefused(log, 'no-accounting-guard: summary');
+});
+
+test('AC1.3 preExisting: unattributed failures sum across failing checks — types and lint with one each refuse as unattributed-failures: 2 (#3481)', async () => {
+  const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');
+  await assertPreExistingRefused(log, 'unattributed-failures: 2', {
+    checks: { types: 'node fail.js', lint: 'node fail.js', tests: 'node fail.js' },
+  });
+});
+
+test('AC1.4 preExisting: a fully accounted spec log whose covered failing file also carries a runner-level error line is refused — runner-error (#3481)', async () => {
+  const log = ['ℹ tests 1', 'ℹ pass 0', 'ℹ fail 1', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'ℹ Error: asynchronous activity outlived its test'].join('\n');
+  await assertPreExistingRefused(log, 'runner-error');
+});
+
+test('preExisting: log frames are relativized against --cwd, not the process cwd — an absolute frame under the checkout still matches the allowlist (#3481)', async () => {
+  const r = preExistingRepo();
+  const tap = ['not ok 1 - a known pre-existing failure', '  ---', '  stack: |-', `    at TestContext.<anonymous> (${r.repo}/tests/known-shallow.test.js:12:5)`, '  ...', '# tests 1', '# pass 0', '# fail 1'].join('\n');
+  fs.writeFileSync(path.join(r.repo, 'fail.js'), `process.stdout.write(${JSON.stringify(tap)} + '\\n'); process.exit(1);\n`);
+  const sub = path.join(r.repo, 'sub');
+  fs.mkdirSync(sub);
+  const { code, stdout, stderr } = await runCli([...r.args, '--cwd', r.repo], { cwd: sub });
+  assert.strictEqual(code, 0, stdout + stderr);
+  assert.match(stdout, /Pre-existing: adjudicated — 1 failing file\(s\) covered by the declared preExisting allowlist: tests\/known-shallow\.test\.js/);
 });
 
 // #1928 AC1: the runner is the mechanical source of the verify event.

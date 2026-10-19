@@ -4,7 +4,7 @@ The record body must be detailed enough for `/superpowers:writing-plans` to prod
 
 This template covers the record's **body** only — the GitHub issue body, or the `local-files` twin's body text (`bin/lib/issues/local-store.js`). Title and Type are separate record fields, never body content — see `## Facets` at the end of this file for what lives outside the body.
 
-Every record body opens with a short metadata block — plain body-metadata lines, never YAML frontmatter. `Surface:`, `Design-intent:`, `Ui-stack:`, and `Design-seed:` are lifted verbatim into the materialized header by `/flow`/`/build` at build time (spec 20's contract). `Visual-reference:` (when present) stays a body-metadata line only — `/claude-tweaks:build`'s `design-prebuild.md` reads it directly from the record body, not from the materialized header (not `/claude-tweaks:design-wrapper`'s `pre-build` mode, which never references this field). Legacy `frontend` (pre-migration spec frontmatter) reads as `web`; `mixed` is retired — pick the single dominant surface per sub-issue, since a unit that is genuinely both frontend and backend at once is a decomposition smell.
+Every record body opens with a short metadata block — plain body-metadata lines, never YAML frontmatter. `Surface:`, `Design-intent:`, `Ui-stack:`, and `Design-seed:` are lifted into the materialized header by `/flow`/`/build` at build time (spec 20's contract) — verbatim, except `Design-intent:`, which takes a comma-separated list of enum values (`quiet, minimal`; `none` only on its own) that materialization normalizes and validates, stopping on an unknown value. `Visual-reference:` (when present) stays a body-metadata line only — `/claude-tweaks:build`'s `design-prebuild.md` reads it directly from the record body, not from the materialized header (not `/claude-tweaks:design-wrapper`'s `pre-build` mode, which never references this field). Legacy `frontend` (pre-migration spec frontmatter) reads as `web`; `mixed` is retired — pick the single dominant surface per sub-issue, since a unit that is genuinely both frontend and backend at once is a decomposition smell.
 
 **`mobile` means a native app surface** — SwiftUI, UIKit, Compose, React Native, Flutter — not a web page viewed on a phone. A responsive web layout is `web`; use `mobile` only when the code being changed is native app code. The distinction is load-bearing rather than descriptive: `/claude-tweaks:design-wrapper` routes `mobile` to Impeccable's native track and skips the two web-only surfaces (the bundled HTML detector behind `test` mode, and `live` mode) rather than running them and reporting a pass they could not have failed. Declaring `mobile` on a responsive web feature therefore turns the design CLI gate off for it. `desktop` takes the web path on a stated assumption — see the track-resolution table in `skills/design-wrapper/SKILL.md`, which is the single source of truth for how each value routes. `terminal` is a CLI/TUI surface — help text, output formatting, prompts, exit codes; it is declared only, never sniffed (no file extension implies it), and it takes the design pipeline's terminal track (`skills/design-wrapper/terminal-routing.md`). `Parent:` is decomposition-mode-only, present on a sub-issue's body only under `work-backend: github-issues` + `work-links: body-text` **and only when that decomposition kept a parent** (`/specify`'s Step 2.6 collapse decision produces parentless records — `specify/decomposition-mode.md`) — the one combination with no other way to record a sub-issue's own parent (`work-links: native`'s sub-issue relationship is queryable from either side; `work-backend: local-files` carries `facets.parent`). `/claude-tweaks:review`'s Step 1.6 (`skills/review/SKILL.md`) reads it to resolve a sub-issue's parent when checking for a `## Cross-Spec Promises` section (`_shared/work-record.md`).
 
@@ -14,7 +14,7 @@ Every record body opens with a short metadata block — plain body-metadata line
 
 ```markdown
 Surface: {web | mobile | desktop | backend | infra | terminal}
-Design-intent: {bold | quiet | minimal | delightful | onboarding | none}
+Design-intent: {one or more of bold | quiet | minimal | delightful | onboarding, comma-separated — or none alone}
 Ui-stack: {free-form component-library/styling-approach string (e.g. "shadcn/ui + Tailwind"), or an explicit no-preference answer — omitted for backend/infra/terminal, same as Design-intent:}
 Design-seed: {the seed key from the surface brief's Impeccable direction contract, copied verbatim — NOT written by /specify; see below}
 Visual-reference: {path to an accepted shape-time scaffold file — omitted when /specify's Step 2.5b-ii variant-exploration step was skipped, declined, or not offered (non-frontend records)}
@@ -64,6 +64,8 @@ When a Deliverable adds a new Manifesto policy lever — a new `auto`-mode behav
 3. ...
 
 A criterion that counts something (rows, items, entries) states the count relative to this record's own change ("adds no rows", "adds exactly three items"), never as a file's absolute total, and the count must match what the record's body names. An absolute total breaks as soon as a Related record grows the same file: #2709's "the checklist still has 20 rows" was unsatisfiable once #2706 and #2707 landed beside it, and #2693's "all 20 items" named only 17.
+
+A criterion asserting that a search returns nothing (a grep that "returns nothing", "prints no lines" or "exits 1") names a command its author has run once against a tree that still contains the target and seen match; prefer `grep -F` for literal code text. A search that cannot match its target passes before and after the change, so the criterion can never fail: #3536's AC1.1 was a basic-regex grep whose escapes never matched the literal it named.
 
 ## Release Note
 
@@ -176,6 +178,8 @@ When a spec calls for both deletion and a tombstone comment, do one of:
 - **Word the tombstone without the exact symbol name** (e.g., "see CHANGELOG.md for what was removed here") only when the exact name isn't operationally necessary for future readers — this is the fallback, not the default, since it loses the tombstone's specificity.
 
 Never write a bare "zero matches anywhere" AC alongside a tombstone requirement without picking one of these — it fails at review time every time.
+
+Either way the grep, scoped or bare, is an absence grep: run it once against the pre-deletion tree and confirm it matches the symbol before the criterion relies on it returning zero matches.
 
 ## Empirical Premise-Check Deliverables
 

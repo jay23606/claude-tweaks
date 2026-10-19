@@ -12,9 +12,9 @@ Two independent findings-quality mechanisms live in this step, each gated at its
 
 After per-lens reproduction completes, scan for contradictions across lenses before routing. Two lenses that both flagged the same region with mismatched severity get exactly one debate round to converge or escalate to `contested`. A silent lens — one that reviewed the region but produced no finding there at all — cannot enter this mechanism: `detectCrossLensOverlap` below only pairs findings that exist in *both* lenses' arrays, so the asymmetric "one flagged, the other did not" case has no data to pair against and is never dispatched (see step 5's skip condition).
 
-1. **Detect overlap.** Collect each lens's `confirmed` and `unconfirmed` findings into one `{lensName: [findings...]}` object, write it to `{ctx-dir}/findings-by-lens.json` (the scratch dir minted by Step 3's `build-review-context.js` call — never a fixed shared `/tmp` name, which collides across concurrent review sessions), and call:
+1. **Detect overlap.** Collect each lens's `confirmed` and `unconfirmed` findings into one `{lensName: [findings...]}` object, resolve its path with one plain call — `node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" F=review-{ctx-id}-findings-by-lens.json` (`_shared/session-tmp-root.md`; `{ctx-id}` as defined in `step3-lens-dispatch.md` — never a fixed shared `/tmp` name, which collides across concurrent review sessions) — `Write` the object to the printed `F` path (`{path-F}` below) with the `Write` tool, and call:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" detect-overlap {ctx-dir}/findings-by-lens.json
+   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" detect-overlap {path-F}
    ```
    It returns pairs `{lensA, lensB, findingA, findingB}` for findings on the same `path` within ±5 lines from *different* lenses.
 

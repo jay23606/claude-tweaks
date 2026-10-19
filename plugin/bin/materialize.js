@@ -9,8 +9,9 @@
 // vs. `gh issue view` — to warrant its own follow-up rather than a half-done
 // branch here); that driver still uses the skill's own inline read.
 // Prints one JSON envelope on success. Exit 0 on success; 1 when the
-// record's own body fails the shape gate (points at /claude-tweaks:specify,
-// same as the skill does); 2 on a malformed invocation, an unanchored
+// record's own body fails the shape gate or its Design-intent: line names a
+// value outside the policy enum or mixes `none` with another value (points at
+// /claude-tweaks:specify, same as the skill does); 2 on a malformed invocation, an unanchored
 // --run-dir (#790/[IL-127] — a foreign-checkout shadow, or a path with no
 // determinable git repository root; #959 — a --run-dir resolving INSIDE the
 // current linked worktree is anchored-equivalent and accepted, since this
@@ -38,7 +39,9 @@ const { execFileSync } = require('child_process');
 const {
   parseRecordFacets, extractFingerprint, extractVerifiedAsOf, extractPremiseCheck, extractTemplateStamp, parseDependencies,
 } = require('./lib/issues/record');
-const { shapeGate, liftMetadata, composeHeader, composeFile } = require('./lib/issues/materialize-format');
+const {
+  shapeGate, liftMetadata, composeHeader, composeFile, describeDesignIntentError,
+} = require('./lib/issues/materialize-format');
 const { findSiblingPremiseDisproof } = require('./lib/issues/sibling-premise');
 const wtDetect = require('./lib/hooks/worktree-detect');
 const {
@@ -381,6 +384,18 @@ function run(argv, deps = realDeps) {
     return 1;
   }
 
+  // #3018: an invalid Design-intent: line hard-fails the same way the shape
+  // gate does — before any drift/premise/sibling logging or file write.
+  const meta = liftMetadata(record.body);
+  if (meta.designIntentError) {
+    const err = meta.designIntentError;
+    deps.stderr(
+      `materialize.js: Record #${opts.n} has an invalid Design-intent: line ("${err.raw}") — ${describeDesignIntentError(err)} — `
+      + `fix the record's Design-intent: line (run \`/claude-tweaks:specify #${opts.n}\`).\n`,
+    );
+    return 1;
+  }
+
   // #117 AC3: this record's own Verified-as-of: stamp (present when it was
   // filed by one of the four health-sweep skills, absent otherwise — a
   // human-filed or /capture-originated record has nothing to compare). A
@@ -561,7 +576,6 @@ function run(argv, deps = realDeps) {
     deps.stderr(`materialize.js: Record #${opts.n} carries no ceremony:* label — pass --ceremony fast-lane|standard (the caller resolves this via assess-agent-autonomy ceremony-check first).\n`);
     return 2;
   }
-  const meta = liftMetadata(record.body);
   const header = composeHeader({
     record: opts.n,
     origin: facets.origin || 'human',

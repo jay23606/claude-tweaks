@@ -93,9 +93,9 @@ When `worktree` is specified, a sequential run uses **one shared worktree for th
 1. **Create once, up front** — before calling `EnterWorktree(name=...)`, run
    `_shared/worktree-setup.md`'s "Adopt-or-create" gate (an interactive session under this
    project's `worktree-always` policy is always already isolated by the time `/flow` runs, so
-   this call would otherwise refuse every time). **Adopted** (already isolated, clean tree): the
+   this call would otherwise refuse every time). **Adopted** (already isolated, clean tree, branch not merged): the
    branch is whichever branch the session was already on — recorded as-is, not renamed to match
-   the convention below. **Created** (not isolated, or dirty): `/flow` creates a single worktree
+   the convention below. **Created** (not isolated, dirty, or on a merged branch): `/flow` creates a single worktree
    from the current local HEAD
    following `skills/build/worktree-setup.md` (including its Step 4 unconditional catch-up with
    the integration branch). The branch covers the whole run: `flow/spec-{N1}-{N2}-{N3}` (for runs

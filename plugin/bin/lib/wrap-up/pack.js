@@ -357,12 +357,34 @@ function withTimeout(fn, ms) {
 // "terminal" the way it was before this fix.
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
-function parseLedger(text) {
+// #3327: a `deferred` row must name where its work went — a `staged/…` proposal
+// or a record reference (_shared/ledger-format.md's Resolution-text requirements). A
+// triage-only Resolution is parked with no trace, so it is flagged. A record
+// reference is an issue/PR URL path (`gh issue create` prints URLs) or a `#N`
+// token — except the run's own record numbers (`excludeRecords`: the run's
+// origin, not a carrying record) and a `#N` preceded by the word `item` (a
+// ledger-item cross-reference, not a record).
+const LEDGER_DEFERRED_STAGED_RE = /\bstaged\//;
+const LEDGER_DEFERRED_URL_RE = /\/(?:issues|pull)\/\d+/;
+const LEDGER_DEFERRED_HASH_RE = /#(\d+)/g;
+
+function namesRecordReference(resolution, excludeRecords) {
+  if (LEDGER_DEFERRED_URL_RE.test(resolution)) return true;
+  for (const m of resolution.matchAll(LEDGER_DEFERRED_HASH_RE)) {
+    if (excludeRecords.includes(Number(m[1]))) continue;
+    if (/\bitem\s*$/i.test(resolution.slice(0, m.index))) continue;
+    return true;
+  }
+  return false;
+}
+
+function parseLedger(text, { excludeRecords = [] } = {}) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
   let open = 0;
   let unrecognized = 0;
   const unrecognizedValues = new Set();
+  const deferredUnstagedItems = [];
   for (const row of rows) {
     const cells = row.split('|').slice(1, -1).map((c) => c.trim());
     const phase = cells[1] || 'unknown';
@@ -374,8 +396,17 @@ function parseLedger(text) {
     } else if (!LEDGER_TERMINAL_STATUSES.has(status)) {
       unrecognized += 1; byPhase[phase].unrecognized += 1; unrecognizedValues.add(cells[3] || '');
     }
+    if (status === 'deferred') {
+      const resolution = cells.slice(4).join('|');
+      if (!LEDGER_DEFERRED_STAGED_RE.test(resolution) && !namesRecordReference(resolution, excludeRecords)) {
+        deferredUnstagedItems.push(cells[0]);
+      }
+    }
   }
-  return { open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues] };
+  return {
+    open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues],
+    deferredUnstaged: deferredUnstagedItems.length, deferredUnstagedItems,
+  };
 }
 
 // A ledger filename names record {n} only at a `-{n}-` or `-{n}.` boundary. A
@@ -408,8 +439,10 @@ function ledgerProbe(inputs, deps) {
   // shape. That file, when present, is authoritative; the docs/plans/ glob
   // below is only the fallback for every other run (#2563 AC4).
   const runDirLedgerText = readText(deps, path.join(inputs.runDir, 'ledger.md'));
+  const ownRecords = (inputs.records || []).map(Number);
   if (runDirLedgerText !== null) {
-    return { ...parseLedger(runDirLedgerText), files: ['ledger.md'] };
+    const one = parseLedger(runDirLedgerText, { excludeRecords: ownRecords });
+    return { ...one, deferredUnstagedItems: one.deferredUnstagedItems.map((i) => `ledger.md#${i}`), files: ['ledger.md'] };
   }
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
@@ -451,6 +484,7 @@ function ledgerProbe(inputs, deps) {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
     unattributedFiles: unattributedFiles.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
+    deferredUnstaged: 0, deferredUnstagedItems: [],
   };
   const unrecognizedValuesSet = new Set();
   for (const f of files) {
@@ -458,8 +492,11 @@ function ledgerProbe(inputs, deps) {
     // readdir snapshot and this read is skipped, not a whole-probe failure.
     const text = readText(deps, path.join(dir, f));
     if (text === null) continue;
-    const one = parseLedger(text);
+    const one = parseLedger(text, { excludeRecords: ownRecords });
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
+    const displayPath = path.posix.join('docs', 'plans', f);
+    totals.deferredUnstaged += one.deferredUnstaged;
+    totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${displayPath}#${i}`));
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
