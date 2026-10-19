@@ -770,10 +770,11 @@ function scanMarkerComments(comments, hasMarker) {
 // first, then falls back to the plain one; `ignored` joins both scans' notes.
 // The closing ` -->` makes `brief:90` and `brief:900` distinct markers.
 function scanPrBrief(prComments, target) {
-  const confirmedWith = (marker) => (c) => c.body && c.body.includes(marker) && c.body.includes('### Confirmed');
-  const qualified = scanMarkerComments(prComments, confirmedWith(`<!-- run-comment: brief:${target} -->`));
+  const scanConfirmedBrief = (marker) =>
+    scanMarkerComments(prComments, (c) => c.body && c.body.includes(marker) && c.body.includes('### Confirmed'));
+  const qualified = scanConfirmedBrief(`<!-- run-comment: brief:${target} -->`);
   if (qualified.trusted) return qualified;
-  const plain = scanMarkerComments(prComments, confirmedWith('<!-- run-comment: brief -->'));
+  const plain = scanConfirmedBrief('<!-- run-comment: brief -->');
   return { trusted: plain.trusted, ignored: [...qualified.ignored, ...plain.ignored] };
 }
 
