@@ -869,10 +869,14 @@ test('#3004 review focus: blocked reason ok, bad/duplicate reason flagged, other
     '| 6 | build/docs | g | open | — |',
     '| 7 | review | h | open | — |',
     '| 8 | build | i | fixed | abc1234 |',
+    '| 9 | build | j | deferred | filed as #77 |',
   ].join('\n');
   const r = parseLedger(text);
   assert.deepStrictEqual(r.missingDeferReasonItems, ['2', '3']);
   assert.strictEqual(r.missingDeferReason, 2);
+  // A record reference carries the reason in that record's own Defer-reason:, except
+  // the run's own record, which is not a carrying reference.
+  assert.deepStrictEqual(parseLedger(text, { excludeRecords: [77] }).missingDeferReasonItems, ['2', '3', '9']);
 });
 
 test('AC2.1: gatherPack reports missingDeferReasonItems qualified by file, without changing open (#3004)', async () => {
