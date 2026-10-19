@@ -339,6 +339,7 @@ function decideArchiveCore(prState, consoleState, hasStagedPending, recordCheck)
   if (prState === 'gh-absent') return { action: 'skip', reason: 'gh-absent' };
   if (prState === 'network-failure') return { action: 'skip', reason: 'network-failure' };
   if (prState === 'invalid-arguments') return { action: 'skip', reason: 'invalid-arguments' };
+  if (prState === 'pr-not-found') return { action: 'skip', reason: 'pr-not-found' };
   if (!prState) return { action: 'skip', reason: 'no-pr' };
   if (prState.state !== 'MERGED') {
     return { action: 'skip', reason: prState.state === 'OPEN' ? 'pr-open' : 'pr-closed-unmerged' };
@@ -1503,8 +1504,13 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // With no repo slug the escalation issue itself cannot be filed (escalate-residue's
 // findOrCreateIssue returns 'escalation-failed'), so for this reason the tracking
 // only surfaces the run in the residue summary's stuck count.
+// 'pr-not-found' (#3543) is also tracked: a stamped pr.number that GitHub
+// confirms names no PR will never resolve without a human (fix or clear the
+// stamp), and the by-number lookup deliberately never falls back to the
+// branch (#3416), so the skip would otherwise repeat silently forever.
+// 'network-failure' stays excluded — a long genuine outage must not page.
 const STRUCTURALLY_STUCK_REASONS = new Set([
-  'no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'merged-partial', 'no-repo-slug',
+  'no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'pr-not-found', 'merged-partial', 'no-repo-slug',
 ]);
 
 // #1732: thin wrapper — see isOrphanedMint's comment on the `kinds` scoping
@@ -1774,7 +1780,8 @@ function byNumberRecordSkip(root, dir, byNumber, consoleState, records, repoSlug
 // `gh pr list --head {branch}` can return a MERGED PR from an earlier run that
 // shared the name and archive a live run. The by-branch lookup is the fallback
 // only when no number is stamped (or the by-number probe returns null). Any
-// failure string from the by-number probe is returned as-is, never falling
+// failure string from the by-number probe (`'gh-absent'`, `'network-failure'`,
+// `'invalid-arguments'`, `'pr-not-found'`) is returned as-is, never falling
 // back to the branch: the branch lookup would reintroduce the same
 // misattribution on a transient gh failure.
 function resolveRunPrState(root, state, branch) {
@@ -2057,8 +2064,12 @@ function archiveMerged({
       // is resolved; a MERGED PR reaches the same archive path, but only
       // once `localHasMerge` confirms the local checkout has actually caught
       // up on its merge commit — mirroring the general merged-PR path below.
+      let skipReason = reason;
       if (state && state.pr && state.pr.number) {
         const byNumber = resolvePrStateByNumber(root, state.pr.number);
+        // #3543: a stamped pr.number GitHub confirms names no PR is a stale
+        // stamp, not an absent branch/worktree — report the real cause.
+        if (byNumber === 'pr-not-found') skipReason = 'pr-not-found';
         if (byNumber && typeof byNumber === 'object' && (byNumber.state === 'CLOSED' || byNumber.state === 'MERGED')) {
           if (byNumber.state === 'MERGED') {
             const hasMerge = localHasMerge(root, byNumber.mergeCommit, integration);
@@ -2120,8 +2131,8 @@ function archiveMerged({
           continue;
         }
       }
-      skipped.push({ runDir: dir, reason });
-      trackStuckSkip(cacheBatch, repoSlug, dir, reason, { runner });
+      skipped.push({ runDir: dir, reason: skipReason });
+      trackStuckSkip(cacheBatch, repoSlug, dir, skipReason, { runner });
       continue;
     }
 
