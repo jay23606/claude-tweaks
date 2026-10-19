@@ -198,6 +198,30 @@ test('cli: a full 13-lever --set batch with mode=auto also prints the Manifesto 
   assert.ok(printed.includes('run with `confirm` to review/override'));
 });
 
+test('cli: a 13-lever auto batch plus the integration-model pin writes the pin and still prints the FYI table', () => {
+  const { main, runDir } = fixture();
+  const { deps, out } = fakeDeps(main);
+  const code = run(['--run', runDir, '--set', FULL_MANIFESTO_BATCH_AUTO + ',integration-model=pr-first'], deps);
+  assert.equal(code, 0);
+  assert.match(fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8'), /^integration-model: pr-first$/m);
+  assert.ok(out.join('').includes('### Pipeline Config (auto)'));
+});
+
+test('cli: an invalid integration-model pin value is exit 2 and writes nothing', () => {
+  const { main, runDir } = fixture();
+  const before = fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8');
+  const { deps, err } = fakeDeps(main);
+  assert.equal(run(['--run', runDir, '--key', 'integration-model', '--value', 'github'], deps), 2);
+  assert.ok(err.join('').includes('pr-first'));
+  assert.equal(fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8'), before);
+});
+
+test('cli: a batch carrying an unknown non-pin extra key alongside the 13 levers is exit 2', () => {
+  const { main, runDir } = fixture();
+  const { deps } = fakeDeps(main);
+  assert.equal(run(['--run', runDir, '--set', FULL_MANIFESTO_BATCH_AUTO + ',spec=12'], deps), 2);
+});
+
 test('cli: a full 13-lever --set batch with mode=hybrid does NOT print the auto FYI table', () => {
   const { main, runDir } = fixture();
   const { deps, out } = fakeDeps(main);
