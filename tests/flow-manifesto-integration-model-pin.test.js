@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { run } = require('../plugin/bin/set-config');
+const { MANIFESTO_LEVERS, RUN_PINS } = require('../plugin/bin/lib/set-config/write');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const MANIFESTO = path.join(REPO_ROOT, 'plugin', 'skills', 'flow', 'manifesto.md');
@@ -73,6 +74,10 @@ test('AC1.1: the Manifesto batch command, run as written, leaves integration-mod
   });
   const keys = pairs.map((p) => p.split('=')[0]);
   assert.ok(keys.includes('integration-model'), 'Write mechanism batch must carry integration-model={v}');
+  // Both directions: every prose key is known to the CLI (the run() below refuses an unknown key), and the
+  // prose carries every canonical lever in canonical order, so a lever dropped from the batch fails here.
+  assert.deepEqual(keys.filter((k) => !RUN_PINS.includes(k)), [...MANIFESTO_LEVERS],
+    'Write mechanism batch must list the 13 canonical levers in order (run pins excluded)');
 
   const { main, runDir } = fixture();
   const { deps, err } = fakeDeps(main);
