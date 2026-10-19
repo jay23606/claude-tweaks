@@ -86,6 +86,47 @@ function okDeps(overrides = {}) {
   };
 }
 
+// Ledger ownership fake (#2887): `owned` are the docs/plans/ paths this
+// branch's diff against the merge base touches; `untracked` are docs/plans/
+// paths present only in the worktree. Every other git call answers like okDeps.
+// The diff and ls-files argv are pinned: a call missing the merge-base, the
+// flags or the pathspec throws, so a regression in pack.js fails loudly here
+// instead of answering from the subcommand name alone.
+function ownedGit(owned = [], untracked = []) {
+  function requireArgs(args, expected) {
+    if (!expected.every((a) => args.includes(a))) throw new Error('unexpected git argv: ' + args.join(' '));
+  }
+  return (args) => {
+    if (args[0] === 'merge-base') return 'abc123\n';
+    if (args[0] === 'rev-parse') return 'refs/remotes/origin/main\n';
+    if (args[0] === 'diff') {
+      requireArgs(args, ['abc123', '--relative', '-z', '--name-only', 'docs/plans/']);
+      return owned.join('\0');
+    }
+    if (args[0] === 'ls-files') {
+      requireArgs(args, ['--others', '--exclude-standard', '-z', 'docs/plans/']);
+      return untracked.join('\0');
+    }
+    return '';
+  };
+}
+
+const LEDGER_HEAD = '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n';
+const OPEN_REVIEW_LEDGER = `${LEDGER_HEAD}| 1 | review | a | open | — |`;
+
+// A worktree whose docs/plans/ holds the given {name: text} ledgers, plus a
+// run dir whose run-state.json points at that worktree.
+function treeWithLedgers(files, { records = [1535] } = {}) {
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'wrap-up-pack-tree-'));
+  fs.mkdirSync(path.join(tree, 'docs', 'plans'), { recursive: true });
+  for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(tree, 'docs', 'plans', name), text);
+  const runDir = fixtureRunDir({ records });
+  const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
+  state.worktree = tree;
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
+  return { tree, runDir };
+}
+
 test('resolveInputs reads records from the headers, pr and worktree from run-state.json, the integration branch from policy, and the base from merge-base — with sources (#1930 AC1)', () => {
   const runDir = fixtureRunDir();
   const inputs = resolveInputs({ runDir, cwd: '/w/tree', deps: okDeps() });
@@ -621,12 +662,13 @@ test('gatherPack: the ledger probe counts rows by status and phase from the work
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-spec-1535-ledger.md']) }) });
   assert.deepStrictEqual(pack.ledger.value, {
     open: 1,
     total: 3,
     byPhase: { review: { open: 1, total: 2, unrecognized: 0 }, build: { open: 0, total: 1, unrecognized: 0 } },
     files: ['docs/plans/2026-09-05-spec-1535-ledger.md'],
+    unattributedFiles: [],
     unrecognized: 0,
     unrecognizedValues: [],
     deferredUnstaged: 0,
@@ -652,7 +694,7 @@ test('gatherPack: the ledger probe counts an out-of-enum status as unrecognized,
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-spec-1535-ledger.md']) }) });
   assert.strictEqual(pack.ledger.value.unrecognized, 2);
   assert.deepStrictEqual(pack.ledger.value.unrecognizedValues.sort(), ['resolved', 'staged']);
   assert.strictEqual(pack.ledger.value.byPhase.build.unrecognized, 2);
@@ -673,7 +715,7 @@ test('gatherPack: the ledger probe reports zero unrecognized rows when every sta
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-spec-1535-ledger.md']) }) });
   assert.strictEqual(pack.ledger.value.unrecognized, 0);
   assert.deepStrictEqual(pack.ledger.value.unrecognizedValues, []);
 });
@@ -690,7 +732,8 @@ async function probeLedgers(files, { records = [1535] } = {}) {
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  return { pack: await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() }), runDir, tree };
+  const owned = Object.keys(files).map((name) => `docs/plans/${name}`);
+  return { pack: await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(owned) }) }), runDir, tree };
 }
 
 // #3327: a `deferred` row must name where its work went — a `staged/…` proposal
@@ -809,9 +852,10 @@ test('gatherPack: a ledger whose DATE prefix contains the record number is not t
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-spec-99-ledger.md', 'docs/plans/2025-01-02-spec-26-ledger.md']) }) });
   assert.deepStrictEqual(pack.ledger.value.files, ['docs/plans/2025-01-02-spec-26-ledger.md']);
   assert.strictEqual(pack.ledger.value.total, 1);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles, ['docs/plans/2026-09-05-spec-99-ledger.md']);
 });
 
 // #2563: _shared/ledger-format.md's Location section defines the canonical
@@ -830,19 +874,17 @@ test('gatherPack: the ledger probe locates a topic-slug-named ledger with no rec
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit(['docs/plans/2026-09-05-ledger-probe-slug-fix-ledger.md']) }) });
   assert.deepStrictEqual(pack.ledger.value.files, ['docs/plans/2026-09-05-ledger-probe-slug-fix-ledger.md']);
   assert.strictEqual(pack.ledger.value.open, 2);
   assert.strictEqual(pack.ledger.value.total, 3);
 });
 
-// #2545 wrap-up finding: when 2+ topic-slug ledgers exist and NEITHER names
-// this run's record at a boundary (the realistic case — a stray,
-// fully-resolved ledger left over from an unrelated, already-merged run,
-// alongside this run's own topic-slug ledger), the record-number
-// disambiguator used to filter BOTH out, silently reporting zero open items
-// even though this run's own ledger genuinely had some.
-test('gatherPack: two topic-slug ledgers where neither names the record falls back to counting both, never silently zero', async () => {
+// #2545 wrap-up finding: a stray, fully-resolved ledger inherited from an
+// already-merged run sits beside this run's own topic-slug ledger, and neither
+// names the record at a boundary. Name matching cannot tell them apart, so
+// ownership by branch diff decides: only the ledger this branch added counts.
+test('AC2.1: one ledger added on the branch plus inherited ledgers counts only the added ledger\'s items', async () => {
   const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'wrap-up-pack-tree-'));
   fs.mkdirSync(path.join(tree, 'docs', 'plans'), { recursive: true });
   // A fully-resolved stray ledger from an unrelated, already-merged run.
@@ -859,13 +901,85 @@ test('gatherPack: two topic-slug ledgers where neither names the record falls ba
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
   state.worktree = tree;
   fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(state));
-  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps() });
-  assert.strictEqual(pack.ledger.value.open, 2, 'this run\'s own 2 open items must not be silently hidden by the stray ledger');
-  assert.strictEqual(pack.ledger.value.total, 3);
-  assert.deepStrictEqual(pack.ledger.value.files.sort(), [
-    'docs/plans/2026-09-30-flow-spec-2704-2709-ledger.md',
-    'docs/plans/2026-10-02-harness-health-validate-findings-local-only-ledger.md',
-  ]);
+  const owned = 'docs/plans/2026-10-02-harness-health-validate-findings-local-only-ledger.md';
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([owned]) }) });
+  assert.strictEqual(pack.ledger.value.open, 2);
+  assert.strictEqual(pack.ledger.value.total, 2);
+  assert.deepStrictEqual(pack.ledger.value.files, [owned]);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles, ['docs/plans/2026-09-30-flow-spec-2704-2709-ledger.md']);
+});
+
+test('AC1.1: a worktree holding one ledger inherited from the merge base reports open 0, total 0 and lists it as unattributed', async () => {
+  const name = '2026-10-03-record-2853-ledger.md';
+  const { runDir, tree } = treeWithLedgers({ [name]: OPEN_REVIEW_LEDGER });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([]) }) });
+  assert.strictEqual(pack.ledger.value.open, 0);
+  assert.strictEqual(pack.ledger.value.total, 0);
+  assert.deepStrictEqual(pack.ledger.value.files, []);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles, [`docs/plans/${name}`]);
+  assert.deepStrictEqual(pack.ledger.value.byPhase, {});
+});
+
+test('AC1.1: several inherited ledgers with none owned report zero and list every one as unattributed', async () => {
+  const a = '2026-10-03-record-2853-ledger.md';
+  const b = '2026-10-04-topic-slug-ledger.md';
+  const open = `${LEDGER_HEAD}| 1 | build | a | open | — |`;
+  const { runDir, tree } = treeWithLedgers({ [a]: open, [b]: open });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([]) }) });
+  assert.strictEqual(pack.ledger.value.open, 0);
+  assert.strictEqual(pack.ledger.value.total, 0);
+  assert.deepStrictEqual(pack.ledger.value.files, []);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles.sort(), [`docs/plans/${a}`, `docs/plans/${b}`].sort());
+});
+
+test('an untracked ledger in the worktree counts as owned', async () => {
+  const name = 'x-ledger.md';
+  const { runDir, tree } = treeWithLedgers({ [name]: OPEN_REVIEW_LEDGER });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([], [`docs/plans/${name}`]) }) });
+  assert.strictEqual(pack.ledger.value.open, 1);
+  assert.deepStrictEqual(pack.ledger.value.files, [`docs/plans/${name}`]);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles, []);
+});
+
+test('two owned ledgers tie-break on namesRecord', async () => {
+  const named = '2025-01-02-spec-26-ledger.md';
+  const stray = '2026-09-05-spec-99-ledger.md';
+  const { runDir, tree } = treeWithLedgers({
+    [named]: `${LEDGER_HEAD}| 1 | build | b | fixed | x |`,
+    [stray]: OPEN_REVIEW_LEDGER,
+  }, { records: [26] });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([`docs/plans/${named}`, `docs/plans/${stray}`]) }) });
+  assert.deepStrictEqual(pack.ledger.value.files, [`docs/plans/${named}`]);
+  assert.strictEqual(pack.ledger.value.total, 1);
+  assert.deepStrictEqual(pack.ledger.value.unattributedFiles, [`docs/plans/${stray}`]);
+});
+
+test('ownership unknowable without a merge base fails the probe', async () => {
+  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': OPEN_REVIEW_LEDGER });
+  const base = ownedGit([]);
+  const deps = okDeps({ git: (args, opts) => { if (args[0] === 'merge-base') throw new Error('fatal: no merge base'); return base(args, opts); } });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
+  assert.strictEqual(pack.ledger.ok, false);
+  assert.match(pack.ledger.error, /merge base/);
+});
+
+test('a failing ownership git call fails the probe', async () => {
+  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': OPEN_REVIEW_LEDGER });
+  const base = ownedGit([]);
+  const deps = okDeps({ git: (args, opts) => { if (args[0] === 'diff') throw new Error('git down'); return base(args, opts); } });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
+  assert.strictEqual(pack.ledger.ok, false);
+  assert.match(pack.ledger.error, /git down/);
+});
+
+test('no docs/plans ledgers reports zeros without consulting git', async () => {
+  const { runDir, tree } = treeWithLedgers({});
+  const gitCalls = [];
+  const base = ownedGit([]);
+  const deps = okDeps({ git: (args, opts) => { gitCalls.push(args); return base(args, opts); } });
+  const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
+  assert.deepStrictEqual(pack.ledger.value, { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [] });
+  assert.ok(!gitCalls.some((a) => a[0] === 'diff' || a[0] === 'ls-files'), `no ownership git call: ${JSON.stringify(gitCalls)}`);
 });
 
 // #2563 AC4: _shared/ledger-format.md's resolution rule — when {run-dir}/
@@ -888,6 +1002,7 @@ test('gatherPack: {run-dir}/ledger.md is authoritative over the docs/plans/ glob
   assert.deepStrictEqual(pack.ledger.value.files, ['ledger.md']);
   assert.strictEqual(pack.ledger.value.open, 3);
   assert.strictEqual(pack.ledger.value.total, 3);
+  assert.ok(!Object.prototype.hasOwnProperty.call(pack.ledger.value, 'unattributedFiles'), 'the run-dir branch keeps its pre-#2887 shape');
 });
 
 test('gatherPack: a missing gh binary degrades pr/recordLabels/unblocked to error gh-absent, nothing else (#1930 Gotchas)', async () => {
@@ -972,6 +1087,7 @@ test('gatherPack: a ledger file archived between readdir and read is skipped, no
   fs.writeFileSync(path.join(tree, 'docs', 'plans', gone), '| # | Phase | Item | Status |\n|---|---|---|---|\n| 1 | build | b | open |\n');
   const base = okDeps();
   const deps = okDeps({
+    git: ownedGit([`docs/plans/${kept}`, `docs/plans/${gone}`]),
     readFile: (p) => {
       if (p.endsWith(gone)) { const e = new Error('ENOENT: archived by a sibling session'); e.code = 'ENOENT'; throw e; }
       return base.readFile(p);
