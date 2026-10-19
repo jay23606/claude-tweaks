@@ -201,6 +201,32 @@ producer's transcripts, run step 2 against a real sample of each kind (the main 
 subagent transcript, and any path a caller passes with `--transcript`), and keep the observation
 date beside the rule, the way `transcript.js`'s header does for the subagent layout.
 
+## One Claude Code version does not speak for another
+
+The same event can reach a transcript through a different carrier on a different release, so a
+fixture sampled from one session covers one carrier. Record #3015's SubagentStop pending-dispatch
+count (`plugin/bin/lib/hooks/subagent-stop.js`'s `countPendingDispatches`) was first built on the
+one carrier its fixtures showed: a completion as a user entry with `origin.kind:
+'task-notification'` (observed on 2.1.258). Real subagent transcripts also carry the same
+`<task-notification>` body in an `attachment` entry of type `queued_command` (2.1.283 and later,
+often alongside the first shape in one file), a 2.1.302 `api-request-blob` entry echoes the
+request and repeats notifications, and a worker fork's transcript opens with its parent's whole
+history up to a `<fork-boilerplate>` user entry. The whole-branch review's scan of 6,174 local
+subagent transcripts found 829 launches completed only through the attachment shape, so the first
+version read finished children as pending for 60 minutes and would have skipped 28 of 31
+non-compliant final replies (`.claude-tweaks/pipelines/2026-10-19T093934-record-3015/sdd-final-review.md`).
+
+So before writing a parser for an event that has a carrier: `grep -l` the event's marker (here
+`<task-notification>`) across `{store}/projects/*/*/subagents/*.jsonl`, group the matches by the
+`version` field on each line, and read one line per distinct version and per distinct `type`.
+Build fixtures from those verbatim lines (long values truncated with `…`) and name the source file
+and line beside each. Fail closed on a carrier you did not recognize: `subagent-stop.js` returns an
+indeterminate result when `<task-notification>` or `<fork-boilerplate>` shows up in any other entry
+shape, and its tests pin both the recognized carriers and that fallback. A test that asserts only the
+fail-closed outcome (`block`) passes whether the carrier is recognized or not, so also assert the
+parsed value (a count of `0`, not `null`). Keep the versions you observed beside the rule, as
+`subagent-stop.js`'s header comment does.
+
 ## When to use
 
 - Implementing a hook handler, integration, or any code that parses a tool's input/output payload
