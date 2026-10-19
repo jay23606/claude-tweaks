@@ -27,8 +27,8 @@
 // key's enum — batch or single, nothing is written on this exit code); 3 when
 // the run dir is missing or not anchored under the main checkout (a
 // worktree-local shadow — _shared/pipeline-run-dir.md's Anchoring section,
-// [IL-127]), or config.yml is unwritable. config.yml is the third of the sanctioned-write
-// family: bin/log-decision.js (decisions.md), bin/stage-item.js (staged/),
+// [IL-127]), or config.yml is unwritable. config.yml is the third of the
+// sanctioned-write family: bin/log-decision.js (decisions.md), bin/stage-item.js (staged/),
 // this (config.yml levers — the ceremony escape hatch's downgrade path, and
 // the Manifesto's own batch write).
 //

@@ -63,8 +63,8 @@ const CONFIG_ONLY_VALUES = Object.freeze({
 // key -> allowed values array, or null when key is not a config.yml lever OR
 // is a lever or run pin with no known enum (name-only validation; none
 // exists today). validateLever below tells the two null cases apart itself —
-// it checks isConfigKey before calling this — so
-// this function's null return does not by itself mean "unknown key".
+// it checks isConfigKey before calling this — so this function's null return
+// does not by itself mean "unknown key".
 function leverValues(key) {
   if (!isConfigKey(key)) return null;
   if (CONFIG_ONLY_VALUES[key]) return [...CONFIG_ONLY_VALUES[key]];
