@@ -230,4 +230,31 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
   return { ok: true };
 }
 
-module.exports = { checkFirstCallArtifacts, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
+// resolveFirstCallGate({ reply, artifact })
+//   -> 'blocked' | 'already-shipped' | 'artifact-failed' | 'repair' | 'dispatch'
+//
+// The code twin of `skills/dispatch/two-call-gate.md` section 2's ordering: the first call's
+// status line is judged FIRST (#2429), then its OUTCOME line, and only then the artifact
+// check (#2837) -- so a repairable `missing-config` (#3226's `repair` branch) can never
+// launder a malformed or non-DONE reply into a re-dispatch. `reply` is the first call's raw
+// text; `artifact` is `checkFirstCallArtifacts`' result (absent fails closed).
+const STATUS_LINE_RE = /^STATUS: (DONE|DONE_WITH_CONCERNS|NEEDS_CONTEXT|BLOCKED)$/;
+const OUTCOME_LINE_RE = /^OUTCOME:\s*(\S+)/;
+
+function resolveFirstCallGate({ reply, artifact }) {
+  const lines = String(reply == null ? '' : reply).split(/\r?\n/).map((l) => l.trimEnd());
+  const lastLine = lines.filter((l) => l.length > 0).pop();
+  const status = lastLine ? STATUS_LINE_RE.exec(lastLine) : null;
+  if (!status || (status[1] !== 'DONE' && status[1] !== 'DONE_WITH_CONCERNS')) return 'blocked';
+
+  const outcomeLine = lines.map((l) => OUTCOME_LINE_RE.exec(l)).find(Boolean);
+  const outcome = outcomeLine ? outcomeLine[1] : null;
+  if (outcome === 'already-shipped') return 'already-shipped';
+  if (outcome !== 'build-test-ok') return 'blocked';
+
+  if (artifact && artifact.ok === true) return 'dispatch';
+  if (artifact && artifact.reason === 'missing-config' && artifact.repairable === true) return 'repair';
+  return 'artifact-failed';
+}
+
+module.exports = { checkFirstCallArtifacts, resolveFirstCallGate, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };

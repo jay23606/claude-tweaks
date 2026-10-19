@@ -362,3 +362,36 @@ test('AC6.2: every reason other than missing-config, and ok: true, carries no re
   });
   assert.deepEqual(pass, { ok: true });
 });
+
+// #3226: resolveFirstCallGate -- the two-call gate's ordering as code (status line, then
+// OUTCOME, then the artifact check). A repairable artifact never overrides the status line.
+const { resolveFirstCallGate } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
+
+const REPAIRABLE = { ok: false, reason: 'missing-config', message: 'm', repairable: true };
+const gateReply = (status, outcome = 'build-test-ok') => `GROUP: 3226\nOUTCOME: ${outcome}\nMANIFEST: /x\n\n${status}\n`;
+
+test('AC9.1: a malformed status line with a repairable artifact resolves blocked, never repair', () => {
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE (backgrounded)'), artifact: REPAIRABLE }), 'blocked');
+  assert.equal(resolveFirstCallGate({ reply: 'GROUP: 3226\nOUTCOME: build-test-ok\n', artifact: REPAIRABLE }), 'blocked');
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: BLOCKED'), artifact: REPAIRABLE }), 'blocked');
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: NEEDS_CONTEXT'), artifact: REPAIRABLE }), 'blocked');
+});
+
+test('resolveFirstCallGate: clean pair + repairable -> repair; ok -> dispatch; non-repairable or other reason -> artifact-failed', () => {
+  for (const status of ['STATUS: DONE', 'STATUS: DONE_WITH_CONCERNS', 'STATUS: DONE   ']) {
+    assert.equal(resolveFirstCallGate({ reply: gateReply(status), artifact: REPAIRABLE }), 'repair');
+    assert.equal(resolveFirstCallGate({ reply: gateReply(status), artifact: { ok: true } }), 'dispatch');
+  }
+  const reply = gateReply('STATUS: DONE');
+  assert.equal(resolveFirstCallGate({ reply, artifact: { ...REPAIRABLE, repairable: false } }), 'artifact-failed');
+  assert.equal(resolveFirstCallGate({ reply, artifact: { ok: false, reason: 'claim-absent', message: 'm' } }), 'artifact-failed');
+  assert.equal(resolveFirstCallGate({ reply, artifact: { ok: false, reason: 'missing-run-state', message: 'm', repairable: true } }), 'artifact-failed');
+});
+
+test('resolveFirstCallGate: OUTCOME already-shipped -> already-shipped; build-test-failed -> blocked', () => {
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE', 'already-shipped'), artifact: undefined }), 'already-shipped');
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE', 'build-test-failed'), artifact: undefined }), 'blocked');
+  assert.equal(resolveFirstCallGate({ reply: 'STATUS: DONE\n', artifact: { ok: true } }), 'blocked');
+  // absent artifact on an otherwise clean reply fails closed
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE'), artifact: undefined }), 'artifact-failed');
+});
