@@ -29,6 +29,8 @@ test('docs/donts.md [IL-150] names fs.realpathSync.native', () => {
   assert.equal(il150.length, 1);
   assert.match(il150[0], /fs\.realpathSync\.native/);
   assert.match(il150[0], /realTarget\(\)`'s leaf handling/);
+  assert.doesNotMatch(il150[0], /equality with `canonicalRepoPath` is unchanged/, 'realTarget() no longer injects the JS form (#3495)');
+  assert.match(il150[0], /until #3495 moved both sides of `isPolicyFile`/);
 });
 
 test('docs/incident-log.md IL-150 cites #3380 row 48 as the casing instance', () => {

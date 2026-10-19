@@ -35,7 +35,7 @@ const { runGit, FAILURE } = require('./git-exec');
 const { detectIntegrationModel, resolvePolicyConfig } = require('../policy-schema');
 const { isPathContained, escapeRegExp } = require('../shared-primitives');
 const { hasClaimLogFor } = require('../log-decision/claim-log');
-const { resolveLeaf, canonicalRealpath } = require('../path-guard');
+const { resolveLeaf, canonicalRealpath, lstatType } = require('../path-guard');
 
 function pluginRoot() {
   return process.env.CLAUDE_PLUGIN_ROOT || '${CLAUDE_PLUGIN_ROOT}';
@@ -175,7 +175,7 @@ function isPipelineBookkeeping(repoRoot, targetPath) {
 
 // Resolves a write TARGET the way an already-existing file or symlink chain
 // actually behaves: if something exists at this path, follow it all the way
-// (fs.realpathSync follows every symlink, including the final component) —
+// (realpath follows every symlink, including the final component) —
 // an Edit/Write through a symlink acts on whatever it ultimately points at.
 // If nothing exists there yet (Write creating a brand-new file), there is no
 // leaf to follow: resolve only the parent directory and keep the literal
@@ -209,11 +209,21 @@ function realTarget(targetPath, { fsImpl } = {}) {
 // trivially agree on the forged destination. This side always means
 // "whatever is literally at {relPath}", never wherever a swapped-in symlink
 // currently points.
+//
+// The one refinement (#3495): when the leaf is a REGULAR file (lstat type
+// 'file' — not a symlink, not missing), it is canonicalised too, so its
+// on-disk casing (a policy file stored as `Policy.yml` on a case-insensitive
+// volume) matches what realTarget returns. A symlink leaf or a missing leaf
+// keeps the literal basename — that is the symlink-swap protection.
 function canonicalRepoPath(repoRoot, relPath, { fsImpl } = {}) {
   if (!repoRoot) return null;
   const joined = path.join(repoRoot, relPath);
   const parentReal = canonicalRealpath(path.dirname(joined), { fsImpl });
   if (!parentReal) return null;
+  if (lstatType(joined, { fsImpl }).type === 'file') {
+    const leafReal = canonicalRealpath(joined, { fsImpl });
+    if (leafReal) return leafReal;
+  }
   return path.join(parentReal, path.basename(joined));
 }
 

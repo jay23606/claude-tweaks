@@ -240,6 +240,12 @@ test('isPolicyFile (#3495): a symlink swapped in for policy.yml is still denied 
   assert.equal(isPolicyFile('/Vol/Repo', '/vol/repo/.CLAUDE-TWEAKS/POLICY.yml', { fsImpl }), false);
 });
 
+test('isPolicyFile (#3495): a policy file stored as Policy.yml on disk matches both the literal and a mis-cased spelling', () => {
+  const fsImpl = caseInsensitiveFs({ ...CI_DIRS, '/Vol/Repo/.claude-tweaks/Policy.yml': { type: 'file' } });
+  assert.equal(isPolicyFile('/Vol/Repo', '/Vol/Repo/.claude-tweaks/policy.yml', { fsImpl }), true);
+  assert.equal(isPolicyFile('/Vol/Repo', '/vol/repo/.claude-tweaks/POLICY.YML', { fsImpl }), true);
+});
+
 // ---- installed-plugins.js ---------------------------------------------------
 
 const { selectEntry, safeRealpath, canonicalGitRoot } = require('../../../plugin/bin/lib/installed-plugins');
