@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-18T21:28:19.956Z",
+  "computedAt": "2026-10-19T03:50:15.758Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -95,7 +95,7 @@
       },
       {
         "number": 3497,
-        "updatedAt": "2026-10-18T19:45:57Z",
+        "updatedAt": "2026-10-19T03:45:11Z",
         "state": "OPEN"
       },
       {
@@ -295,7 +295,7 @@
       },
       {
         "number": 3347,
-        "updatedAt": "2026-10-17T09:04:56Z",
+        "updatedAt": "2026-10-18T21:29:49Z",
         "state": "OPEN"
       },
       {
@@ -1379,84 +1379,6 @@
           "risk": "low",
           "size": "medium",
           "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nA multi-spec `/claude-tweaks:flow` run in `auto` or `hybrid` mode sets `MULTISPEC_CURATION_DEFER=1` and `MULTISPEC_REVIEW_DEFER=1` on every spec. Each spec then skips its own Reflect, curation engine and Review Console. All three run once, in a single consolidated pass: the parent `/flow` session runs `plugin/skills/flow/multispec-batch-curation.md` and then `plugin/skills/flow/multispec-review-console.md` after the last spec reaches `wrap-up`. Nothing else performs that deferred work.\n\n**Gap.** The pass can only be re-entered after a Halt. The resume-only step `review-console` (`plugin/skills/flow/steps-and-gates.md` lines 22 and 39, and `multispec-review-console.md`'s \"On stop (option 3)\") is accepted only on a resume after a Halt at the consolidated console. A parent session that ends any other way before the pass runs leaves the run's deferred work unperformed, and nothing offers it again. PR #3484 (#3033) wrote this limit down in `plugin/skills/flow/multi-spec.md`'s `## Mixed execution (a spec built outside /flow)`, in step 3 and the \"Already closed?\" paragraph. The fallback named there, `/claude-tweaks:wrap-up #{n}` once per record, recovers each record's own Reflect, curation and console, but never the run-level batch pass.\n\n**The pass does not need the parent session.** Every input it reads is on disk. `manifest.yml` holds per-spec status. The parent's `decisions.md`, `staged/` and `engine-state.json` hold the run's state. The diff is taken from the merge-base with the integration branch, and the Halt resume already rebuilds the console from the same parent directory. The gap is the Halt-only gate, not lost state.\n\n**Detection exists today but offers no recovery.** `plugin/bin/lib/hooks/session-residue.js`'s `collectStaleRuns` feeds SessionStart's \"unfinished pipeline run(s)\" banner (`plugin/bin/lib/hooks/session-start.js`) and `hooks.js check-session-residue`. For each listed run it names only `close-run`, and `close-run` on an unpassed multi-spec parent permanently forfeits the deferred work. There is one precedent for a per-run recovery suffix: `run-integrity.js`'s `shipped-unclosed` verdict appends a `/claude-tweaks:wrap-up` pointer.\n\n**Real-data audit (2026-10-18).** Of 47 multi-spec run directories under `.claude-tweaks/pipelines/` (live and `archive/`), 13 carry a `console.json` and 23 show no sign of a consolidated pass (no `console.json`, no consolidated-console entry in `decisions.md`). Some of the older ones may predate the console. Example: `archive/2026-09-13T233549-record-2280-2281` was archived with review and polish logged clean and no console entry; its `manifest.yml` still reads `running` for both specs. `2026-08-30T105718-spec-1703-1704` is still unarchived, with both specs `pending`.\n\n**Decision (2026-10-18, brainstorm via `/claude-tweaks:specify #3497`).** Widen `review-console` into the re-entry, so it re-enters the same pass rather than adding a parallel path (#3033's constraint). Cut off at landed or archived runs, where the per-record fallback stays the documented, lossy answer. Have the session-start banner name the re-entry command for eligible runs.\n\n**Related:** #2734, #2869, #2912, #3002, #3047, #3048, #3079, #3263, #3284, #3289, #3295, #3297, #3363, #3377, #3416, #3431, #3442, #3483, #3503, #3511, #3515\n\n## Deliverables\n\n1. **`review-console` accepts a second entry condition, ended-parent re-entry,** besides today's Halt resume. Eligible when all of the following hold:\n   - the parent run directory exists unarchived under `$RUN_ROOT`, with a `manifest.yml`;\n   - its `config.yml` `mode:` is `auto` or `hybrid`;\n   - the parent holds no `console.json`;\n   - no `manifest.yml` spec has status `pending` or `running`;\n   - the run's branch has not landed (`run-integrity.js` does not return `shipped-unclosed`).\n\n   On this entry the batch pass (`multispec-batch-curation.md`) runs first when the parent has no `engine-state.json`. The consolidated console follows, with its normal Shared teardown and `close-run`. An ineligible invocation stops with one message naming the failed condition. When the failed condition is \"landed\" or \"archived\", the message points at the per-record `/claude-tweaks:wrap-up #{n}` fallback.\n2. **The eligibility rule is implemented once,** as a read-only exported helper under `plugin/bin/lib/`. Both the `review-console` entry check and the session-residue banner consume it, so the two cannot drift apart on what counts as re-enterable. The skill prose cites the helper instead of restating the five conditions.\n3. **`collectStaleRuns` appends a re-entry suffix** to an eligible multi-spec parent's line: ` — consolidated pass never ran: /claude-tweaks:flow #{id1},#{id2} review-console`. Ids come from `manifest.yml`'s `specs[].id`. The `shipped-unclosed` line still wins when both apply.\n4. **The prose is updated to match:**\n   - `steps-and-gates.md`'s two `review-console` passages and `multispec-review-console.md` (its \"On stop\" paragraph, plus a new re-entry section) state both entry conditions.\n   - `multi-spec.md`'s Mixed execution step 3 names the re-entry command instead of \"no documented step re-runs the pass\".\n   - The \"Already closed?\" paragraph is scoped to landed or archived runs. It keeps the per-record fallback, documented as never recovering the batch pass.\n\n## Acceptance Criteria\n\n- `steps-and-gates.md` lines 22 and 39 and `multispec-review-console.md` each name both entry conditions (Halt resume, ended-parent re-entry). `multispec-review-console.md` has a re-entry section stating the batch-pass-first rule and the ineligible-stop messages.\n- `git grep -n -i \"no documented step re-runs the pass\\|only re-presents a console after a Halt\" -- plugin/skills` returns nothing.\n- `multi-spec.md`'s Mixed execution step 3 contains `review-console` as the ended-parent path. The \"Already closed?\" paragraph names landed or archived as its scope and still states that the per-record fallback never recovers the run-level batch pass.\n- The new helper has unit tests: eligible, `console.json` present, a spec `running`, a spec `pending`, `mode: interactive`, and no `manifest.yml` each return the expected verdict and reason.\n- `tests/bin-lib/hooks/session-residue.test.js` asserts that an eligible multi-spec parent fixture's line ends with `/claude-tweaks:flow #A,#B review-console`, that each ineligible variant carries no suffix, and that a `shipped-unclosed` fixture keeps the shipped line with no `review-console` suffix.\n- `tests/hooks-session-start.test.js` asserts the suffix reaches the SessionStart banner text.\n- Each new test is shown red by reverting its production change, then green.\n- `npm test` passes in full (raw output quoted).\n\n## Release Note\n\nFinish a multi-spec /flow run's consolidated wrap-up after its parent session ended, with `/claude-tweaks:flow #A,#B review-console`; session start now names that command for such runs.\n\n## Technical Approach\n\nAdd a pure, read-only eligibility function next to the manifest reader. `plugin/bin/lib/flow/manifest.js` already owns `VALID_STATUSES` (`pending`, `running`, `complete`, `failed`, `not-run`) and manifest parsing. The function takes a run directory and returns `{ eligible, reason, specIds }`, and it reuses `run-integrity.js`'s `checkRunIntegrity` for the landed check rather than re-deriving merge state. `session-residue.js`'s `collectStaleRuns` calls it after its existing `shipped-unclosed` branch, inside the same advisory try/catch, so a helper failure never breaks the scan. The `review-console` prose calls the same helper (a `node -e` require or an existing `hooks.js` verb, whichever is the house pattern for a prose-side bin check) before re-entering. On eligible, the run follows the steps `multispec-review-console.md` already defines: step 0 (batch pass) when `engine-state.json` is absent, then Present → approval → Shared teardown.\n\n### Key Files\n\n- `plugin/skills/flow/steps-and-gates.md` — widen the resume-only `review-console` step (lines 22 and 39) to both entry conditions\n- `plugin/skills/flow/multispec-review-console.md` — new re-entry section (eligibility via the helper, batch-pass-first, ineligible messages); \"On stop\" paragraph cross-references it\n- `plugin/skills/flow/multi-spec.md` — Mixed execution step 3 and the \"Already closed?\" paragraph\n- `plugin/skills/flow/multispec-batch-curation.md` — \"When to run the batch pass\" names re-entry as a second trigger\n- `plugin/bin/lib/flow/manifest.js` — new exported read-only eligibility helper\n- `plugin/bin/lib/hooks/session-residue.js` — `collectStaleRuns` appends the re-entry suffix for eligible parents\n- `plugin/bin/lib/hooks/run-integrity.js` — read only; `checkRunIntegrity` reused for the landed check\n- `tests/bin-lib/hooks/session-residue.test.js` — suffix present / absent / shipped-wins cases\n- `tests/hooks-session-start.test.js` — suffix reaches the banner\n- `tests/run-integrity.test.js` — read only, unless the helper's landed check needs a new fixture\n\n## Gotchas\n\n- **Adopt the parent run directory.** `/claude-tweaks:flow {specs} review-console` has to resolve to the parent directory (`multispec-review-console.md`'s \"Locating the parent run directory\"). Otherwise Step 2.8 (`claim-targets.md`) mints a fresh run and contests claims the ended parent still holds. This is the same failure `multi-spec.md`'s Mixed execution step 1 avoids with `PIPELINE_RUN_DIR`.\n- **Stale `running` statuses.** Older runs never updated their manifest (`2280-2281` reads `running` though the specs finished), so they are correctly ineligible. The ineligible message names the blocking spec and the manual `hooks.js spec-status --run … --spec {id} --status complete` correction instead of failing silently.\n- **Banner cap and ownership wording.** The banner shows at most `MAX_REPORTED` (3) runs, so the suffix only reaches those. The banner's existing \"only the session owning a run should close it\" sentence stays as is; the suffix offers a command and never asserts the run is abandoned.\n- **Read-only module.** `session-residue.js` is read-only by contract (header comment), so the helper must not write, append events, or touch git.\n- **Pinned banner text.** `tests/hooks-session-start.test.js` and the conformance suites pin banner and skill prose, so run the full suite, not only the touched files.\n- **What the batch pass seeds from.** It seeds only from completed specs' `/claude-tweaks:review` Key Learnings. Confirm those are read from per-spec run-directory files on disk, not from the parent session's memory, before claiming re-entry is lossless.\n\n## Original request\n\nDecide how a multi-spec run's consolidated pass is re-entered after the parent /flow session has ended\n\nOrigin: ledger resolve gate\n\nDefer-reason: needs-human-decision\n\n## Current State\n\nOpen ledger item 11 of #3033 (PR #3484). A multi-spec `/claude-tweaks:flow` run in `auto` or `hybrid` mode defers every spec's Reflect, curation engine and Review Console to one consolidated pass that the parent `/flow` session runs after the last spec reaches `wrap-up`. That pass is the only thing that performs the deferred work (`plugin/skills/flow/multispec-review-console.md`, `plugin/skills/flow/multispec-batch-curation.md`).\n\nNothing documented re-runs the pass once the parent session has ended. `plugin/skills/flow/steps-and-gates.md` names `review-console` as the only step that re-enters a multi-spec parent run, and only after a Halt. A parent session that ended before the pass ran leaves a run whose deferred work is lost. The new `## Mixed execution (a spec built outside /flow)` section of `plugin/skills/flow/multi-spec.md` states this limit and falls back to `/claude-tweaks:wrap-up #{n}` once per record, which recovers each record's own Reflect, curation and console but never the run-level batch pass.\n\n## Deliverables\n\n- The chosen re-entry (or the chosen decision not to offer one) is implemented and documented where `multi-spec.md`'s Mixed execution step 3 and \"Already closed?\" paragraph now state the limit, and those two passages are updated to match.\n\n## Open Question\n\nShould `/claude-tweaks:flow` gain a step that rebuilds the batch curation pass and the consolidated console from an ended parent run's directory, or is the per-record `/claude-tweaks:wrap-up #{n}` fallback the intended answer, documented as lossy? #3033 rejected a second consolidation path beside `/flow`'s multi-spec console, so a new step has to be a re-entry into that same pass, not a parallel one.\n\n## Release Note\n\nA multi-spec run whose parent session ended before its consolidated wrap-up gets a defined way to finish that wrap-up, or a documented statement that it cannot.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n\n",
-        "createdAt": "2026-10-17T22:53:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3497,
-        "state": "OPEN",
-        "title": "Decide how a multi-spec run's consolidated pass is re-entered after the parent /flow session has ended",
-        "updatedAt": "2026-10-18T19:45:57Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": "standard",
           "solutionUnjustified": false,
           "breaking": false,
           "needsDefinition": false,
@@ -3897,84 +3819,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: dispatch session 2026-10-16/17 (PR #3325 merge, close-out of #3240/#3292)\n\nDefer-reason: tangential\n\n## Current State\n\nA dispatched second-call agent (pr-first, fast-lane bundle #2908/#2918/#2934, PR #3325) composed its `gh pr merge -t/-b` arguments by `eval`-ing `compose-subject.js --shell` output, as `_shared/pr-first-merge.md` Step 3 prescribes. A shell-variable bug leaked literal debug text (`SUBJECT_BODY=...`) and a duplicated body into the squash commit `770e574ea`. The agent then rewrote `main` with `git commit-tree` + `git push --force-with-lease` (new tip `9c9f5e722`).\n\nTree and parent were identical and no other PR merged in between, so no content was lost. But PR #3325's recorded `mergeCommit` now points off-`main` (any merged-PR landed-proof keyed on it now answers wrong) and the rewritten commit carries a different author email.\n\nGaps:\n1. Nothing in `_shared/pr-first-merge.md`, `dispatch/settle-and-merge.md`, or `dispatch/task-prompt.md` forbids force-pushing or otherwise rewriting the integration branch. The only correct response to a botched merge message is to leave it and report it.\n2. Step 3's `eval \"$SUBJECT_EXPORTS\"` then `-t \"$SUBJECT_TITLE\" -b \"$SUBJECT_BODY\"` composition is fragile. Writing the CLI's JSON form to files and passing `--body-file` (used cleanly for the #3240 and #3292 close-out merges) avoids shell interpretation of the body entirely.\n3. `gh pr merge --auto` on this repo also failed with `Protected branch rules not configured for this branch (enablePullRequestAutoMerge)`. Step 3 branch 1's auto-merge-not-enabled signature (`Auto merge is not allowed` / `auto-merge` + `not allowed|not enabled`) does not match that wording, so it falls to branch 5 (ready+comment) instead of the `merge-when-green` wait row.\n\n## Deliverables\n\n- An explicit prohibition, stated once in `_shared/pr-first-merge.md` and cited (not restated) from the dispatch Task templates: never force-push, reset, or rewrite the integration branch; on a malformed merge message, log it and report `DONE_WITH_CONCERNS`.\n- Step 3's merge invocation composes title/body from `compose-subject.js`'s JSON output via files (`-t` from a file read, body via `--body-file`), never `eval` of `--shell` output — every merge fence that cites Step 3 migrated.\n- Step 3 branch 1's signature also matches the `Protected branch rules not configured` wording.\n- Tests pinning all three.\n\n## Acceptance Criteria\n\n- [ ] `_shared/pr-first-merge.md` contains a rule forbidding force-push/rewrite of the integration branch, and `dispatch/task-prompt.md`'s second-call template cites it; a conformance test asserts both.\n- [ ] No merge fence in `plugin/skills/**` uses `eval` of `compose-subject.js --shell` output to build `gh pr merge` arguments; a sweep test asserts it.\n- [ ] Step 3 branch 1's signature classifier routes `GraphQL: Pull request Protected branch rules not configured for this branch (enablePullRequestAutoMerge)` to the auto-merge-not-enabled branch; a test with that literal stderr asserts the routing.\n\n## Release Note\n\nPipeline merges can no longer rewrite the main branch, and a merge commit message can no longer be garbled by shell quoting.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-17T06:33:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3347,
-        "state": "OPEN",
-        "title": "pr-first-merge: forbid rewriting the integration branch and stop eval-composing merge messages",
-        "updatedAt": "2026-10-17T09:04:56Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
