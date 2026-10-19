@@ -30,6 +30,20 @@ const BIN = path.join(__dirname, '..', '..');
 // Merged with `cwd` at each call site; never mutated.
 const EXEC_OPTS = { maxBuffer: 32 * 1024 * 1024, timeout: 30000 };
 
+// Node reports a timeout kill as the generic `Command failed: …`, which reads
+// as a crash and hid #3479's 0.5 s of headroom — so a `killed` rejection is
+// rethrown naming the timeout. Every other rejection (ENOENT for gh-absent,
+// a maxBuffer overflow) passes through unchanged.
+async function execBounded(deps, cmd, args, cwd) {
+  try { return await deps.execFile(cmd, args, { cwd, ...EXEC_OPTS }); } catch (err) {
+    if (err && err.killed === true) {
+      const label = cmd === 'node' ? path.basename(args[0]) : args[0];
+      throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${label} (killed by ${err.signal})`);
+    }
+    throw err;
+  }
+}
+
 // The per-probe outer bound, one level above EXEC_OPTS: a probe that makes no
 // subprocess call at all (a module probe spinning, an fs read on a dead mount)
 // is still bounded. Injectable via deps.probeTimeoutMs for tests.
@@ -591,7 +605,7 @@ function buildProbes(inputs, deps) {
     if (inputs.records.length === 0) throw new Error('records unresolved — no materialized header or manifest found');
   };
   const gh = async (args) => {
-    try { return await deps.execFile('gh', args, { cwd: inputs.worktree, ...EXEC_OPTS }); } catch (err) {
+    try { return await execBounded(deps, 'gh', args, inputs.worktree); } catch (err) {
       if (err && err.code === 'ENOENT') throw new Error('gh-absent');
       throw err;
     }
@@ -599,7 +613,7 @@ function buildProbes(inputs, deps) {
   return {
     state: async () => {
       if (!inputs.base) throw new Error('base unresolved — no merge-base against the integration branch');
-      const { stdout } = await deps.execFile('node', [path.join(BIN, 'wrap-up-state.js'), '--since', String(inputs.base), '--json'], { cwd: inputs.worktree, ...EXEC_OPTS });
+      const { stdout } = await execBounded(deps, 'node', [path.join(BIN, 'wrap-up-state.js'), '--since', String(inputs.base), '--json'], inputs.worktree);
       return JSON.parse(stdout);
     },
     blastRadius: () => deps.computeBlastRadius({ base: inputs.base, integrationBranch: inputs.integrationBranch }, { git }),
@@ -625,7 +639,7 @@ function buildProbes(inputs, deps) {
       // PR (inputs.pr is null there), so this appends nothing and the probe
       // behaves exactly as before this change.
       if (inputs.pr !== null) argv.push('--own-pr', String(inputs.pr));
-      const { stdout } = await deps.execFile('node', argv, { cwd: inputs.worktree, ...EXEC_OPTS });
+      const { stdout } = await execBounded(deps, 'node', argv, inputs.worktree);
       return JSON.parse(stdout);
     },
     pr: async () => {
@@ -690,7 +704,7 @@ function buildProbes(inputs, deps) {
       const records = JSON.parse(stdout);
       if (inputs.policy.workLinks === 'native') {
         if (!records.length) return [];
-        const res = await deps.execFile('node', [path.join(BIN, 'resolve-blockers.js'), records.map((r) => r.number).join(','), ...repoArgs], { cwd: inputs.worktree, ...EXEC_OPTS });
+        const res = await execBounded(deps, 'node', [path.join(BIN, 'resolve-blockers.js'), records.map((r) => r.number).join(','), ...repoArgs], inputs.worktree);
         const byNumber = JSON.parse(res.stdout.trim());
         return records.filter((r) => byNumber[r.number] && byNumber[r.number].blockedBy.includes(closed) && !byNumber[r.number].openBlocker).map(toSummary);
       }
