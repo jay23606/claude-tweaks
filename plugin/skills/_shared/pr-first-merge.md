@@ -286,13 +286,14 @@ merge (capture (a)), so the confirmation itself carries the choice: wait for gre
 
 ## Step 3: Attempt auto-merge, degrading on specific failure signatures
 
-**Creation-time caller:** `tidy/SKILL.md`'s Step 7.5 `pr-first` branch invokes only this step's initial `gh pr merge --auto` call at PR-creation time, with the degrade chain below replaced by leave-unarmed + report — see that step's own text for the full routing.
+**Creation-time caller:** `tidy/SKILL.md`'s Step 7.5 `pr-first` branch invokes only this step's initial compose + `gh pr merge --auto` fences at PR-creation time, with the degrade chain below replaced by leave-unarmed + report — see that step's own text for the full routing.
 
 ```bash
-SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-eval "$SUBJECT_EXPORTS"
-gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash \
-  -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --out-dir "{subject-dir}"
+```
+
+```bash
+gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash -t {title-arg} --body-file "{subject-dir}/body.md"
 ```
 
 `{tag}` is `auto-merge` for the dispatch/headless path (`dispatch/settle-and-merge.md`'s Auto-merge
@@ -312,6 +313,15 @@ closing keywords on a non-default integration branch, where the PR body's keywor
 fire (GitHub only auto-closes from a merge commit's message, or a PR body merged into the
 *default* branch — an explicit merge commit message is what makes closing work on any
 integration branch). `--squash` keeps one conventional commit per PR.
+
+Run each fence as its own Bash call, never chained; if the composer exits non-zero, stop before any
+merge (its stderr names the reason). `{subject-dir}` is a literal path — resolve it once with
+`node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" SUBJECT_DIR=merge-subject-{key}`
+(`{key}` is `{pr-number}` at a pr-first fence, the subject `{issue}` at a local-merge fence; session-scoped,
+`_shared/session-tmp-root.md`) and paste the path inside the printed `SUBJECT_DIR="…"` quotes. `{title-arg}` is the
+composer's one stdout line pasted verbatim — already POSIX single-quoted, so a `$(…)`, backtick, or
+`'` in the title stays inert. Why: the worktree Bash guard refuses `eval` and a `gh` argument computed
+at runtime, and every pr-first merge runs from a worktree session (#3522).
 
 **This call always either arms or performs the merge — `--auto` never blocks or polls.** Classify
 the result:
@@ -336,10 +346,11 @@ the result:
      behavior):
 
      ```bash
-     SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-     eval "$SUBJECT_EXPORTS"
-     gh pr merge {pr-number} --repo {owner}/{repo} --squash \
-       -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+     node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --out-dir "{subject-dir}"
+     ```
+
+     ```bash
+     gh pr merge {pr-number} --repo {owner}/{repo} --squash -t {title-arg} --body-file "{subject-dir}/body.md"
      ```
 
    - under `merge-when-green` or `wait` — do not merge immediately: degrade to Step 2.5's `wait`
