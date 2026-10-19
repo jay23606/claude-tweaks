@@ -76,6 +76,7 @@ function assertLeaveOpenParagraph(text) {
   // The log command.
   has('--step "Leave-open mergeability re-check"', 'log step name');
   has('--text "mergeability: {outcome}"', 'log text shape');
+  has('Escape any `"`, `$`, backtick or `\\` in `{files}` and `{reason}` first', 'log text: git-supplied file names and errors are escaped before the double-quoted --text');
 }
 
 test('AC1.1/AC2.1/AC3.1: execution-and-verification.md carries the leave-open mergeability re-check', () => {
