@@ -10,3 +10,6 @@
 | 6 | build | micro-plan condition excludes tests/ before the prompt-prose carve-out (cosmetic mismatch for tests/skills/x.md) | deferred | Origin: SDD Task 2 review (minor, cosmetic). Files: plugin/skills/build/micro-plan.md. Trigger: next edit to micro-plan.md. |
 | 7 | build | SDD ruling — Task 1 deviation: computeDiffFacts clears isTest on prompt-prose paths, kept local instead of changing shared isTestPath: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
 | 8 | build | SDD ruling — final review: fixed minors 1/3/5 in one wave, left docs/fixtures carve-out and micro-plan rewrap as recorded trade-offs: ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
+| 9 | wrap-up | pr — PR #3678 — this run's own pr-first PR; disposition is Phase 4's merge decision | observation | — |
+| 10 | wrap-up | suite — residue probe skipped via --no-suite; suite state taken from the runner's full pass stamp (tests 13412, pass 13405, fail 0 at f37367154) | observation | — |
+| 11 | wrap-up | prose twins of the prompt-prose directory list (build/micro-plan.md, wrap-up/ceremony-derivation.md) were unpinned against isPromptProsePath (Skills row, prose-code-twin-pin) | fixed | f37367154 (PROMPT_PROSE_DIRS builds the regex; conformance test pins both twins; goes red when a directory is added to the constant). |
