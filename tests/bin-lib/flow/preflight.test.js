@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const MOD = path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'flow', 'preflight');
-const { ADOPTION_NOTES, computeAdoption, parseChecklist, gatherPreflight, LEVER_KEYS, defaultDeps } = require(MOD);
+const { ADOPTION_NOTES, PR_CONFLICT_NOTE, computeAdoption, parseChecklist, gatherPreflight, LEVER_KEYS, defaultDeps } = require(MOD);
 const { execFileSync } = require('child_process');
 
 // A fake main checkout with one run dir under .claude-tweaks/pipelines/.
@@ -497,4 +497,80 @@ test('falsy-but-not-true dispatched value → case 3 (strict === true check)', (
   fs.writeFileSync(path.join(fx.runDir, 'run-state.json'), JSON.stringify({ worktree: '/w/tree', status: 'active', dispatched: 1 }));
   const a2 = computeAdoption({ runDir: fx.runDir, mainRoot: fx.root, cwd: fx.root, deps: deps(fx, NO_SPEC) });
   assert.strictEqual(a2.case, 3, 'number 1 should not match case 2');
+});
+
+// #3014: the pr probe reports mergeability so /flow can warn that CI will not
+// run on a CONFLICTING run PR (GitHub suppresses workflow runs on a dirty one).
+function ghView(extra) {
+  return { state: 'OPEN', isDraft: false, body: PR_BODY, ...extra };
+}
+
+async function prPack(fx, view, overrides = {}, calls = null) {
+  const base = deps(fx);
+  const execFile = (cmd, args, opts) => {
+    if (cmd !== 'gh') return base.execFile(cmd, args, opts);
+    if (calls) calls.push({ cmd, args, opts });
+    return JSON.stringify(view);
+  };
+  return gatherPreflight({ runDir: fx.runDir, steps: ['review'], cwd: fx.root, mainRoot: fx.root, deps: { ...base, execFile, ...overrides } });
+}
+
+test('pr probe: a CONFLICTING PR carries mergeable, mergeStateStatus and the conflict note (#3014)', async () => {
+  const fx = mainRoot();
+  seedCase1(fx);
+  const calls = [];
+  const pack = await prPack(fx, ghView({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' }), {}, calls);
+  const ghCall = calls.find((c) => c.cmd === 'gh');
+  assert.strictEqual(ghCall.args[ghCall.args.indexOf('--json') + 1], 'state,isDraft,body,mergeable,mergeStateStatus');
+  assert.strictEqual(pack.pr.ok, true);
+  assert.strictEqual(pack.pr.value.mergeable, 'CONFLICTING');
+  assert.strictEqual(pack.pr.value.mergeStateStatus, 'DIRTY');
+  assert.strictEqual(pack.pr.value.conflictNote, 'Run PR #1901 is CONFLICTING with main — CI will not run on it until the conflict is resolved.');
+  assert.strictEqual(pack.pr.value.conflictNote, PR_CONFLICT_NOTE.replace('{n}', '1901').replace('{integration branch}', 'main'));
+  // existing keys untouched
+  assert.strictEqual(pack.pr.value.number, 1901);
+  assert.strictEqual(pack.pr.value.branch, 'feat-branch');
+  assert.strictEqual(pack.pr.value.state, 'OPEN');
+  assert.strictEqual(pack.pr.value.isDraft, false);
+  assert.strictEqual(pack.pr.value.checklist.length, 5);
+});
+
+test('pr probe: a gh response omitting both fields yields nulls and ok: true (#3014)', async () => {
+  const fx = mainRoot();
+  seedCase1(fx);
+  const pack = await prPack(fx, { state: 'OPEN', isDraft: true, body: PR_BODY });
+  assert.strictEqual(pack.pr.ok, true);
+  assert.strictEqual(pack.pr.value.mergeable, null);
+  assert.strictEqual(pack.pr.value.mergeStateStatus, null);
+  assert.strictEqual(pack.pr.value.conflictNote, null);
+});
+
+test('pr probe: MERGEABLE, UNKNOWN, a non-string mergeable, and DIRTY-with-MERGEABLE all produce no conflict note (#3014)', async () => {
+  for (const extra of [
+    { mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' },
+    { mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' },
+    { mergeable: 7, mergeStateStatus: null },
+    { mergeable: 'MERGEABLE', mergeStateStatus: 'DIRTY' },
+  ]) {
+    const fx = mainRoot();
+    seedCase1(fx);
+    const pack = await prPack(fx, ghView(extra));
+    assert.strictEqual(pack.pr.ok, true, JSON.stringify(extra));
+    assert.strictEqual(pack.pr.value.conflictNote, null, JSON.stringify(extra));
+    if (typeof extra.mergeable !== 'string') assert.strictEqual(pack.pr.value.mergeable, null);
+  }
+});
+
+test('pr probe: the conflict note names the resolved integration branch, falling back to main (#3014)', async () => {
+  const conflicting = ghView({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' });
+  const withIb = (entry) => ({ resolvePolicy: (keys) => Object.fromEntries(keys.map((k) => [k, k === 'integration-branch' ? entry : { value: 'x', source: 'default' }])) });
+  const fx = mainRoot();
+  seedCase1(fx);
+  const develop = await prPack(fx, conflicting, withIb({ value: 'develop', source: 'policy' }));
+  assert.match(develop.pr.value.conflictNote, /with develop —/);
+  const unresolved = await prPack(fx, conflicting, withIb({ error: 'unknown-key' }));
+  assert.match(unresolved.pr.value.conflictNote, /with main —/);
+  const throwing = await prPack(fx, conflicting, { resolvePolicy: () => { throw new Error('policy exploded'); } });
+  assert.strictEqual(throwing.pr.ok, true, 'a policy failure must not cost the PR fact');
+  assert.match(throwing.pr.value.conflictNote, /with main —/);
 });

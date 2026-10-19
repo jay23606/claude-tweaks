@@ -51,6 +51,12 @@ const ADOPTION_NOTES = Object.freeze({
 const CASE3_PLACEHOLDER = '{worktree registration | PR-early lifecycle | materialize commit}';
 const CASE4_PLACEHOLDER = '{does not exist | is not anchored to the main checkout}';
 
+// The CONFLICTING-run-PR note (#3014): GitHub suppresses workflow runs on a
+// PR whose merge state is dirty, so a conflicted run PR gets no CI until it is
+// resolved. The pr probe fills `{n}` / `{integration branch}` into
+// pr.value.conflictNote; the flow skill prose renders the literal verbatim.
+const PR_CONFLICT_NOTE = 'Run PR #{n} is CONFLICTING with {integration branch} — CI will not run on it until the conflict is resolved.';
+
 function defaultDeps(cwd) {
   const execFileAsync = promisify(execFileCb);
   return {
@@ -231,6 +237,10 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
     if (!policyMemo.ok) throw policyMemo.err;
     return policyMemo.value;
   };
+  const integrationBranch = () => {
+    const ib = policy()['integration-branch'];
+    return ib && ib.value ? String(ib.value) : 'main';
+  };
   return {
     freshness: () => {
       const r = deps.checkResumeFreshness(runDirReal, { sessionId: deps.sessionId || null });
@@ -281,18 +291,25 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
     pr: async () => {
       if (!state || !state.pr || !state.pr.number) return null;
       let raw;
-      try { raw = await exec('gh', ['pr', 'view', String(state.pr.number), '--json', 'state,isDraft,body'], { cwd: mainRoot }); } catch (err) {
+      try { raw = await exec('gh', ['pr', 'view', String(state.pr.number), '--json', 'state,isDraft,body,mergeable,mergeStateStatus'], { cwd: mainRoot }); } catch (err) {
         if (err && err.code === 'ENOENT') throw new Error('gh-absent');
         throw err;
       }
       const view = JSON.parse(raw);
-      return { number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body) };
+      const mergeable = typeof view.mergeable === 'string' ? view.mergeable : null;
+      const mergeStateStatus = typeof view.mergeStateStatus === 'string' ? view.mergeStateStatus : null;
+      let conflictNote = null;
+      if (mergeable === 'CONFLICTING') {
+        // A policy-resolution failure must not cost the PR fact: fall back to main.
+        let branch;
+        try { branch = integrationBranch(); } catch { branch = 'main'; }
+        conflictNote = PR_CONFLICT_NOTE.replace('{n}', String(state.pr.number)).replace('{integration branch}', branch);
+      }
+      return { number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body), mergeable, mergeStateStatus, conflictNote };
     },
     stamp: async () => JSON.parse(await exec('node', [VERIFY_JS, '--stamp-status'], { cwd: worktreeCwd })),
     changedFiles: async () => {
-      const ib = policy()['integration-branch'];
-      const branch = ib && ib.value ? String(ib.value) : 'main';
-      return JSON.parse(await exec('node', [VERIFY_JS, '--changed-files', '--integration-branch', branch], { cwd: worktreeCwd }));
+      return JSON.parse(await exec('node', [VERIFY_JS, '--changed-files', '--integration-branch', integrationBranch()], { cwd: worktreeCwd }));
     },
   };
 }
@@ -324,4 +341,4 @@ async function gatherPreflight({ runDir, steps = [], cwd = process.cwd(), mainRo
   return pack;
 }
 
-module.exports = { ADOPTION_NOTES, LEVER_KEYS, computeAdoption, parseChecklist, gatherPreflight, defaultDeps };
+module.exports = { ADOPTION_NOTES, PR_CONFLICT_NOTE, LEVER_KEYS, computeAdoption, parseChecklist, gatherPreflight, defaultDeps };
