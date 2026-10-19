@@ -144,6 +144,46 @@ test('a body edit between the Resolved date and a later comment re-edit re-opens
   assert.deepStrictEqual(result.changes, [{ kind: 'body', at: '2026-10-21T09:00:00Z' }]);
 });
 
+test('east of UTC: a Resolved date past the real resolution instant does not hide a later label change', () => {
+  // Resolved 22:30Z = 00:30 CEST, so the line is dated 2026-10-20; the comment's lastEditedAt
+  // is the real resolution instant and the min picks it over start-of-day.
+  const comment = { ...fixture().comments[0], body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-10-20'), lastEditedAt: '2026-10-19T22:30:00Z' };
+  const result = evaluateResolvedRefusal(fixture({
+    comments: [comment],
+    labelEvents: [{ action: 'labeled', label: 'risk:high', createdAt: '2026-10-19T23:00:00Z' }],
+  }));
+  assert.strictEqual(result.resolvedAt, '2026-10-19T22:30:00Z');
+  assert.strictEqual(result.suppress, false);
+  assert.strictEqual(result.reason, 'changed-since-resolution');
+  assert.deepStrictEqual(result.changes, [{ kind: 'label', label: 'risk:high', action: 'labeled', at: '2026-10-19T23:00:00Z' }]);
+});
+
+test('a future-dated Resolved typo does not hide a later body edit', () => {
+  const comment = { ...fixture().comments[0], body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-12-19'), lastEditedAt: '2026-10-19T03:38:54Z' };
+  const result = evaluateResolvedRefusal(fixture({
+    comments: [comment],
+    bodyLastEditedAt: '2026-11-05T09:00:00Z',
+  }));
+  assert.strictEqual(result.resolvedAt, '2026-10-19T03:38:54Z');
+  assert.strictEqual(result.suppress, false);
+  assert.strictEqual(result.reason, 'changed-since-resolution');
+  assert.deepStrictEqual(result.changes, [{ kind: 'body', at: '2026-11-05T09:00:00Z' }]);
+});
+
+test('a Resolved marker line that does not parse is resolved-unparseable, not latest-unresolved', () => {
+  const bodies = [
+    '**Resolved:** keep - 2026-10-19\n\n<!-- needs-decision: backlog-refine -->',
+    '**Resolved:** keep — 2026-10-19 (approved)\n\n<!-- needs-decision: backlog-refine -->',
+    '**Resolved:** keep — 2026-10-19T03:38:54Z\n\n<!-- needs-decision: backlog-refine -->',
+  ];
+  for (const body of bodies) {
+    const result = evaluateResolvedRefusal(fixture({ comments: [{ ...fixture().comments[0], body }] }));
+    assert.strictEqual(result.suppress, false, body);
+    assert.strictEqual(result.reason, 'resolved-unparseable', body);
+    assert.strictEqual(result.annotation, null, body);
+  }
+});
+
 test('a non-round-tripping Resolved date is evidence-unavailable, not suppressed', () => {
   for (const date of ['2026-13-45', '2026-02-30']) {
     const body = `**Resolved:** keep — ${date}\n\n<!-- needs-decision: backlog-refine -->`;

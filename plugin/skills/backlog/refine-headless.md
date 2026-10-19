@@ -493,14 +493,14 @@ AUTO {time} — Backlog grant: not re-asked #{n} — refusal resolved {choice} o
 AUTO {time} — Backlog grant: skipped #{n} — {failedKey}: {reason}.
 ```
 
-Every grant, every needs-decision stamp, and every skip gets exactly one line — "no silent outcome
+Every grant, every needs-decision stamp, every not-re-asked outcome, and every skip gets exactly one line — "no silent outcome
 in either direction" is this record's own Deliverables wording, not a stylistic preference.
 
 ## Step 5: Report
 
 No `AskUserQuestion` for any individual decision — this posture's entire point is that the gate
 chain, not a human, decides. At the end, render a short summary (record count granted /
-re-authorized / needs-decision / skipped, with skip reasons grouped by `failedKey`) and the Next Actions block
+re-authorized / needs-decision / not re-asked / skipped, with skip reasons grouped by `failedKey`) and the Next Actions block
 from `SKILL.md` (rendered only when a human is present — see that file's Next Actions section
 and Component-Skill Contract).
 

@@ -75,9 +75,11 @@ grant-decision question and the same resolver (`refine-record.md`) resolves eith
   (`#{n} — refusal resolved {choice} on {date}; not re-asked`) as a bare line under the caller's
   Needs-decision heading, the same placement as the Non-empty bullet. Write nothing this run.
 - **`suppress: false`** — lane/apply a fresh row, as the Empty bullet did before this check. The
-  `reason` says why: `no-decision-comment`, `latest-unresolved`, `choice-not-suppressing`,
-  `changed-since-resolution` (a body or label change at or after the resolution instant, which is the
-  start of the `**Resolved:**` date in UTC), or `evidence-unavailable`.
+  `reason` says why: `no-decision-comment`, `latest-unresolved`, `resolved-unparseable` (the latest
+  comment carries a `**Resolved:**` line that does not parse), `choice-not-suppressing`,
+  `changed-since-resolution` (a body or label change after the resolution instant, which is the earlier
+  of the `**Resolved:**` date's UTC start of day and the decision comment's last edit), or
+  `evidence-unavailable`.
 - **Non-zero exit** (`1`: gh or GraphQL failed, or no such issue; `2`: malformed invocation, gh absent,
   or repo unresolvable) — the **Query failed** bullet above, fail closed. Gh-absent has no MCP
   fallback for this read (`_shared/forge-detection.md` check 2; `backlog/mcp-transport.md` covers no

@@ -9,11 +9,16 @@
 // Both grant-decision units count — `backlog-refine` (human-present) and
 // `backlog-grant` (headless) post the identical question and resolve through the
 // same resolver, so the headless path would otherwise re-stamp every incident
-// record. Resolution time is always the start of the `**Resolved:**` line's date
-// (`{date}T00:00:00Z`), never the decision comment's `lastEditedAt`: a later re-edit
-// of the comment would move that forward and mask changes made in between. The
-// start-of-day choice is conservative — a same-day change before the resolution
-// re-asks once. Change evidence is the issue `lastEditedAt` (body edits) and
+// record. Resolution time is the earlier of the start of the `**Resolved:**` line's
+// date (`{date}T00:00:00Z`) and the decision comment's `lastEditedAt`; the date alone
+// when `lastEditedAt` is absent or unparseable. The comment is edited to add the line,
+// so `lastEditedAt` is at or after the real resolution, and taking the min only ever
+// moves the instant earlier, never later. The date alone can land later than the real
+// resolution (a date east of UTC, or a future-dated typo) and would hide changes made
+// in between; `lastEditedAt` alone would drift forward on a later re-edit of the
+// comment and hide them the same way, so neither is used by itself. A same-day change
+// before the resolution re-asks once (start of day is earlier than the real instant).
+// Change evidence is the issue `lastEditedAt` (body edits) and
 // LABELED/UNLABELED timeline events; `needs:decision` events are the resolver's own
 // bookkeeping and are not changes. A timeline event whose `createdAt` does not parse
 // is missing evidence, so the evaluator fails closed on it. `gh issue view --json` exposes neither field, hence GraphQL, and the
@@ -29,6 +34,7 @@ const SUPPRESSING_CHOICES = ['keep', 'build it myself'];
 
 const DECISION_MARKER_RE = new RegExp(`^<!-- needs-decision: (${GRANT_DECISION_UNITS.join('|')}) -->`, 'm');
 const RESOLVED_LINE_RE = /^\*\*Resolved:\*\* (.+?) — (\d{4}-\d{2}-\d{2})[ \t]*$/m;
+const RESOLVED_MARKER = '**Resolved:**';
 const RESOLVER_LABEL = 'needs:decision';
 
 // {choice, date} from the first `**Resolved:** {choice} — {date}` line, or null.
@@ -76,7 +82,12 @@ function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEven
   if (latest === null) return { ...base, reason: 'no-decision-comment' };
 
   const resolved = parseResolvedLine(latest.body);
-  if (resolved === null) return { ...base, reason: 'latest-unresolved' };
+  if (resolved === null) {
+    // A marker line that exists but does not parse (ASCII hyphen, trailing text, a timestamp
+    // after the date) is a malformed resolution, not an unanswered question.
+    const malformed = (latest.body || '').includes(RESOLVED_MARKER);
+    return { ...base, reason: malformed ? 'resolved-unparseable' : 'latest-unresolved' };
+  }
   base.choice = resolved.choice;
   base.date = resolved.date;
 
@@ -90,8 +101,13 @@ function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEven
     return { ...base, reason: 'evidence-unavailable' };
   }
 
-  const resolvedAt = `${resolved.date}T00:00:00Z`;
-  const resolvedMs = timeOf(resolvedAt);
+  // The earlier of the Resolved date's start of day and the decision comment's last edit
+  // (see the header): `lastEditedAt` is at or after the real resolution, so the min only
+  // ever moves resolvedAt earlier.
+  const startOfDayMs = timeOf(`${resolved.date}T00:00:00Z`);
+  const editedMs = timeOf(latest.lastEditedAt);
+  const resolvedMs = Number.isNaN(editedMs) ? startOfDayMs : Math.min(startOfDayMs, editedMs);
+  const resolvedAt = new Date(resolvedMs).toISOString().replace('.000Z', 'Z');
   base.resolvedAt = resolvedAt;
 
   const changes = [];

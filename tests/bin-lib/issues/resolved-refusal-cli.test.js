@@ -121,6 +121,20 @@ test('exit 2 on an unknown flag', () => {
   assert.deepStrictEqual(out.runner, []);
 });
 
+test('exit 2 on a trailing bare --repo with no value', () => {
+  const { deps, out } = fakeDeps();
+  assert.strictEqual(run(['3214', '--repo'], deps), 2);
+  assert.match(out.stderr.join(''), /missing value for --repo/);
+  assert.deepStrictEqual(out.runner, []);
+});
+
+test("exit 2 on --repo '' (empty-string value)", () => {
+  const { deps, out } = fakeDeps();
+  assert.strictEqual(run(['3214', '--repo', ''], deps), 2);
+  assert.match(out.stderr.join(''), /missing value for --repo/);
+  assert.deepStrictEqual(out.runner, []);
+});
+
 test('exit 2 when gh is absent', () => {
   const { deps, out } = fakeDeps({ ghAvailable: () => false });
   assert.strictEqual(run(['3214'], deps), 2);
