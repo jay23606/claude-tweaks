@@ -25,7 +25,7 @@ test('Step 1 greps the quoted refusal under the plugin\'s bin/ before naming a p
 });
 
 test('No match attributes to the harness guard and routes to scratch-worktree §7, never a hook defect', () => {
-  assert.ok(/harness/i.test(step1), 'must attribute an unmatched refusal to the harness');
+  assert.ok(step1.includes('Claude Code harness worktree guard'), 'must attribute an unmatched refusal to the Claude Code harness worktree guard');
   assert.ok(step1.includes('_shared/scratch-worktree.md'), 'must route to _shared/scratch-worktree.md');
   assert.ok(/§7|## 7\. Shell constraint/.test(step1), 'must cite §7 (Shell constraint)');
   assert.ok(/never[^.]*hook defect/i.test(step1), 'must state the harness finding is never a hook defect');
@@ -45,6 +45,11 @@ test('Greps the reason clause, not the frame the plugin\'s own hooks recognize',
   assert.ok(step1.includes('Refusing to run it'), 'must name the refusal frame it must not grep');
   assert.ok(/reason clause/i.test(step1), 'must instruct grepping the reason clause');
   assert.ok(/post-tool-use-failure/.test(step1), 'must name the post-tool-use-failure hook that quotes the frame');
+});
+
+test('A match on a non-prefixed string is read, and a line that only quotes the refusal counts as no match', () => {
+  assert.ok(step1.includes('A match on any other string: read the hit'), 'must instruct reading a non-prefixed hit');
+  assert.ok(/only quotes or recognizes the refusal/.test(step1), 'must treat a quoting/recognizing line as no match');
 });
 
 test('Warns that a fragment containing git trips the guard itself', () => {
