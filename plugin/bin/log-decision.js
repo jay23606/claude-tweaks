@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // bin/log-decision.js — append one _shared/auto-decision-log.md entry to a run's decisions.md.
 //   node bin/log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." \
-//     [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a] [--lever "<k>=<v> (<source>)"] \
+//     [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a[" (qualifier)"]] [--lever "<k>=<v> (<source>)"] \
 //     [--section "/<skill>"] [--help]
 // Exit 0 appended (entry echoed to stdout); 2 malformed invocation; 3 run dir missing or not
 // anchored under the main checkout (a worktree-local shadow — _shared/pipeline-run-dir.md).
@@ -10,8 +10,9 @@
 
 const { STATUSES, formatEntry, resolveTarget, appendEntry } = require('./lib/log-decision/append');
 
-const USAGE = 'usage: log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a] [--lever "<k>=<v> (<source>)"] [--section "/<skill>"] [--help]\n';
+const USAGE = 'usage: log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a[" (qualifier)"]] [--lever "<k>=<v> (<source>)"] [--section "/<skill>"] [--help]\n';
 const REVERSIBILITY = ['high', 'med', 'low', 'n/a'];
+const REVERSIBILITY_RE = /^(high|med|low|n\/a)(\s+\(.+\))?$/;
 
 function parseArgs(argv) {
   const o = { run: null, status: null, text: null, spec: null, step: null, reversibility: 'n/a', lever: null, section: null, help: false };
@@ -48,7 +49,8 @@ function run(argv, deps = realDeps) {
   if (!o.run) return usageError('--run <run-dir> is required');
   if (!STATUSES.includes(o.status)) return usageError(`--status must be one of ${STATUSES.join('|')}`);
   if (!o.text || !String(o.text).trim()) return usageError('--text is required');
-  if (!REVERSIBILITY.includes(o.reversibility)) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}`);
+  const reversibilityMatch = REVERSIBILITY_RE.exec(String(o.reversibility));
+  if (!reversibilityMatch || !REVERSIBILITY.includes(reversibilityMatch[1])) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`);
   if (o.spec !== null && !/^\d+$/.test(String(o.spec))) return usageError('--spec must be a record number');
   let target;
   try { target = resolveTarget({ runDir: o.run, cwd: deps.cwd(), mainRoot: deps.mainRoot }); } catch (err) { deps.stderr(`log-decision.js: ${err && err.message}\n`); return 3; }
