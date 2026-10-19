@@ -21,6 +21,13 @@ test('a cell already containing a literal \\| round-trips unchanged', () => {
 });
 
 test('escapeLedgerCell / unescapeLedgerCell are inverses on pipe-free and pipe-bearing text', () => {
-  for (const s of ['plain', 'a|b', '|lead', 'trail|', 'a||b']) assert.strictEqual(unescapeLedgerCell(escapeLedgerCell(s)), s);
+  for (const s of ['plain', 'a|b', '|lead', 'trail|', 'a||b', 'a\\', 'a\\|b']) assert.strictEqual(unescapeLedgerCell(escapeLedgerCell(s)), s);
   assert.strictEqual(escapeLedgerCell('a|b'), String.raw`a\|b`);
+});
+
+test('a cell whose original text ends in a backslash round-trips through a padded full row', () => {
+  const original = 'ends in a backslash\\';
+  const row = `| 4 | build | ${escapeLedgerCell(original)} | open | — |`;
+  assert.strictEqual(splitLedgerRow(row).length, 7);
+  assert.deepStrictEqual(ledgerRowCells(row), ['4', 'build', original, 'open', '—']);
 });

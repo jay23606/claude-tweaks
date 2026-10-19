@@ -829,6 +829,17 @@ test('AC1.1: parseLedger reads a row whose Item carries an escaped pipe as 5 col
   assert.strictEqual(r.missingDeferReason, 0);
 });
 
+test('parseLedger reads an escaped pipe in the Resolution cell without losing the Defer-reason', () => {
+  const text = [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    String.raw`| 1 | build | split work | deferred | Defer-reason: genuinely-larger; see a\|b |`,
+  ].join('\n');
+  const r = parseLedger(text);
+  assert.strictEqual(r.total, 1);
+  assert.strictEqual(r.missingDeferReason, 0);
+  assert.strictEqual(r.unrecognized, 0);
+});
+
 test('AC1.1: deferredUnstagedItems are qualified by the counted file across multiple ledgers (#3327)', async () => {
   const { pack } = await probeLedgers({
     '2026-09-05-a-ledger.md': ['| 2 | build | a | deferred | — |', '| 3 | build | b | deferred | → #900 |'],

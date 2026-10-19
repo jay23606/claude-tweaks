@@ -115,7 +115,8 @@ function flipLedgerRow(text, { item, status, resolution }) {
     throw new Error(`ledger row for item #${item} does not have the expected 5-column shape — a raw \`|\` inside a cell must be written \`\\|\` (_shared/ledger-format.md's Format section)`);
   }
   cells[4] = ` ${status} `;
-  cells[5] = ` ${escapeLedgerCell(String(resolution || '').trim()) || '—'} `;
+  // Line breaks collapse to one space: a raw newline would split the row across lines.
+  cells[5] = ` ${escapeLedgerCell(String(resolution || '').replace(/\s*\r?\n\s*/g, ' ').trim()) || '—'} `;
   table.rows.set(key, cells.join('|'));
   return serializeLedgerTable(table);
 }

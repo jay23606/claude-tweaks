@@ -20,6 +20,7 @@ const RULE_RE = /\*\*A `\|` inside a cell is written `\\\|`\.\*\*/;
 // go-red control runs it on a copy of ledger-format.md with the rule removed.
 function assertRuleSites({ format, ledgerSkill, routing, dispatch }) {
   assert.match(format, RULE_RE, 'ledger-format.md Format section must state the pipe rule');
+  assert.equal(format.match(new RegExp(RULE_RE.source, 'g')).length, 1, 'ledger-format.md must state the pipe rule exactly once');
   for (const name of ['ledger-cells.js', 'escapeLedgerCell', 'splitLedgerRow', 'ledgerRowCells', 'flipLedgerRow']) {
     assert.ok(format.includes(name), `pipe rule paragraph must name ${name}`);
   }
@@ -54,5 +55,22 @@ test('AC1.1 go-red control: the shared helper throws when the rule paragraph is 
       dispatch: read('plugin/skills/build/dispatch.md'),
     }),
     { name: 'AssertionError' },
+  );
+});
+
+test('AC1.1 go-red control: the shared helper throws when the citation sentence is removed from a copy of review/step3-routing.md', () => {
+  const routing = read('plugin/skills/review/step3-routing.md');
+  const sentence = ` A finding whose text quotes a \`|\` is escaped per ${CITE} before its row is appended.`;
+  assert.ok(routing.includes(sentence), 'control needs the citation sentence present in the real file to remove it');
+  const mutated = routing.replace(sentence, '');
+  assert.notEqual(mutated, routing);
+  assert.throws(
+    () => assertRuleSites({
+      format: read('plugin/skills/_shared/ledger-format.md'),
+      ledgerSkill: read('plugin/skills/ledger/SKILL.md'),
+      routing: mutated,
+      dispatch: read('plugin/skills/build/dispatch.md'),
+    }),
+    { name: 'AssertionError', message: /review\/step3-routing\.md must cite/ },
   );
 });
