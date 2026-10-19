@@ -469,6 +469,8 @@ async function main() {
   // signal to read (`planRetry` already returns `retry: false` for an empty
   // allowlist, so gating classification on `flaky.files.length > 0` only
   // ever suppressed the decision, never changed whether a retry could run).
+  // Checks run in --cwd, so their logs' absolute frames sit under it, not under process.cwd().
+  const logCwd = parsed.cwd || process.cwd();
   const retryHook = async (result, ctx) => {
     if (!decl) return result;
     // `result.name === 'tests'` is belt-and-braces here: the --cmd-vs-
@@ -480,8 +482,8 @@ async function main() {
     try { text = fs.readFileSync(result.logPath, 'utf8'); } catch { return { ...result, retryDecision: { retry: false, reason: 'unreadable-log' } }; }
     const plain = stripAnsi(text);
     const family = sniffFamily(plain);
-    const failingFiles = extractFailingFiles(plain, family);
-    const unattributedCount = unattributedFailureCount(plain, family);
+    const failingFiles = extractFailingFiles(plain, family, { cwd: logCwd });
+    const unattributedCount = unattributedFailureCount(plain, family, { cwd: logCwd });
     const plan = planRetry({
       failingFiles, flaky: decl.flaky, retry: decl.retry, suite: result.name, unattributedCount, family,
     });
@@ -576,10 +578,10 @@ async function main() {
       try { text = fs.readFileSync(check.logPath, 'utf8'); } catch { noParse = true; continue; }
       const plain = stripAnsi(text);
       const family = sniffFamily(plain);
-      const checkFiles = extractFailingFiles(plain, family);
+      const checkFiles = extractFailingFiles(plain, family, { cwd: logCwd });
       if (checkFiles.length === 0) { noParse = true; continue; }
       allFailingFiles.push(...checkFiles);
-      const unattributedCount = unattributedFailureCount(plain, family);
+      const unattributedCount = unattributedFailureCount(plain, family, { cwd: logCwd });
       if (unattributedCount === null) noGuardFamily = noGuardFamily ?? family;
       else unattributedTotal += unattributedCount;
       // Node reports a runner-level error beside a failing test only as this log line (baseline.js).

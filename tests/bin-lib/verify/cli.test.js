@@ -1780,6 +1780,17 @@ test('AC1.4 preExisting: a fully accounted spec log whose covered failing file a
   await assertPreExistingRefused(log, 'runner-error');
 });
 
+test('preExisting: log frames are relativized against --cwd, not the process cwd — an absolute frame under the checkout still matches the allowlist (#3481)', async () => {
+  const r = preExistingRepo();
+  const tap = ['not ok 1 - a known pre-existing failure', '  ---', '  stack: |-', `    at TestContext.<anonymous> (${r.repo}/tests/known-shallow.test.js:12:5)`, '  ...', '# tests 1', '# pass 0', '# fail 1'].join('\n');
+  fs.writeFileSync(path.join(r.repo, 'fail.js'), `process.stdout.write(${JSON.stringify(tap)} + '\\n'); process.exit(1);\n`);
+  const sub = path.join(r.repo, 'sub');
+  fs.mkdirSync(sub);
+  const { code, stdout, stderr } = await runCli([...r.args, '--cwd', r.repo], { cwd: sub });
+  assert.strictEqual(code, 0, stdout + stderr);
+  assert.match(stdout, /Pre-existing: adjudicated — 1 failing file\(s\) covered by the declared preExisting allowlist: tests\/known-shallow\.test\.js/);
+});
+
 // #1928 AC1: the runner is the mechanical source of the verify event.
 function anchoredRunDir(repo) {
   const dir = path.join(repo, '.claude-tweaks', 'pipelines', '2026-09-06T100000-record-7');
