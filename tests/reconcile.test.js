@@ -919,6 +919,50 @@ test('reconcile: no network / no remote resolves to no-remote, never crashes (AC
   assert.deepStrictEqual(r.skipped, [{ check: 'all', reason: 'no-remote' }]);
 });
 
+// #3503 F5: index.js hands archiveMerged's `unclosed` through to result.runs. A
+// real reconcile() pass over a merged PR that leaves 3311 unclosed (its issue is
+// OPEN) must report the skip with the record list, not just the reason.
+test('reconcile: an archive merged-partial skip carries unclosed through to result.runs (#3503)', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ct-recon-partial-')));
+  git(['init', '-q', '--initial-branch=main'], root);
+  git(['config', 'user.email', 'test@example.com'], root);
+  git(['config', 'user.name', 'Test'], root);
+  fs.writeFileSync(path.join(root, 'a.txt'), 'one\n');
+  git(['add', 'a.txt'], root);
+  git(['commit', '-q', '-m', 'seed'], root);
+  git(['branch', 'feat-partial'], root);
+  git(['remote', 'add', 'origin', 'git@github.com:acme/w.git'], root);
+  fs.mkdirSync(path.join(root, '.claude-tweaks'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.claude-tweaks', 'policy.yml'), 'integration-branch: main\n');
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', '2026-10-17T062549-spec-3306-3311');
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'config.yml'), 'x: 1\n');
+  fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({ resolved: true }));
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify({
+    status: 'active', worktree: path.join(root, '.claude', 'worktrees', 'gone'), pr: { number: 3503100, branch: 'feat-partial' },
+  }));
+  const pr = {
+    number: 3503100, state: 'MERGED', mergedAt: '2026-10-19T00:00:00Z', updatedAt: '2026-10-19T00:00:00Z',
+    closingIssuesReferences: [{ number: 3306, repository: { name: 'w', owner: { login: 'acme' } } }],
+  };
+  const wrapperDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-recon-partial-gh-'));
+  fs.writeFileSync(path.join(wrapperDir, 'gh'), [
+    '#!/bin/sh',
+    'if [ "$1" = "issue" ]; then echo \'{"state":"OPEN"}\'; exit 0; fi',
+    `cat <<'EOF'\n${JSON.stringify(pr)}\nEOF`,
+    '',
+  ].join('\n'), { mode: 0o755 });
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${wrapperDir}${path.delimiter}${originalPath}`;
+  let r;
+  try {
+    r = await reconcile({ cwd: root, checks: ['archive'], resolveIntegrationModel: () => 'pr-first' });
+  } finally {
+    process.env.PATH = originalPath;
+  }
+  assert.deepStrictEqual(r.runs, [{ runDir, action: 'skipped', reason: 'merged-partial', unclosed: [3311] }]);
+});
+
 // #3132: a fresh clone in a cloud/Routine sandbox has no local
 // refs/remotes/origin/HEAD. A plain `git clone` normally sets it, so the
 // fixture deletes it explicitly — a fixture that merely clones would pass

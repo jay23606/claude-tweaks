@@ -323,10 +323,13 @@ function unclosedRecords(prState, records, repoSlug) {
 }
 
 // A run's PR state + its console state -> what to do. Pure — no I/O.
-//   { action: 'archive' } | { action: 'skip', reason }
+//   { action: 'archive' } | { action: 'skip', reason, unclosed? }
 // `recordCheck` (#3503) is `{ records, repoSlug }`: a merged PR archives only
 // when it closes every one of the run's records. Absent, or with no records,
 // it is ignored and the decision is byte-identical to the pre-#3503 table.
+// `unclosed` (ascending record numbers) rides on a `merged-partial` skip only.
+// That skip is the gate's first word, not the last: the callers settle it with
+// `settleMergedPartial` below (issue-state probe, empty-linkage fallback).
 // #1732: the actual decision logic — classifyRunDir's 'merged' branch calls
 // this directly (a `Core` suffix, not a class of its own, since it has no
 // TTL of its own to own — only the mtime/recency kinds do), and so does
@@ -362,6 +365,7 @@ function decideArchiveCore(prState, consoleState, hasStagedPending, recordCheck)
     return { action: 'skip', reason: 'console-never-rendered' };
   }
   if (!recordCheck || !recordCheck.records || recordCheck.records.length === 0) return { action: 'archive' };
+  if (!recordCheck.repoSlug) return { action: 'skip', reason: 'no-repo-slug' };
   const unclosed = unclosedRecords(prState, recordCheck.records, recordCheck.repoSlug);
   if (unclosed === undefined) return { action: 'skip', reason: 'closing-issues-unknown' };
   if (unclosed.length > 0) return { action: 'skip', reason: 'merged-partial', unclosed };
@@ -845,6 +849,18 @@ function runRecordSet(dir) {
     ids.push(n);
   }
   return [...new Set(ids)];
+}
+
+// #3503: the manifest spec ids this run still has `pending` or `running`, as
+// integers (any id that is not a positive-integer string is dropped, as in
+// runRecordSet). [] when there is no manifest. Evidence of in-flight work for
+// settleMergedPartial's empty-linkage fallback; runRecordSet is unchanged.
+function inFlightRecords(dir) {
+  const manifest = readManifest(dir);
+  if (!manifest || !manifest.multispec.specs.length) return [];
+  return manifest.multispec.specs
+    .filter((spec) => (spec.status === 'pending' || spec.status === 'running') && /^[1-9]\d*$/.test(String(spec.id)))
+    .map((spec) => Number(spec.id));
 }
 
 // { root, dir, state, now, resolveIssueState } -> boolean. `state` must be
@@ -1482,7 +1498,11 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // 'merged-partial' (#3503) is tracked because a run whose merged PR left a
 // record unclosed is waiting on a later PR; it must escalate rather than
 // freeze, and the 7-day TTL keeps a legitimately split run quiet meanwhile.
-const STRUCTURALLY_STUCK_REASONS = new Set(['no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'merged-partial']);
+// 'no-repo-slug' (#3503) is tracked because it never self-resolves: a repo whose
+// GitHub remote is not named `origin` leaves every numeric-slug run unverifiable.
+const STRUCTURALLY_STUCK_REASONS = new Set([
+  'no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'merged-partial', 'no-repo-slug',
+]);
 
 // #1732: thin wrapper — see isOrphanedMint's comment on the `kinds` scoping
 // pattern. Pure except for the one mtime stat classifyRunDir performs.
@@ -1681,6 +1701,50 @@ function finishArchiveAttempt(cacheTarget, repoSlug, dir, dryRun, runner, archiv
   archived.push(dir);
 }
 
+// #3503: the caller-side half of the merged-partial gate, shared by the
+// branch-joined path (archiveMergedRun) and the by-number fallback
+// (byNumberRecordSkip) so neither re-derives it. `decideArchiveCore` stays pure;
+// everything that needs I/O lives here. Any decision but a merged-partial skip
+// passes through untouched. Otherwise, from the gate's `unclosed` set U:
+//   1. empty linkage: a merged PR whose `closingIssuesReferences` is `[]` (not
+//      absent) says nothing — GitHub links no closing keyword into a non-default
+//      base branch — so only a record the run's manifest still lists pending or
+//      running stays in U; every other record counts as satisfied.
+//   2. the issue itself: a record whose GitHub issue is CLOSED (a second PR,
+//      closed by hand, closed at /release) is satisfied. A probe failure or a
+//      non-object answer keeps the record in U — fails closed.
+// An empty U' archives exactly as the fully-closed path does; otherwise the skip
+// stays merged-partial with U'.
+function settleMergedPartial(root, dir, prState, decision) {
+  if (decision.action !== 'skip' || decision.reason !== 'merged-partial') return decision;
+  let unclosed = decision.unclosed;
+  if (Array.isArray(prState.closingIssuesReferences) && prState.closingIssuesReferences.length === 0) {
+    const inFlight = new Set(inFlightRecords(dir));
+    unclosed = unclosed.filter((n) => inFlight.has(n));
+  }
+  unclosed = unclosed.filter((n) => {
+    const issue = resolveIssueStateByNumber(root, n);
+    return !(issue && typeof issue === 'object' && issue.state === 'CLOSED');
+  });
+  return unclosed.length > 0 ? { ...decision, unclosed } : { action: 'archive' };
+}
+
+// #3503: `work-backend: local-files` records are not GitHub issues, so a PR's
+// closingIssuesReferences can never attest them: the record check stays off. The
+// main checkout's CLAUDE.md is read once per pass; an absent or unreadable file,
+// or an absent line, returns null and keeps the check (pr-first is GitHub-backed
+// by construction). Same regex shape as wrap-up/pack.js's WORK_BACKEND_RE.
+const WORK_BACKEND_RE = /^work-backend:\s*(\S+)\s*$/m;
+
+function readWorkBackend(root) {
+  try {
+    const m = WORK_BACKEND_RE.exec(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'));
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 // #3503: `unclosed` rides along on a merged-partial skip only; every other
 // reason keeps the bare {runDir, reason} shape.
 function skippedEntry(dir, { reason, unclosed }) {
@@ -1690,9 +1754,12 @@ function skippedEntry(dir, { reason, unclosed }) {
 // #3503: the by-number fallback's record guard, for the MERGED branches that
 // would archive. Reuses decideArchiveCore's own rule (hasStagedPending is false
 // on both call sites, which are reached only once staged/ is clear or the
-// console is resolved). Returns the skip decision, or null to proceed.
-function byNumberRecordSkip(byNumber, consoleState, records, repoSlug) {
-  const decision = decideArchiveCore(byNumber, consoleState, false, { records, repoSlug });
+// console is resolved), settled by settleMergedPartial. Returns the skip
+// decision, or null to proceed.
+function byNumberRecordSkip(root, dir, byNumber, consoleState, records, repoSlug) {
+  const decision = settleMergedPartial(
+    root, dir, byNumber, decideArchiveCore(byNumber, consoleState, false, { records, repoSlug }),
+  );
   return decision.action === 'skip' ? decision : null;
 }
 
@@ -1733,7 +1800,9 @@ function archiveMergedRun({
   // production path pr-first-merge-post-merge.md Step 4.2's reconcile hits.
   // #3503: `recordCheck` (the run's required records) is omitted by the clean
   // sweep on purpose — see iterCleanRunDirs.
-  const decision = decideArchiveCore(prState, consoleState, hasStagedItems(dir), recordCheck);
+  const decision = settleMergedPartial(
+    root, dir, prState, decideArchiveCore(prState, consoleState, hasStagedItems(dir), recordCheck),
+  );
   if (decision.action === 'skip') {
     if (onSkip) onSkip(decision.reason);
     return { outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed };
@@ -1760,6 +1829,8 @@ function archiveMerged({
   const root = mainCheckoutRoot(start);
   if (!root) return { archived, skipped };
   const repoSlug = repoSlugOf(root);
+  // #3503: read once per pass — see readWorkBackend.
+  const recordCheckApplies = readWorkBackend(root) !== 'local-files';
 
   const wtList = runGit(['worktree', 'list', '--porcelain'], root);
   const worktrees = wtList.failure ? [] : parseWorktreeList(wtList.stdout);
@@ -1958,7 +2029,7 @@ function archiveMerged({
     // entry — both still gated on the fallback also failing.
     // #3503: the run's required record ids, computed once for both the
     // branch-joined path below and the by-number fallback.
-    const records = runRecordSet(dir);
+    const records = recordCheckApplies ? runRecordSet(dir) : null;
     const stampedWorktree = (state && state.worktree) || null;
     const wtEntry = stampedWorktree
       ? worktrees.find((w) => path.resolve(w.path) === path.resolve(stampedWorktree))
@@ -2005,7 +2076,7 @@ function archiveMerged({
             // below unconditionally — there's no run left to converge
             // toward regardless of staged/'s contents.
             if (byNumber.state === 'MERGED' && !hasStagedItems(dir)) {
-              const guard = byNumberRecordSkip(byNumber, consoleState, records, repoSlug);
+              const guard = byNumberRecordSkip(root, dir, byNumber, consoleState, records, repoSlug);
               if (guard) {
                 skipped.push(skippedEntry(dir, guard));
                 trackStuckSkip(cacheBatch, repoSlug, dir, guard.reason, { runner });
@@ -2032,7 +2103,7 @@ function archiveMerged({
             continue;
           }
           if (byNumber.state === 'MERGED') {
-            const guard = byNumberRecordSkip(byNumber, consoleState, records, repoSlug);
+            const guard = byNumberRecordSkip(root, dir, byNumber, consoleState, records, repoSlug);
             if (guard) {
               skipped.push(skippedEntry(dir, guard));
               trackStuckSkip(cacheBatch, repoSlug, dir, guard.reason, { runner });
@@ -2104,6 +2175,6 @@ module.exports = {
   isStructurallyStuck, trackStuckSkip, STRUCTURALLY_STUCK_TTL_MS, STRUCTURALLY_STUCK_REASONS,
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand,
   compareWorkTwin, resolveIdenticalWorkTwin, listFilesRecursive,
-  isClosedSlugStuck, recordNumbersFromSlug, runRecordSet,
+  isClosedSlugStuck, recordNumbersFromSlug, runRecordSet, inFlightRecords,
   refusal,
 };
