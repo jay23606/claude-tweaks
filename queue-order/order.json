@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T08:46:14.131Z",
+  "computedAt": "2026-10-19T09:39:20.261Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -149,13 +149,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3463,
-        "updatedAt": "2026-10-19T07:01:01Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3462,
-        "updatedAt": "2026-10-18T06:43:25Z",
+        "updatedAt": "2026-10-19T08:48:07Z",
         "state": "OPEN"
       },
       {
@@ -209,23 +204,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3416,
-        "updatedAt": "2026-10-19T04:44:54Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3415,
         "updatedAt": "2026-10-19T03:53:01Z",
         "state": "OPEN"
       },
       {
-        "number": 3413,
-        "updatedAt": "2026-10-19T04:49:35Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3379,
-        "updatedAt": "2026-10-17T18:13:52Z",
+        "updatedAt": "2026-10-19T08:47:59Z",
         "state": "OPEN"
       },
       {
@@ -414,11 +399,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3191,
-        "updatedAt": "2026-10-19T07:00:53Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3079,
         "updatedAt": "2026-10-17T06:12:08Z",
         "state": "OPEN"
@@ -495,12 +475,7 @@
       },
       {
         "number": 2956,
-        "updatedAt": "2026-10-17T19:24:06Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2933,
-        "updatedAt": "2026-10-19T07:00:44Z",
+        "updatedAt": "2026-10-19T08:48:12Z",
         "state": "OPEN"
       },
       {
@@ -7031,242 +7006,6 @@
           "shapedHeadless": true
         }
       }
-    ],
-    [
-      {
-        "body": "Surface: backend\n\n**Related:** #3049, #2955, #3001\n\n## Current State\n\n`/claude-tweaks:review` Step 3 has the orchestrator write two kinds of coordination input into `{ctx-dir}`, the scratch dir `build-review-context.js build` mints:\n\n- `plugin/skills/review/step3-lens-dispatch.md` (Reproduction dispatch, Mode 1): after both agents of a pair return, \"write each agent's `findings` array to `{ctx-dir}/lens-{LENS}-agentA.json` / `{ctx-dir}/lens-{LENS}-agentB.json`\", then `review-coordination.js categorise-reproduction` reads those two paths.\n- `plugin/skills/review/step3-debate-and-refutation.md` (step 1, Detect overlap): the `{lensName: [findings...]}` object is written to `{ctx-dir}/findings-by-lens.json` for `review-coordination.js detect-overlap`.\n\nUnder `--run \"$PIPELINE_RUN_DIR\"`, `{ctx-dir}` is `{run}/review-ctx`, inside the **main checkout** (the run dir is anchored there). A session isolated to a linked worktree (dispatch's two-call handoff, `worktree-always`) is refused both ways of writing there. The `Write` tool is refused by cross-checkout write pinning (\"Edit the worktree copy of this file instead\"), and a Bash heredoc redirect is refused by the Claude Code harness's worktree-isolation guard as \"too complex to verify\". Reported on 6.133.0: 3 refused tool calls in an unattended run. The working workaround was writing the JSON elsewhere and passing those paths, which works because both `review-coordination.js` subcommands already take arbitrary file paths (`plugin/bin/review-coordination.js:55-75`).\n\n## Deliverables\n\n1. **Decision (approved in brainstorming, 2026-10-15):** these coordination inputs are written to the session-scoped temp dir (`plugin/skills/_shared/session-tmp-root.md`), never into `{ctx-dir}`, under every session, not only isolated ones. That dir is outside every checkout, so the `Write` tool is never refused there. No sanctioned-writer CLI and no stdin input: stdin would need the JSON in a shell literal or heredoc, the shape the harness guard refuses.\n2. `step3-lens-dispatch.md` Reproduction dispatch: resolve each pair's two paths via `node \"${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js\"`. The names carry the review's own `{ctx-dir}` basename (`review-{ctx-id}-lens-{LENS}-agentA.json` / `…-agentB.json`), so concurrent reviews in one session (dispatched subagents share `CLAUDE_CODE_SESSION_ID`) never collide. Then `Write` the arrays there and pass those paths to `categorise-reproduction`.\n3. `step3-debate-and-refutation.md` step 1: same treatment for `findings-by-lens.json` (`review-{ctx-id}-findings-by-lens.json`) before `detect-overlap`. The existing \"never a fixed shared `/tmp` name\" rationale is kept and satisfied by the per-review name.\n4. `step3-lens-dispatch.md`'s Agent-scratch cleanup check: the `{ctx-dir}` exclusion list drops `lens-*.json` and `findings-by-lens.json`, which no longer live there, and keeps the pre/post-fan-out status snapshots. The `git status … > {ctx-dir}/pre-dispatch-status.txt` redirect stays (a plain redirect, not refused).\n5. A conformance assertion in `tests/bin-lib/review-context/prose.test.js`: neither step file directs writing `lens-*.json` or `findings-by-lens.json` into `{ctx-dir}`, and both name the session-scoped temp dir for them.\n\n## Acceptance Criteria\n\n- [ ] `step3-lens-dispatch.md` contains no instruction to write `lens-{LENS}-agent{A,B}.json` under `{ctx-dir}`. Its `categorise-reproduction` invocation takes session-scoped temp paths whose names include the `{ctx-dir}` basename.\n- [ ] `step3-debate-and-refutation.md` contains no instruction to write `findings-by-lens.json` under `{ctx-dir}`. Its `detect-overlap` invocation takes a session-scoped temp path including the `{ctx-dir}` basename.\n- [ ] The Agent-scratch cleanup check's `{ctx-dir}` exclusion list no longer names `lens-*.json` / `findings-by-lens.json`.\n- [ ] The new `prose.test.js` assertions fail against today's `origin/main` text and pass after the change (red first).\n- [ ] No change to `plugin/bin/review-coordination.js` or `plugin/bin/build-review-context.js`.\n- [ ] `npm test` passes.\n\n## Release Note\n\nCode review no longer stalls on refused file writes when it runs in an isolated worktree session.\n\n## Technical Approach\n\nProse-only change to two review step files plus one conformance test. The pattern is the one `plugin/skills/wrap-up/review-console.md` already uses for `set-verify-expectations.js --file`: write the JSON with the `Write` tool to the session scratchpad, outside both `$PIPELINE_RUN_DIR` and the worktree, then hand the path to a CLI. The difference here is that no copy back into the run dir is needed, because `categorise-reproduction`/`detect-overlap` consume the files directly and their results already land in `decisions.md` and the routing entries. Resolve paths with the existing `bin/session-tmp-resolve.js` (`NAME=filename` pairs → shell exports), in the same Bash call that uses them, since no shell variable survives across calls.\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — Reproduction dispatch write target, `categorise-reproduction` invocation, Agent-scratch cleanup exclusion list\n- `plugin/skills/review/step3-debate-and-refutation.md` — step 1 `findings-by-lens.json` write target and `detect-overlap` invocation\n- `tests/bin-lib/review-context/prose.test.js` — new conformance assertions\n\n## Gotchas\n\n- Dispatched subagents share one `CLAUDE_CODE_SESSION_ID`, so a bare `lens-3a-agentA.json` in the session temp dir *would* collide across two concurrent dispatched reviews. The `{ctx-dir}` basename in every name is what keeps them apart, so don't drop it.\n- `{ctx-dir}` itself is unchanged: the context bundle and status snapshots stay under `{run}/review-ctx`. Only the orchestrator-written coordination inputs move.\n- The refusal is the harness's own worktree-isolation guard plus the `Write` tool's cross-checkout pinning, not plugin code (same finding as #2548). The fix routes around both, and nothing upstream is filed from this record.\n- `tests/multi-agent-coordination.test.js` reads both step files. Re-run it after the edit in case it pins the old `{ctx-dir}/lens-…` wording.\n\n## Original request\n\nreview lens dispatch: a worktree-isolated session cannot write the {ctx-dir}/lens-*.json findings files\n\n**Summary:** Step 3 asks for each agent's findings to be written to `{ctx-dir}/lens-{LENS}-agent{A,B}.json`. When `{ctx-dir}` sits under the run directory anchored to the main checkout, a session isolated to a linked worktree is refused both the Write tool and a heredoc.\n\n**Kind:** Gap\n\n**Affected component:** claude-tweaks review, `skills/review/step3-lens-dispatch.md` (reproduction dispatch), together with `bin/build-review-context.js --run` and `bin/review-coordination.js categorise-reproduction`\n\n**Use case:** A `/claude-tweaks:flow` review step ran in a worktree-isolated session, as dispatch's two-call handoff does. `build-review-context.js build --run <run-dir>` placed `{ctx-dir}` under `<run-dir>/review-ctx`, inside the main checkout. Writing the `lens-*.json` files there failed two ways. The Write tool was refused by cross-checkout write pinning (\"Edit the worktree copy of this file instead\"). A Bash heredoc redirect to the same path was refused by the worktree-isolation guard as \"too complex to verify\". The workaround was to write the JSON to the system temp dir and pass those paths to `categorise-reproduction`. `stage-item.js` exists for `staged/`, but nothing equivalent exists for review-ctx scratch files. Cost: 3 refused tool calls, about 2 minutes, in an otherwise unattended run. Possible fixes: a sanctioned writer (a `review-coordination.js` subcommand that takes the findings on stdin and writes `{ctx-dir}/lens-*.json` itself), or `categorise-reproduction` accepting both findings arrays on stdin.\n\n**Definition:** Needed — the two possible fixes (a sanctioned writer, or stdin input to categorise-reproduction) are both viable and no choice has been made.\n\n**Plugin version:** 6.133.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-871d921f -->\n\n",
-        "createdAt": "2026-10-04T09:58:43Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 2956,
-        "state": "OPEN",
-        "title": "review lens dispatch: a worktree-isolated session cannot write the {ctx-dir}/lens-*.json findings files",
-        "updatedAt": "2026-10-17T19:24:06Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      },
-      {
-        "body": "Surface: backend\n\n## Overview\n\nPart of the \"Build dispatch cost shape\" decomposition (origin #3229). In the measured 10-task build, two implement-and-review cycles would have been saved by combining small adjacent tasks — for example \"add a column\" followed by \"a pure function over it\", or \"add a job\" followed by \"remove what it replaces\". Each separate task costs an implementer dispatch and a task review even when the second task only consumes the first's output.\n\nThis record adds plan-authoring guidance: when two adjacent tasks touch the same files, the second only consumes the first's output, and neither needs its own review surface, the author writes them as one task. This is plan granularity, not SDD's batch rule: it needs no marker, adds no tier or dispatch instruction, and does not interact with `plan-audit.js --count-tasks`' `batched` flag. It sits next to, and cross-references, the fast-lane transcription batching guidance from #3123.\n\n**Complexity:** Low\n**Estimated tasks:** 2-3\n\n## Non-Goals\n\n- A new plan marker, a dispatch change, or any change to what `dispatch.md` forwards to SDD.\n- Changing the `batched` flag, `--count-tasks`, or the roster row `sdd-whole-branch-review`.\n- Re-steering plans already written; the guidance applies to plans authored after it ships.\n- Overriding SDD's one-dispatch-per-task default for work that needs its own judgment, its own tests or its own review surface (SDD's \"Reserve one-dispatch-per-task\" clause stays the rule for those).\n\n## Prerequisites\n\n| Record | Title | Status |\n|--------|-------|--------|\n| #3123 | build / subagent-driven-development dispatch: fast-lane multi-task transcription plans still pay a review for every task plus a whole-branch review | ready — extends the same Batched-plan marker paragraph in the same file; this record lands after it and cross-references it |\n| #3310 | Cut every skill-size consumer over to the rail, load delta, and size outlier | ready, in progress — shares `plugin/skills/build/plan-authoring-checks.md` |\n\n## Current State\n\n- `plugin/skills/build/plan-authoring-checks.md` (33,050 bytes of a 51,200-byte shared ceiling) — a list of plan-authoring checks; the Batched-plan marker paragraph says that when a plan bundles several same-shape edits into one dispatch (SDD's \"Batch small same-shape work\"), the author writes `**Execution:** batched` in the plan header or `[batch]` in the task title, and that `plan-audit.js --count-tasks` reads exactly those two markers.\n- #3123 (ready) extends that paragraph with fast-lane transcription-plan batching guidance and adds pins in `tests/bin-lib/plan-audit/parser.test.js` and `tests/ceremony-profile-roster.test.js`.\n- `plugin/bin/lib/plan-audit/parser.js` — `countTasks` reads `{ tasks, batched }`; a plan's task count is whatever `### Task N:` headings it contains, so merging two tasks into one simply lowers `tasks`.\n- SDD 7.0.0 `## The Task Loop`: \"Batch small same-shape work … Reserve one-dispatch-per-task for work that needs its own judgment, its own tests, or its own review surface.\"\n- Tests that pin prose in this file: `tests/ceremony-profile-roster.test.js` (the Batched-plan paragraph) and the Byte-pin check in the file itself.\n\n## Deliverables\n\n- [ ] A new paragraph (or an extension placed directly adjacent to the Batched-plan marker paragraph) in `plugin/skills/build/plan-authoring-checks.md`: when two adjacent tasks touch the same files, the second only builds on the first's output (consumes it, or is made safe by it), and the second adds no separately reviewable surface (no behavior or test a reviewer would judge on its own), write them as ONE task; worked examples that pass those conditions (\"add a column\" plus the one-line type or constant that exposes it; \"add a job\" plus \"remove the code it replaces\"; \"add a column\" plus \"a pure function over it\" only when both tasks' tests sit in the same test file the first task already edits).\n- [ ] The guidance states what it is not: not SDD's batch rule, no marker, no effect on `--count-tasks`' `batched` flag, and the exclusion list (the second task has tests or behavior of its own that a reviewer would judge separately, touches different files, or is independently risky). It also states the one interaction with `--count-tasks`: the `tasks` count drops, and under `ceremony-profile: fast-lane` a plan that reaches `tasks: 1` with `batched: false` skips the whole-branch review (roster tag `sdd-whole-branch-review`), so an author must not merge a multi-task plan down to a single task merely to reach that skip; merge only while at least two tasks remain.\n- [ ] A cross-reference to #3123's fast-lane transcription batching guidance in the same file, naming whatever heading or paragraph #3123 actually shipped (resolved at build time from the merged file), so an author reading either paragraph sees the other and knows which situation each covers (same-shape edits across files and fast-lane transcription plans there; sequential same-file tasks here).\n- [ ] A prose pin in a conformance test following the neighbouring pattern (`tests/ceremony-profile-roster.test.js` or a small sibling) that pins the three conditions, the exclusion clauses and the \"no marker, no `batched` change\" statement, each with a go-red proof that the assertion fails when that clause is removed.\n- [ ] The Byte-pin check run and its measured headroom reported for `plan-authoring-checks.md`.\n\n## Acceptance Criteria\n\n1. `plugin/skills/build/plan-authoring-checks.md` contains the new guidance, which names all three conditions (adjacent tasks touching the same files, the second only building on the first's output, the second adding no separately reviewable surface) and gives examples that satisfy them.\n2. The guidance states that merging produces plain plan granularity with no marker and no change to `plan-audit.js --count-tasks`' `batched` value, states the `tasks`-count interaction with the single-task fast-lane skip and the \"keep at least two tasks\" rule, and a parser regression test shows a merged plan prints the expected `tasks` count and `batched: false` unless a batched marker is present (a guard only: it is green before the guidance exists).\n3. The new text cross-references #3123's guidance by the heading it shipped in the same file, and the Batched-plan marker paragraph from #3123 is unchanged in wording by this record.\n4. A conformance assertion pins the three conditions, the exclusion clauses and the \"no marker\" statement; removing any one of them from the doctored text turns the assertion red.\n5. `plugin/skills/build/plan-authoring-checks.md` stays under 51,200 bytes and under any tighter pin the Byte-pin check finds; `npm test` passes.\n\n## Release Note\n\nAdded plan-authoring guidance to write small adjacent same-file tasks as one task, cutting redundant implement-and-review cycles in multi-task builds.\n\n## Technical Approach\n\nProse only plus one pin test. Place the paragraph immediately after the Batched-plan marker paragraph (as #3123 leaves it), so the two granularity rules sit together. Keep it short: the file is dense and several paragraphs in it are test-pinned, so add a new paragraph rather than rewording an existing one.\n\n### Key Files\n\n- `plugin/skills/build/plan-authoring-checks.md` — the new guidance and the cross-reference\n- `tests/ceremony-profile-roster.test.js` — prose pin and go-red proof, following #3123's pin on the adjacent paragraph\n- `tests/bin-lib/plan-audit/parser.test.js` — `countTasks` non-interaction case\n\n## Gotchas\n\n- Steering principle for the whole decomposition: claude-tweaks never files upstream with superpowers and never contradicts SDD's text. This is a plan-authoring-time steer (the #3123 precedent), not a dispatch override; it must not tell SDD to skip a review.\n- Land after #3123 (ready) — same file, adjacent paragraph. Re-read the file from the merged tree first; if #3123 has not merged when this builds, stop and report rather than editing the same paragraph in parallel.\n- Do not chain this record behind the per-task-tier record even though both edit `plugin/skills/build/plan-authoring-checks.md`; whichever builds second rebases (an internal file-overlap conflict, flagged at decomposition time).\n- Also shares the file with ready records #3079 and #3310 (in progress).\n- Do not add a marker: a marker would reach `plan-audit`'s parser and risk colliding with `**Execution:** batched`, whose regex is end-anchored (`^\\*\\*Execution:\\*\\*\\s*batched\\s*$`). Merging tasks changes only the task count.\n- A merged task still gets one task review. The guidance must not suggest that merging lets a risky change skip review; a task whose review surface is genuinely separate stays separate.\n- Measure byte headroom with the file's own Byte-pin check before writing, after #3123 and any other record has merged: 18,150 bytes remain under the shared ceiling at record-writing time (a snapshot, since four records edit the file), and a tighter per-file pin may exist. Keep the new paragraph short.\n\n\n<!-- work-fingerprint: build-dispatch-cost-shape:merge-small-adjacent-tasks-at-plan-authoring-time -->\nwork-fingerprint: build-dispatch-cost-shape:merge-small-adjacent-tasks-at-plan-authoring-time",
-        "createdAt": "2026-10-17T10:06:05Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3379,
-        "state": "OPEN",
-        "title": "Merge small adjacent tasks at plan-authoring time",
-        "updatedAt": "2026-10-17T18:13:52Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      },
-      {
-        "body": "Origin: reflect full from #3311\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/plan-authoring-checks.md` has no check for a plan that retires a mechanism. That covers deleting a constant, an option, a CLI or a gate.\n\n#3311's plan copied its prose-rewrite file list from the spec's boundary amendment 4, which named three files. About 40 further shipped-skill, doc, journey and test-comment sites still cited the deleted mechanisms. They used phrasings the list never searched for: \"warning tier\", \"40 KB ceiling\", \"#724 budget\", \"five bloat signals\", `ceiling: Infinity`. The whole-branch review caught them (two Important findings), followed by two residual sweeps.\n\nEvidence: #3311 final-review findings F1–F3 and commits 2347b6b1e, 4572f470b and 981550f92. Cost this session: one fix wave, two residual sweeps and a scoped re-review.\n\n## Deliverables\n\n- [ ] Add a \"Retirement sweep\" check to `plan-authoring-checks.md`. When a plan deletes a named mechanism, it must carry a task that sweeps every non-history path in the repo for each phrasing of that mechanism: the identifier, the file path, the option literal, the numeric value as prose, and the issue number used as a label. The task's verification grep must name each phrasing.\n- [ ] Cite the existing memory rules (\"Deleted-rule citation sweep\", \"Grep retired term repo-wide\") as the rationale.\n\n## Acceptance Criteria\n\n1. `plan-authoring-checks.md` names the retirement-sweep check, and a conformance test pins its presence.\n2. The check says the sweep's file list comes from the grep's output, never from the spec's named list.\n\n## Release Note\n\nNo user-visible change; `/build`'s plan-authoring checks gain a retirement-sweep check, so a plan that deletes a mechanism also sweeps every phrasing of it.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:38Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3462,
-        "state": "OPEN",
-        "title": "Add a retirement-sweep check to /build's plan-authoring checks",
-        "updatedAt": "2026-10-18T06:43:25Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
     ]
   ],
   "excluded": [
@@ -7283,13 +7022,6 @@
       "records": [
         3507,
         3509
-      ]
-    },
-    {
-      "records": [
-        2956,
-        3379,
-        3462
       ]
     }
   ]
