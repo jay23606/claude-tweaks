@@ -135,3 +135,9 @@ git commit -m "Pass --remote-ref-only in wrap-up Section C step 5 — archival s
 Run: `npm test` (redirect to a file). Expected: no new attributable failures versus the base (AC3.1).
 
 Waived AC3.1: a whole-suite outcome, not a unit-test assertion — verified by this final `npm test` run (Common Step 5's runner stamp), never by a test step.
+
+## Build deviations (Common Step 4.5 — all Beneficial, applied)
+
+1. Task 2 also corrected three sentences Task 1 made false in `cleanup-procedures-execution.md` Section C ("a narrower form", "narrowed to just that one step", step 5.5's "with archival suppressed"), and `docs/journeys/multi-spec-review-console.md:37` (SDD ruling, staged as `sdd-ruling-1`). Same stale-claim class as Review Focus 5.
+2. The final-review fix wave (3a614017a) made AC7 (#1323) root-dependent. The Review Focus 4 claim that AC7 is "unchanged and covered" was wrong: after the flip it could no longer fail. AC7 now asserts the integration-branch refusal, proven red under the #1323 bug. It also made the `!root` archive line the unconditional one, completed the removal checklist (`git grep -n -F -- --remote-ref-only`), and fixed stale comments.
+3. Simplify (4cab761c9) emits the archive-skip line once, above the `!root` guard. Output order is unchanged.
