@@ -17,3 +17,4 @@
 | 13 | build | SDD ruling — thread a host-qualified --repo's host into the fetcher as --hostname: ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
 | 14 | build | SDD ruling — keep the resolved-refusal check after grant-check, not before: ratify or reverse at the Review Console (staged/sdd-ruling-3.md) | open | — |
 | 15 | build | SDD ruling — any label change (including refine's own priority:* writes) re-opens a resolved record: ratify or reverse at the Review Console (staged/sdd-ruling-4.md) | open | — |
+| 16 | build/skill | gh-api-module-pattern extends: its --hostname rule is stated for REST calls with no --repo slot (teardown-run.js DELETE); a host-qualified --repo feeding `gh api graphql` needs the same `--hostname` right after `graphql` (resolved-refusal.js fetcher) — worth one clause in the skill | observation | Skill observation from Common Step 4.5; /wrap-up Skills curation evaluates |
