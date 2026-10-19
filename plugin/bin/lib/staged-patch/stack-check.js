@@ -20,8 +20,15 @@ function stagedApplyOrder(names) {
   return names.filter((n) => n.endsWith('.patch')).sort();
 }
 
+// Every git call runs with the user's and system config switched off and the caller's repo
+// pointers removed: a user `diff.noprefix` or an inherited GIT_DIR would change what the check
+// reads and emits.
 function defaultGit(args, { cwd }) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  const env = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: '1' };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env });
   return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
 
@@ -174,7 +181,7 @@ function rederive({ worktree, patches, target, git = defaultGit }) {
 
   const summary = run(['apply', '--summary', target], worktree);
   if (summary.status !== 0) return { ok: false, reason: firstLine(summary.stderr, target) };
-  if (/^ (create mode|delete mode|rename )/m.test(summary.stdout)) {
+  if (/^ (create mode|delete mode|rename |copy |mode change )/m.test(summary.stdout)) {
     return { ok: false, reason: 'non-modification hunk' };
   }
 
@@ -218,7 +225,7 @@ function rederive({ worktree, patches, target, git = defaultGit }) {
         if (merged.status > 0) return { ok: false, reason: `conflict in ${rel}` };
         fs.writeFileSync(path.join(dir, rel), merged.stdout);
       }
-      const diff = run(['diff', '--no-color', '--no-ext-diff'], dir);
+      const diff = run(['diff', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/'], dir);
       if (diff.stdout === '') return { ok: false, reason: 'already satisfied by an earlier patch' };
       return { ok: true, patch: text.slice(0, head) + diff.stdout };
     });

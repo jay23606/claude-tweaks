@@ -207,3 +207,38 @@ test('create-mode patch is not re-derived', (t) => {
   const r = rederive({ worktree: fx.dir, patches: [p], target: p });
   assert.deepEqual(r, { ok: false, reason: 'non-modification hunk' });
 });
+
+test('the emitted patch keeps a/ b/ prefixes under a user config that drops them', (t) => {
+  const cfgDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stack-check-cfg-'));
+  t.after(() => fs.rmSync(cfgDir, { recursive: true, force: true }));
+  const cfg = path.join(cfgDir, 'gitconfig');
+  fs.writeFileSync(cfg, '[diff]\n\tnoprefix = true\n\tmnemonicPrefix = true\n');
+  const priorCfg = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = cfg;
+  t.after(() => {
+    if (priorCfg === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = priorCfg;
+  });
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(r.ok, true, r.reason);
+  assert.ok(r.patch.includes('diff --git a/f.txt b/f.txt\n'), r.patch);
+  assert.ok(r.patch.includes('+++ b/f.txt\n'), r.patch);
+});
+
+test('a content-and-mode change is not re-derived', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const modder = gitFixture(t);
+  modder.runOk('config', 'core.fileMode', 'true');
+  fs.writeFileSync(path.join(modder.dir, 'f.txt'), BASE.replace('l1\n', 'l1-edit\n'));
+  fs.chmodSync(path.join(modder.dir, 'f.txt'), 0o755);
+  const d = modder.git('diff');
+  assert.equal(d.status, 0, d.stderr);
+  const p = stage(dir, 'mode.patch', d.stdout);
+  const r = rederive({ worktree: fx.dir, patches: [p], target: p });
+  assert.deepEqual(r, { ok: false, reason: 'non-modification hunk' });
+});
