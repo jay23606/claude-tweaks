@@ -59,3 +59,25 @@ test('AC3.1: the template documents the stale-QA qualifier and when it renders',
 test('AC4.1: the template states the verdict comment copies the qualified line verbatim', () => {
   assert.ok(qa.includes('The verdict comment (`code-mode-steps.md` Step 7) copies this line verbatim.'));
 });
+
+test('I-1: a failing post-wave re-run blocks the verdict', () => {
+  assert.ok(step67.includes('makes the verdict BLOCKED'));
+});
+
+test('I-2: the subset re-run merges into pre-wave results and the status is recomputed over all stories', () => {
+  assert.ok(step67.includes('recompute'));
+  assert.ok(step67.includes('over all stories'));
+  assert.ok(qa.includes('recomputed over all stories'));
+  assert.ok(!qa.includes('report its own status'));
+});
+
+test('I-3: the test skill contract and the skill graph record the Step 6.7 qa affected edge', () => {
+  const testSkill = fs.readFileSync(path.join(__dirname, '..', 'plugin', 'skills', 'test', 'SKILL.md'), 'utf8');
+  const graph = fs.readFileSync(path.join(__dirname, '..', 'docs', 'skill-graph.md'), 'utf8');
+  assert.ok(testSkill.includes("except `/claude-tweaks:review` Step 6.7's post-fix-wave `qa affected` re-run (#3047)"));
+  assert.ok(graph.includes('Step 6.7 also invokes `/test qa affected`'));
+});
+
+test('M-1: the qualifier distinguishes uncommitted Fix-now edits from the commit count', () => {
+  assert.ok(qa.includes('plus uncommitted edits'));
+});
