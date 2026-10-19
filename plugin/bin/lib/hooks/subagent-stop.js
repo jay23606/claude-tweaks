@@ -344,6 +344,8 @@ function countPendingDispatches(lines, replyIndex) {
     if (!entry || typeof entry !== 'object') continue;
     if (isForkBoundary(entry)) { launches = []; completed = new Set(); continue; }
     if (line.includes('<fork-boilerplate>')) return null; // a fork marker in a carrier not recognized above
+    // Any `isAsync: true` tool result is treated as a launch; today only Agent launches carry it
+    // (a background Bash result uses `backgroundTaskId`, not `isAsync`).
     if (entry.toolUseResult && entry.toolUseResult.isAsync === true) {
       const content = entry.message && entry.message.content;
       const first = Array.isArray(content) ? content[0] : null;
