@@ -46,6 +46,17 @@ function assertKeepsStaged(file, dispatch) {
   assert.ok(b.includes('step3-cross-lens-corroboration.md'), 'bullet does not cite the new file');
 }
 
+const SHARE_LOC_BULLET = '> - Findings at the same location (path exact, line ±2)';
+
+function assertShareLocationDeferred(file, dispatch) {
+  const line = dispatch.split('\n').find((l) => l.startsWith(SHARE_LOC_BULLET));
+  assert.ok(line, 'share-a-location bullet not found');
+  assert.ok(line.includes('At `medium`'), 'share-a-location bullet does not defer its STAGED write at medium');
+  assert.ok(line.includes('step3-cross-lens-corroboration.md'), 'share-a-location bullet does not cite the new file');
+  assert.match(file, /nearLocation/);
+  assert.match(file, /neither side/);
+}
+
 function assertTiersUnchanged(file, dispatch) {
   assert.match(file, /never runs at `low` or `high`/);
   assert.ok(dispatch.includes(SINGLE_READ_RULE), 'low single-read rule changed');
@@ -72,6 +83,20 @@ test('AC1.2 go-red: stripping the At `medium` sentence from the bullet fails the
     .join('\n');
   assert.notEqual(mutated, dispatch, 'mutation did not change the text');
   assert.throws(() => assertKeepsStaged(read('review', 'step3-cross-lens-corroboration.md'), mutated));
+});
+
+test('AC1.2: the share-a-location bullet defers its STAGED write at medium; neither-side-promoted rule is stated', () => {
+  assertShareLocationDeferred(read('review', 'step3-cross-lens-corroboration.md'), read('review', 'step3-lens-dispatch.md'));
+});
+
+test('AC1.2 go-red: stripping the At `medium` sentence from the share-a-location bullet fails the same assertions', () => {
+  const dispatch = read('review', 'step3-lens-dispatch.md');
+  const mutated = dispatch
+    .split('\n')
+    .map((l) => (l.startsWith(SHARE_LOC_BULLET) ? l.replace(/ At `medium`.*$/, '') : l))
+    .join('\n');
+  assert.notEqual(mutated, dispatch, 'mutation did not change the text');
+  assert.throws(() => assertShareLocationDeferred(read('review', 'step3-cross-lens-corroboration.md'), mutated));
 });
 
 test('the only-one-agent bullet stays a single line (decisionLogPattern pin)', () => {
