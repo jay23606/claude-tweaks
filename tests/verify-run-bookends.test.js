@@ -14,6 +14,7 @@ const { execFileSync } = require('node:child_process');
 const {
   run, parseArgs, parseTargets, USAGE, realDeps,
 } = require('../plugin/bin/verify-run-bookends');
+const { run: setConfigRun } = require('../plugin/bin/set-config');
 
 const canonicalClaim = (n) => `## /flow\n- AUTO 09:41:32 — Step 2.8: claimed #${n} (bin/claim-targets.js, transport: git). Reversibility: high.\n`;
 
@@ -151,6 +152,54 @@ test('local-merge run with no PR recorded -> the pr bookend is not required', ()
   assert.strictEqual(code, 0);
   const payload = JSON.parse(deps.out[0]);
   assert.strictEqual(payload.confirmed.pr, 'n/a');
+});
+
+test('AC2.1: with an integration-model: pr-first pin and no recorded PR, the pr bookend is asserted (missing), not skipped', () => {
+  const deps = captured(makeDeps({
+    runState: { worktree: '/wt' },
+    integrationModel: 'pr-first',
+    claims: OWN_CLAIM,
+  }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const payload = JSON.parse(deps.out[0]);
+  assert.ok(payload.missing.some((m) => m.bookend === 'pr'), 'pr bookend missing');
+  assert.ok(!deps.err.join('').includes('degraded'), deps.err.join(''));
+});
+
+test('AC2.1: readConfigIntegrationModel reads a pin written by set-config.js', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-pin-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const main = path.join(root, 'main');
+  const runDir = path.join(main, '.claude-tweaks', 'pipelines', RUN_ID);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.mkdirSync(path.join(main, '.git'));
+  fs.writeFileSync(path.join(runDir, 'config.yml'), 'mode: auto\n');
+  const err = [];
+  const code = setConfigRun(['--run', runDir, '--key', 'integration-model', '--value', 'pr-first'], {
+    cwd: () => main, stdout: () => {}, stderr: (s) => err.push(s),
+  });
+  assert.strictEqual(code, 0, err.join(''));
+  assert.strictEqual(realDeps.readIntegrationModel(runDir), 'pr-first');
+});
+
+test('AC3.1: with no integration-model pin, a degrade line is printed instead of passing silently', () => {
+  const deps = captured(makeDeps({ integrationModel: null, claims: OWN_CLAIM }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);
+  assert.strictEqual(deps.err.length, 1);
+  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*integration-model/m);
+});
+
+test('AC3.1: an invalid integration-model pin prints the same degrade line', () => {
+  const deps = captured(makeDeps({ integrationModel: 'bogus', claims: OWN_CLAIM }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);
+  assert.strictEqual(deps.err.length, 1);
+  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*integration-model/m);
+});
+
+test('a local-merge pin prints no degrade line', () => {
+  const deps = captured(makeDeps({ integrationModel: 'local-merge', claims: OWN_CLAIM }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);
+  assert.strictEqual(deps.err.join(''), '');
 });
 
 test('claim never written (absent) -> exit 1, missing claim bookend', () => {
