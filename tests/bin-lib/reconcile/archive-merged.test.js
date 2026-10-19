@@ -2885,6 +2885,8 @@ test('decideArchiveCore: existing skip reasons keep precedence over the record c
   assert.deepStrictEqual(decideArchiveCore({ state: 'OPEN' }, 'resolved', false, check), { action: 'skip', reason: 'pr-open' });
   assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'unresolved', false, check), { action: 'skip', reason: 'console-unresolved' });
   assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'none', true, check), { action: 'skip', reason: 'console-never-rendered' });
+  assert.deepStrictEqual(decideArchiveCore('network-failure', 'resolved', false, check), { action: 'skip', reason: 'network-failure' });
+  assert.deepStrictEqual(decideArchiveCore('gh-absent', 'resolved', false, check), { action: 'skip', reason: 'gh-absent' });
 });
 test('STRUCTURALLY_STUCK_REASONS includes merged-partial and no-repo-slug but not closing-issues-unknown', () => {
   assert.ok(STRUCTURALLY_STUCK_REASONS.has('merged-partial'));
@@ -3020,7 +3022,9 @@ test('the status:clean sweep is exempt: a clean run whose merged PR closes nothi
   const { root, runDir, featureSha } = fixtureCleanUnarchivedRun({ runId, origin: true });
   const wrapper = installGhWrapper([{
     number: 77, state: 'MERGED', mergedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z',
-    mergeCommit: { oid: featureSha }, closingIssuesReferences: [],
+    // A non-empty list naming some other issue: an empty list would let the
+    // empty-linkage fallback archive the run even if the sweep gained the check.
+    mergeCommit: { oid: featureSha }, closingIssuesReferences: [ref(5)],
   }]);
   let result;
   try {

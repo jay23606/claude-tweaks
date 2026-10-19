@@ -1500,6 +1500,9 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // freeze, and the 7-day TTL keeps a legitimately split run quiet meanwhile.
 // 'no-repo-slug' (#3503) is tracked because it never self-resolves: a repo whose
 // GitHub remote is not named `origin` leaves every numeric-slug run unverifiable.
+// With no repo slug the escalation issue itself cannot be filed (escalate-residue's
+// findOrCreateIssue returns 'escalation-failed'), so for this reason the tracking
+// only surfaces the run in the residue summary's stuck count.
 const STRUCTURALLY_STUCK_REASONS = new Set([
   'no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'merged-partial', 'no-repo-slug',
 ]);
@@ -1682,6 +1685,9 @@ function trackArchiveResult(cacheTarget, repoSlug, dir, result, { escalate = esc
 // same anchor, ordering, archive-twin skip, and `archiving`-claim skip every
 // other iterRunDirsWithState caller already gets, rather than this file's own
 // third hand-rolled copy of the walk.
+// #3503: this sweep is exempt from the merged-partial record check — wrap-up
+// already closed a `clean` run, so no record is still being built, and this loop
+// has no stuck tracking, so a skip here would freeze the dir silently.
 function iterCleanRunDirs(root) {
   return [...iterRunDirsWithState(root, { status: 'clean' })];
 }
