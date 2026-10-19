@@ -32,6 +32,16 @@ function assertLeaveOpenParagraph(text) {
   // One read, reused.
   has('`pr-merge-state.js --phase wrap-up`', 'reuses the post-push read');
   has('never a second read', 'reads once');
+  // Late read: an `unknown` (or an exit 3 from an already-archived run dir) at the post-push read
+  // takes one read of its own, late in the step, against the run dir where it now lives.
+  has('unless it printed `unknown`', 'late read: only an unknown (or exit 3) triggers a read of its own');
+  has('exited 3 because cleanup item 8', 'late read: an archived run dir is named as the exit-3 cause');
+  has('take one read of its own, as the last call of this execution step', 'late read: one read, placed last');
+  has('before the Verify execution section', 'late read: placed before Verify execution');
+  has('`node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "{run-dir}" --phase wrap-up`', 'late read: the command');
+  has('`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/` once item 8 archived it', 'late read: archive-aware --run');
+  has('A late `unknown` is not read again', 'late read: AC3.1 still one log line');
+  has('log-decision.js" --run "{run-dir}"', 'late read: the log lands in the same run dir');
   // AC1.1 — clean auto-merge: commit pushed, decisions line names the sha.
   has("Catch-up steps 1-5", 'AC1.1: runs the shared catch-up');
   has('`DIRTY → merged main as {after short}`', 'AC1.1: decisions line names the merge sha');
@@ -45,6 +55,7 @@ function assertLeaveOpenParagraph(text) {
   has('log `mergeability: {mergeStateStatus}`', 'AC3.1: CLEAN/BLOCKED/UNKNOWN log one line');
   has('nothing else changes', 'AC3.1: nothing beyond the one log line');
   has('(`read-failed`, `gh-absent`, `no-pr`)', 'AC3.1: a failed read logs its state, never clean');
+  has('or `exit 2`/`exit 3` when the read printed nothing', 'AC3.1: an exit 2/3 logs the exit code as the outcome');
   // The log command.
   has('--step "Leave-open mergeability re-check"', 'log step name');
   has('--text "mergeability: {outcome}"', 'log text shape');
@@ -60,11 +71,34 @@ test('go-red control: dropping the files-before-abort listing makes the shared a
   assert.throws(() => assertLeaveOpenParagraph(mutated), /AC2\.1/);
 });
 
+test('go-red control: a re-check that never reads late, or reads the archived-away path, makes the shared assertion throw', () => {
+  const noLateRead = EXEC.replace('take one read\nof its own, as the last call', 'reuse it anyway\nas the last call');
+  assert.ok(noLateRead !== EXEC, 'the control must actually mutate the text');
+  assert.throws(() => assertLeaveOpenParagraph(noLateRead), /late read: one read, placed last/);
+  const staleRun = EXEC.replace('--run "{run-dir}" --phase wrap-up', '--run "$PIPELINE_RUN_DIR" --phase wrap-up');
+  assert.ok(staleRun !== EXEC, 'the control must actually mutate the text');
+  assert.throws(() => assertLeaveOpenParagraph(staleRun), /late read: the command/);
+});
+
+function assertGitDisciplineException(text) {
+  const flat = text.replace(/\s+/g, ' ');
+  const has = (needle, msg) => assert.ok(flat.includes(needle), `${msg}: missing ${JSON.stringify(needle)}`);
+  has('no catch-up runs there, in any mode — the merge path (`_shared/pr-first-merge.md`) owns a conflict from there', 'merge path keeps wrap-up exit');
+  has("`wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it, in every mode — only git's own auto-merge runs",
+    'modes: the wrap-up-exit bullet names the leave-open exception in every mode');
+  has('The one exception is an `unknown` at wrap-up\'s exit under a leave-open Review Console', 'late read: the never-re-read bullet names its one exception');
+  has('`interactive` and `hybrid` never run this merge themselves — they only surface the commands (except wrap-up\'s Leave-open mergeability re-check',
+    'modes: the interactive/hybrid rule excepts the leave-open re-check');
+}
+
 test('git-discipline.md names the leave-open exception at wrap-up exit and keeps the merge-path rule', () => {
-  const flat = GIT_DISCIPLINE.replace(/\s+/g, ' ');
-  assert.ok(flat.includes('no catch-up runs there, in any mode — the merge path (`_shared/pr-first-merge.md`) owns a conflict from there'));
-  assert.ok(flat.includes("`wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it"),
-    'the wrap-up-exit bullet must point at the leave-open exception');
+  assertGitDisciplineException(GIT_DISCIPLINE);
+});
+
+test('go-red control: dropping the never-re-read exception makes the git-discipline assertion throw', () => {
+  const mutated = GIT_DISCIPLINE.replace('The one exception is an `unknown` at', 'An `unknown` at');
+  assert.ok(mutated !== GIT_DISCIPLINE, 'the control must actually mutate the text');
+  assert.throws(() => assertGitDisciplineException(mutated), /late read: the never-re-read bullet/);
 });
 
 const WRAP_SUMMARY = read('plugin', 'skills', 'wrap-up', 'summary-template.md');
@@ -79,6 +113,8 @@ function assertVerdictRule(text) {
   assert.ok(rule.includes('`blocked — conflict with main in {files}`'), 'AC2.1: conflict Verdict wording');
   assert.ok(rule.includes('never "everything shipped"'), 'AC2.1: never everything shipped');
   assert.ok(rule.includes('`decisions.md` line'), 'AC2.1: read from the decisions line, never memory');
+  assert.ok(rule.includes('`DIRTY → nothing to merge (forge state stale)` reads as caught up'), 'Verdict: a stale-forge outcome reads as caught up');
+  assert.ok(rule.includes('"mergeability not re-checked"'), 'Verdict: a leave-open run with no mergeability line is named');
 }
 
 function assertResumeRow(text) {
@@ -90,6 +126,7 @@ function assertResumeRow(text) {
   const para = flat.slice(flat.indexOf('**Resume-to-merge row.**'));
   assert.ok(para.length < flat.length, 'AC1.2: the Resume-to-merge row paragraph exists');
   assert.ok(para.includes('Leave-open mergeability re-check'), 'AC1.2: the row cites its producer');
+  assert.ok(para.includes('`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/decisions.md`'), 'AC1.2: the row reads the possibly archived decisions.md');
   assert.ok(para.includes('DIRTY → merged main as {sha}'), 'AC1.2: the row names the merge');
   assert.ok(para.includes('only when it starts with `DIRTY`'), 'AC3.1: the suffix carries the outcome only for a DIRTY outcome');
   assert.ok(para.includes('any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed read)'), 'AC3.1: any other outcome is named');

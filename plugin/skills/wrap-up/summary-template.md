@@ -53,12 +53,15 @@ never a general license to downgrade an unrelated failure.
 one `mergeability:` outcome — read it from that `decisions.md` line, never
 from memory, and name it in the Verdict. `DIRTY → merged main as {sha}`
 reads as caught up ("PR #{n} left open, caught up with main as {sha} — CI
-runs on the new head"). `DIRTY — conflict in {files}` makes the Verdict
+runs on the new head"); `DIRTY → nothing to merge (forge state stale)`
+reads as caught up too, with nothing to merge. `DIRTY — conflict in {files}` makes the Verdict
 read `blocked — conflict with main in {files}`, never "everything shipped":
 a PR GitHub runs no CI on has not shipped. `DIRTY — not caught up
 ({reason})` reads `blocked — PR conflicts with main, not caught up
 ({reason})`. Any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed
-read) adds nothing to the Verdict.
+read) adds nothing to the Verdict. A leave-open run whose `decisions.md`
+holds no `mergeability:` line reads "mergeability not re-checked" in the
+Verdict — never as clean.
 
 ### State
 

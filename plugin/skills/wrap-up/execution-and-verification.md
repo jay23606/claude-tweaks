@@ -53,8 +53,19 @@ before a human opens it. A sibling merge that landed during the run can have lef
 and GitHub then runs no `pull_request` workflow on it: the parked PR shows no test run, which reads
 as "checks still pending" (#3298). Here the run takes the conflict that `_shared/git-discipline.md`'s
 Post-push merge-state check otherwise leaves to the merge path at wrap-up's exit. Reuse the state
-that check's `pr-merge-state.js --phase wrap-up` call just printed — never a second read — and
-route on it in every mode; only git's own auto-merge runs, so there is no judgment to surface:
+that check's `pr-merge-state.js --phase wrap-up` call just printed — never a second read — unless
+it printed `unknown` (GitHub's mergeability computation, which that request started, not finished
+straight after the push) or exited 3 because cleanup item 8 (`cleanup-procedures.md`) had already
+archived `$PIPELINE_RUN_DIR` — item 8 runs before this step's commit and push. Then take one read
+of its own, as the last call of this execution step — after the phase-exit push, its Post-push
+merge-state check and the PR checklist flip, before the Verify execution section:
+`node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "{run-dir}" --phase wrap-up`, where
+`{run-dir}` is `$PIPELINE_RUN_DIR` while it still resolves, or
+`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/` once item 8 archived it
+(`_shared/timing-render.md`'s archive-path rule; the CLI exits 3 on a run dir that no longer
+exists). The worktree is still there: under leave-open, `cleanup-procedures-execution.md` Section
+C's step 4 stops with no merge commit. A late `unknown` is not read again. Route on the state in
+every mode; only git's own auto-merge runs, so there is no judgment to surface:
 
 - **`conflicting`** — run that section's Catch-up steps 1-5 against this worktree, with two
   substitutions. Step 4 never resolves a conflict: on a conflicted merge, list the conflicting
@@ -66,10 +77,11 @@ route on it in every mode; only git's own auto-merge runs, so there is no judgme
   stale)`; a catch-up that could not run — step 1's uncommitted changes, a failed fetch or push —
   logs `DIRTY — not caught up ({reason})`.
 - **Any other state** — log `mergeability: {mergeStateStatus}` (`CLEAN`, `BLOCKED`, `UNKNOWN`, …),
-  or the printed `state` when no `mergeStateStatus` was read (`read-failed`, `gh-absent`, `no-pr`);
+  or the printed `state` when no `mergeStateStatus` was read (`read-failed`, `gh-absent`, `no-pr`),
+  or `exit 2`/`exit 3` when the read printed nothing (the CLI prints no `state` on those exits);
   nothing else changes. The `SKIP` that check already wrote for a failed read stays as written.
 
-Log with `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO
+Log with `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "{run-dir}" --status AUTO
 --section "/wrap-up" --step "Leave-open mergeability re-check" --reversibility high --text
 "mergeability: {outcome}"`. The phase-trace report's Verdict line (`summary-template.md`) and
 `/claude-tweaks:flow`'s resume-to-merge row (`flow/summary-template.md`) name a `DIRTY` outcome, so a

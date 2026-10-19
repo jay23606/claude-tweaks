@@ -104,7 +104,9 @@ Close the template's fence above, then assemble the applicable lines (the base 2
 **Recommended slot.** The release row is never marked `(recommended)` while `/claude-tweaks:flow {next spec}` is present — the next spec's pipeline is the standing default. When this run has no next spec (the last spec of a batch, or a standalone run), it takes the `(recommended)` slot instead of `/claude-tweaks:help`.
 
 **Resume-to-merge row.** Render only under `integration-model: pr-first` (`_shared/integration-model.md`), only when this run's own merge outcome is `armed` or `pending-review` (the run ended without a confirmed `merged` result — whether because the Auto-merge short-circuit never triggered, its content judgment declined, or the terminal Review Console's own merge option was answered "leave PR open" / the console was stopped). Never render this row when the outcome is `merged` (nothing left to resume) or under `local-merge` (no PR, no resume-to-merge shape — the branch-finish handoff already ran inline). `{outcome}` is the `mergeability:` outcome wrap-up's Leave-open mergeability re-check
-(`wrap-up/execution-and-verification.md`) logged to `decisions.md`, verbatim — e.g.
+(`wrap-up/execution-and-verification.md`) logged to the run's `decisions.md` — possibly archived,
+`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/decisions.md`, once wrap-up's cleanup item 8
+has archived the run directory (`_shared/timing-render.md`'s archive-path rule) — verbatim, e.g.
 `DIRTY → merged main as {sha}` — so a parked PR whose CI GitHub suppressed is visible from this
 summary; `is blocked` replaces `is ready` when that outcome is `DIRTY — conflict in {files}` or
 `DIRTY — not caught up ({reason})`. The suffix carries the logged outcome only when it starts with `DIRTY` (e.g. `DIRTY → merged main as {sha}`); any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed read), like no such line at all (an `armed` or merge-path `pending-review` outcome), drops the ` — mergeability: {outcome}` suffix. The row:
