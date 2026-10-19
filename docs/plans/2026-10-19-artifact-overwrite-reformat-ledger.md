@@ -1,9 +1,0 @@
-# Open Items — #3341 check-artifact-overwrite: pass a content-preserving step-markup reformat
-
-| # | Phase | Item | Status | Resolution |
-|---|-------|------|--------|------------|
-| 1 | build | SDD ruling — implementer runs focused suites only (lib, CLI, namespacing conformance), not full `npm test`; /build Common Step 5 runs the full suite centrally: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
-| 2 | build | isStepMarkupReformat returns true for a hunk deleting only blank lines (removed/added both empty after filtering) — harmless, but the comment "A deletion-only hunk never qualifies" overstates it; a removed.length===0 guard would tighten it | fixed | Wrap-up triage (no record was staged, so the build-time `deferred` carried no destination): blank-only deletion loses no content, so the behavior stays; comment corrected to say so — 450bba1d0 |
-| 3 | build | parseHunks skips any hunk line starting with ---/+++ (pre-existing), so a deleted YAML `---` delimiter is invisible; the new step-markup test widens the exposure — a reformat hunk that also drops a frontmatter delimiter would clear | fixed | Wrap-up fix-now (file is in this diff, so pre-existence is no defer reason): in-hunk `---`/`+++` skip removed (headers precede the first `@@` and are already swallowed), plus a discriminating test; new test fails against the old parser — 450bba1d0 |
-| 4 | build | Live replay test early-returns when 80e3dad2d is absent (shallow clone) and checks only the head commit, not d81250829 — same precedent as the existing AC1 test | accepted | Wrap-up: the skip is the repo's established environment-precondition shape (the AC1 replay test above it does the same), and the synthetic-repo fixtures cover the same logic in every checkout |
-| 5 | wrap-up | pr — PR #3654 — this run's own pr-first PR; disposition is Phase 4's merge decision | observation | — |
