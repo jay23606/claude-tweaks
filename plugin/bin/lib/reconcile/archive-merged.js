@@ -20,7 +20,7 @@ const {
 } = require('./cache');
 const { escalateResidue } = require('./escalate-residue');
 const { isWorktreeAlwaysOn } = require('../policy');
-const { repoSlugOf } = require('./release-merged');
+const { repoSlugOf, prClosesIssue } = require('./release-merged');
 const { closeRunState } = require('../hooks/close-run-state');
 const { checkRunIntegrity, fallbackBranch } = require('../hooks/run-integrity');
 
@@ -310,14 +310,28 @@ function isAbandonedInterrupted(runDir, state, sessionId, now = Date.now()) {
   }, now).kind === 'abandoned-interrupted';
 }
 
+// The run's records that its merged PR does NOT close -> ascending record
+// numbers. Pure — no I/O. `undefined` when the verdict cannot be decided
+// (no repo slug, or the PR carries no closingIssuesReferences array): the
+// caller must fail closed, never read that as "all closed".
+function unclosedRecords(prState, records, repoSlug) {
+  if (!repoSlug) return undefined;
+  const verdicts = records.map((n) => prClosesIssue(prState, n, repoSlug));
+  if (verdicts.includes(undefined)) return undefined;
+  return records.filter((_, i) => verdicts[i] === false).sort((a, b) => a - b);
+}
+
 // A run's PR state + its console state -> what to do. Pure — no I/O.
 //   { action: 'archive' } | { action: 'skip', reason }
+// `recordCheck` (#3503) is `{ records, repoSlug }`: a merged PR archives only
+// when it closes every one of the run's records. Absent, or with no records,
+// it is ignored and the decision is byte-identical to the pre-#3503 table.
 // #1732: the actual decision logic — classifyRunDir's 'merged' branch calls
 // this directly (a `Core` suffix, not a class of its own, since it has no
 // TTL of its own to own — only the mtime/recency kinds do), and so does
 // archiveMergedRun (with real staged evidence, #3249); `decideArchive`
 // below is the thin 2-arg wrapper kept for its direct unit tests.
-function decideArchiveCore(prState, consoleState, hasStagedPending) {
+function decideArchiveCore(prState, consoleState, hasStagedPending, recordCheck) {
   if (prState === 'gh-absent') return { action: 'skip', reason: 'gh-absent' };
   if (prState === 'network-failure') return { action: 'skip', reason: 'network-failure' };
   if (prState === 'invalid-arguments') return { action: 'skip', reason: 'invalid-arguments' };
@@ -343,10 +357,13 @@ function decideArchiveCore(prState, consoleState, hasStagedPending) {
   // staged/ directory; only an explicit `false` unlocks the archive path, so
   // every existing 2-arg call site (and any caller that genuinely doesn't
   // know) keeps today's unconditional skip.
-  if (consoleState === 'none') {
-    if (hasStagedPending === false) return { action: 'archive' };
+  if (consoleState === 'none' && hasStagedPending !== false) {
     return { action: 'skip', reason: 'console-never-rendered' };
   }
+  if (!recordCheck || !recordCheck.records || recordCheck.records.length === 0) return { action: 'archive' };
+  const unclosed = unclosedRecords(prState, recordCheck.records, recordCheck.repoSlug);
+  if (unclosed === undefined) return { action: 'skip', reason: 'closing-issues-unknown' };
+  if (unclosed.length > 0) return { action: 'skip', reason: 'merged-partial', unclosed };
   return { action: 'archive' };
 }
 
@@ -1422,7 +1439,10 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // (and of the ordinary branch-joined path) archives when staged/ holds
 // nothing pending (#3249), and otherwise keeps plain, untracked
 // 'console-never-rendered' — real staged items still await a human.
-const STRUCTURALLY_STUCK_REASONS = new Set(['no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed']);
+// 'merged-partial' (#3503) is tracked because a run whose merged PR left a
+// record unclosed is waiting on a later PR; it must escalate rather than
+// freeze, and the 7-day TTL keeps a legitimately split run quiet meanwhile.
+const STRUCTURALLY_STUCK_REASONS = new Set(['no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'merged-partial']);
 
 // #1732: thin wrapper — see isOrphanedMint's comment on the `kinds` scoping
 // pattern. Pure except for the one mtime stat classifyRunDir performs.
@@ -2001,7 +2021,7 @@ function archiveMerged({
 }
 
 module.exports = {
-  archiveMerged, decideArchive, decideArchiveCore, readConsoleState, archiveRunDir, listSpecDirs,
+  archiveMerged, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, archiveRunDir, listSpecDirs,
   isStaleDir, classifyRunDir,
   isOrphanedMint, isAdHocStandaloneMint, archiveOrphanedMint, ORPHAN_MINT_TTL_MS, trackArchiveResult,
   localHasMerge, lastOwnEventMs, isAbandonedInterrupted, STALE_INTERRUPTED_TTL_MS,

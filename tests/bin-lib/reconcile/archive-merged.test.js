@@ -15,7 +15,7 @@ const {
   isStructurallyStuck, trackStuckSkip, STRUCTURALLY_STUCK_TTL_MS, isStaleDir,
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
   classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS,
-  isClosedSlugStuck, recordNumbersFromSlug, refusal,
+  isClosedSlugStuck, recordNumbersFromSlug, refusal, STRUCTURALLY_STUCK_REASONS, unclosedRecords,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure } = require('../../../plugin/bin/lib/reconcile/cache');
 const { createIssueListCache } = require('../../../plugin/bin/lib/reconcile/issue-list-cache');
@@ -2807,6 +2807,50 @@ test('decideArchiveCore: consoleState unresolved still skips regardless of hasSt
 
 test('decideArchiveCore: invalid-arguments skips with reason invalid-arguments (#3416)', () => {
   assert.deepStrictEqual(decideArchiveCore('invalid-arguments', 'resolved'), { action: 'skip', reason: 'invalid-arguments' });
+});
+
+// Shape of one `closingIssuesReferences` entry from `gh pr view --json`.
+function ref(n, owner = 'acme', name = 'w') {
+  return { number: n, repository: { name, owner: { login: owner } } };
+}
+test('AC1.1 decideArchiveCore: MERGED + resolved console + a record the PR does not close skips merged-partial naming it', () => {
+  const pr = { state: 'MERGED', closingIssuesReferences: [ref(3306), ref(3307)] };
+  assert.deepStrictEqual(
+    decideArchiveCore(pr, 'resolved', false, { records: [3306, 3307, 3311], repoSlug: 'acme/w' }),
+    { action: 'skip', reason: 'merged-partial', unclosed: [3311] });
+});
+test('AC2.1 decideArchiveCore: MERGED + every record closed archives', () => {
+  const pr = { state: 'MERGED', closingIssuesReferences: [ref(3306), ref(3311)] };
+  assert.deepStrictEqual(decideArchiveCore(pr, 'none', false, { records: [3311, 3306], repoSlug: 'acme/w' }), { action: 'archive' });
+});
+test('AC4.1 decideArchiveCore: no closingIssuesReferences array skips closing-issues-unknown, never archives', () => {
+  assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'resolved', false, { records: [5], repoSlug: 'acme/w' }),
+    { action: 'skip', reason: 'closing-issues-unknown' });
+});
+test('AC4.1 decideArchiveCore: an unresolvable repo slug skips closing-issues-unknown', () => {
+  const pr = { state: 'MERGED', closingIssuesReferences: [ref(5)] };
+  assert.deepStrictEqual(decideArchiveCore(pr, 'resolved', false, { records: [5], repoSlug: null }),
+    { action: 'skip', reason: 'closing-issues-unknown' });
+});
+test('decideArchiveCore: a same-number closing reference in another repo does not count as closing', () => {
+  const pr = { state: 'MERGED', closingIssuesReferences: [ref(5, 'other', 'repo')] };
+  assert.deepStrictEqual(decideArchiveCore(pr, 'resolved', false, { records: [5], repoSlug: 'acme/w' }),
+    { action: 'skip', reason: 'merged-partial', unclosed: [5] });
+});
+test('AC3.1 decideArchiveCore: records null or recordCheck absent behaves exactly as before', () => {
+  const pr = { state: 'MERGED' };
+  assert.deepStrictEqual(decideArchiveCore(pr, 'resolved', false, { records: null, repoSlug: 'acme/w' }), { action: 'archive' });
+  assert.deepStrictEqual(decideArchiveCore(pr, 'resolved'), { action: 'archive' });
+});
+test('decideArchiveCore: existing skip reasons keep precedence over the record check', () => {
+  const check = { records: [9], repoSlug: 'acme/w' };
+  assert.deepStrictEqual(decideArchiveCore({ state: 'OPEN' }, 'resolved', false, check), { action: 'skip', reason: 'pr-open' });
+  assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'unresolved', false, check), { action: 'skip', reason: 'console-unresolved' });
+  assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'none', true, check), { action: 'skip', reason: 'console-never-rendered' });
+});
+test('STRUCTURALLY_STUCK_REASONS includes merged-partial but not closing-issues-unknown', () => {
+  assert.ok(STRUCTURALLY_STUCK_REASONS.has('merged-partial'));
+  assert.ok(!STRUCTURALLY_STUCK_REASONS.has('closing-issues-unknown'));
 });
 
 // #3416: a run's PR identity is its stamped run-state.json pr.number, not its
