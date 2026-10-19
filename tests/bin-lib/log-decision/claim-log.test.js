@@ -8,7 +8,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 const LIB = path.join(ROOT, 'plugin', 'bin', 'lib', 'log-decision');
 const { formatEntry, parseEntry } = require(path.join(LIB, 'append'));
 const {
-  CLAIM_LOG_SECTION, CLAIM_LOG_STEP, claimLogText, isClaimLogEntry, hasClaimLogFor, classifyDecisions, paraphrasedClaimNumbers,
+  CLAIM_LOG_SECTION, CLAIM_LOG_STEP, claimLogText, isClaimLogEntry, hasClaimLogFor, hasCanonicalClaimLogFor, classifyDecisions, paraphrasedClaimNumbers,
 } = require(path.join(LIB, 'claim-log'));
 
 const NOW = Date.parse('2026-10-04T12:00:00Z');
@@ -185,4 +185,13 @@ test('AC1.1: paraphrasedClaimNumbers does not read a count ("claimed 5 of 7") as
   assert.deepStrictEqual(paraphrasedClaimNumbers('- AUTO 08:00:00 — Step 2.8: claimed 5 of 7 targets. Reversibility: n/a.'), []);
   assert.deepStrictEqual(paraphrasedClaimNumbers('- AUTO 08:00:00 — Step 2.8: claimed 5 of 7. Reversibility: n/a.'), []);
   assert.deepStrictEqual(paraphrasedClaimNumbers('- AUTO 08:00:00 — Step 2.8: claimed #5 for this run. Reversibility: n/a.'), [5]);
+});
+
+test('AC3.1: hasCanonicalClaimLogFor accepts only the exact Step 2.8 claimed #{n} form (#2912)', () => {
+  const canonical = '- AUTO 09:41:32 — Step 2.8: claimed #2912 (bin/claim-targets.js, transport: git). Reversibility: high.';
+  assert.strictEqual(hasCanonicalClaimLogFor(canonical, 2912), true);
+  assert.strictEqual(hasCanonicalClaimLogFor('- AUTO 09:41:32 — Step 2.8: claimed issue #2912. Reversibility: high.', 2912), false, 'paraphrase');
+  assert.strictEqual(hasCanonicalClaimLogFor('- AUTO 09:41:32 — Step 2.8: claimed #29120 (bin/claim-targets.js, transport: git).', 2912), false, 'word boundary');
+  assert.strictEqual(hasCanonicalClaimLogFor(REAL_BATCH, 1235), false, 'the batch form is not the per-target canonical line');
+  assert.strictEqual(hasCanonicalClaimLogFor(null, 2912), false);
 });
