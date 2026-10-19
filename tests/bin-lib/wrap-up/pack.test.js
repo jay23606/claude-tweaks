@@ -634,6 +634,16 @@ test('gatherPack: a residue subprocess killed by the exec timeout reports a time
   assert.match(pack.residue.error, /^timeout after 30000ms: node residue\.js \(killed by SIGTERM\)$/);
 });
 
+test('gatherPack: a residue subprocess killed with a null signal names the timeout, never "killed by null" (#3479)', async () => {
+  const deps = okDeps({ execFile: async (cmd, args) => {
+    if (String(args[0]).endsWith('residue.js')) { const e = new Error(`Command failed: node ${args[0]}`); e.killed = true; e.signal = null; e.code = null; throw e; }
+    return okDeps().execFile(cmd, args);
+  } });
+  const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['residue'], deps });
+  assert.strictEqual(pack.residue.ok, false);
+  assert.match(pack.residue.error, /^timeout after 30000ms: node residue\.js \(killed by timeout\)$/);
+});
+
 test('gatherPack: a residue subprocess that never settles reports a timeout (#3479)', async () => {
   const deps = okDeps({ probeTimeoutMs: 25, execFile: async (cmd, args) => (String(args[0]).endsWith('residue.js') ? new Promise(() => {}) : okDeps().execFile(cmd, args)) });
   const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['residue'], deps });

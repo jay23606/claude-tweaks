@@ -38,7 +38,7 @@ async function execBounded(deps, cmd, args, cwd) {
   try { return await deps.execFile(cmd, args, { cwd, ...EXEC_OPTS }); } catch (err) {
     if (err && err.killed === true) {
       const label = cmd === 'node' ? path.basename(args[0]) : args[0];
-      throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${label} (killed by ${err.signal})`);
+      throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${label} (killed by ${err.signal || 'timeout'})`, { cause: err });
     }
     throw err;
   }

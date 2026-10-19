@@ -165,6 +165,7 @@ function probeWorktrees({ scope, isPidAlive = defaultIsPidAlive, isDirty = defau
       // branch this work did not produce: another session's live worktree,
       // or a stale leftover from a prior run. Never this run's own blast
       // radius, so it is never `blast-radius`.
+      // Must stay 'observed': the #3479 blast-radius short-circuit at the top of probeWorktrees depends on it.
       scope: 'observed',
       subject: wt.path,
       remedy,
