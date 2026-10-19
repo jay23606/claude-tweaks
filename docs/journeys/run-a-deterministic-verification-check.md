@@ -52,7 +52,7 @@ files:
 - **URL:** `node plugin/bin/verify.js --log-dir /tmp/verify-demo --cmd tests="npm test" --cmd smoke="./scripts/smoke.sh"`
 - **Action:** Supply a `--cmd` name outside the reserved `types`/`lint`/`tests` set.
 - **Should feel:** Extensible without a spec change — any project-specific check rides along under the same ordering discipline.
-- **Should understand:** Unknown names run serially, after the known stages, in the order given, subject to the same fail-fast rule — a failing `tests` skips `smoke`, and a failing `smoke` (if there were a second unknown check after it) would skip that one too.
+- **Should understand:** Unknown names run serially, after the known stages, in the order given, subject to the same fail-fast rule — a failing `tests` skips `smoke` — except on a `--baseline` run (#3511), where every suite runs — and a failing `smoke` (if there were a second unknown check after it) would skip that one too.
 - **Red flags:** An unknown check running before `tests` finishes; an unknown check's failure not fail-fasting a later unknown check.
 
 ### 5. Trigger a usage error
@@ -131,7 +131,7 @@ files:
     - a working directory that does not resolve under the repository root as git spells it
     - an adjudicator error (for example, the scratch worktree could not be created)
   - An unresolvable ref exits 2 before anything runs.
-  - Any other malformed baseline flag also exits 2 before anything runs: an empty `--baseline` value, `--baseline` with no `--baseline-cmd`, a `--baseline-cmd` whose template lacks `{file}` or that names no `--cmd`, and either flag beside `--stamp-status` or `--changed-files`.
+  - Any other malformed baseline flag also exits 2 before anything runs: an empty `--baseline` value, `--baseline` with no `--baseline-cmd` (without `--scope`), a `--baseline-cmd` whose template lacks `{file}` or that names no `--cmd` (without `--scope`), and either flag beside `--stamp-status` or `--changed-files`. Under `--scope` (#3511) `--baseline-cmd` is optional (an unnamed failing check falls back to the declaration's `retry.{name}` template), so those two cases are replaced by two scoped ones: a `--baseline-cmd` that names no `--cmd` or declared suite, and `--baseline` with no `--baseline-cmd` and no declared `retry` template.
 - **Red flags:**
   - An exit 0 while any `ATTRIBUTABLE:` line printed.
   - A pass over a failure in a file that does not exist at base.
@@ -195,4 +195,5 @@ files:
 - Step 14 added after #3072 (`mergeNarrowing` in `changed-files.js`; `verify.js --scope` drops merge-identical paths after a mid-run integration-branch merge and reports them as `scope.mergeNarrowing`; the `--base` refusal message corrected) — a scoped re-verify after merging the integration branch no longer re-runs every suite the merged-in files touch.
 - Step 11 extended by #3316 (`verify.js` records its adjudicated verdict as `report.json`'s `effectivePass`; `baseline.js`'s `normalizeLog` also strips TAP's `# duration_ms` summary line): the post-merge Windows regression filer reads the verdict instead of re-deriving it.
 - Step 15 added after #3481 (the declared-`preExisting` adjudication from #3129 now runs `unattributedFailureCount` per failing check and refuses with `unattributed-failures: {N}` / `no-accounting-guard: {family}`, the same guard as flaky retry, plus a `runner-error` refusal for a Node `ℹ Error:` line the count cannot see): a declared pre-existing failure can no longer hide a failure the runner could not attribute to a test file.
+- Step 11 extended after #3511 shipped (a scoped `--baseline` run resolves each declared suite's `--baseline-cmd` from `retry.{suite}` when none is given, `--baseline-cmd` may name a declared suite, and `--baseline` runs every suite after a failing one — `run.js`'s `continueSuitesAfterFailure` — so adjudication is never refused for a fail-fast skip): a scoped re-verify adjudicates a failure on its own invocation instead of re-running the full unscoped suite.
 - Related specs: #891 (parent — deterministic verification runner family), #881 (suite-count regression detection), #882 (flake adjudication — landed as a standalone `node --test` isolated re-run recipe in `verification.md`'s own "Flake adjudication" section; does not consume `verify.js`'s per-check log files)
