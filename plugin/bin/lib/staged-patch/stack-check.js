@@ -16,20 +16,21 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+// Dotfiles are dropped first, as `readSnapshot` does before it sorts staged/ entries.
 function stagedApplyOrder(names) {
-  return names.filter((n) => n.endsWith('.patch')).sort();
+  return names.filter((n) => !n.startsWith('.') && n.endsWith('.patch')).sort();
 }
 
 // Every git call runs with the user's and system config switched off and the caller's repo
 // pointers removed: a user `diff.noprefix` or an inherited GIT_DIR would change what the check
-// reads and emits.
-function defaultGit(args, { cwd }) {
+// reads and emits. `binary` returns stdout as a Buffer, for output that carries file bytes.
+function defaultGit(args, { cwd, binary = false }) {
   const env = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: '1' };
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env });
-  return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
+  const r = spawnSync('git', args, { cwd, encoding: binary ? 'buffer' : 'utf8', env });
+  return { status: r.status, stdout: r.stdout || (binary ? Buffer.alloc(0) : ''), stderr: r.stderr ? r.stderr.toString() : '' };
 }
 
 // `git apply --numstat -z` emits one NUL-terminated `added\tdeleted\tpath` record per file,
@@ -65,8 +66,8 @@ function firstLine(stderr, abs) {
 // with `present` copies of the worktree's files; `withTemp` removes its directory however `fn`
 // exits.
 function toolkit(worktree, git) {
-  const run = (args, cwd) => {
-    const r = git(args, { cwd });
+  const run = (args, cwd, binary = false) => {
+    const r = git(args, { cwd, binary });
     if (r.status === null) throw new Error(`git ${args.join(' ')} did not complete (cwd ${cwd})`);
     return r;
   };
@@ -174,8 +175,9 @@ function checkStack({ worktree, patches, target, git = defaultGit }) {
 // { worktree, patches, target, git? } -> { ok: true, patch } | { ok: false, reason }. `target`
 // is re-derived per file: ours is the stacked state (the patches before it that the walk
 // applied), base is the worktree file, theirs is the worktree with only `target` applied.
-// `patch` is target's preamble verbatim followed by the diff of the merged files against the
-// stacked state. Creates, deletes, renames, and unsafe paths are refused.
+// `patch` is a Buffer — target's preamble verbatim followed by the diff of the merged files against
+// the stacked state — and is apply-checked on that state before it is returned. File contents are
+// bytes end to end. Creates, deletes, renames, and unsafe paths are refused.
 function rederive({ worktree, patches, target, git = defaultGit }) {
   const { run, withTemp, withScratch } = toolkit(worktree, git);
 
@@ -190,8 +192,9 @@ function rederive({ worktree, patches, target, git = defaultGit }) {
   const rels = copiedPaths(numstat.stdout);
   const unsafe = rels.find(isUnsafe);
   if (unsafe !== undefined) return { ok: false, reason: `unsafe path ${unsafe}` };
-  const text = fs.readFileSync(target, 'utf8');
-  const head = text.search(/^diff --git /m);
+  // The patch is held as bytes; latin1 decoding is 1:1, so a match index here is a byte offset.
+  const raw = fs.readFileSync(target);
+  const head = raw.toString('latin1').search(/^diff --git /m);
   if (head < 0 || rels.length === 0) return { ok: false, reason: 'target has no diff' };
   const missing = rels.find((rel) => !isFile(path.join(worktree, rel)));
   if (missing !== undefined) return { ok: false, reason: `${missing} is not a file in the worktree` };
@@ -204,16 +207,21 @@ function rederive({ worktree, patches, target, git = defaultGit }) {
   const theirs = withScratch(present, (dir) => {
     const ap = run(['apply', target], dir);
     if (ap.status !== 0) return { error: firstLine(ap.stderr, target) };
-    return { files: Object.fromEntries(rels.map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')])) };
+    return { files: Object.fromEntries(rels.map((rel) => [rel, fs.readFileSync(path.join(dir, rel))])) };
   });
   if (theirs.error !== undefined) return { ok: false, reason: theirs.error };
 
-  return withScratch(present, (dir) => {
+  // The stacked state: a fresh scratch with every earlier patch the walk applied replayed onto it.
+  const onStacked = (fn) => withScratch(present, (dir) => {
     for (const p of prior.applied) {
       if (run(['apply', p], dir).status !== 0) throw new Error(`replay of ${path.basename(p)} failed`);
     }
+    return fn(dir);
+  });
+
+  return onStacked((dir) => {
     run(['add', '-A'], dir);
-    return withTemp((work) => {
+    const merged = withTemp((work) => {
       for (const rel of rels) {
         const ours = path.join(work, 'ours');
         const base = path.join(work, 'base');
@@ -221,15 +229,42 @@ function rederive({ worktree, patches, target, git = defaultGit }) {
         fs.copyFileSync(path.join(dir, rel), ours);
         fs.copyFileSync(path.join(worktree, rel), base);
         fs.writeFileSync(their, theirs.files[rel]);
-        const merged = run(['merge-file', '-p', ours, base, their], work);
-        if (merged.status > 0) return { ok: false, reason: `conflict in ${rel}` };
-        fs.writeFileSync(path.join(dir, rel), merged.stdout);
+        // Without -p the merge is written into `ours` in place, byte for byte.
+        const mf = run(['merge-file', ours, base, their], work);
+        if (mf.status > 0) return { reason: `conflict in ${rel}` };
+        fs.copyFileSync(ours, path.join(dir, rel));
       }
-      const diff = run(['diff', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/'], dir);
-      if (diff.stdout === '') return { ok: false, reason: 'already satisfied by an earlier patch' };
-      return { ok: true, patch: text.slice(0, head) + diff.stdout };
+      return null;
     });
+    if (merged !== null) return { ok: false, reason: merged.reason };
+    const diff = run(['diff', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/'], dir, true);
+    if (diff.status !== 0) return { ok: false, reason: `git diff failed: ${firstLine(diff.stderr, target)}` };
+    const diffBytes = Buffer.isBuffer(diff.stdout) ? diff.stdout : Buffer.from(diff.stdout, 'utf8');
+    if (diffBytes.length === 0) return { ok: false, reason: 'already satisfied by an earlier patch' };
+    const patch = Buffer.concat([raw.subarray(0, head), diffBytes]);
+    // The re-derived diff must apply on the stacked state before it is offered as a replacement.
+    const verdict = onStacked((fresh) => withTemp((tmp) => {
+      const file = path.join(tmp, path.basename(target));
+      fs.writeFileSync(file, patch);
+      const check = run(['apply', '--check', file], fresh);
+      return check.status === 0 ? null : firstLine(check.stderr, file);
+    }));
+    if (verdict !== null) return { ok: false, reason: `re-derived diff failed verification: ${verdict}` };
+    return { ok: true, patch };
   });
 }
 
-module.exports = { stagedApplyOrder, checkStack, rederive };
+// { worktree, patches, git? } -> { [basename]: { ok: true } | { ok: false, error } }. `patches` are
+// absolute paths in apply order. One walk: a patch is ok iff it applied at its position; one that
+// did not carries the walk's skip or conflict error (first git line, basenames).
+function stackVerdicts({ worktree, patches, git = defaultGit }) {
+  const { skipped, conflicts, applied } = walkStack({ worktree, patches, git });
+  const okNames = new Set(applied.map((p) => path.basename(p)));
+  const errors = new Map([...skipped, ...conflicts].map((e) => [e.patch, e.error]));
+  return Object.fromEntries(patches.map((p) => {
+    const name = path.basename(p);
+    return [name, okNames.has(name) ? { ok: true } : { ok: false, error: errors.get(name) || 'not applied by the stacked check' }];
+  }));
+}
+
+module.exports = { stagedApplyOrder, checkStack, rederive, stackVerdicts };

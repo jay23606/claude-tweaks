@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { FIXTURE_TIMEOUT_MS } = require('../../helpers/git-fixtures');
-const { checkStack, rederive, stagedApplyOrder } = require('../../../plugin/bin/lib/staged-patch/stack-check');
+const { checkStack, rederive, stagedApplyOrder, stackVerdicts } = require('../../../plugin/bin/lib/staged-patch/stack-check');
 
 const FIXTURE_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const BASE = ['l1', 'l2', 'l3', 'l4', 'anchor', 'a1', 'a2', 'a3'].join('\n') + '\n';
@@ -167,9 +167,9 @@ test('AC1.1: overlapping-context edits re-derive onto the earlier patch', (t) =>
   assert.equal(before.targetConflict.conflictsWith, 'review-1.patch');
   const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
   assert.equal(r.ok, true, r.reason);
-  assert.ok(r.patch.startsWith(PREAMBLE));
-  assert.match(r.patch, /^\+L5$/m);
-  assert.match(r.patch, /^ L2$/m);
+  assert.ok(r.patch.toString().startsWith(PREAMBLE));
+  assert.match(r.patch.toString(), /^\+L5$/m);
+  assert.match(r.patch.toString(), /^ L2$/m);
 });
 
 test('re-derived patch passes the stacked check', (t) => {
@@ -225,8 +225,8 @@ test('the emitted patch keeps a/ b/ prefixes under a user config that drops them
   const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
   const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
   assert.equal(r.ok, true, r.reason);
-  assert.ok(r.patch.includes('diff --git a/f.txt b/f.txt\n'), r.patch);
-  assert.ok(r.patch.includes('+++ b/f.txt\n'), r.patch);
+  assert.ok(r.patch.includes('diff --git a/f.txt b/f.txt\n'), r.patch.toString());
+  assert.ok(r.patch.includes('+++ b/f.txt\n'), r.patch.toString());
 });
 
 test('a content-and-mode change is not re-derived', (t) => {
@@ -241,4 +241,102 @@ test('a content-and-mode change is not re-derived', (t) => {
   const p = stage(dir, 'mode.patch', d.stdout);
   const r = rederive({ worktree: fx.dir, patches: [p], target: p });
   assert.deepEqual(r, { ok: false, reason: 'non-modification hunk' });
+});
+
+// A fixture whose f.txt ends in a Latin-1 line (`caf\xe9`) — bytes that are not valid UTF-8. The
+// diff is captured as a Buffer, so no byte is ever decoded on the way to a staged file.
+const LATIN1_BASE = Buffer.concat([Buffer.from(NINE), Buffer.from('caf\xe9\n', 'latin1')]);
+
+function captureBytesDiff(t, base, from, to) {
+  const fx = gitFixture(t, base);
+  fs.writeFileSync(path.join(fx.dir, 'f.txt'), Buffer.from(base.toString('latin1').replace(`${from}\n`, `${to}\n`), 'latin1'));
+  const d = spawnSync('git', ['diff'], { cwd: fx.dir, env: FIXTURE_ENV, timeout: FIXTURE_TIMEOUT_MS });
+  assert.equal(d.status, 0, String(d.stderr));
+  return d.stdout;
+}
+
+function stageBytes(dir, name, diff) {
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, Buffer.concat([Buffer.from(PREAMBLE), diff]));
+  return file;
+}
+
+test('M3: a Latin-1 file re-derives byte-safely — applies on the stacked state and touches only the edited line', (t) => {
+  const fx = gitFixture(t, LATIN1_BASE);
+  const dir = stagedDir(t);
+  const r1 = stageBytes(dir, 'review-1.patch', captureBytesDiff(t, LATIN1_BASE, 'l4', 'L4'));
+  const r2 = stageBytes(dir, 'review-2.patch', captureBytesDiff(t, LATIN1_BASE, 'l7', 'L7'));
+  assert.equal(checkStack({ worktree: fx.dir, patches: [r1, r2], target: r2 }).targetConflict.conflictsWith, 'review-1.patch');
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(r.ok, true, r.reason);
+  assert.ok(Buffer.isBuffer(r.patch));
+  assert.ok(r.patch.includes(Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a])), 'the Latin-1 context line keeps its raw byte');
+  assert.equal(r.patch.includes(Buffer.from([0xef, 0xbf, 0xbd])), false, 'no U+FFFD replacement bytes');
+  const changed = r.patch.toString('latin1').split('\n').filter((l) => /^[+-](?![+-]{2} )/.test(l));
+  assert.deepEqual(changed, ['-l7', '+L7']);
+  fs.writeFileSync(r2, r.patch);
+  assert.equal(checkStack({ worktree: fx.dir, patches: [r1, r2], target: r2 }).ok, true);
+});
+
+// Real git for every call except those `intercept` answers (it returns a result, or null to pass).
+function gitIntercepting(intercept) {
+  return (args, { cwd }) => {
+    const faked = intercept(args);
+    if (faked) return faked;
+    const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: FIXTURE_ENV });
+    return { status: r.status, stdout: r.stdout, stderr: r.stderr };
+  };
+}
+
+test('T2: a failing final git diff is reported, not read as already satisfied', (t) => {
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  const git = gitIntercepting((args) => (args[0] === 'diff' ? { status: 129, stdout: '', stderr: 'fatal: boom\n' } : null));
+  assert.deepEqual(rederive({ worktree: fx.dir, patches: [r1, r2], target: r2, git }), { ok: false, reason: 'git diff failed: fatal: boom' });
+});
+
+test('M3: a re-derived diff that does not apply on the stacked state is refused, not returned', (t) => {
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  // Only the verification copy (same basename, outside staged/) fails its apply check.
+  const git = gitIntercepting((args) => (args[0] === 'apply' && args[1] === '--check' && args[2] !== r2 && path.basename(args[2]) === 'review-2.patch'
+    ? { status: 1, stdout: '', stderr: `error: patch failed: ${args[2]}\n` } : null));
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2, git });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /^re-derived diff failed verification: error: patch failed: review-2\.patch/);
+});
+
+test('M4: stagedApplyOrder drops dotfiles and equals the .patch subsequence of the dotfile-filtered sort', () => {
+  const names = ['review-2.patch', '.hidden.patch', 'x.md', 'review-10.patch', '.review-0.patch', 'review-2.patch.shadow-dup'];
+  const expected = names.filter((n) => !n.startsWith('.')).sort().filter((n) => n.endsWith('.patch'));
+  assert.deepEqual(stagedApplyOrder(names), expected);
+  assert.deepEqual(stagedApplyOrder(names), ['review-10.patch', 'review-2.patch']);
+});
+
+test('I1: stackVerdicts — a re-derived dependent pair is ok at both positions', (t) => {
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  assert.equal(stackVerdicts({ worktree: fx.dir, patches: [r1, r2] })['review-2.patch'].ok, false);
+  const re = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(re.ok, true, re.reason);
+  fs.writeFileSync(r2, re.patch);
+  assert.deepEqual(stackVerdicts({ worktree: fx.dir, patches: [r1, r2] }), { 'review-1.patch': { ok: true }, 'review-2.patch': { ok: true } });
+});
+
+test('I1: stackVerdicts — a same-anchor pair is ok for the first and not the second, with the walk error', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, BASE, insertAboveAnchor('new1')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, BASE, insertAboveAnchor('new2')));
+  const v = stackVerdicts({ worktree: fx.dir, patches: [r1, r2] });
+  assert.deepEqual(v['review-1.patch'], { ok: true });
+  assert.equal(v['review-2.patch'].ok, false);
+  assert.match(v['review-2.patch'].error, /patch failed|does not apply/);
+  assert.equal(v['review-2.patch'].error.includes(dir), false, 'basenames only');
 });
