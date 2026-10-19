@@ -159,6 +159,11 @@ test('fix round 1 (#3598): the dirty-tree uncommitted-edits overstatement is sta
   assert.ok(qa.includes('accepted (#3598): on a tree dirty before the wave, that check also counts the pre-wave edits'));
 });
 
+test('wrap-up (#3598): the uncommitted-edits check also counts an untracked-only Fix-now wave', () => {
+  assert.ok(qa.includes('`git diff --quiet HEAD` exits non-zero, or `git ls-files --others --exclude-standard` lists a file'));
+  assert.ok(qa.includes('that check also counts the pre-wave edits and untracked files'));
+});
+
 test('fix round 1 (#3598): the test skill contract notes the Step 3 Routing wave', () => {
   const testSkill = readText(path.join(__dirname, '..', 'plugin', 'skills', 'test', 'SKILL.md'));
   assert.ok(testSkill.includes('which also covers a Step 3 Routing fix wave (#3598)'));
