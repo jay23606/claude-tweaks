@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T18:35:50.759Z",
+  "computedAt": "2026-10-19T18:54:33.411Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -419,16 +419,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3263,
-        "updatedAt": "2026-10-19T16:52:22Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3258,
-        "updatedAt": "2026-10-19T13:17:55Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3079,
         "updatedAt": "2026-10-17T06:12:08Z",
         "state": "OPEN"
@@ -450,17 +440,12 @@
       },
       {
         "number": 3026,
-        "updatedAt": "2026-10-17T06:11:04Z",
+        "updatedAt": "2026-10-19T18:37:13Z",
         "state": "OPEN"
       },
       {
         "number": 3021,
         "updatedAt": "2026-10-17T06:10:56Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3014,
-        "updatedAt": "2026-10-19T17:47:12Z",
         "state": "OPEN"
       },
       {
@@ -6510,96 +6495,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nOn a large repo, `reconcile` never reaches `reap`, even when a caller names it explicitly with `--checks`:\n\n- `plugin/bin/lib/reconcile/budget.js:8` sets `DEFAULT_BUDGET_MS = 18000`. `plugin/bin/lib/reconcile/index.js:242` calls `require('./budget').createBudget()` with no argument for every caller: the SessionStart hot path, the detached background pass, and the `hooks.js reconcile` CLI. The CLI forwards `checks: checksList.length ? checksList : undefined` (`plugin/bin/hooks.js:1318`) but passes no budget.\n- `reap` is dispatched last on purpose, because it removes the worktrees that release/archive/archive-branches derive branches from. Once the deadline passes, the per-block over-budget guard skips every remaining check. The budget clock starts before the shared `git fetch`, and that fetch becomes a full `--prune` all-refs fetch whenever `remote-prune` is requested.\n- Observed on a repo with about 26 worktrees, 74 live run dirs, 92 local branches, and 71 remote branches. Unscoped `reconcile --json` skips `archive-branches,remote-prune,reap` as `budget-exceeded`. `--checks reap,archive-branches,remote-prune` still skips `remote-prune,reap`. Only `--checks reap` on its own fits within the budget.\n- At drain termination (`plugin/skills/dispatch/SKILL.md:174`), dispatch runs an unscoped `reconcile` specifically to reap this firing's merged-PR worktrees, so on a large repo that reap never happens. `tests/dispatch-drain-close-run-reconcile.test.js:37` pins the unscoped wording.\n- `createBudget(ms = DEFAULT_BUDGET_MS, …)` (`plugin/bin/lib/reconcile/budget.js:14`) already accepts an override. An `undefined` argument falls back to the default, and `Infinity` never expires.\n\n## Deliverables\n\n1. `reconcile()` (`plugin/bin/lib/reconcile/index.js`) accepts `opts.budgetMs` and passes it to `createBudget(opts.budgetMs)`. Update the opts doc comment to list it.\n2. The `hooks.js reconcile` CLI (`plugin/bin/hooks.js`) passes `budgetMs: Infinity` when `--checks` names an explicit subset, and `undefined` otherwise. Unscoped CLI runs, the SessionStart hook, and background passes keep the 18 s default.\n3. Dispatch's drain-termination call (`plugin/skills/dispatch/SKILL.md`, the second `reconcile` at loop termination) becomes `reconcile --checks release,archive,reap`, with the same generous timeout as Step 1's call. Step 1's first reconcile stays unscoped.\n4. Tests:\n   - `tests/reconcile.test.js` gains a case showing `opts.budgetMs` reaches `createBudget` and an unbounded explicit subset is never budget-skipped.\n   - `tests/reconcile.test.js` gains a case showing the CLI passes `Infinity` for `--checks` and `undefined` when unscoped.\n   - `tests/dispatch-drain-close-run-reconcile.test.js` pins the new scoped termination call.\n\n## Acceptance Criteria\n\n- `reconcile({ checks: [...], budgetMs: Infinity })` never reports a `budget-exceeded` skip, and `createBudget` receives `Infinity`.\n- `reconcile({})` with no `budgetMs` still uses the 18 s default, and the existing exhausted-budget test still passes unchanged.\n- `hooks.js reconcile --checks reap --json` calls `reconcile` with `budgetMs: Infinity` and `checks: ['reap']`. `hooks.js reconcile --json` calls it with `budgetMs: undefined`.\n- The SessionStart hook and the background reconcile pass still run under the default budget, with no change to their call sites.\n- The drain-termination section of `plugin/skills/dispatch/SKILL.md` runs `reconcile --checks release,archive,reap` and names the same generous timeout as Step 1. Step 1's own call (`SKILL.md:106`) is unchanged and stays unscoped.\n- `node --test tests/reconcile.test.js tests/dispatch-drain-close-run-reconcile.test.js tests/bin-lib/reconcile/budget.test.js` passes.\n\n## Release Note\n\nFixed end-of-drain cleanup so it reliably removes merged worktrees on large repositories instead of running out of time first.\n\n## Technical Approach\n\nThis change threads an optional budget override through to the code that creates the budget. It deliberately doesn't reorder checks or raise the global ceiling. The reporter considered and rejected two alternatives. Running `reap` first breaks release/archive/archive-branches, which derive branches from the worktrees reap removes. Using `--checks reap` alone at drain termination reaps before release/archive can join on the worktree. The ceiling exists for the SessionStart hot path, and a caller that names an explicit subset is asking for exactly those checks to run, so an explicit `--checks` is the signal to lift it. Scoping dispatch's termination call to `release,archive,reap` also avoids the `--prune` fetch, `archive-branches`, and `remote-prune` work, which that step doesn't need. The original request below carries the reporter's complete proposed diff.\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/index.js` — `opts.budgetMs` passed to `createBudget`; doc comment updated\n- `plugin/bin/hooks.js` — the `reconcile` CLI passes `budgetMs: Infinity` for an explicit `--checks` subset\n- `plugin/skills/dispatch/SKILL.md` — drain-termination reconcile scoped to `--checks release,archive,reap`, with a generous timeout\n- `tests/reconcile.test.js` — new budget-override and CLI-forwarding tests\n- `tests/dispatch-drain-close-run-reconcile.test.js` — pin updated for the scoped termination call\n\n## Gotchas\n\n- An unbounded explicit subset now runs as long as its own per-call timeouts allow. Every scripted caller of `reconcile --checks …` (dispatch included) must keep an explicit, generous Bash timeout (150000 ms or more, per #1543), or the harness timeout becomes the new silent failure.\n- Grep for other `reconcile --checks` call sites in `plugin/skills/**` and `plugin/bin/**` before building. Each one that relied on the ceiling to bound its runtime now gets an unbounded run.\n- The reporter didn't measure exact per-check timings, because a live reconcile mutates refs and the claims registry. Verify the fix with the unit tests, not a live timing run.\n- Line numbers in the original request (`hooks.js:1326-1331`) have drifted: the `checks:` forwarding line is now `plugin/bin/hooks.js:1318`. Anchor edits on content, not line numbers.\n\n## Original request\n\nreconcile: the 18 s budget starves `reap` (dispatched last), even under an explicit `--checks` subset\n\n**Summary:** reconcile's 18 s wall-clock budget starves reap (dispatched last) even when reap is explicitly requested via --checks; dispatch's termination reconcile never reaps on a large repo\n\n**Kind:** Defect\n\n**Affected component:** reconcile (bin/lib/reconcile/index.js, bin/lib/reconcile/budget.js) + dispatch drain termination\n\n**Repro steps:**\n1. Use a repo with many worktrees/run dirs/branches (observed with ~26 worktrees, ~74 live run dirs, ~92 local and ~71 remote branches).\n2. Run `node \"${CLAUDE_PLUGIN_ROOT}/bin/hooks.js\" reconcile --json` (as dispatch's drain termination does, `skills/dispatch/SKILL.md:174`).\n3. Then run `reconcile --checks reap,archive-branches,remote-prune --json`.\n4. Then run `reconcile --checks reap --json`.\n\n**Expected vs. actual:**\nExpected: checks the caller explicitly names run; dispatch's termination reconcile reaps this firing's merged-PR worktrees.\nActual: step 2 skips `archive-branches,remote-prune,reap` as `budget-exceeded`; step 3 still skips `remote-prune,reap`; only step 4 (no fetch, nothing ahead of `reap`) fits.\n\n**Root cause:** `bin/lib/reconcile/budget.js:8` sets `DEFAULT_BUDGET_MS = 18000`, and `bin/lib/reconcile/index.js:242` creates it unconditionally (`createBudget()`) for every caller — the SessionStart hot path, the detached background pass, and the `hooks.js reconcile` CLI (`hooks.js:1326-1331`, which forwards `--checks` but no budget). `index.js:249` dispatches `mirror, red-tip, console, release, archive, archive-branches, remote-prune, reap`; `reap` is deliberately last (`index.js:326-337`) because it removes the worktrees release/archive/archive-branches derive branches from. `overBudget()` (`index.js:250-255`) runs before each block and skips everything from there on once the deadline passes, and the budget starts before the shared `git fetch` (`index.js:285`), which becomes a full `--prune` all-refs fetch whenever `remote-prune` is requested. On a repo of this size the fetch plus per-run/per-branch `gh` calls exceed 18 s before `reap` is reached. Fix: (1) add `opts.budgetMs` to `reconcile()`; the CLI passes `Infinity` when `--checks` is explicit (a caller naming a subset wants those checks run; the ceiling exists for the SessionStart hot path); unscoped CLI, hook and background passes keep the default. (2) Scope dispatch's termination reconcile to `--checks release,archive,reap` — the three checks it exists for, in their required order, without the `--prune` fetch, archive-branches or remote-prune. Rejected alternatives: reordering `reap` first breaks release/archive/archive-branches (the ordering comment documents this hazard); `--checks reap` alone reaps before release/archive can join on the worktree.\n\n**Proposed fix:**\n```diff\ndiff --git a/plugin/bin/hooks.js b/plugin/bin/hooks.js\n--- a/plugin/bin/hooks.js\n+++ b/plugin/bin/hooks.js\n@@ -1328,6 +1328,10 @@ async function main(argv) {\n       cwd: process.cwd(),\n       mcpReachable: args.includes('--mcp-reachable'),\n       checks: checksList.length ? checksList : undefined,\n+      // An explicit --checks subset is the caller saying exactly which checks\n+      // must run — don't let the SessionStart hot-path budget (#820 D4) skip\n+      // them; an unscoped pass keeps the default ceiling.\n+      budgetMs: checksList.length ? Infinity : undefined,\n     };\n     const jsonOut = args.includes('--json');\n     let out;\ndiff --git a/plugin/bin/lib/reconcile/index.js b/plugin/bin/lib/reconcile/index.js\n--- a/plugin/bin/lib/reconcile/index.js\n+++ b/plugin/bin/lib/reconcile/index.js\n@@ -37,7 +37,7 @@ const { formatReconcileSummary, archivedCountFromRunsResult } = require('./resid\n // determine dispatch order.\n const ALL_CHECKS = ['mirror', 'red-tip', 'reap', 'release', 'archive', 'archive-branches', 'remote-prune', 'console'];\n \n-// opts: { dryRun?: boolean, checks?: string[], cwd?: string, sessionId?: string }\n+// opts: { dryRun?: boolean, checks?: string[], cwd?: string, sessionId?: string, budgetMs?: number }\n // -> { mirror, worktrees, claims, runs, branches, console, skipped }\n // `sessionId`, when the caller has one, threads through to archiveMerged's\n // own `isAbandonedInterrupted` ownership check (archive-merged.js) — omitted\n@@ -238,8 +238,12 @@ async function reconcile(opts = {}) {\n   // order; each guard's slice is \"every requested check from here on\",\n   // so a budget exhausted mid-pass reports the whole remainder in one\n   // `skipped` entry and returns immediately rather than running a partial\n-  // remainder.\n-  const budget = require('./budget').createBudget();\n+  // remainder. `opts.budgetMs` overrides the default ceiling — the\n+  // `reconcile` CLI passes Infinity for an explicit `--checks` subset, since\n+  // `reap` runs last by design (see the ordering comment below) and an\n+  // 18s hot-path ceiling would otherwise starve exactly the check the caller\n+  // named.\n+  const budget = require('./budget').createBudget(opts.budgetMs);\n   // #2505 — one shared per-pass memo for the `gh issue list` fetch\n   // escalateResidue/resolveResidue's own findResidueDuplicate issues,\n   // reused across every stuck dir/path archive+reap escalate or resolve in\ndiff --git a/plugin/skills/dispatch/SKILL.md b/plugin/skills/dispatch/SKILL.md\n--- a/plugin/skills/dispatch/SKILL.md\n+++ b/plugin/skills/dispatch/SKILL.md\n@@ -171,7 +171,7 @@ Loop: run the `next` ranking below (`next-ranking.md` verbatim, oversized and th\n **At loop termination (`{budget}` attempts spent, or the ranking returns `null`), close this firing's own bookkeeping (#2430)** — logged, non-interactive, never an `AskUserQuestion` (`CLAUDE.md`'s Auto-Mode Contract):\n \n - **If Step 1 minted `$RUN_ID`** (never if it adopted an existing directory — see Step 1's note): `node \"${CLAUDE_PLUGIN_ROOT}/bin/hooks.js\" close-run --run \"$RUN_ID\"`. An adopted directory is left alone and the skip is reported in this firing's own end-of-run output — `run dir {basename} adopted from a prior run, not closed by this firing` — since closing it would end a sibling session's own run enforcement and event logging mid-flight, exactly the hazard a still-open run directory's SessionStart notice warns about.\n-- **Either way**, run `node \"${CLAUDE_PLUGIN_ROOT}/bin/hooks.js\" reconcile` a second time (the same verb Step 1 already called once, before the queue pull — its archive-merged sweep reaps merged-PR worktrees on any invocation, not only the first): this firing's own dispatched groups may have merged PRs by the time the drain exhausts its budget, and their worktrees should be reaped now rather than left for a future session's SessionStart hook to discover. Log the result to `decisions.md`, same as Step 1's call.\n+- **Either way**, run `node \"${CLAUDE_PLUGIN_ROOT}/bin/hooks.js\" reconcile --checks release,archive,reap` a second time (the same verb Step 1 already called once, before the queue pull — scoped to the three checks this step exists for, in their load-bearing release → archive → reap order; an explicit `--checks` subset is never cut short by the hot-path wall-clock budget, whereas an unscoped pass on a repo with many worktrees/claims/run dirs routinely spends that budget on the shared `--prune` fetch, `archive-branches` and `remote-prune` and reports `reap` as `budget-exceeded`): this firing's own dispatched groups may have merged PRs by the time the drain exhausts its budget, and their worktrees should be reaped now rather than left for a future session's SessionStart hook to discover. Use the same generous timeout as Step 1's call. Log the result to `decisions.md`, same as Step 1's call.\n \n **`next` (deprecated alias for `--budget 1`)** — one warn-tier notice (removal condition: `deprecated-aliases.md`); no human decision. Pick exactly ONE group by this ordering: …\ndiff --git a/tests/dispatch-drain-close-run-reconcile.test.js b/tests/dispatch-drain-close-run-reconcile.test.js\n--- a/tests/dispatch-drain-close-run-reconcile.test.js\n+++ b/tests/dispatch-drain-close-run-reconcile.test.js\n@@ -34,7 +34,9 @@ test('#2430: the drain loop closes a minted run dir at termination, skips (and r\n test('#2430: drain termination re-runs reconcile a second time so merged-PR worktrees from this firing are reaped, not left for a future SessionStart', () => {\n   const t = read('plugin/skills/dispatch/SKILL.md');\n   const section = t.slice(t.indexOf('At loop termination'), t.indexOf('**`next` (deprecated alias'));\n-  assert.match(section, /run `node \"\\$\\{CLAUDE_PLUGIN_ROOT\\}\\/bin\\/hooks\\.js\" reconcile` a second time/);\n+  // Scoped to release,archive,reap: an unscoped pass spends the hot-path\n+  // budget before reap (dispatched last) and reports it budget-exceeded.\n+  assert.match(section, /run `node \"\\$\\{CLAUDE_PLUGIN_ROOT\\}\\/bin\\/hooks\\.js\" reconcile --checks release,archive,reap` a second time/);\n   assert.match(section, /reaped now rather than left for a future session's SessionStart hook to discover/);\n   // Step 1's own first reconcile call stays as-is -- this is additive, not a replacement.\n   // Scope is Steps 1-3 (the drain-termination block lives at the end of Step 3's own text,\ndiff --git a/tests/reconcile.test.js b/tests/reconcile.test.js\n--- a/tests/reconcile.test.js\n+++ b/tests/reconcile.test.js\n@@ -1466,6 +1466,51 @@ test('reconcile(): an exhausted wall-clock budget skips every remaining check in\n   }\n });\n \n+test('reconcile(): opts.budgetMs reaches createBudget, so an unbounded explicit subset is never budget-skipped', async () => {\n+  const { mainDir } = pairedFixture();\n+  fs.mkdirSync(path.join(mainDir, '.claude-tweaks'), { recursive: true });\n+  fs.writeFileSync(path.join(mainDir, '.claude-tweaks', 'policy.yml'), 'integration-model: pr-first\\n');\n+  const preflight = require('../plugin/bin/lib/reconcile/preflight');\n+  const originalHealth = preflight.ghHealthCheck;\n+  const originalHealthAsync = preflight.ghHealthCheckAsync;\n+  preflight.ghHealthCheck = () => ({ ok: true, reason: null });\n+  preflight.ghHealthCheckAsync = async () => ({ ok: true, reason: null });\n+  const budgetMod = require('../plugin/bin/lib/reconcile/budget');\n+  const original = budgetMod.createBudget;\n+  const seen = [];\n+  // Exhausted unless the caller lifted the ceiling.\n+  budgetMod.createBudget = (ms) => { seen.push(ms); return { exceeded: () => ms !== Infinity, remainingMs: () => 0 }; };\n+  try {\n+    const r = await reconcile({ cwd: mainDir, checks: ['mirror', 'red-tip'], budgetMs: Infinity });\n+    assert.deepEqual(seen, [Infinity]);\n+    assert.ok(!r.skipped.some((s) => s.reason === 'budget-exceeded'), JSON.stringify(r.skipped));\n+  } finally {\n+    budgetMod.createBudget = original;\n+    preflight.ghHealthCheck = originalHealth;\n+    preflight.ghHealthCheckAsync = originalHealthAsync;\n+  }\n+});\n+\n+test('hooks.js reconcile: an explicit --checks subset runs unbounded; an unscoped pass keeps the default budget', async () => {\n+  const reconcileMod = require('../plugin/bin/lib/reconcile');\n+  const original = reconcileMod.reconcile;\n+  const calls = [];\n+  reconcileMod.reconcile = async (opts) => { calls.push(opts); return { skipped: [] }; };\n+  const { main } = require('../plugin/bin/hooks');\n+  const write = process.stdout.write;\n+  process.stdout.write = () => true;\n+  try {\n+    await main(['node', 'hooks.js', 'reconcile', '--checks', 'reap', '--json']);\n+    await main(['node', 'hooks.js', 'reconcile', '--json']);\n+  } finally {\n+    process.stdout.write = write;\n+    reconcileMod.reconcile = original;\n+  }\n+  assert.strictEqual(calls[0].budgetMs, Infinity);\n+  assert.deepEqual(calls[0].checks, ['reap']);\n+  assert.strictEqual(calls[1].budgetMs, undefined);\n+});\n+\n // --- shared fetch (#820 D2): mirror and remote-prune merge into one fetch ---\n```\n\nThe SKILL.md hunk's trailing context line is abbreviated with `…`. Caveat: an unbounded explicit subset can now run as long as its own per-call timeouts allow, so callers should keep Step 1's \"explicit, generous timeout (150000ms+)\" guidance (#1543).\n\n**Test:** extend `tests/reconcile.test.js` (`opts.budgetMs` reaches `createBudget` so an unbounded explicit subset is never budget-skipped; the CLI passes `Infinity` for `--checks` and `undefined` unscoped) and `tests/dispatch-drain-close-run-reconcile.test.js` (the termination call is `reconcile --checks release,archive,reap`). Both new reconcile tests fail without the fix. `tests/bin-lib/reconcile/budget.test.js` is unaffected (`createBudget(Infinity)` never reports exceeded). Exact per-check timings were not measured (a live reconcile mutates refs and the claims registry).\n\n**Related:** #820 (closed; introduced the budget), #1543 (closed; dispatch's reconcile vs. the harness timeout), #2430 (closed; added the termination reconcile).\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-9dcda7f9 -->\n",
-        "createdAt": "2026-10-07T18:25:43Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3026,
-        "state": "OPEN",
-        "title": "reconcile: the 18 s budget starves `reap` (dispatched last), even under an explicit `--checks` subset",
-        "updatedAt": "2026-10-17T06:11:04Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
