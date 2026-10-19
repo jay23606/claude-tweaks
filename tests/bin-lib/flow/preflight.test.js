@@ -515,6 +515,11 @@ async function prPack(fx, view, overrides = {}, calls = null) {
   return gatherPreflight({ runDir: fx.runDir, steps: ['review'], cwd: fx.root, mainRoot: fx.root, deps: { ...base, execFile, ...overrides } });
 }
 
+// Policy resolver whose integration-branch entry is `entry`; every other key resolves to a default.
+function policyWithIntegrationBranch(entry) {
+  return { resolvePolicy: (keys) => Object.fromEntries(keys.map((k) => [k, k === 'integration-branch' ? entry : { value: 'x', source: 'default' }])) };
+}
+
 test('pr probe: a CONFLICTING PR carries mergeable, mergeStateStatus and the conflict note (#3014)', async () => {
   const fx = mainRoot();
   seedCase1(fx);
@@ -567,12 +572,11 @@ test('pr probe: MERGEABLE, UNKNOWN, a non-string mergeable, DIRTY-with-MERGEABLE
 
 test('pr probe: the conflict note names the resolved integration branch, falling back to main (#3014)', async () => {
   const conflicting = ghView({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' });
-  const withIb = (entry) => ({ resolvePolicy: (keys) => Object.fromEntries(keys.map((k) => [k, k === 'integration-branch' ? entry : { value: 'x', source: 'default' }])) });
   const fx = mainRoot();
   seedCase1(fx);
-  const develop = await prPack(fx, conflicting, withIb({ value: 'develop', source: 'policy' }));
+  const develop = await prPack(fx, conflicting, policyWithIntegrationBranch({ value: 'develop', source: 'policy' }));
   assert.match(develop.pr.value.conflictNote, /with develop —/);
-  const unresolved = await prPack(fx, conflicting, withIb({ error: 'unknown-key' }));
+  const unresolved = await prPack(fx, conflicting, policyWithIntegrationBranch({ error: 'unknown-key' }));
   assert.match(unresolved.pr.value.conflictNote, /with main —/);
   const throwing = await prPack(fx, conflicting, { resolvePolicy: () => { throw new Error('policy exploded'); } });
   assert.strictEqual(throwing.pr.ok, true, 'a policy failure must not cost the PR fact');
@@ -584,8 +588,7 @@ test('pr probe: a branch name carrying String.replace patterns renders literally
   const fx = mainRoot();
   seedCase1(fx);
   for (const branch of ['rel/$&-x', "rel/$'-x", 'rel/$`-x', 'rel/$1-x']) {
-    const resolvePolicy = (keys) => Object.fromEntries(keys.map((k) => [k, k === 'integration-branch' ? { value: branch, source: 'policy' } : { value: 'x', source: 'default' }]));
-    const pack = await prPack(fx, conflicting, { resolvePolicy });
+    const pack = await prPack(fx, conflicting, policyWithIntegrationBranch({ value: branch, source: 'policy' }));
     assert.strictEqual(pack.pr.value.conflictNote, `Run PR #1901 is CONFLICTING with ${branch} — CI will not run on it until the conflict is resolved.`, branch);
   }
 });

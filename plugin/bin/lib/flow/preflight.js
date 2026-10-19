@@ -310,9 +310,7 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
       return { number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body), mergeable, mergeStateStatus, conflictNote };
     },
     stamp: async () => JSON.parse(await exec('node', [VERIFY_JS, '--stamp-status'], { cwd: worktreeCwd })),
-    changedFiles: async () => {
-      return JSON.parse(await exec('node', [VERIFY_JS, '--changed-files', '--integration-branch', integrationBranch()], { cwd: worktreeCwd }));
-    },
+    changedFiles: async () => JSON.parse(await exec('node', [VERIFY_JS, '--changed-files', '--integration-branch', integrationBranch()], { cwd: worktreeCwd })),
   };
 }
 
