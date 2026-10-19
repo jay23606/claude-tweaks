@@ -229,11 +229,20 @@ function findLiveClaim(recordRef, opts = {}) {
   const claim = JSON.parse(content);
   if (sessionId && claim.sessionId === sessionId) return null;
   return {
-    runId: claim.runId || null,
-    sessionId: claim.sessionId || null,
-    host: claim.host || null,
-    claimedAt: claim.claimedAt || null,
+    runId: cleanClaimField(claim.runId),
+    sessionId: cleanClaimField(claim.sessionId),
+    host: cleanClaimField(claim.host),
+    claimedAt: cleanClaimField(claim.claimedAt),
   };
+}
+
+// The blob is free text from a branch any pusher can write, and its fields are
+// printed into a line an agent reads — keep strings only, with control
+// characters (newlines, ANSI escapes) neutralized and the length capped, so a
+// field can neither forge an extra output line nor print `[object Object]`.
+function cleanClaimField(value) {
+  if (typeof value !== 'string' || value === '') return null;
+  return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 200);
 }
 
 module.exports = { findConflictingSession, findLiveClaim, matchesRecordRef, tokenize };
