@@ -10,9 +10,10 @@ const { RAIL_BYTES } = require('../plugin/bin/lib/skill-audit/budgets');
 
 const REVIEW = path.join(__dirname, '..', 'plugin', 'skills', 'review');
 const steps = readText(path.join(REVIEW, 'code-mode-steps.md'));
-for (const heading of ['## Step 6.7:', '## Step 7:', '## Important Notes']) {
+for (const heading of ['### Step 3 Routing — Code Review Findings', '## Step 4:', '## Step 6.7:', '## Step 7:', '## Important Notes']) {
   assert.ok(steps.includes(heading), `anchor heading missing: ${heading}`);
 }
+const step3 = steps.slice(steps.indexOf('### Step 3 Routing — Code Review Findings'), steps.indexOf('## Step 4:'));
 const step67 = steps.slice(steps.indexOf('## Step 6.7:'), steps.indexOf('## Step 7:'));
 const step7 = steps.slice(steps.indexOf('## Step 7:'), steps.indexOf('## Important Notes'));
 
@@ -24,10 +25,45 @@ const qa = template.slice(template.indexOf('### QA Validation (from /test)'), te
 
 test('AC1.1: Step 6.7 re-runs affected stories via test qa affected, gated on a fix touching story source_files', () => {
   assert.ok(step67.includes('`/claude-tweaks:test qa affected`'));
-  assert.ok(step67.includes('WAVE_BASE=$(git rev-parse HEAD)'));
+  assert.ok(step67.includes('`git stash create`'));
+  assert.ok(step67.includes('`git rev-parse HEAD`'));
   assert.ok(step67.includes("`git diff --name-only {WAVE_BASE}`"));
   assert.ok(step67.includes("every QA story's `source_files`"));
-  assert.ok(step67.indexOf('WAVE_BASE=$(git rev-parse HEAD)') < step67.indexOf('\n1. '), 'WAVE_BASE is captured before item 1');
+  assert.ok(step67.indexOf('`git stash create`') < step67.indexOf('\n1. '), 'WAVE_BASE is captured before item 1');
+});
+
+test('AC1.1 (#3598): a Step 3 Routing fix wave gets the same affected-story re-run, one base per review', () => {
+  assert.ok(step3.includes('**QA after a Step 3 fix wave (#3598).**'));
+  assert.ok(step3.includes('once per review, not once per wave'));
+  assert.ok(step3.includes('Before Step 3 Routing applies its first fix'));
+  assert.ok(step3.includes('When Step 6.7 does not run, run its item 4 on its own, right before Step 7'));
+  assert.ok(step67.includes('unless Step 3 Routing already captured it this review'));
+  assert.ok(step67.includes('if any fix was applied in either wave (Step 3 Routing or this step)'));
+});
+
+test('AC2.1: the template says what the QA line reads when the pre-wave status was Skipped or Not run', () => {
+  assert.ok(qa.includes('**Never-run pre-wave status (#3598):**'));
+  assert.ok(qa.includes(' — post-wave re-run only ({ids}); no pre-wave QA results'));
+  assert.ok(qa.includes('there is no earlier pass to call stale'));
+  assert.ok(step67.includes("there is nothing to merge into, and the QA line renders per `review-summary-template.md`'s never-run rule"));
+});
+
+test('AC3.1 gap 2: untracked new files from an uncommitted Fix-now edit count toward the intersection', () => {
+  assert.ok(step67.includes('`git ls-files --others --exclude-standard`'));
+});
+
+test('AC3.1 gap 3: a tree dirty before the wave is captured by git stash create, falling back to HEAD on a clean tree', () => {
+  assert.ok(step67.includes('it writes no stash entry and leaves the tree alone'));
+  assert.ok(step67.includes('when it prints nothing (a clean tree), run `git rev-parse HEAD` instead'));
+});
+
+test('AC3.1 gap 5: the wider-than-wave qa affected selection is stated as accepted', () => {
+  assert.ok(step67.includes('accepted (#3598): that set is wider than the wave'));
+  assert.ok(step67.includes('never misses a touched story'));
+});
+
+test('AC1.1 (#3598): the template qualifier covers both waves from one base', () => {
+  assert.ok(qa.includes("Step 3 Routing's, Step 6.7's, or both, all measured from one `{WAVE_BASE}`"));
 });
 
 test('Deliverable 3: the rule covers interactive Fix now as well as auto-applied fixes', () => {
