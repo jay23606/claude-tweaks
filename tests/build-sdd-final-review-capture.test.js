@@ -81,7 +81,7 @@ test('AC1.1: the dispatch.md capture commands run from a worktree cwd and land s
   }
 });
 
-test('AC2.1: the captured/absent decisions line keys on the file the writer echoes, and a writer failure never blocks Finish', () => {
+test('AC2.1: the captured/absent decisions line keys on the run-dir file\'s presence, and a writer failure never blocks Finish', () => {
   assert.match(SECTION, /A non-zero exit from the writer never blocks Finish/);
   assert.ok(SECTION.includes('`AUTO … — SDD final review captured to sdd-final-review.md` when the file exists'));
   assert.ok(SECTION.includes('`SKIP … — SDD final review dispatched but sdd-final-review.md absent` when it does not'));

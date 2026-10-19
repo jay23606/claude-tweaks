@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { isArtifactName, writeArtifact, deleteArtifact } = require('../../../plugin/bin/lib/run-artifact/write');
+const { ARTIFACT_NAMES, isArtifactName, writeArtifact, deleteArtifact } = require('../../../plugin/bin/lib/run-artifact/write');
 
 const NAME = 'sdd-dispatch-sample.txt';
 
@@ -71,4 +71,8 @@ test('#3496: sdd-final-review.md is allowlisted; traversal forms of it are not',
   const r = writeArtifact({ runDir, name, content });
   assert.equal(r.file, path.join(runDir, name));
   assert.equal(fs.readFileSync(r.file, 'utf8'), content);
+});
+
+test('ARTIFACT_NAMES is exactly the allowlist (#3496)', () => {
+  assert.deepEqual([...ARTIFACT_NAMES], ['sdd-dispatch-sample.txt', 'sdd-final-review.md']);
 });

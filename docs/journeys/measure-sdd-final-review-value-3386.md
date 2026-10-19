@@ -1,6 +1,7 @@
 ---
 files:
   - plugin/skills/build/dispatch.md
+  - plugin/bin/write-run-artifact.js
 ---
 
 # Measure What SDD's Final Whole-Branch Review Caught on a Finished Run
@@ -16,7 +17,7 @@ files:
 - **URL:** `{run-dir}/sdd-final-review.md` (multi-spec: `{run-dir}/spec-{N}/sdd-final-review.md`)
 - **Action:** Open the file. If it is missing, check the run's `config.yml` (`ceremony-profile: fast-lane`) and `decisions.md` (a `SKIP … Whole-branch review skipped: fast-lane, single-task plan` line under `## /build`) for the single-task fast-lane skip, the one case in a `/flow` run where SDD dispatched no final review and nothing is written. A standalone `/build` also writes nothing, but it has no run directory to open, so it never reaches this step.
 - **Should feel:** Like a lookup, not a hunt. One file per spec, always in the same place, with an absolute run-directory path even when SDD ran inside a worktree.
-- **Should understand:** The file is maintainer evidence, not a gate. No skill blocks on it, so a missing file means either that the fast-lane skip applied or that SDD ignored the instruction. It never means the run failed.
+- **Should understand:** The file is maintainer evidence, not a gate. No skill blocks on it, so a missing file means the fast-lane skip applied, SDD ignored the instruction, or the writer (`bin/write-run-artifact.js`) refused with a non-zero exit. It never means the run failed.
 - **Red flags:** A copy under the worktree's `.claude-tweaks/pipelines/` instead of the main checkout's (a relative-path shadow, `[IL-127]`). A missing file whose `## /build` decisions log has a `SKIP … — SDD final review dispatched but sdd-final-review.md absent` line: the review ran, but its findings were not captured.
 
 ### 2. Read the findings and the commits they belong to
