@@ -194,3 +194,11 @@ Expected: FAIL after Step 1 — `parsed.baseline` is null; the two phrases are a
 | AC1.1 | Task 2 tests `AC1.1: …` |
 | AC2.1 | Task 2 Step 5 go-red |
 | AC3.1 | Task 4 |
+
+## Build deviations (Common Step 4.5 — all Beneficial)
+
+| # | Plan said | Built | Why |
+|---|---|---|---|
+| 1 | Task 2 changes only verify.js's scope block | Also `runChecks({ continueSuitesAfterFailure })` in `plugin/bin/lib/verify/run.js`, on for every `--baseline` run (ae842f7) | `baseline.js` refuses any fail-fast-skipped check; this repo's declaration runs `tests` then `journeys`, so a failing `tests` would still leave the #3401 run "not adjudicated" |
+| 2 | Task 3 edits verification.md, steps-and-gates.md, plugin-structure.md:167 | Also plugin-structure.md:53 and docs/journeys/run-a-deterministic-verification-check.md (ade0a67..c5753a2) | Deviation 1 made the unconditional fail-fast sentences false |
+| 3 | `envOf` untouched | `envOf` resolves through the effective `cmds` set (2582dbe) | Whole-branch review: a declared-only suite's `--cmd-env` never reached the per-file baseline/isolated runs — a false-pass path the new combination made reachable |
