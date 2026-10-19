@@ -341,6 +341,30 @@ test('#3442: a mint/claim pair straddling a local (non-UTC) midnight lands on th
   assert.equal(events[0].ts, '2026-10-17T22:32:00.000Z');
 }));
 
+test('#3442: a claim logged after local midnight, past a mint before it, rolls to the next local day', () => withTz('Europe/Copenhagen', () => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-fe-claim-'));
+  // Minted at 21:50:00Z on 2026-10-17 (23:50 local on 10-17); the first
+  // decisions.md entry logs 00:05:00 local, which is 10-18 00:05 local
+  // (22:05:00Z) — read on the mint's own local day it lands before the mint,
+  // so computeClaimBoundary must take its rollover branch.
+  const dir = path.join(parent, '2026-10-17T215000-record-999');
+  fs.mkdirSync(dir);
+  fs.writeFileSync(
+    path.join(dir, 'events.jsonl'),
+    [
+      '{"type":"ask-user-question","ts":"2026-10-17T21:55:00.000Z"}',
+      '{"type":"ask-user-question","ts":"2026-10-17T22:10:00.000Z"}',
+    ].join('\n') + '\n',
+  );
+  fs.writeFileSync(
+    path.join(dir, 'decisions.md'),
+    '## /flow\n- AUTO 00:05:00 — Step 2.8: claimed #999. Reversibility: high.\n',
+  );
+  const events = readEvents(dir, 'primary');
+  assert.equal(events.length, 1, 'the pre-claim event (21:55Z, 23:55 local) must be excluded; the post-claim event kept');
+  assert.equal(events[0].ts, '2026-10-17T22:10:00.000Z');
+}));
+
 // --- friction-lens vocabulary filter (#2016) --------------------------------
 //
 // readEvents itself stays general-purpose (the #1337/#1402 filters above are
