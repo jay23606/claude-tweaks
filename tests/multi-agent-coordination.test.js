@@ -809,6 +809,105 @@ test('debate: triggers only on cross-lens Path:Line overlap within ±5 lines wit
   assert.strictEqual(noOverlap.length, 0);
 });
 
+// #3604: corroborateCrossLens — cross-lens corroboration of single-read findings.
+const CORROB_A = 'superseded failed run marks real PR failure inherited';
+const CORROB_B = 'superseded failed run at base marks PR failure as inherited';
+
+test('AC1.1: two different lenses reporting the same path/line and substance corroborate to confirmed', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_A }],
+    '3c': [{ path: 'x.js', line: 12, severity: 'low', text: CORROB_B }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  assert.deepStrictEqual(r.corroborated[0].lenses, ['3b', '3c']);
+  assert.strictEqual(r.corroborated[0].members.length, 2);
+  assert.deepStrictEqual(r.unconfirmed['3b'], []);
+  assert.deepStrictEqual(r.unconfirmed['3c'], []);
+});
+
+test('AC1.2: a finding reported by one lens only stays unconfirmed', () => {
+  const f1 = { path: 'x.js', line: 10, severity: 'low', text: CORROB_A };
+  const f2 = { path: 'y.js', line: 99, severity: 'low', text: 'unrelated defect elsewhere entirely' };
+  const r = c.corroborateCrossLens({ '3b': [f1], '3c': [f2] });
+  assert.deepStrictEqual(r.corroborated, []);
+  assert.deepStrictEqual(r.unconfirmed['3b'], [f1]);
+  assert.deepStrictEqual(r.unconfirmed['3c'], [f2]);
+});
+
+test('corroborateCrossLens: same lens never self-corroborates', () => {
+  const f1 = { path: 'x.js', line: 10, severity: 'low', text: CORROB_A };
+  const twin = { path: 'x.js', line: 11, severity: 'low', text: CORROB_A };
+  const r = c.corroborateCrossLens({ '3a': [f1, twin] });
+  assert.deepStrictEqual(r.corroborated, []);
+  assert.deepStrictEqual(r.unconfirmed['3a'], [f1, twin]);
+});
+
+test('corroborateCrossLens: three lenses collapse to one row with the lowest severity, contested', () => {
+  const r = c.corroborateCrossLens({
+    '3a': [{ path: 'x.js', line: 10, severity: 'high', text: CORROB_A }],
+    '3b': [{ path: 'x.js', line: 11, severity: 'low', text: CORROB_B }],
+    '3c': [{ path: 'x.js', line: 12, severity: 'low', text: CORROB_A }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  const row = r.corroborated[0];
+  assert.strictEqual(row.severity, 'low');
+  assert.strictEqual(row.severityContested, true);
+  assert.deepStrictEqual(row.lenses, ['3a', '3b', '3c']);
+  assert.strictEqual(row.members.length, 3);
+  // Representative is the first member in input key order.
+  assert.strictEqual(row.line, 10);
+});
+
+test('corroborateCrossLens: matching-bucket members carry no severityContested', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_A }],
+    '3c': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_B }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  assert.strictEqual(r.corroborated[0].severityContested, undefined);
+});
+
+test('corroborateCrossLens: +/-5 line boundary corroborates at delta 5, not at delta 6', () => {
+  const at = (delta) => c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_A }],
+    '3c': [{ path: 'x.js', line: 10 + delta, severity: 'low', text: CORROB_B }],
+  });
+  assert.strictEqual(c.LINE_TOLERANCE_CORROBORATION, 5);
+  assert.strictEqual(at(5).corroborated.length, 1);
+  assert.strictEqual(at(6).corroborated.length, 0);
+});
+
+test('corroborateCrossLens: different substance at the same location stays unconfirmed', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 10, severity: 'low', text: 'sql injection in query builder' }],
+    '3c': [{ path: 'x.js', line: 10, severity: 'low', text: 'missing await on file close' }],
+  });
+  assert.deepStrictEqual(r.corroborated, []);
+  assert.strictEqual(r.unconfirmed['3b'].length, 1);
+  assert.strictEqual(r.unconfirmed['3c'].length, 1);
+});
+
+test('corroborateCrossLens: a finding with no text never corroborates', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_A }],
+    '3c': [{ path: 'x.js', line: 10, severity: 'low' }],
+  });
+  assert.deepStrictEqual(r.corroborated, []);
+  assert.strictEqual(r.unconfirmed['3b'].length, 1);
+  assert.strictEqual(r.unconfirmed['3c'].length, 1);
+});
+
+test('corroborateCrossLens: a combined Path:Line transcription is normalized', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{ 'Path:Line': 'x.js:10', Severity: 'low', Finding: CORROB_A }],
+    '3c': [{ 'Path:Line': 'x.js:12', Severity: 'low', Finding: CORROB_B }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  assert.deepStrictEqual(r.corroborated[0].lenses, ['3b', '3c']);
+  assert.strictEqual(r.corroborated[0].path, 'x.js');
+  assert.strictEqual(r.corroborated[0].line, 10);
+});
+
 test('debate: runs exactly 1 round with 2 agents', () => {
   const dispatch = c.buildDebateDispatch({ path: 'src/x.ts', line: 10, severity: 'high' });
   assert.strictEqual(dispatch.agentCount, 2);
