@@ -144,6 +144,34 @@ test('no-conflict — CLEAN and BEHIND write nothing', () => {
   }
 });
 
+test('a non-OPEN PR is no signal — a CLOSED view reporting DIRTY is not-open, no write', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, { ...DIRTY, state: 'CLOSED' });
+  assert.equal(run(['--run', runDir, '--phase', 'build'], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'not-open');
+  assert.equal(j.pr, 7);
+  assert.equal(j.mergeable, 'CONFLICTING');
+  assert.equal(j.mergeStateStatus, 'DIRTY');
+  assert.equal(j.logged, false);
+  assert.equal(fs.existsSync(decisionsOf(runDir)), false);
+});
+
+test('a MERGED PR is not-open, no write', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, { number: 7, state: 'MERGED', mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' });
+  assert.equal(run(['--run', runDir, '--phase', 'wrap-up'], h.deps), 0);
+  assert.equal(h.json().state, 'not-open');
+  assert.equal(fs.existsSync(decisionsOf(runDir)), false);
+});
+
+test('an OPEN DIRTY view is still conflicting', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, { ...DIRTY, state: 'OPEN' });
+  assert.equal(run(['--run', runDir, '--phase', 'build'], h.deps), 0);
+  assert.equal(h.json().state, 'conflicting');
+});
+
 test('AC3.1: no pr object reads no-pr with no gh call', () => {
   const { main, runDir } = fixture({ status: 'active' });
   const h = makeDeps(main, DIRTY);

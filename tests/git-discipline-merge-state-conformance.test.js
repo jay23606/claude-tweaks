@@ -51,6 +51,8 @@ function assertMergeStateSection(text) {
     'git -C "{worktree-path}" fetch origin {integration-branch}',
     'git -C "{worktree-path}" rev-parse --short HEAD',
     'git -C "{worktree-path}" merge --no-edit origin/{integration-branch}',
+    'git -C "{worktree-path}" add',
+    'git -C "{worktree-path}" commit --no-edit',
     'git -C "{worktree-path}" merge --abort',
     'git -C "{worktree-path}" push origin {branch}',
   ];
@@ -62,22 +64,40 @@ function assertMergeStateSection(text) {
   }
   has('never rebase', 'AC2.1: merge, never rebase');
   has('before the next phase starts', 'AC2.1: auto catches up before the next phase');
+  has(
+    '**`auto`** (and `confirm`, which runs as `auto` once approved)',
+    'mode routing: confirm runs as auto once approved',
+  );
+  has(
+    "the mid-run counterpart of `_shared/worktree-setup.md`'s Post-creation catch-up",
+    'catch-up cross-reference: the mid-run counterpart of the Post-creation catch-up',
+  );
+  has('unlike the merge path (which never resolves a conflict headlessly)', 'catch-up: contrast with the merge path');
+  has('the following phases re-verify the merged tree', 'catch-up: why a confident headless resolution is safe');
+  has('A resolved conflict is committed before step 5', 'a resolved merge is committed before the HEAD check/push');
   has('no new stop', 'AC2.1: interactive/hybrid adds no stop');
   has('HEAD is unchanged', 'stale-forge: an unchanged HEAD is named');
   has('nothing to push', 'stale-forge: nothing to push');
   has('local merge brought in nothing', 'stale-forge: the stale-state entry is named');
 
-  // An unresolvable auto-mode merge never asks (no new mid-flow stop), aborts, and defers to the
-  // merge-time Conflict path; a failed merge never leaves the tree mid-merge.
+  // An unresolvable auto-mode merge never asks (no new mid-flow stop), aborts, skips the
+  // HEAD-unchanged/push step, and defers to the merge path (not promising its Conflict path
+  // specifically — Step 2.5 can park an empty-rollup DIRTY PR first); a failed merge never leaves
+  // the tree mid-merge.
   has('never ask', 'AC2.1: the catch-up never asks in auto');
   matches(
     /cannot be resolved confidently, run `git -C "\{worktree-path\}" merge --abort`/,
     'AC2.1: an unresolvable conflict is aborted',
   );
   matches(
-    /could not resolve confidently — left for _shared\/pr-first-merge\.md's Conflict path at merge time/,
-    "AC2.1: the abort entry defers to pr-first-merge.md's Conflict path at merge time",
+    /could not resolve confidently — left for the merge path \(_shared\/pr-first-merge\.md\) at merge time/,
+    'AC2.1: the abort entry defers to the merge path (pr-first-merge.md) at merge time',
   );
+  matches(
+    /merge --abort`[^]*?skip step 5 \(HEAD is unchanged by the abort/,
+    'AC2.1: after the abort, step 5 (HEAD-unchanged/push) is skipped',
+  );
+  assert.ok(!section.includes('Conflict path'), "the section never promises pr-first-merge.md's Conflict path specifically");
   has('never leaves the tree mid-merge', 'AC2.1: a failed merge never leaves the tree mid-merge');
   has('`interactive` and `hybrid` never run this merge themselves', 'AC2.1: interactive/hybrid only surface');
 
@@ -92,11 +112,21 @@ function assertMergeStateSection(text) {
   has('never re-read', 'AC4.1: unknown is never re-read');
   has('fail open', 'AC4.1: a failed read fails open');
   has('--step "Post-push merge-state check"', 'AC4.1: the SKIP entry names the step');
-
-  // Wrap-up has no next phase; the merge-time conflict path owns it.
+  // unknown leaves the same non-alarming SKIP degrade trace as read-failed/gh-absent; only
+  // no-conflict/not-open/no-pr are silent.
   matches(
-    /`_shared\/pr-first-merge\.md`'s Conflict path/,
-    "wrap-up: names pr-first-merge.md's Conflict path",
+    /\*\*`unknown`\*\*, \*\*`read-failed`\*\*, \*\*`gh-absent`\*\*[^]*?fail open[^]*?never re-read[^]*?`SKIP` entry/,
+    'AC4.1: unknown routes to the SKIP degrade trace with read-failed and gh-absent',
+  );
+  matches(
+    /\*\*`no-conflict`\*\*, \*\*`not-open`\*\*, \*\*`no-pr`\*\* — nothing to do, nothing to log/,
+    'AC4.1: no-conflict, not-open, no-pr are the silent states',
+  );
+
+  // Wrap-up has no next phase: no catch-up at its exit in any mode; the merge path owns a conflict.
+  has(
+    'no catch-up runs there, in any mode — the merge path (`_shared/pr-first-merge.md`) owns a conflict from there',
+    'wrap-up: no catch-up at wrap-up exit, the merge path owns a conflict',
   );
 }
 

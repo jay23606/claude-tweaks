@@ -81,7 +81,7 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --p
 ```
 
 It reads `run-state.json`'s `pr.number` and the PR through `bin/lib/reconcile/pr-state.js`'s
-`resolvePrStateByNumber` — one read — prints `{state, pr, mergeable, mergeStateStatus, phase,
+`resolvePrStateByNumber` — one resolver call — prints `{state, pr, mergeable, mergeStateStatus, phase,
 logged, reason?}`, and exits 0 in every state; exit 2 or 3 is a tooling problem with the read
 itself — route it like `read-failed`. `local-merge` and `current-branch` runs never reach this
 check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no-pr`.
@@ -91,17 +91,19 @@ check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no
   phase output: "PR #{pr} conflicts with `{integration-branch}` at {phase} exit — no
   `pull_request` CI runs until the branch is caught up." Then route on the run's mode
   (`_shared/auto-mode-contract.md`):
-  - **`auto`** — run the catch-up below before the next phase starts.
+  - **`auto`** (and `confirm`, which runs as `auto` once approved) — run the catch-up below
+    before the next phase starts.
   - **`interactive` / `hybrid`** — surface that line and the catch-up commands below, and
     continue: no new stop — the next phase starts as it would have.
-  - **At wrap-up's exit** there is no next phase; a conflict at merge time is
-    `_shared/pr-first-merge.md`'s Conflict path, unchanged.
-- **`no-conflict`**, **`unknown`**, **`no-pr`** — nothing to do, nothing to log. `unknown` is
-  GitHub's asynchronous mergeability computation not finished yet (common straight after a
-  push): no signal, never read as a conflict, and never re-read — this check costs the phase one
-  read and no more.
-- **`read-failed`**, **`gh-absent`** (and exit 2/3) — fail open: the phase proceeds unchanged.
-  Write one `SKIP` entry per `_shared/auto-decision-log.md`'s degrade-trace rule, the convention
+  - **At wrap-up's exit** there is no next phase, so no catch-up runs there, in any mode — the
+    merge path (`_shared/pr-first-merge.md`) owns a conflict from there, unchanged.
+- **`no-conflict`**, **`not-open`**, **`no-pr`** — nothing to do, nothing to log. `not-open` is a
+  closed or merged PR: whatever its mergeability says, it is no signal for the run.
+- **`unknown`**, **`read-failed`**, **`gh-absent`** (and exit 2/3) — fail open: the phase
+  proceeds unchanged. `unknown` is GitHub's asynchronous mergeability computation not finished
+  yet (common straight after a push): no signal, never read as a conflict, and never re-read —
+  this check costs the phase one resolver call and no more. Write one `SKIP` entry per
+  `_shared/auto-decision-log.md`'s degrade-trace rule, the convention
   `_shared/pr-check-gate.md` applies to its own failed read:
   `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status SKIP --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility n/a --text "condition: pr-merge-state.js {state}{: reason} → fallback: no merge-state signal this phase"`.
 
@@ -113,7 +115,10 @@ public behind its PR, and a rebase would need the force push the Git Rules forbi
 a PR branch does not invert `main`'s first-parent chain the way "Catching a branch up with
 `main`" below warns about: that happens only when a branch is pushed *as* `main`, and this one
 lands through its PR's own merge. Resolve `{integration-branch}` per
-`_shared/integration-branch.md`. One plain command per Bash call:
+`_shared/integration-branch.md`. This is the mid-run counterpart of
+`_shared/worktree-setup.md`'s Post-creation catch-up, and unlike the merge path (which never
+resolves a conflict headlessly) it may resolve a conflict it can resolve confidently, because
+the following phases re-verify the merged tree. One plain command per Bash call:
 
 1. `git -C "{worktree-path}" status --porcelain` — any output: do not catch up. Surface the
    conflict line and the commands as `interactive` does, and log one `SKIP` (`--text "condition:
@@ -123,13 +128,16 @@ lands through its PR's own merge. Resolve `{integration-branch}` per
    of step 5's log line, and what "HEAD is unchanged" in step 5 compares against.
 4. `git -C "{worktree-path}" merge --no-edit origin/{integration-branch}` — a conflict is
    resolved per "Merge conflict resolution" below (never reset or discard; verify after
-   resolving — when the next phase is `test`, its own verification is that run). Its "ask the
-   user" fallback does not apply in `auto`: never ask — that would be a new mid-flow stop. When
-   the conflict cannot be resolved confidently, run `git -C "{worktree-path}" merge --abort` (its
-   own Bash call), log one `AUTO` entry (`log-decision.js`, `--step "Post-push merge-state
-   check"`, `--reversibility high`, `--text "catch-up of PR #{pr}'s branch aborted on a conflict
-   it could not resolve confidently — left for _shared/pr-first-merge.md's Conflict path at
-   merge time"`), and let the next phase start on the un-merged, clean branch.
+   resolving — when the next phase is `test`, its own verification is that run). A resolved
+   conflict is committed before step 5: `git -C "{worktree-path}" add` the resolved paths, then
+   `git -C "{worktree-path}" commit --no-edit`. Its "ask the user" fallback does not apply in
+   `auto`: never ask — that would be a new mid-flow stop. When the conflict cannot be resolved
+   confidently, run `git -C "{worktree-path}" merge --abort` (its own Bash call), log one `AUTO`
+   entry (`log-decision.js`, `--step "Post-push merge-state check"`, `--reversibility high`,
+   `--text "catch-up of PR #{pr}'s branch aborted on a conflict it could not resolve
+   confidently — left for the merge path (_shared/pr-first-merge.md) at merge time"`), skip
+   step 5 (HEAD is unchanged by the abort, so its "stale forge" line would be false), and let
+   the next phase start on the un-merged, clean branch.
 5. If HEAD is unchanged, the forge's conflict state was stale and there is nothing to push; log
    one `AUTO` entry (same `--step`, `--text "local merge brought in nothing — the forge's
    conflict state was stale"`) and stop. Otherwise `git -C "{worktree-path}" push origin

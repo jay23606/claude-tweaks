@@ -4,7 +4,7 @@
 // gets no pull_request workflow runs from GitHub until the branch is caught up,
 // so a pushed phase exit can look green while no CI ever started. Routed by
 // skills/_shared/git-discipline.md's Post-push merge-state check (which owns
-// what each state means to the caller). One read through
+// what each state means to the caller). One resolver call through
 // lib/reconcile/pr-state.js's resolvePrStateByNumber; UNKNOWN is never re-read
 // (GitHub computes mergeability asynchronously -- a second read is the caller's
 // call, not this CLI's).
@@ -12,9 +12,11 @@
 //   node bin/pr-merge-state.js --run <run-dir> --phase <build|test|review|polish|wrap-up> [--help]
 //
 // Prints one JSON line: {state, pr, mergeable, mergeStateStatus, phase, logged,
-// reason?}. state is conflicting | no-conflict | unknown | no-pr | read-failed |
-// gh-absent. On conflicting only, one AUTO entry naming the PR and phase is
-// appended to the run dir's decisions.md (logged:true; false if the append threw).
+// reason?}. state is conflicting | no-conflict | unknown | not-open | no-pr |
+// read-failed | gh-absent. A PR that is not OPEN (closed or merged) is no signal:
+// not-open, nothing written. On conflicting only, one AUTO entry naming the PR and
+// phase is appended to the run dir's decisions.md (logged:true; false if the
+// append threw).
 //
 // Status is data: exit 0 in every state, including no-pr and read-failed.
 // 2 malformed invocation; 3 run dir missing or not anchored under the main
@@ -30,7 +32,7 @@ const PHASE_SECTIONS = { build: '/build', test: '/test', review: '/review', poli
 
 const USAGE = 'usage: pr-merge-state.js --run <run-dir> --phase <build|test|review|polish|wrap-up> [--help]\n'
   + '  prints {state, pr, mergeable, mergeStateStatus, phase, logged, reason?};\n'
-  + '  state: conflicting | no-conflict | unknown | no-pr | read-failed | gh-absent\n'
+  + '  state: conflicting | no-conflict | unknown | not-open | no-pr | read-failed | gh-absent\n'
   + '  exit 0 in every state; 2 malformed invocation; 3 run dir missing or not anchored\n';
 
 function parseArgs(argv) {
@@ -99,9 +101,12 @@ function run(argv, overrides = {}) {
   if (view === 'gh-absent') return report(deps, { state: 'gh-absent', pr: n, phase });
   if (view === 'network-failure' || view === 'invalid-arguments') return report(deps, { state: 'read-failed', pr: n, phase, reason: view });
   if (typeof view !== 'object') return report(deps, { state: 'read-failed', pr: n, phase, reason: 'unparseable' });
-  const verdict = classifyMergeState(view);
   const mergeable = isStr(view.mergeable) ? view.mergeable : null;
   const mergeStateStatus = isStr(view.mergeStateStatus) ? view.mergeStateStatus : null;
+  // A closed or merged PR gets no pull_request runs whatever its mergeability says,
+  // and a stale DIRTY on it is no signal for the run.
+  if (isStr(view.state) && view.state !== 'OPEN') return report(deps, { state: 'not-open', pr: n, mergeable, mergeStateStatus, phase });
+  const verdict = classifyMergeState(view);
   const body = { state: verdict, pr: n, mergeable, mergeStateStatus, phase };
   if (verdict !== 'conflicting') return report(deps, body);
   let logged = false;
