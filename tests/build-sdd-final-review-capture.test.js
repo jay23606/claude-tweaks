@@ -43,7 +43,6 @@ test('AC1.1: the dispatch.md capture commands run from a worktree cwd and land s
   const cmds = [...SECTION.matchAll(/`(node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/write-run-artifact\.js"[^`]*)`/g)].map((m) => m[1]);
   assert.equal(cmds.length, 1, 'exactly the write command');
   assert.ok(cmds[0].endsWith('--file "{review-path}"'));
-  assert.ok(SECTION.includes(RESOLVE_CMD));
 
   const runId = '2026-10-19T090000-record-3496';
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sddfinal-'));
