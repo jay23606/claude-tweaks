@@ -816,6 +816,9 @@ function recordNumbersFromSlug(dir) {
 // No such manifest: the ids named in a `record-{n}`/`spec-{n}[-{m}]` slug,
 // minus any with a top-level deferred-closure entry. Neither: null. Integers,
 // deduplicated, first-occurrence order — prClosesIssue compares numbers strictly.
+// Any manifest spec id that is not a positive-integer string (`abc`, `0x10`,
+// `1e3`) yields null too: it is not a GitHub issue number, so closingIssuesReferences
+// can never attest it, and the run is left unchecked rather than coerced.
 // Separate from RECORD_SLUG_RE on purpose: that regex stays record-only for
 // isClosedSlugStuck.
 const RUN_RECORD_SLUG_RE = /-(?:record|spec)-(\d+(?:-\d+)*)$/;
@@ -825,6 +828,7 @@ function runRecordSet(dir) {
   const ids = [];
   if (manifest && manifest.multispec.specs.length) {
     const specs = manifest.multispec.specs;
+    if (specs.some((spec) => !/^[1-9]\d*$/.test(String(spec.id)))) return null;
     const deferred = readDeferredClosures(dir, specs);
     for (const spec of specs) {
       if (spec.status === 'failed' || spec.status === 'not-run') continue;
@@ -1677,6 +1681,21 @@ function finishArchiveAttempt(cacheTarget, repoSlug, dir, dryRun, runner, archiv
   archived.push(dir);
 }
 
+// #3503: `unclosed` rides along on a merged-partial skip only; every other
+// reason keeps the bare {runDir, reason} shape.
+function skippedEntry(dir, { reason, unclosed }) {
+  return unclosed === undefined ? { runDir: dir, reason } : { runDir: dir, reason, unclosed };
+}
+
+// #3503: the by-number fallback's record guard, for the MERGED branches that
+// would archive. Reuses decideArchiveCore's own rule (hasStagedPending is false
+// on both call sites, which are reached only once staged/ is clear or the
+// console is resolved). Returns the skip decision, or null to proceed.
+function byNumberRecordSkip(byNumber, consoleState, records, repoSlug) {
+  const decision = decideArchiveCore(byNumber, consoleState, false, { records, repoSlug });
+  return decision.action === 'skip' ? decision : null;
+}
+
 // #3416: a run's PR identity is its stamped run-state.json `pr.number`, not
 // its branch name — a worktree branch name is reused across runs, so
 // `gh pr list --head {branch}` can return a MERGED PR from an earlier run that
@@ -1704,7 +1723,7 @@ function resolveRunPrState(root, state, branch) {
 // this file's clean-loop comment for why that asymmetry is intentional, not a
 // gap to "fix").
 function archiveMergedRun({
-  root, repoSlug, dir, branch, state, dryRun, onSkip, runner, cacheTarget = root, integration,
+  root, repoSlug, dir, branch, state, dryRun, onSkip, runner, cacheTarget = root, integration, recordCheck,
 }) {
   const prState = resolveRunPrState(root, state, branch);
   const consoleState = readConsoleState(dir);
@@ -1712,10 +1731,12 @@ function archiveMergedRun({
   // routes through classifyRunDir without a `dir`, so the staged-items
   // exception (hasStagedPending) could never fire on this, the ordinary
   // production path pr-first-merge-post-merge.md Step 4.2's reconcile hits.
-  const decision = decideArchiveCore(prState, consoleState, hasStagedItems(dir));
+  // #3503: `recordCheck` (the run's required records) is omitted by the clean
+  // sweep on purpose — see iterCleanRunDirs.
+  const decision = decideArchiveCore(prState, consoleState, hasStagedItems(dir), recordCheck);
   if (decision.action === 'skip') {
     if (onSkip) onSkip(decision.reason);
-    return { outcome: 'skipped', reason: decision.reason };
+    return { outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed };
   }
 
   const hasMerge = localHasMerge(root, prState.mergeCommit, integration);
@@ -1935,6 +1956,9 @@ function archiveMerged({
     // unchanged — 'no-worktree' when state itself carries no worktree stamp,
     // 'no-branch' when a stamped worktree just doesn't resolve to a live
     // entry — both still gated on the fallback also failing.
+    // #3503: the run's required record ids, computed once for both the
+    // branch-joined path below and the by-number fallback.
+    const records = runRecordSet(dir);
     const stampedWorktree = (state && state.worktree) || null;
     const wtEntry = stampedWorktree
       ? worktrees.find((w) => path.resolve(w.path) === path.resolve(stampedWorktree))
@@ -1981,6 +2005,12 @@ function archiveMerged({
             // below unconditionally — there's no run left to converge
             // toward regardless of staged/'s contents.
             if (byNumber.state === 'MERGED' && !hasStagedItems(dir)) {
+              const guard = byNumberRecordSkip(byNumber, consoleState, records, repoSlug);
+              if (guard) {
+                skipped.push(skippedEntry(dir, guard));
+                trackStuckSkip(cacheBatch, repoSlug, dir, guard.reason, { runner });
+                continue;
+              }
               finishArchiveAttempt(cacheBatch, repoSlug, dir, dryRun, runner, archived, skipped, () => archiveRunDir(root, dir));
               continue;
             }
@@ -2001,6 +2031,14 @@ function archiveMerged({
             trackStuckSkip(cacheBatch, repoSlug, dir, consoleReason, { runner });
             continue;
           }
+          if (byNumber.state === 'MERGED') {
+            const guard = byNumberRecordSkip(byNumber, consoleState, records, repoSlug);
+            if (guard) {
+              skipped.push(skippedEntry(dir, guard));
+              trackStuckSkip(cacheBatch, repoSlug, dir, guard.reason, { runner });
+              continue;
+            }
+          }
           finishArchiveAttempt(cacheBatch, repoSlug, dir, dryRun, runner, archived, skipped, () => archiveRunDir(root, dir));
           continue;
         }
@@ -2012,10 +2050,11 @@ function archiveMerged({
 
     const runResult = archiveMergedRun({
       root, repoSlug, dir, branch, state, dryRun, runner, cacheTarget: cacheBatch, integration,
+      recordCheck: { records, repoSlug },
       onSkip: (reason) => trackStuckSkip(cacheBatch, repoSlug, dir, reason, { runner }),
     });
     if (runResult.outcome === 'archived') { archived.push(dir); continue; }
-    skipped.push({ runDir: dir, reason: runResult.reason });
+    skipped.push(skippedEntry(dir, runResult));
   }
 
   // #1544: the clean-status sweep — see iterCleanRunDirs' own comment.
