@@ -16,6 +16,9 @@ for (const heading of ['## Step 6.7:', '## Step 7:', '## Important Notes']) {
 const step67 = steps.slice(steps.indexOf('## Step 6.7:'), steps.indexOf('## Step 7:'));
 const step7 = steps.slice(steps.indexOf('## Step 7:'), steps.indexOf('## Important Notes'));
 
+const template = fs.readFileSync(path.join(REVIEW, 'review-summary-template.md'), 'utf8');
+const qa = template.slice(template.indexOf('### QA Validation (from /test)'), template.indexOf('### Code Review Findings'));
+
 test('AC1.1: Step 6.7 re-runs affected stories via test qa affected, gated on a fix touching story source_files', () => {
   assert.ok(step67.includes('`/claude-tweaks:test qa affected`'));
   assert.ok(step67.includes('WAVE_BASE=$(git rev-parse HEAD)'));
@@ -59,9 +62,6 @@ test('AC4.1: the verdict comment carries the same qualified QA status, no separa
 test('AC5.1: code-mode-steps.md stays under the Read-limit byte rail', () => {
   assert.ok(Buffer.byteLength(steps) <= RAIL_BYTES, `${Buffer.byteLength(steps)} > ${RAIL_BYTES}`);
 });
-
-const template = fs.readFileSync(path.join(REVIEW, 'review-summary-template.md'), 'utf8');
-const qa = template.slice(template.indexOf('### QA Validation (from /test)'), template.indexOf('### Code Review Findings'));
 
 test('AC3.1: the template documents the stale-QA qualifier and when it renders', () => {
   assert.ok(qa.includes('**Stale-QA qualifier (#3047):**'));
