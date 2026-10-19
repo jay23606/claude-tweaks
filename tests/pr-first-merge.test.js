@@ -311,11 +311,14 @@ const PRE_3269_ITEM_1 = `1. **Command failed with an auto-merge-not-enabled sign
    itself does not make \`--auto\` armable (the Step 2.5 "Why \`--auto\` alone is not a wait"
    mechanism):`;
 
-const carriesCleanStatus = (text) => text.includes('Pull request is in clean status') && text.includes('PR #3427');
+function carriesCleanStatus(text) {
+  return text.includes('Pull request is in clean status') && text.includes('PR #3427');
+}
 
 test('#3269 AC3.1: Step 3 item 1 carries the PR #3427 clean-status literal', () => {
-  assert.ok(carriesCleanStatus(item1Body()));
-  assert.ok(item1Body().includes('2026-10-18'));
+  const body = item1Body();
+  assert.ok(carriesCleanStatus(body));
+  assert.ok(body.includes('2026-10-18'));
 });
 
 test('#3269 AC2.1: the clean-status pin goes red on the pre-change item 1 text', () => {
