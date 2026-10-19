@@ -562,8 +562,9 @@ test('summaryDialect: jest from Test Suites:/Tests:, vitest from colon-free Test
   assert.strictEqual(summaryDialect(readDialect('jest-attributed.txt')), 'jest');
   assert.strictEqual(summaryDialect(readDialect('vitest-attributed.txt')), 'vitest');
   assert.strictEqual(summaryDialect(readDialect('pytest-collection-error.txt')), null);
-  assert.strictEqual(summaryDialect(`${readDialect('jest-attributed.txt')}\n Test Files  1 failed (1)`), null);
-  assert.strictEqual(unattributedFailureCount(`${readDialect('jest-attributed.txt')}\n Test Files  1 failed (1)`, 'summary'), null);
+  const mixed = `${readDialect('jest-attributed.txt')}\n Test Files  1 failed (1)`;
+  assert.strictEqual(summaryDialect(mixed), null);
+  assert.strictEqual(unattributedFailureCount(mixed, 'summary'), null);
 });
 
 test('unattributedFailureCount: a jest log with no Test Suites: line fails closed to 1, never null or 0 (#3480)', () => {

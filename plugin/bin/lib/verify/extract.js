@@ -635,8 +635,8 @@ function summaryUnattributedCount(text, { cwd }) {
   for (const line of clean.split('\n')) {
     if (!/^\s*FAIL\s/.test(line)) continue;
     const m = line.match(SUMMARY_FAIL_RE);
-    const rel = m ? relativize(m[1], cwd) : null;
-    if (rel !== null && isRetryableFile(rel)) named.add(rel);
+    const rel = m && relativize(m[1], cwd);
+    if (rel && isRetryableFile(rel)) named.add(rel);
     else unmatched += 1;
   }
   let nonFile = UNATTRIBUTED_LINE_RES.reduce((sum, re) => sum + (clean.match(re) || []).length, 0);
@@ -673,12 +673,11 @@ function summaryUnattributedCount(text, { cwd }) {
 // test file, every `UNATTRIBUTED_LINE_RES` line (coverage, a global hook, a
 // jest obsolete snapshot, a crashed runner), an interrupted run, and a log
 // carrying more than one summary line — failures no file accounts for.
-// pytest (collection `ERROR`s sit outside every `FAILED` line)
-// and an ambiguous summary log (both dialects' markers, or neither) return
-// null, as does every family other than spec/tap/summary — no
-// failure-accounting guard exists for it (the same refusal `baseline.js`'s
-// `adjudicate` applies), so a caller must never read null as accounted
-// (#3204).
+// pytest (collection `ERROR`s sit outside every `FAILED` line) and an
+// ambiguous summary log (both dialects' markers, or neither) return null, as
+// does every family other than spec/tap/summary — no failure-accounting guard
+// exists for it (the same refusal `baseline.js`'s `adjudicate` applies), so a
+// caller must never read null as accounted (#3204).
 function unattributedFailureCount(text, family, { cwd = process.cwd() } = {}) {
   if (family === 'summary') return summaryUnattributedCount(text, { cwd });
   if (family !== 'spec' && family !== 'tap') return null;
