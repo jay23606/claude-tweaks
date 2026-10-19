@@ -106,7 +106,9 @@ check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no
   this check costs the phase one resolver call and no more. Write one `SKIP` entry per
   `_shared/auto-decision-log.md`'s degrade-trace rule, the convention
   `_shared/pr-check-gate.md` applies to its own failed read:
-  `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status SKIP --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility n/a --text "condition: pr-merge-state.js {state}{: reason} → fallback: no merge-state signal this phase"`.
+  `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status SKIP --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility n/a --text "condition: pr-merge-state.js {state} → fallback: no merge-state signal this phase"` — in
+  `{state}` name what you saw: the printed `state` (with its `reason` when it printed one), or
+  `exit 2`/`exit 3` when it printed none.
 
 Like the push itself, this degrades per attempt and never persists — nothing is written to
 `run-state.json`, so the next phase exit's check runs regardless.
@@ -119,15 +121,18 @@ lands through its PR's own merge. Resolve `{integration-branch}` per
 `_shared/integration-branch.md`. This is the mid-run counterpart of
 `_shared/worktree-setup.md`'s Post-creation catch-up, and unlike the merge path (which never
 resolves a conflict headlessly) it may resolve a conflict it can resolve confidently, because
-the following phases re-verify the merged tree. One plain command per Bash call:
+the following phases re-verify the merged tree. One plain command per Bash call. Every
+`log-decision.js` call below takes the same `--run "$PIPELINE_RUN_DIR"` and `--section
+"{/build|/test|/review|/flow|/wrap-up}"` as step 5's full command, and `--status` as each step names it:
 
 1. `git -C "{worktree-path}" status --porcelain` — any output: do not catch up. Surface the
    conflict line and the commands as `interactive` does, and log one `SKIP` (`--text "condition:
    uncommitted changes in the worktree → fallback: catch-up not run"`).
-2. `git -C "{worktree-path}" fetch origin {integration-branch}`
+2. `git -C "{worktree-path}" fetch origin "{integration-branch}"` — branch names go in quoted,
+   since git accepts `;` and `$(` in them
 3. `git -C "{worktree-path}" rev-parse --short HEAD` — the pre-merge HEAD: the `{before short}`
    of step 5's log line, and what "HEAD is unchanged" in step 5 compares against.
-4. `git -C "{worktree-path}" merge --no-edit origin/{integration-branch}` — a conflict is
+4. `git -C "{worktree-path}" merge --no-edit "origin/{integration-branch}"` — a conflict is
    resolved per "Merge conflict resolution" below (never reset or discard; verify after
    resolving — when the next phase is `test`, its own verification is that run). A resolved
    conflict is committed before step 5: `git -C "{worktree-path}" add` the resolved paths, then
@@ -143,7 +148,7 @@ the following phases re-verify the merged tree. One plain command per Bash call:
    below. If it equals step 3's `{before short}` (HEAD is unchanged), the forge's conflict state
    was stale and there is nothing to push; log one `AUTO` entry (same `--step`, `--text "local merge brought in nothing — the forge's
    conflict state was stale"`) and stop. Otherwise `git -C "{worktree-path}" push origin
-   {branch}` — the re-push is what lets GitHub run the PR's `pull_request` workflows — and log:
+   "{branch}"` — the re-push is what lets GitHub run the PR's `pull_request` workflows — and log:
    `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility high --text "caught PR #{pr}'s branch up with origin/{integration-branch} before the next phase ({before short} → {after short}); re-pushed"`.
 
 `interactive` and `hybrid` never run this merge themselves — they only surface the commands. A

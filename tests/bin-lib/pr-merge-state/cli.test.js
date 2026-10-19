@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { run, parseArgs, classifyMergeState, PHASE_SECTIONS } = require('../../../plugin/bin/pr-merge-state');
+const { run, parseArgs, classifyMergeState, PHASE_SECTIONS, STATES } = require('../../../plugin/bin/pr-merge-state');
 
 const created = [];
 test.after(() => {
@@ -58,19 +58,25 @@ test('AC1.1: DIRTY prints conflicting and writes exactly one AUTO entry naming P
   const text = fs.readFileSync(decisionsOf(runDir), 'utf8');
   const entries = text.split('\n').filter((l) => l.startsWith('- '));
   assert.equal(entries.length, 1);
-  assert.match(text, /^- AUTO \d{2}:\d{2}:\d{2} — Phase-exit merge-state check \(build\): PR #7 conflicts with the integration branch at build exit/m);
+  assert.match(text, /^- AUTO \d{2}:\d{2}:\d{2} — Post-push merge-state check: PR #7 conflicts with the integration branch at build exit/m);
   assert.ok(text.indexOf('## /build') !== -1 && text.indexOf('## /build') < text.indexOf('- AUTO'));
 });
 
-test('conflicting via mergeable alone, and via mergeStateStatus alone', () => {
+test('conflicting via mergeable alone, via mergeStateStatus alone, and via DIRTY with an UNKNOWN mergeable', () => {
   for (const view of [
     { number: 7, mergeable: 'CONFLICTING', mergeStateStatus: 'BLOCKED' },
     { number: 7, mergeable: 'MERGEABLE', mergeStateStatus: 'DIRTY' },
+    { number: 7, mergeable: 'UNKNOWN', mergeStateStatus: 'DIRTY' },
   ]) {
     const { main, runDir } = fixture({ pr: { number: 7 } });
     const h = makeDeps(main, view);
     assert.equal(run(['--run', runDir, '--phase', 'test'], h.deps), 0);
-    assert.equal(h.json().state, 'conflicting');
+    const j = h.json();
+    assert.equal(j.state, 'conflicting');
+    assert.equal(j.logged, true);
+    const text = fs.readFileSync(decisionsOf(runDir), 'utf8');
+    assert.ok(text.indexOf('## /test') !== -1 && text.indexOf('## /test') < text.indexOf('- AUTO'));
+    assert.equal(text.split('\n').filter((l) => l.startsWith('- ')).length, 1);
   }
 });
 
@@ -79,7 +85,29 @@ test('polish logs under /flow', () => {
   const h = makeDeps(main, DIRTY);
   assert.equal(run(['--run', runDir, '--phase', 'polish'], h.deps), 0);
   const text = fs.readFileSync(decisionsOf(runDir), 'utf8');
-  assert.match(text, /^## \/flow\n- AUTO .*\(polish\)/m);
+  assert.match(text, /^## \/flow\n- AUTO .*at polish exit/m);
+});
+
+test('every state a case can emit is a STATES member, and the cases cover the whole list', () => {
+  const cases = [
+    [DIRTY, 'conflicting'],
+    [{ number: 7, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' }, 'no-conflict'],
+    [{ number: 7, mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' }, 'unknown'],
+    [{ number: 7, state: 'CLOSED', mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' }, 'not-open'],
+    [null, 'no-pr'],
+    ['network-failure', 'read-failed'],
+    ['gh-absent', 'gh-absent'],
+  ];
+  const seen = new Set();
+  for (const [result, expected] of cases) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const h = makeDeps(main, result);
+    run(['--run', runDir, '--phase', 'build'], h.deps);
+    assert.equal(h.json().state, expected);
+    seen.add(h.json().state);
+  }
+  assert.deepEqual([...seen].sort(), [...STATES].sort());
+  assert.ok(Object.isFrozen(STATES));
 });
 
 test('PHASE_SECTIONS maps every phase to its decisions.md section', () => {
@@ -248,9 +276,21 @@ test('classifyMergeState: missing fields are unknown', () => {
   assert.equal(classifyMergeState({ mergeable: 'MERGEABLE', mergeStateStatus: 5 }), 'unknown');
 });
 
-test('parseArgs: shape, unknown flag rejected', () => {
-  assert.deepEqual(parseArgs(['--run', 'x', '--phase', 'build']), { run: 'x', phase: 'build', help: false });
+test('parseArgs: reads --run and --phase, unknown flag rejected', () => {
+  const o = parseArgs(['--run', 'x', '--phase', 'build']);
+  assert.equal(o.run, 'x');
+  assert.equal(o.phase, 'build');
   assert.ok(parseArgs(['--bogus']).error);
+});
+
+test('a throwing resolver reads as read-failed and writes nothing', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, null, { resolvePrState: () => { throw new Error('boom'); } });
+  assert.equal(run(['--run', runDir, '--phase', 'build'], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'read-failed');
+  assert.equal(j.reason, 'resolver-threw');
+  assert.equal(fs.existsSync(decisionsOf(runDir)), false);
 });
 
 test('--help prints usage and exits 0 without resolving', () => {

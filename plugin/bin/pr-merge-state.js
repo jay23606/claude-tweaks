@@ -30,9 +30,13 @@ const { resolvePrStateByNumber } = require('./lib/reconcile/pr-state');
 // phase -> the decisions.md section its entry lands under (polish runs inside /flow).
 const PHASE_SECTIONS = { build: '/build', test: '/test', review: '/review', polish: '/flow', 'wrap-up': '/wrap-up' };
 
+// Every `state` value this CLI can print — the one list the USAGE text, docs/plugin-structure.md,
+// and the routing bullets of git-discipline.md's Post-push merge-state check are pinned equal to.
+const STATES = Object.freeze(['conflicting', 'no-conflict', 'unknown', 'not-open', 'no-pr', 'read-failed', 'gh-absent']);
+
 const USAGE = 'usage: pr-merge-state.js --run <run-dir> --phase <build|test|review|polish|wrap-up> [--help]\n'
   + '  prints {state, pr, mergeable, mergeStateStatus, phase, logged, reason?};\n'
-  + '  state: conflicting | no-conflict | unknown | not-open | no-pr | read-failed | gh-absent\n'
+  + `  state: ${STATES.join(' | ')}\n`
   + '  exit 0 in every state; 2 malformed invocation; 3 run dir missing or not anchored\n';
 
 function parseArgs(argv) {
@@ -96,7 +100,8 @@ function run(argv, overrides = {}) {
   try { state = deps.readRunState(o.run); } catch { state = null; }
   const n = state && state.pr && state.pr.number;
   if (!Number.isInteger(n) || n <= 0) return report(deps, { state: 'no-pr', phase });
-  const view = deps.resolvePrState(deps.cwd(), n);
+  let view;
+  try { view = deps.resolvePrState(deps.cwd(), n); } catch { return report(deps, { state: 'read-failed', pr: n, phase, reason: 'resolver-threw' }); }
   if (view === null) return report(deps, { state: 'no-pr', phase });
   if (view === 'gh-absent') return report(deps, { state: 'gh-absent', pr: n, phase });
   if (view === 'network-failure' || view === 'invalid-arguments') return report(deps, { state: 'read-failed', pr: n, phase, reason: view });
@@ -114,7 +119,7 @@ function run(argv, overrides = {}) {
     const entry = formatEntry({
       status: 'AUTO',
       now: deps.now(),
-      step: `Phase-exit merge-state check (${phase})`,
+      step: 'Post-push merge-state check',
       text: `PR #${n} conflicts with the integration branch at ${phase} exit (mergeStateStatus ${mergeStateStatus}, mergeable ${mergeable}) — GitHub runs no pull_request workflows on it until the branch is caught up`,
       reversibility: 'n/a',
     });
@@ -126,6 +131,6 @@ function run(argv, overrides = {}) {
   return report(deps, { ...body, logged });
 }
 
-module.exports = { run, parseArgs, classifyMergeState, PHASE_SECTIONS };
+module.exports = { run, parseArgs, classifyMergeState, PHASE_SECTIONS, STATES };
 
 if (require.main === module) process.exitCode = run(process.argv.slice(2), realDeps);

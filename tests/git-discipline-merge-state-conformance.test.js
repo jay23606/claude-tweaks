@@ -4,10 +4,12 @@ const assert = require('node:assert');
 const path = require('path');
 
 const { readText } = require('./helpers/read-skill');
+const { STATES, PHASE_SECTIONS } = require('../plugin/bin/pr-merge-state');
 // #2986: the Post-push merge-state check is prose (the CLI it drives is covered by
-// tests/bin-lib/pr-merge-state/cli.test.js) — a conflicting run PR gets no pull_request CI runs, so the
-// phase-exit push section tells the run to read the merge state once per phase and, in auto
-// mode, catch the branch up. These pins catch the doc drifting out from under its ACs.
+// tests/bin-lib/pr-merge-state/cli.test.js) — a conflicting run PR gets no pull_request CI
+// runs, so the phase-exit push section tells the run to read the merge state once per phase
+// and, in auto mode, catch the branch up. These pins catch the doc drifting out from under
+// its ACs.
 
 const ROOT = path.join(__dirname, '..');
 const read = (...p) => readText(path.join(ROOT, ...p));
@@ -40,6 +42,14 @@ function assertMergeStateSection(text) {
   );
   has('After every successful phase-exit push', 'AC1.1: runs after every successful push');
   has('resolvePrStateByNumber', 'AC1.1: names the shared PR-state read');
+  // The prose states and phases are the CLI's own lists (STATES, PHASE_SECTIONS keys), not a copy.
+  const rawSection = text.slice(start, catchUp);
+  const bulletStates = [...rawSection.split('\n').filter((l) => l.startsWith('- **`')).join('\n')
+    .matchAll(/\*\*`([a-z-]+)`\*\*/g)].map((m) => m[1]);
+  assert.deepEqual([...bulletStates].sort(), [...STATES].sort(), 'the routing bullets name exactly the CLI states');
+  const phaseList = /--phase \{([a-z|-]+)\}/.exec(rawSection);
+  assert.ok(phaseList, 'the invocation carries a --phase {a|b|…} placeholder');
+  assert.deepEqual(phaseList[1].split('|'), Object.keys(PHASE_SECTIONS), 'the --phase placeholder lists exactly the CLI phases');
   matches(
     /\*\*`conflicting`\*\*[^]*?\bDIRTY\b[^]*?\bCONFLICTING\b[^]*?already written one `AUTO` entry/,
     'AC1.1: the conflicting bullet names DIRTY and CONFLICTING and says the CLI already wrote the AUTO entry',
@@ -54,14 +64,14 @@ function assertMergeStateSection(text) {
   // AC2.1 — auto catch-up: status, fetch, merge, push, in that order, merge never rebase.
   const order = [
     'git -C "{worktree-path}" status --porcelain',
-    'git -C "{worktree-path}" fetch origin {integration-branch}',
+    'git -C "{worktree-path}" fetch origin "{integration-branch}"',
     'git -C "{worktree-path}" rev-parse --short HEAD',
-    'git -C "{worktree-path}" merge --no-edit origin/{integration-branch}',
+    'git -C "{worktree-path}" merge --no-edit "origin/{integration-branch}"',
     'git -C "{worktree-path}" add',
     'git -C "{worktree-path}" commit --no-edit',
     'git -C "{worktree-path}" merge --abort',
     'git -C "{worktree-path}" rev-parse --short HEAD', // step 5: the post-merge HEAD, {after short}
-    'git -C "{worktree-path}" push origin {branch}',
+    'git -C "{worktree-path}" push origin "{branch}"',
   ];
   let from = 0;
   for (const needle of order) {
@@ -69,6 +79,8 @@ function assertMergeStateSection(text) {
     assert.ok(at !== -1, `AC2.1: catch-up step ${JSON.stringify(needle)} missing or out of order`);
     from = at + needle.length;
   }
+  has('since git accepts `;` and `$(` in them', 'AC2.1: branch names go into the catch-up commands quoted');
+  has('Every `log-decision.js` call below takes the same `--run "$PIPELINE_RUN_DIR"`', 'AC2.1: the abbreviated log calls inherit --run and --section');
   has('never rebase', 'AC2.1: merge, never rebase');
   has('before the next phase starts', 'AC2.1: auto catches up before the next phase');
   has(
@@ -147,6 +159,18 @@ test('go-red control: dropping the --phase CLI invocation makes the shared asser
     .join('\n');
   assert.ok(mutated !== GIT_DISCIPLINE, 'the control must actually mutate the text');
   assert.throws(() => assertMergeStateSection(mutated), /AC1\.1: the CLI invocation/);
+});
+
+test('go-red control: an unquoted branch in the catch-up push, or a state the CLI does not emit, makes the assertion throw', () => {
+  const unquoted = GIT_DISCIPLINE.replace('push origin\n   "{branch}"', 'push origin\n   {branch}');
+  assert.ok(unquoted !== GIT_DISCIPLINE, 'the control must actually mutate the text');
+  assert.throws(() => assertMergeStateSection(unquoted), /AC2\.1: catch-up step/);
+  const extraState = GIT_DISCIPLINE.replace(
+    '**`no-conflict`**, **`not-open`**, **`no-pr`** —',
+    '**`no-conflict`**, **`not-open`**, **`no-pr`**, **`stalled`** —',
+  );
+  assert.ok(extraState !== GIT_DISCIPLINE, 'the control must actually mutate the text');
+  assert.throws(() => assertMergeStateSection(extraState), /the routing bullets name exactly the CLI states/);
 });
 
 test('pr-early-run-lifecycle.md cross-references the Post-push merge-state check', () => {
