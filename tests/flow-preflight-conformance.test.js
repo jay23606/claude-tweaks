@@ -86,4 +86,16 @@ test('the adoption section surfaces a CONFLICTING run PR and routes it to the gi
   const conflict = section.indexOf("pr.value.mergeable === 'CONFLICTING'");
   assert.ok(section.indexOf("freshness.value.verdict === 'BLOCKED'") < conflict);
   assert.ok(conflict < section.indexOf('1. **Set, the directory it names exists'));
+  // the abort-and-stop path logs its own decision entry before the stop
+  assert.match(section, /--reversibility high/, 'the aborted-merge entry is logged with reversibility high');
+  assert.ok(section.indexOf('--reversibility high') < section.indexOf('stop as a HARD-GATE failure'), 'the abort entry is logged before the stop');
+});
+
+test('auto-mode-contract registers the adopted-run PR-conflict stop in its HARD-GATE row (#3014)', () => {
+  const t = read('plugin/skills/_shared/auto-mode-contract.md');
+  const row = t.split('\n').find((l) => l.startsWith('| HARD-GATE / BLOCKED / STOP conditions'));
+  assert.ok(row, 'the HARD-GATE row exists');
+  assert.match(row, /adopted-run PR-conflict catch-up stop/);
+  assert.match(row, /flow\/steps-and-gates\.md/);
+  assert.match(row, /#3014/);
 });
