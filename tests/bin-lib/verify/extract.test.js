@@ -545,6 +545,7 @@ const DIALECT_ROWS = [
   ['vitest-skipped-file.txt', 1, ['tests/a-flaky.test.js']],
   ['vitest-global-teardown.txt', 1, ['tests/known.test.js']],
   ['vitest-teardown-rejection.txt', 1, ['tests/flaky.test.js']],
+  ['vitest-unhandled-rejection.txt', 1, ['tests/flaky.test.js']],
   ['pytest-attributed.txt', null, ['tests/test_flaky.py']],
   ['pytest-collection-error.txt', null, ['tests/test_flaky.py']],
 ];

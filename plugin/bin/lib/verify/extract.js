@@ -642,7 +642,9 @@ function summaryUnattributedCount(text, { cwd }) {
   let nonFile = UNATTRIBUTED_LINE_RES.reduce((sum, re) => sum + (clean.match(re) || []).length, 0);
   if (dialect === 'vitest') {
     const errors = clean.match(/^\s*Errors\s+(\d+) errors?\b/m);
-    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ Unhandled Errors? ⎯+/m.test(clean) ? 1 : 0);
+    // `Unhandled Rejection` is the banner of a main-process rejection (a
+    // reporter's `onFinished`) printed after the summary — no `Errors` line.
+    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ Unhandled (?:Errors?|Rejections?) ⎯+/m.test(clean) ? 1 : 0);
   }
   // More than one summary line is a concatenated multi-run log: the first
   // run's total never accounts for the rest.
