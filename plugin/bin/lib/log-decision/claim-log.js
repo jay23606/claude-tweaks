@@ -82,7 +82,7 @@ function paraphrasedClaimNumbers(line) {
 // that paraphrases the claim also counts (#3012).
 function hasClaimLogFor(body, n) {
   const text = String(body || '');
-  if (new RegExp(`${STEP_SRC}: claimed #${n}\\b`).test(text)) return true;
+  if (hasCanonicalClaimLogFor(text, n)) return true;
   if (BATCH_LOG_RE.test(text)) return true;
   const want = Number(n);
   return text.split(/\r?\n/).some((line) => paraphrasedClaimNumbers(line).includes(want));

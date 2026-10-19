@@ -12,3 +12,5 @@
 | 8 | build | Fixes #2912 in PR body while AC1's run-state.json.pr verification clause depends on #3350 — decide Fixes vs deferred-closure (Refs) before merge | open | |
 | 9 | build | claim-targets.md:221 and the first-call insert state exit-1 handling only; exit 2 (malformed invocation) has no stated handling | deferred | |
 | 10 | build | claimRemedy passes --run-id basename(runDir), which is spec-{N} for a per-spec run dir (pre-existing shape) | deferred | |
+| 11 | review/hindsight | hasClaimLogFor duplicated hasCanonicalClaimLogFor's regex in claim-log.js | fixed | hasClaimLogFor now calls hasCanonicalClaimLogFor; claim-log/verify-run-bookends/preflight/dispatch suites 91/91 |
+| 12 | review/hindsight | first-call-artifact-check.js (dispatcher-side backstop) does not check the canonical Step 2.8 claim line; the new claim-log bookend is a call-1 self-check only | deferred | staged/reflect-1.md (tangential backlog candidate, Queue writes at the Review Console) |
