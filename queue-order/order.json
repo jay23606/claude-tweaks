@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T15:02:35.118Z",
+  "computedAt": "2026-10-19T16:05:28.103Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -495,7 +495,7 @@
       },
       {
         "number": 2986,
-        "updatedAt": "2026-10-17T06:10:12Z",
+        "updatedAt": "2026-10-19T15:04:19Z",
         "state": "OPEN"
       },
       {
@@ -7126,90 +7126,6 @@
         "state": "OPEN",
         "title": "bin/verify.js pass stamp: reads dirty when a check regenerates a tracked file",
         "updatedAt": "2026-10-15T16:21:53Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nUnder `integration-model: pr-first`, every phase that commits ends with a phase-exit push (`plugin/skills/_shared/git-discipline.md`, \"Phase-exit push\" section, line 36). That section pushes and handles push failure (warn and continue), but never reads the PR's merge state.\n\nWhen the integration branch moves during a long build and the run's draft PR starts to conflict, GitHub runs no `pull_request` workflows for the conflicting PR. The PR shows no CI jobs at all, which reads exactly like \"CI pending\". In the reported run (plugin 6.134.1), the conflict (`mergeStateStatus: DIRTY`) was found only because the orchestrator happened to query the PR. Pipeline Step 2.5's divergence check runs once at start, and multi-spec re-checks only at the finish step, so a conflict that appears mid-run goes unnoticed until the merge decision.\n\nThe repo already reads PR merge state elsewhere: `plugin/bin/lib/reconcile/pr-state.js`'s `resolvePrStateByNumber` returns `mergeable`/`mergeStateStatus` (#2367), and `_shared/github-pr-scan.md` flags `DIRTY` pending-review PRs. The catch-up procedure exists too (\"Catching a branch up with `main`\", same file).\n\n## Deliverables\n\n1. After each successful phase-exit push, when `run-state.json` carries a `pr` object, read the PR's merge state via `resolvePrStateByNumber`, best-effort and fail-open.\n2. When it reports `DIRTY`, state it in the phase output and log an `AUTO` decision-log entry naming the PR and phase.\n3. In `auto` mode, run \"Catching a branch up with `main`\" (fetch, merge in the worktree, resolve per the merge-conflict procedure, re-push) before the next phase starts. In `interactive`/`hybrid`, surface the conflict and the catch-up command; do not add a new mid-flow stop.\n4. A merge-state read failure, or a state of `UNKNOWN`, logs nothing alarming and changes nothing.\n\n## Acceptance Criteria\n\n1. A phase exit on a run whose PR reports `mergeStateStatus: DIRTY` prints a conflict line and writes one `AUTO` entry to `decisions.md`.\n2. In `auto` mode the next phase starts on a branch that has been caught up with the integration branch, and the re-push triggers the PR's `pull_request` workflows.\n3. A run with no `pr` in `run-state.json`, a `local-merge` run, and a `current-branch` run behave exactly as today.\n4. A failed or `UNKNOWN` merge-state read never stops or slows a phase beyond the one read.\n\n## Release Note\n\nPipeline runs now notice when their draft PR starts conflicting with the base branch, instead of finding out at merge time.\n\n## Technical Approach\n\nAdd a short \"Post-push merge-state check\" paragraph to the Phase-exit push section that calls a small CLI (or an existing `hooks.js` subcommand) wrapping `resolvePrStateByNumber`, so the check is mechanical rather than an agent-composed `gh` call. Reuse the existing catch-up procedure for the auto-mode remedy; do not add a second merge procedure.\n\n### Key Files\n\n- `plugin/skills/_shared/git-discipline.md` — Phase-exit push section gains the merge-state check and its auto-mode remedy\n- `plugin/skills/_shared/pr-early-run-lifecycle.md` — cross-reference from the PR lifecycle\n- `plugin/bin/lib/reconcile/pr-state.js` — `resolvePrStateByNumber`, reused\n- `plugin/bin/hooks.js` — if the check is exposed as a subcommand\n- `docs/hooks.md` — document any new subcommand\n\n## Gotchas\n\n- GitHub computes mergeability asynchronously; immediately after a push `mergeable` is often `UNKNOWN`. Treat `UNKNOWN` as no signal (optionally one short delayed re-read), never as a conflict.\n- Auto catch-up merges into the run's branch mid-pipeline; it must use the worktree-scoped push form (`git -C {worktree} push origin {branch}`) and must not run when the worktree has uncommitted changes.\n- The phase-exit push's failure posture is \"degrade per attempt, never persist\" — the new check must follow it.\n\n## Original request\n\n_shared/git-discipline.md phase-exit push: does not notice a conflicting PR\n\n**Component:** `_shared/git-discipline.md` \"Phase-exit push\" / `_shared/pr-early-run-lifecycle.md` (pr-first integration model), plugin version 6.134.1.\n\n**Kind:** Gap (the skill has no opinion where it should).\n\n**What happened.** In a single-record `/flow` run under `integration-model: pr-first`, the build phase's exit push landed on a draft PR whose base branch had moved during the build and now conflicted in two files. The forge runs no `pull_request` workflow for a PR in a conflicting state, so the PR showed no CI jobs at all. Nothing in the phase-exit procedure reads the PR's merge state, so the run carried on to the test step with CI silently absent; the conflict was found only because the orchestrator happened to query the PR's checks and then its `mergeStateStatus`.\n\n**Why it matters.** The pipeline's Step 2.5 divergence check is a point-in-time check at pipeline start, and the multi-spec flow re-checks only at the final finish step. A long build (hours) has a real window for the base to move. A conflicting PR costs a merge plus a full re-verification, and that is cheapest to learn at the first phase exit, not at the merge decision. A missing CI run also reads exactly like \"CI pending\".\n\n**Suggested behaviour.** After each phase-exit push, when `run-state.json` carries a `pr` object: read the PR's merge state (`gh pr view {n} --json mergeable,mergeStateStatus`, best-effort, fail-open). When it reports a conflict, say so in the phase output and log an `AUTO` decision; in `auto` mode, run the existing catch-up (fetch the integration branch, merge in the worktree, resolve per the merge-conflict procedure) before the next phase instead of after the last one. A forge that reports a stale conflicting state can be told apart by attempting the merge locally.\n\n**Evidence shape (scrubbed).** Push at commit A: PR checks list only push-triggered workflows. `mergeStateStatus: DIRTY`. After merging the base and pushing commit B: all `pull_request` jobs run.\n<!-- fingerprint: feedback-6cfde82c -->\n\n",
-        "createdAt": "2026-10-05T02:50:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 2986,
-        "state": "OPEN",
-        "title": "_shared/git-discipline.md phase-exit push: does not notice a conflicting PR",
-        "updatedAt": "2026-10-17T06:10:12Z",
         "facets": {
           "origin": null,
           "risk": "medium",
