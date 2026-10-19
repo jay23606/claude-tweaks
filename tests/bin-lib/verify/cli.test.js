@@ -1793,6 +1793,12 @@ test('AC2.1 preExisting: a pytest summary log is never adjudicated through preEx
   await assertPreExistingRefused(log, 'no-accounting-guard: summary');
 });
 
+test('preExisting: a jest log whose only failing file is covered but whose global teardown threw is refused — unattributed-failures: 1 (#3480)', async () => {
+  const log = fs.readFileSync(path.join(__dirname, '..', '..', 'fixtures', 'verify-dialects', 'jest-global-teardown.txt'), 'utf8')
+    .replaceAll('tests/known.test.js', 'tests/known-shallow.test.js');
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
+});
+
 test('preExisting: a fully attributed jest log covered by the allowlist is adjudicated (#3480)', async () => {
   const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Test Suites: 1 failed, 2 passed, 3 total', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
   const r = preExistingRepo({ log });

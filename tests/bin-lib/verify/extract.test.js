@@ -534,6 +534,17 @@ const DIALECT_ROWS = [
   ['vitest-failed-suite.txt', 0, ['tests/flaky.test.js', 'tests/broken.test.js']],
   ['vitest-unhandled-error.txt', 1, ['tests/flaky.test.js']],
   ['vitest-coverage-threshold.txt', 1, ['tests/flaky.test.js']],
+  ['jest-obsolete-snapshot.txt', 1, ['tests/flaky.test.js']],
+  ['jest-obsolete-snapshot-file.txt', 1, ['tests/flaky.test.js']],
+  ['jest-bail.txt', 1, ['tests/a-flaky.test.js']],
+  ['jest-skipped-suite.txt', 0, ['tests/flaky.test.js']],
+  ['jest-global-teardown.txt', 1, ['tests/known.test.js']],
+  ['jest-global-teardown-typeerror.txt', 1, ['tests/flaky.test.js']],
+  ['jest-teardown-rejection.txt', 1, ['tests/flaky.test.js']],
+  ['vitest-bail.txt', 1, ['tests/a-flaky.test.js']],
+  ['vitest-skipped-file.txt', 1, ['tests/a-flaky.test.js']],
+  ['vitest-global-teardown.txt', 1, ['tests/known.test.js']],
+  ['vitest-teardown-rejection.txt', 1, ['tests/flaky.test.js']],
   ['pytest-attributed.txt', null, ['tests/test_flaky.py']],
   ['pytest-collection-error.txt', null, ['tests/test_flaky.py']],
 ];
@@ -578,11 +589,35 @@ test('unattributedFailureCount: a jest FAIL line naming a non-test file is unatt
 for (const line of [
   'Jest: Uncovered count for lines (5) exceeds global threshold (2)',
   'Jest: Coverage data for ./src/utils/ was not found.',
+  'DbFailure: Jest: Got error running globalTeardown - /repo/teardown.js, reason: teardown leaked a db handle',
 ]) {
   test(`unattributedFailureCount: a fully attributed jest log plus "${line}" is unattributed (#3480)`, () => {
     assert.strictEqual(unattributedFailureCount(`${readDialect('jest-attributed.txt')}\n${line}\n`, 'summary'), 1);
   });
 }
+
+// A throwing global setup exits before any summary prints, so the captured
+// log is refused without accounting; its wording, spliced into an attributed
+// log, still counts on its own.
+for (const [name, attributed, wording] of [
+  ['jest-global-setup.txt', 'jest-attributed.txt', 'Error: Jest: Got error running globalSetup'],
+  ['vitest-global-setup.txt', 'vitest-attributed.txt', '⎯ Error during global setup ⎯'],
+]) {
+  test(`captured ${name}: no summary, so never accounted; its global-setup line alone is unattributed (#3480)`, () => {
+    const log = readDialect(name);
+    assert.strictEqual(sniffFamily(log), 'generic');
+    assert.strictEqual(unattributedFailureCount(log, 'summary'), null);
+    const line = log.split('\n').find((l) => l.startsWith(wording));
+    assert.ok(line, `${name} carries "${wording}"`);
+    assert.strictEqual(unattributedFailureCount(`${readDialect(attributed)}\n${line}\n`, 'summary'), 1);
+  });
+}
+
+test('unattributedFailureCount: a concatenated multi-run jest or vitest log (more than one summary line) is unattributed (#3480)', () => {
+  for (const name of ['jest-attributed.txt', 'vitest-attributed.txt']) {
+    assert.strictEqual(unattributedFailureCount(`${readDialect(name)}${readDialect(name)}`, 'summary'), 1, name);
+  }
+});
 
 test('unattributedFailureCount: an ANSI-coloured vitest log is accounted the same as its plain twin (#3480)', () => {
   const plain = readDialect('vitest-attributed.txt');

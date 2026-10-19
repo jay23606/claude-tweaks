@@ -576,17 +576,53 @@ function summaryDialect(text) {
   return jest ? 'jest' : 'vitest';
 }
 
-// jest's three coverage-failure wordings (CoverageReporter.js: `Jest: "global"
-// coverage threshold for lines (100%) not met: 66.66%`, a negative threshold's
-// `Jest: Uncovered count for lines (5) exceeds global threshold (2)`, and a
-// path/glob group with no data, `Jest: Coverage data for X was not found.`) and
-// vitest's `ERROR: Coverage for lines (50%) does not meet global threshold
-// (100%)`: a failing check that no `FAIL` line names, so retrying the named
-// files would clear a check that still fails (#3480).
-const COVERAGE_THRESHOLD_RES = [
+// Runner lines that fail the run yet name no test file, so retrying the named
+// files would clear a check that still fails (#3480). Each line counts one.
+// No runner-specific wording matches the other runner's output, and Node's
+// crash trailer belongs to both, so the list applies to both dialects.
+const UNATTRIBUTED_LINE_RES = [
+  // jest's three coverage-failure wordings (CoverageReporter.js: `Jest:
+  // "global" coverage threshold for lines (100%) not met: 66.66%`, a negative
+  // threshold's `Jest: Uncovered count for lines (5) exceeds global threshold
+  // (2)`, and a path/glob group with no data, `Jest: Coverage data for X was
+  // not found.`).
   /^Jest: (?:.*coverage threshold for .* not met|Uncovered count for .* exceeds|Coverage data for .* was not found)/gm,
+  // vitest's `ERROR: Coverage for lines (50%) does not meet global threshold
+  // (100%)` (or `"glob" threshold`).
   /^ERROR: Coverage for .* does not meet .*threshold/gm,
+  // jest's obsolete snapshots: TestScheduler.js fails the run on an unchecked
+  // snapshot or an orphaned snapshot file unless `-u` was passed, and the only
+  // trace is the summary's `Snapshots:   1 obsolete, …` / `1 file obsolete`.
+  // (vitest reports obsolete snapshots without failing the run.)
+  /^Snapshots:.*\bobsolete\b/gm,
+  // jest's global setup/teardown (runGlobalHook.js): `Error: Jest: Got error
+  // running globalTeardown - <path>, reason: …`, under whatever name the thrown
+  // error carries (`TypeError: Jest: …` for a module that exports no
+  // function), and any other `Error: Jest: ` crash jest-cli prints.
+  /^(?:[\w$.]*Error(?: \[[\w-]+\])?: Jest: |(?:[\w$.]+: )?Jest: Got error running global(?:Setup|Teardown)\b)/gm,
+  // vitest's global setup/teardown (cli-api): the `⎯ Error during global
+  // setup ⎯` banner and `error during global teardown of <file>`.
+  /^(?:⎯+ )?error during global (?:setup|teardown)\b/gim,
+  // Node's own fatal-exception trailer (`Node.js v22.23.2`): the runner
+  // process crashed after its summary printed, e.g. on an unhandled rejection
+  // a global teardown left behind.
+  /^Node\.js v\d+\.\d+\.\d+\s*$/gm,
 ];
+
+// A run cut short before every test file reported (#3480). jest's bail prints
+// `Test Suites: 1 failed, 1 of 3 total`, but a skipped suite prints the same
+// `N of M` form (`1 failed, 1 skipped, 1 passed, 2 of 3 total`), so only a
+// reported count (failed + skipped + passed) below M is a cut. vitest 1.6
+// prints no bail marker: its cancelled files read `2 skipped`, so any skipped
+// file counts, a whole-file `describe.skip` included. That over-refusal only
+// falls back to the whole-suite re-run.
+function interruptedRun(summary, dialect) {
+  if (dialect === 'vitest') return /\b[1-9]\d* skipped\b/.test(summary);
+  const of = summary.match(/(\d+) of (\d+) total/);
+  if (!of) return false;
+  const reported = [...summary.matchAll(/(\d+) (?:failed|skipped|passed)\b/g)].reduce((s, m) => s + Number(m[1]), 0);
+  return reported < Number(of[2]);
+}
 
 // The summary family's per-dialect accounting (#3480) — see the comment on
 // `unattributedFailureCount`. null for pytest and an ambiguous log.
@@ -603,15 +639,19 @@ function summaryUnattributedCount(text, { cwd }) {
     if (rel !== null && isRetryableFile(rel)) named.add(rel);
     else unmatched += 1;
   }
-  let nonFile = COVERAGE_THRESHOLD_RES.reduce((sum, re) => sum + (clean.match(re) || []).length, 0);
+  let nonFile = UNATTRIBUTED_LINE_RES.reduce((sum, re) => sum + (clean.match(re) || []).length, 0);
   if (dialect === 'vitest') {
     const errors = clean.match(/^\s*Errors\s+(\d+) errors?\b/m);
     nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ Unhandled Errors? ⎯+/m.test(clean) ? 1 : 0);
   }
+  // More than one summary line is a concatenated multi-run log: the first
+  // run's total never accounts for the rest.
+  const totalLines = clean.match(dialect === 'jest' ? /^Test Suites:.*$/gm : /^\s*Test Files\s.*$/gm) || [];
+  if (totalLines.length > 1) nonFile += 1;
+  if (totalLines.length === 1 && interruptedRun(totalLines[0], dialect)) nonFile += 1;
   if (unmatched + nonFile > 0) return unmatched + nonFile;
-  const totalLine = clean.match(dialect === 'jest' ? /^Test Suites:.*$/m : /^\s*Test Files\s.*$/m);
-  if (!totalLine) return 1;
-  const failed = totalLine[0].match(/(\d+) failed/);
+  if (totalLines.length === 0) return 1;
+  const failed = totalLines[0].match(/(\d+) failed/);
   return Math.abs(named.size - (failed ? Number(failed[1]) : 0));
 }
 
@@ -630,8 +670,10 @@ function summaryUnattributedCount(text, { cwd }) {
 // accounted per dialect (#3480): jest compares the distinct test files on its
 // `FAIL` lines against `Test Suites: N failed`, vitest against `Test Files N
 // failed` plus its `Errors` block, and both add every `FAIL` line naming no
-// test file and any coverage-threshold failure line — failures no file
-// accounts for. pytest (collection `ERROR`s sit outside every `FAILED` line)
+// test file, every `UNATTRIBUTED_LINE_RES` line (coverage, a global hook, a
+// jest obsolete snapshot, a crashed runner), an interrupted run, and a log
+// carrying more than one summary line — failures no file accounts for.
+// pytest (collection `ERROR`s sit outside every `FAILED` line)
 // and an ambiguous summary log (both dialects' markers, or neither) return
 // null, as does every family other than spec/tap/summary — no
 // failure-accounting guard exists for it (the same refusal `baseline.js`'s
