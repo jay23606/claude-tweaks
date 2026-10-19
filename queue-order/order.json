@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T07:05:26.842Z",
+  "computedAt": "2026-10-19T07:20:43.309Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -520,7 +520,7 @@
       },
       {
         "number": 2887,
-        "updatedAt": "2026-10-17T06:09:54Z",
+        "updatedAt": "2026-10-19T07:07:12Z",
         "state": "OPEN"
       },
       {
@@ -6693,96 +6693,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`ledgerProbe` in `plugin/bin/lib/wrap-up/pack.js:366-418` reads `{run-dir}/ledger.md` first. When that file is absent, it falls back to every `*-ledger.md` under `{worktree}/docs/plans/` (`:378-379`) and picks among them with two heuristics:\n\n- **Exactly one candidate**: the probe treats it as \"unambiguously this run's\" (`:380-388`), without checking.\n- **Two or more candidates, none naming one of this run's records at a `-{n}-`/`-{n}.` boundary** (`namesRecord`, `:362-364`): the probe counts **every** candidate (`:396`), deliberately failing toward over-counting (#2563).\n\nBoth heuristics assume the only ledgers in `docs/plans/` are this run's own. That is false in this repo. Finished runs' ledgers stay committed on `main` (for example `docs/plans/2026-10-03-record-2853-ledger.md` and `docs/plans/2026-10-04-record-2772-ledger.md` are tracked today), so every new worktree branched from `main` inherits them. A run that never created its own docs/plans ledger therefore gets either a stranger's ledger counted as its own (one candidate) or all the strangers' ledgers summed (several candidates). This is what happened on #2852's wrap-up: `pack.ledger` reported an unrelated, still-active run's ledger.\n\n## Deliverables\n\n1. Attribute ledgers to the run by ownership, not by filename heuristics. Treat a `docs/plans/*-ledger.md` as this run's only when this run's branch added or modified it relative to its merge base. Keep `namesRecord` only as a secondary tie-break among owned candidates.\n2. When no candidate is owned by this run, report zero items. Also expose the unattributed candidates in a distinct field (for example `unattributedFiles`) so a human can still see them. Never sum them into `open` or `total`.\n3. Update `pack.test.js` with cases for: one inherited (unowned) ledger, several inherited ledgers with none owned, one owned ledger alongside inherited ones, and the `{run-dir}/ledger.md` precedence (unchanged).\n\n## Acceptance Criteria\n\n- A worktree whose `docs/plans/` holds only ledgers inherited from the merge base gets `pack.ledger` with `open: 0`, `total: 0`, and those files listed under the unattributed field, not under `files`.\n- A worktree with one ledger added on its branch plus inherited ledgers counts only the added ledger's items.\n- `{run-dir}/ledger.md`, when present, still takes precedence with unchanged output.\n- `npm test` passes in full.\n\n## Release Note\n\nFixed wrap-up counting open items from other runs' ledger files as if they belonged to the current run.\n\n## Technical Approach\n\nThe probe already runs where a base ref is available: wrap-up's pack has the run's integration branch and merge base for its other probes. Derive owned files with `git diff --name-only {merge-base}...HEAD -- docs/plans/` through the probe's injectable `deps` seam, so the tests stay hermetic. Keep the existing #2563 rationale in mind. The over-count fallback existed because the only alternative was silently hiding the run's own items, and ownership-by-diff removes that dilemma. Update the comment block at `:380-396` to match.\n\n### Key Files\n\n- `plugin/bin/lib/wrap-up/pack.js` — `ledgerProbe` (366-418): ownership-based attribution plus an unattributed field\n- `tests/bin-lib/wrap-up/pack.test.js` — inherited/owned ledger cases\n- `plugin/skills/_shared/ledger-format.md` — read-only check: its Location section's \"one ledger per pipeline run\" wording should still hold after the change\n\n## Gotchas\n\n- A run whose ledger was created and committed earlier on the same branch still counts as owned, because the merge-base diff includes it. A ledger that only exists uncommitted in the worktree also needs handling. Include untracked or modified files from `git status --porcelain -- docs/plans/` along with the diff.\n- Any consumer that reads `pack.ledger.files` (wrap-up's resolve gate, the Review Console) must not start treating the new unattributed field as blocking. Grep for `ledger.files` and `pack.ledger` consumers before changing the shape.\n- The accumulation of finished runs' ledgers on `main` is itself a separate cleanup question. It is out of scope here, and the probe must be correct regardless.\n\n## Original request\n\nwrap-up-pack.js's ledger probe can match an unrelated run's ledger file\n\nOrigin: wrap-up (#2852)\nDefer-reason: pre-existing-outside-diff\n\n**Related:** none\n\nContext: wrap-up's ledger probe (bin/lib/wrap-up/pack.js) falls back to a bare docs/plans/*-ledger.md glob when a run has no run-dir ledger.md. On #2852's wrap-up it matched an unrelated, still-active run's shared ledger instead of reporting none.\n\nScope: Scope the fallback to this run's own feature-slug, or verify the match actually belongs to this run, before reporting it as pack.ledger.\n",
-        "createdAt": "2026-10-01T23:08:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2887,
-        "state": "OPEN",
-        "title": "wrap-up-pack.js's ledger probe can match an unrelated run's ledger file",
-        "updatedAt": "2026-10-17T06:09:54Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
