@@ -5,7 +5,7 @@ const path = require('path');
 
 const { readText } = require('./helpers/read-skill');
 // #2986: the Post-push merge-state check is prose (the CLI it drives is covered by
-// tests/pr-merge-state.test.js) — a conflicting run PR gets no pull_request CI runs, so the
+// tests/bin-lib/pr-merge-state/cli.test.js) — a conflicting run PR gets no pull_request CI runs, so the
 // phase-exit push section tells the run to read the merge state once per phase and, in auto
 // mode, catch the branch up. These pins catch the doc drifting out from under its ACs.
 
@@ -49,7 +49,9 @@ function assertMergeStateSection(text) {
   const order = [
     'git -C "{worktree-path}" status --porcelain',
     'git -C "{worktree-path}" fetch origin {integration-branch}',
-    'git -C "{worktree-path}" merge origin/{integration-branch}',
+    'git -C "{worktree-path}" rev-parse --short HEAD',
+    'git -C "{worktree-path}" merge --no-edit origin/{integration-branch}',
+    'git -C "{worktree-path}" merge --abort',
     'git -C "{worktree-path}" push origin {branch}',
   ];
   let from = 0;
@@ -63,6 +65,21 @@ function assertMergeStateSection(text) {
   has('no new stop', 'AC2.1: interactive/hybrid adds no stop');
   has('HEAD is unchanged', 'stale-forge: an unchanged HEAD is named');
   has('nothing to push', 'stale-forge: nothing to push');
+  has('local merge brought in nothing', 'stale-forge: the stale-state entry is named');
+
+  // An unresolvable auto-mode merge never asks (no new mid-flow stop), aborts, and defers to the
+  // merge-time Conflict path; a failed merge never leaves the tree mid-merge.
+  has('never ask', 'AC2.1: the catch-up never asks in auto');
+  matches(
+    /cannot be resolved confidently, run `git -C "\{worktree-path\}" merge --abort`/,
+    'AC2.1: an unresolvable conflict is aborted',
+  );
+  matches(
+    /could not resolve confidently — left for _shared\/pr-first-merge\.md's Conflict path at merge time/,
+    "AC2.1: the abort entry defers to pr-first-merge.md's Conflict path at merge time",
+  );
+  has('never leaves the tree mid-merge', 'AC2.1: a failed merge never leaves the tree mid-merge');
+  has('`interactive` and `hybrid` never run this merge themselves', 'AC2.1: interactive/hybrid only surface');
 
   // AC3.1 — scope: only pr-first runs with a PR reach a real read.
   matches(

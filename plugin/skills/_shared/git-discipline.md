@@ -119,16 +119,29 @@ lands through its PR's own merge. Resolve `{integration-branch}` per
    conflict line and the commands as `interactive` does, and log one `SKIP` (`--text "condition:
    uncommitted changes in the worktree → fallback: catch-up not run"`).
 2. `git -C "{worktree-path}" fetch origin {integration-branch}`
-3. `git -C "{worktree-path}" merge origin/{integration-branch}` — a conflict is resolved per
-   "Merge conflict resolution" below (never reset or discard; verify after resolving — when the
-   next phase is `test`, its own verification is that run).
-4. If HEAD is unchanged, the forge's conflict state was stale and there is nothing to push; log
-   it and stop. Otherwise `git -C "{worktree-path}" push origin {branch}` — the re-push is what
-   lets GitHub run the PR's `pull_request` workflows — and log:
+3. `git -C "{worktree-path}" rev-parse --short HEAD` — the pre-merge HEAD: the `{before short}`
+   of step 5's log line, and what "HEAD is unchanged" in step 5 compares against.
+4. `git -C "{worktree-path}" merge --no-edit origin/{integration-branch}` — a conflict is
+   resolved per "Merge conflict resolution" below (never reset or discard; verify after
+   resolving — when the next phase is `test`, its own verification is that run). Its "ask the
+   user" fallback does not apply in `auto`: never ask — that would be a new mid-flow stop. When
+   the conflict cannot be resolved confidently, run `git -C "{worktree-path}" merge --abort` (its
+   own Bash call), log one `AUTO` entry (`log-decision.js`, `--step "Post-push merge-state
+   check"`, `--reversibility high`, `--text "catch-up of PR #{pr}'s branch aborted on a conflict
+   it could not resolve confidently — left for _shared/pr-first-merge.md's Conflict path at
+   merge time"`), and let the next phase start on the un-merged, clean branch.
+5. If HEAD is unchanged, the forge's conflict state was stale and there is nothing to push; log
+   one `AUTO` entry (same `--step`, `--text "local merge brought in nothing — the forge's
+   conflict state was stale"`) and stop. Otherwise `git -C "{worktree-path}" push origin
+   {branch}` — the re-push is what lets GitHub run the PR's `pull_request` workflows — and log:
    `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility high --text "caught PR #{pr}'s branch up with origin/{integration-branch} before the next phase ({before short} → {after short}); re-pushed"`.
 
-A failed fetch, merge command, or push here degrades exactly like a failed phase-exit push: log
-it and let the next phase start; the next phase exit's check reads the state again.
+`interactive` and `hybrid` never run this merge themselves — they only surface the commands. A
+failed fetch, `rev-parse`, or push here degrades exactly like a failed phase-exit push: log it
+and let the next phase start; the next phase exit's check reads the state again. A failed merge
+never leaves the tree mid-merge: run `git -C "{worktree-path}" merge --abort` first (a no-op
+error when no merge is in progress is fine), then degrade the same way — the next phase never
+starts on a worktree with `MERGE_HEAD` set or conflict markers.
 
 ## Catching a branch up with `main`
 
