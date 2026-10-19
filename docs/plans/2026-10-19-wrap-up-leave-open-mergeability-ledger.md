@@ -2,3 +2,13 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | SDD ruling — flow resume-to-merge row shows the ` — mergeability: {outcome}` suffix only for DIRTY outcomes (spec AC3 over the plan's "name the same outcome"): ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 2 | build | Test does not pin the outcome strings 'DIRTY → nothing to merge (forge state stale)', 'DIRTY — not caught up ({reason})' or 'skip step 5' | deferred | Defer-reason: tangential — pin polish, behavior unaffected |
+| 3 | build | 'DIRTY →' log prefix slightly imprecise when pr-merge-state.js classified conflicting from mergeable: CONFLICTING without mergeStateStatus DIRTY | deferred | Defer-reason: tangential — matches the spec's log shape |
+| 4 | build | Leave-open re-check's "Any other state" bullet leaves the not-open/no-conflict mapping implicit | deferred | Defer-reason: tangential — covered by `{mergeStateStatus}`/`{state}` |
+| 5 | build | is-blocked mapping and the Verdict's not-caught-up wording are not pinned by tests/wrap-up-leave-open-mergeability-conformance.test.js | deferred | Defer-reason: tangential — pin polish |
+| 6 | build | flow/summary-template.md Resume-to-merge addition is hard-wrapped while the surrounding paragraph is one long line | deferred | Defer-reason: tangential — cosmetic |
+| 7 | build | execution-and-verification.md amended sentence runs past the prior wrap width | deferred | Defer-reason: tangential — cosmetic |
+| 8 | build | wrap-up/summary-template.md Verdict rule says to read the outcome from the decisions.md line without naming the archive path (only the flow row names it) | observation | Ruling: real but small; nothing builds on it — an agent rendering after archival looks in the pre-archive path first |
+| 9 | build | Pre-existing (#2986): the Post-push merge-state check at wrap-up's exit runs pr-merge-state.js --run $PIPELINE_RUN_DIR after cleanup item 8 archived it, so it exits 3 and its SKIP log fails | observation | Defer-reason: pre-existing-outside-diff — the leave-open re-check works around it; route to backlog at wrap-up |
+| 10 | build | The re-check's late read lands seconds after the first, so a slow GitHub mergeability computation can still read UNKNOWN | observation | Ruling: accepted under the spec's read-once rule and AC3 (logged once, never polled) |
