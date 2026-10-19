@@ -24,7 +24,9 @@
 // writes the title (no trailing newline) and the body byte-exact to those files
 // and still prints the JSON line — the form merge sites use with
 // `gh pr merge -t "$(cat …)" --body-file …`, so merge text never passes through
-// shell parsing. The two flags go together and cannot be combined with --shell.
+// shell parsing. The two flags go together and cannot be combined with --shell,
+// and any stale file at either path is removed before composing, so a failed
+// compose can never leave an earlier compose's files to be merged.
 // Exit codes (Split-1/2, mirroring bin/resolve-blockers.js): 0 composed; 1
 // malformed invocation (including --range with --pr, --title-out without
 // --body-out or the reverse, either with --shell, or commit-scope-paths
@@ -35,7 +37,7 @@
 // stderr); 2 `gh` absent or owner/repo unresolvable (no --repo and no readable
 // origin remote); 3 an external read failed — a `gh issue view` call, the
 // `git diff --name-only -z` behind --range, or the `gh pr diff --name-only`
-// behind --pr — OR a --title-out/--body-out write failed (stderr names the path).
+// behind --pr — OR a --title-out/--body-out write or stale-file removal failed (stderr names the path).
 // --range is read with -z and --end-of-options so a C-quoted (non-ASCII) path
 // still matches its prefix and a dash-leading value can never be read as a git option.
 // Every side effect goes through deps so tests never touch gh or git
@@ -237,6 +239,8 @@ const realDeps = {
   readCommitScopePaths: () => readListKey(process.cwd(), 'commit-scope-paths'),
   gitRunner: (args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true }),
   writeFile: (p, text) => fs.writeFileSync(p, text, 'utf8'),
+  // Only a missing file is fine; anything else (EACCES, EISDIR) must surface.
+  unlink: (p) => { try { fs.unlinkSync(p); } catch (err) { if (!err || err.code !== 'ENOENT') throw err; } },
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
 };
@@ -246,6 +250,14 @@ function run(argv, deps = realDeps) {
   const opts = parseArgs(argv);
   if (opts.error) { deps.stderr(opts.error + '\n' + USAGE); return 1; }
   if (opts.help) { deps.stdout(USAGE); return 0; }
+  if (opts.titleOut !== null) {
+    for (const p of [opts.titleOut, opts.bodyOut]) {
+      try { deps.unlink(p); } catch (err) {
+        deps.stderr(`compose-subject.js: could not remove stale ${p}: ${errMessage(err)}\n`);
+        return 3;
+      }
+    }
+  }
   if (!deps.ghAvailable()) { deps.stderr('compose-subject.js: `gh` is required\n'); return 2; }
 
   let remote = null;

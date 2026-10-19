@@ -24,9 +24,9 @@ const RECORDS = {
 
 function fakeDeps({
   records = RECORDS, ghAvailable = () => true, remoteUrl = () => 'git@github.com:acme/repo.git', failView = false,
-  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null, failWrite = false,
+  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null, failWrite = false, failUnlink = false,
 } = {}) {
-  const out = { stdout: '', stderr: '', calls: [], gitCalls: [], writes: [] };
+  const out = { stdout: '', stderr: '', calls: [], gitCalls: [], writes: [], unlinks: [] };
   const deps = {
     ghAvailable,
     remoteUrl,
@@ -55,6 +55,10 @@ function fakeDeps({
     writeFile: (p, text) => {
       out.writes.push({ path: p, text });
       if (failWrite) throw new Error('EACCES: permission denied');
+    },
+    unlink: (p) => {
+      out.unlinks.push(p);
+      if (failUnlink) throw new Error('EACCES: permission denied');
     },
     stdout: (s) => { out.stdout += s; },
     stderr: (s) => { out.stderr += s; },
@@ -264,6 +268,18 @@ test('a failing write exits 3 naming the path', () => {
   assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
   assert.match(out.stderr, /could not write \/t\/title\.txt/);
   assert.equal(out.stdout, '');
+});
+
+test('file mode removes stale outputs before composing: a record that fails to compose leaves neither path behind', () => {
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2263', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 1);
+  assert.deepEqual(out.unlinks, ['/t/title.txt', '/t/body.md']);
+  assert.equal(out.writes.length, 0);
+  assert.equal(out.stdout, '');
+  const failing = fakeDeps({ failUnlink: true });
+  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], failing.deps), 3);
+  assert.match(failing.out.stderr, /could not remove stale \/t\/title\.txt/);
+  assert.equal(failing.out.calls.length, 0);
 });
 
 test('exit 1: record with no resolvable type, or breaking without a ## Breaking Change section', () => {
