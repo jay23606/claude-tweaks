@@ -129,3 +129,45 @@ test('AC4.2: the guidance assertion goes red for each of the other four pins whe
     assert.deepStrictEqual(batchedFastLaneGuidanceProblems(doctored), [problem]);
   }
 });
+
+// #3379: the Adjacent-task merge paragraph sits after the Batched-plan marker paragraph.
+const ADJACENT_LABEL = '**Adjacent-task merge.**';
+const ADJACENT_PINS = [
+  ['two adjacent tasks touch the same files', 'same-files condition'],
+  ["the second only builds on the first's output", 'builds-on-output condition'],
+  ['the second adds no separately reviewable surface', 'no-separate-surface condition'],
+  ['has tests or behavior of its own that a reviewer would judge separately', 'own-tests-or-behavior exclusion'],
+  ['touches different files', 'different-files exclusion'],
+  ['is independently risky', 'independently-risky exclusion'],
+  ["it takes no marker and leaves `plan-audit.js --count-tasks`' `batched` value unchanged", 'no-marker statement'],
+  ['merge only while at least two tasks remain', 'keep-two-tasks rule'],
+  ['the **Batched-plan marker.** paragraph', 'cross-reference to #3123'],
+];
+function adjacentMergeParagraph(text) {
+  const hits = text.split('\n').filter((l) => l.startsWith(ADJACENT_LABEL));
+  assert.strictEqual(hits.length, 1, 'expected exactly one **Adjacent-task merge.** paragraph');
+  return hits[0];
+}
+function adjacentMergeProblems(paragraph) {
+  return ADJACENT_PINS.filter(([anchor]) => !paragraph.includes(anchor)).map(([, problem]) => problem);
+}
+
+test('AC1.1 + AC2.1 + AC3.1 (#3379): the Adjacent-task merge paragraph names the three conditions, the exclusions, the no-marker statement, the keep-two rule, and the #3123 cross-reference', () => {
+  assert.deepStrictEqual(adjacentMergeProblems(adjacentMergeParagraph(readText(PLAN_CHECKS))), []);
+});
+
+test('AC3.2 (#3379): the Adjacent-task merge paragraph sits immediately after the Batched-plan marker paragraph', () => {
+  const lines = readText(PLAN_CHECKS).split('\n').filter((l) => l.trim() !== '');
+  const batched = lines.findIndex((l) => l.startsWith('**Batched-plan marker.**'));
+  assert.notStrictEqual(batched, -1);
+  assert.ok(lines[batched + 1].startsWith(ADJACENT_LABEL), 'Adjacent-task merge must directly follow the Batched-plan marker paragraph');
+});
+
+test('AC4.1 (#3379): the pin goes red for each clause when its text is removed (doctored-text proof)', () => {
+  const paragraph = adjacentMergeParagraph(readText(PLAN_CHECKS));
+  for (const [anchor, problem] of ADJACENT_PINS) {
+    const doctored = paragraph.replace(anchor, 'removed');
+    assert.notStrictEqual(doctored, paragraph, `doctoring found no anchor text for ${problem}`);
+    assert.deepStrictEqual(adjacentMergeProblems(doctored), [problem]);
+  }
+});

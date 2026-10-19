@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 127,
+    "title": "Scope harness-health's run log + churn-report to …",
+    "action": "Close as not planned — parked 65d, stale, trigger not met",
+    "command": "gh issue close 127 --reason \"not planned\" --comment \"tidy: parked 65d, trigger unmet\""
+  }
+]

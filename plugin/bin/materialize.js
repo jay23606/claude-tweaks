@@ -9,8 +9,9 @@
 // vs. `gh issue view` — to warrant its own follow-up rather than a half-done
 // branch here); that driver still uses the skill's own inline read.
 // Prints one JSON envelope on success. Exit 0 on success; 1 when the
-// record's own body fails the shape gate (points at /claude-tweaks:specify,
-// same as the skill does); 2 on a malformed invocation, an unanchored
+// record's own body fails the shape gate or its Design-intent: line names a
+// value outside the policy enum or mixes `none` with another value (points at
+// /claude-tweaks:specify, same as the skill does); 2 on a malformed invocation, an unanchored
 // --run-dir (#790/[IL-127] — a foreign-checkout shadow, or a path with no
 // determinable git repository root; #959 — a --run-dir resolving INSIDE the
 // current linked worktree is anchored-equivalent and accepted, since this
@@ -38,7 +39,9 @@ const { execFileSync } = require('child_process');
 const {
   parseRecordFacets, extractFingerprint, extractVerifiedAsOf, extractPremiseCheck, extractTemplateStamp, parseDependencies,
 } = require('./lib/issues/record');
-const { shapeGate, liftMetadata, composeHeader, composeFile } = require('./lib/issues/materialize-format');
+const {
+  shapeGate, liftMetadata, composeHeader, composeFile, describeDesignIntentError,
+} = require('./lib/issues/materialize-format');
 const { findSiblingPremiseDisproof } = require('./lib/issues/sibling-premise');
 const wtDetect = require('./lib/hooks/worktree-detect');
 const {
@@ -114,22 +117,35 @@ const AUTHOR_ASSOCIATION_TIMEOUT_MS = GH_TIMEOUT_MS;
 // on a black-holed network (see .claude/skills/gh-api-module-pattern).
 const SIBLING_PREMISE_SEARCH_TIMEOUT_MS = GH_TIMEOUT_MS;
 
-// command -> exit code, run from the checkout root. Shares health-core's
-// runner and 5 s bound with the filing-time self-check (#2633), so a
-// command is read here exactly the way it was read before filing. A
-// non-zero exit is a normal outcome; no exit code at all (ENOENT on
-// /bin/sh, a timeout) re-throws for computePremise's own catch to degrade
-// to null.
-function runPremiseCheckDefault(command) {
-  return runPremiseCommand(command, { timeoutMs: PREMISE_SELF_CHECK_TIMEOUT_MS });
+// The checkout root the Premise-check: command runs from (#2857): a command
+// composed with a repo-relative path only means the same thing on every
+// machine when run from here, whatever directory this CLI was started in.
+// Throws when cwd is not inside a git work tree — computePremise degrades
+// that to premise: null. git's stderr is silenced so the "not a git
+// repository" fatal never leaks before that degrade.
+function resolveCheckoutRoot(cwd) {
+  return String(execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    encoding: 'utf8', windowsHide: true, cwd, stdio: ['ignore', 'pipe', 'ignore'],
+  })).trim();
+}
+
+// command, { cwd } -> exit code, run from the checkout root (cwd — see
+// resolveCheckoutRoot). Shares health-core's runner and 5 s bound with the
+// filing-time self-check (#2633), so a command is read here exactly the way
+// it was read before filing. A non-zero exit is a normal outcome; no exit
+// code at all (ENOENT on /bin/sh, a timeout) re-throws for computePremise's
+// own catch to degrade to null.
+function runPremiseCheckDefault(command, { cwd } = {}) {
+  return runPremiseCommand(command, { cwd, timeoutMs: PREMISE_SELF_CHECK_TIMEOUT_MS });
 }
 
 // command -> { command, exit, satisfiedAtBase } | null. null means "no
 // Premise-check: line" (the common case — every existing record behaves
 // byte-identically) OR "the command could not be run at all" (mirrors
 // computeDrift's own degrade-to-null-on-throw posture above — a hostile or
-// broken command must never crash materialize). satisfiedAtBase is true
-// when the command exits NON-zero: per specShapedBody's premiseCheck
+// broken command must never crash materialize; an unresolvable checkout
+// root degrades the same way, without running the command). satisfiedAtBase
+// is true when the command exits NON-zero: per specShapedBody's premiseCheck
 // contract, the command is written to exit 0 while the premise (the
 // record's Current State claim) still holds, so a non-zero exit means the
 // claim no longer holds at this checkout's base — the record's work may
@@ -138,7 +154,9 @@ function computePremise(command, deps) {
   if (!command) return null;
   let exit;
   try {
-    exit = deps.runPremiseCheck(command);
+    const cwd = deps.checkoutRoot(deps.cwd());
+    if (!cwd) return null;
+    exit = deps.runPremiseCheck(command, { cwd });
   } catch {
     return null;
   }
@@ -201,7 +219,9 @@ const realDeps = {
   // HEAD, and that commit's own date — both scoped to computeDrift above.
   gitRevListCount: (sha) => execFileSync('git', ['rev-list', '--count', `${sha}..HEAD`], { encoding: 'utf8', windowsHide: true }),
   gitCommitDate: (sha) => execFileSync('git', ['show', '-s', '--format=%cI', sha], { encoding: 'utf8', windowsHide: true }),
-  // #1829: the Premise-check: command, run from the checkout root.
+  // #1829: the Premise-check: command, run from the checkout root (#2857:
+  // resolved by checkoutRoot and handed to the runner as its cwd).
+  checkoutRoot: resolveCheckoutRoot,
   runPremiseCheck: runPremiseCheckDefault,
   cwd: () => process.cwd(),
   mainRoot: (cwd) => wtDetect.mainCheckoutRoot(cwd),
@@ -361,6 +381,18 @@ function run(argv, deps = realDeps) {
   const gate = shapeGate(record.body);
   if (!gate.ok) {
     deps.stderr(`materialize.js: Record #${opts.n} is not spec-shaped (${gate.missing.join(', ')}) — run \`/claude-tweaks:specify #${opts.n}\` first.\n`);
+    return 1;
+  }
+
+  // #3018: an invalid Design-intent: line hard-fails the same way the shape
+  // gate does — before any drift/premise/sibling logging or file write.
+  const meta = liftMetadata(record.body);
+  if (meta.designIntentError) {
+    const err = meta.designIntentError;
+    deps.stderr(
+      `materialize.js: Record #${opts.n} has an invalid Design-intent: line ("${err.raw}") — ${describeDesignIntentError(err)} — `
+      + `fix the record's Design-intent: line (run \`/claude-tweaks:specify #${opts.n}\`).\n`,
+    );
     return 1;
   }
 
@@ -544,7 +576,6 @@ function run(argv, deps = realDeps) {
     deps.stderr(`materialize.js: Record #${opts.n} carries no ceremony:* label — pass --ceremony fast-lane|standard (the caller resolves this via assess-agent-autonomy ceremony-check first).\n`);
     return 2;
   }
-  const meta = liftMetadata(record.body);
   const header = composeHeader({
     record: opts.n,
     origin: facets.origin || 'human',
@@ -575,6 +606,8 @@ function run(argv, deps = realDeps) {
   return 0;
 }
 
-module.exports = { run, parseArgs, parseRepo };
+module.exports = {
+  run, parseArgs, parseRepo, runPremiseCheckDefault, resolveCheckoutRoot,
+};
 
 if (require.main === module) process.exitCode = run(process.argv.slice(2), realDeps);

@@ -17,16 +17,15 @@ const RECORDS = {
   2265: { number: 2265, title: 'Unrecognized native type', body: '## Overview\n\nEpic-typed but stale-labeled.\n\n## Release Note\n\nUnrecognized type test note.\n', labels: [{ name: 'type:feature' }], issueType: { name: 'Epic' } },
   2266: { number: 2266, title: 'Shaping-mode record', body: '## Current State\n\nToday X is Y. More.\n\n## Release Note\n\nUpdated shaping-mode current state.\n', labels: [{ name: 'type:task' }], issueType: null },
   2270: { number: 2270, title: 'Second task in an all-task bundle', body: '## Overview\n\nAnother task.\n\n## Release Note\n\nAdded another task path.\n', labels: [{ name: 'type:task' }], issueType: null },
-  2271: { number: 2271, title: "Cost $HOME `x` it's", body: '## Overview\n\nShell-hostile title.\n\n## Release Note\n\nRound-trips shell-hostile titles.\n', labels: [{ name: 'type:bug' }], issueType: null },
   2250: { number: 2250, title: 'Lowest is a task', body: '## Overview\n\nTask overview.\n\n## Release Note\n\nAdded task overview support.\n', labels: [{ name: 'type:task' }], issueType: null },
   2290: { number: 2290, title: 'No release note', body: '## Overview\n\nSomething.\n', labels: [{ name: 'type:task' }], issueType: null },
 };
 
 function fakeDeps({
   records = RECORDS, ghAvailable = () => true, remoteUrl = () => 'git@github.com:acme/repo.git', failView = false,
-  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null, failWrite = false, failUnlink = false,
+  commitScope = null, commitScopePaths = [], changedFiles = null, prFiles = null, writeError = null,
 } = {}) {
-  const out = { stdout: '', stderr: '', calls: [], gitCalls: [], writes: [], unlinks: [] };
+  const out = { stdout: '', stderr: '', calls: [], gitCalls: [], files: {}, dirs: [] };
   const deps = {
     ghAvailable,
     remoteUrl,
@@ -52,13 +51,10 @@ function fakeDeps({
       if (changedFiles === null) throw new Error('gitRunner must not be called');
       return changedFiles;
     },
-    writeFile: (p, text) => {
-      out.writes.push({ path: p, text });
-      if (failWrite === true || failWrite === p) throw new Error('EACCES: permission denied');
-    },
-    unlink: (p) => {
-      out.unlinks.push(p);
-      if (failUnlink) throw new Error('EACCES: permission denied');
+    mkdirp: (d) => { out.dirs.push(d); },
+    writeFile: (p, s) => {
+      if (writeError) throw writeError;
+      out.files[p] = s;
     },
     stdout: (s) => { out.stdout += s; },
     stderr: (s) => { out.stderr += s; },
@@ -217,77 +213,6 @@ test('--shell prints two eval-able sh assignments; a real eval round-trip recove
   assert.equal(recoveredBody, jsonComposed.body);
 
   assert.equal(shellQuote("a'b"), "'a'\\''b'");
-});
-
-test('--title-out/--body-out write the composed title and body to files byte-exact; stdout still carries the JSON', () => {
-  const { deps, out } = fakeDeps();
-  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 0, out.stderr);
-  const composed = JSON.parse(out.stdout);
-  assert.deepEqual(out.writes, [{ path: '/t/title.txt', text: composed.title }, { path: '/t/body.md', text: composed.body }]);
-  assert.ok(!composed.title.endsWith('\n'));
-});
-
-test('--title-out round-trips a title with $, backtick and quote through gh-style -t "$(cat file)" unchanged', () => {
-  const fs = require('node:fs');
-  const os = require('node:os');
-  const path = require('node:path');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-subject-files-'));
-  try {
-    const titlePath = path.join(dir, 'title.txt');
-    const bodyPath = path.join(dir, 'body.md');
-    const { deps, out } = fakeDeps();
-    deps.writeFile = realDeps.writeFile;
-    assert.equal(run(['2271', '--title-out', titlePath, '--body-out', bodyPath], deps), 0, out.stderr);
-    const result = require('node:child_process').spawnSync(
-      'sh',
-      ['-c', 'printf "%s" "$(cat "$1")"', '_', titlePath],
-      { encoding: 'utf8' },
-    );
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, "fix: Cost $HOME `x` it's (#2271)");
-    assert.equal(fs.readFileSync(bodyPath, 'utf8'), JSON.parse(out.stdout).body);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-});
-
-test('--title-out without --body-out, --body-out without --title-out, or either with --shell exits 1 and writes nothing', () => {
-  const cases = [
-    [['2262', '--title-out', '/t/title.txt'], /--title-out and --body-out/],
-    [['2262', '--body-out', '/t/body.md'], /--title-out and --body-out/],
-    [['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md', '--shell'], /--shell/],
-  ];
-  for (const [argv, expected] of cases) {
-    const { deps, out } = fakeDeps();
-    assert.equal(run(argv, deps), 1, argv.join(' '));
-    assert.equal(out.writes.length, 0, argv.join(' '));
-    assert.match(out.stderr, expected);
-  }
-});
-
-test('a failing write exits 3 naming the path', () => {
-  const { deps, out } = fakeDeps({ failWrite: true });
-  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
-  assert.match(out.stderr, /could not write \/t\/title\.txt/);
-  assert.equal(out.stdout, '');
-});
-
-test('a body write failing after the title was written exits 3 naming the body path', () => {
-  const { deps, out } = fakeDeps({ failWrite: '/t/body.md' });
-  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 3);
-  assert.deepEqual(out.writes.map((w) => w.path), ['/t/title.txt', '/t/body.md']);
-  assert.match(out.stderr, /could not write \/t\/body\.md/);
-  assert.equal(out.stdout, '');
-});
-
-test('file mode removes stale outputs before composing: a record that fails to compose leaves neither path behind', () => {
-  const { deps, out } = fakeDeps();
-  assert.equal(run(['2263', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], deps), 1);
-  assert.deepEqual(out.unlinks, ['/t/title.txt', '/t/body.md']);
-  assert.equal(out.writes.length, 0);
-  assert.equal(out.stdout, '');
-  const failing = fakeDeps({ failUnlink: true });
-  assert.equal(run(['2262', '--title-out', '/t/title.txt', '--body-out', '/t/body.md'], failing.deps), 3);
-  assert.match(failing.out.stderr, /could not remove stale \/t\/title\.txt/);
-  assert.equal(failing.out.calls.length, 0);
 });
 
 test('exit 1: record with no resolvable type, or breaking without a ## Breaking Change section', () => {
@@ -727,4 +652,89 @@ test('realDeps reads commit-scope and commit-scope-paths from the cwd policy', (
       assert.deepEqual(realDeps.readCommitScopePaths(), ['plugin/bin/=bin', 'plugin/skills/=skills']);
     } finally { process.chdir(prev); }
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+// #3522 — --out-dir: the file-emitting form the worktree-guard-safe merge fences use.
+test('AC2.1: --out-dir writes title.txt/body.md/message.txt equal to the --shell values', () => {
+  const path = require('node:path');
+  const json = fakeDeps();
+  assert.equal(run(['2251', '--tag', 'human-approved'], json.deps), 0, json.out.stderr);
+  const { title, body } = JSON.parse(json.out.stdout);
+
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2251', '--tag', 'human-approved', '--out-dir', '/x/subj'], deps), 0, out.stderr);
+  assert.equal(out.files[path.join('/x/subj', 'title.txt')], title);
+  assert.equal(out.files[path.join('/x/subj', 'body.md')], body);
+  assert.equal(out.files[path.join('/x/subj', 'message.txt')], title + '\n\n' + body);
+  assert.ok(out.dirs.includes('/x/subj'), JSON.stringify(out.dirs));
+
+  const shell = fakeDeps();
+  assert.equal(run(['2251', '--tag', 'human-approved', '--shell'], shell.deps), 0, shell.out.stderr);
+  assert.equal(shell.out.stdout, 'SUBJECT_TITLE=' + shellQuote(title) + '\nSUBJECT_BODY=' + shellQuote(body) + '\n');
+});
+
+test('AC2.2: --out-dir stdout is the single-quoted title on one line', () => {
+  const json = fakeDeps();
+  assert.equal(run(['2262'], json.deps), 0, json.out.stderr);
+  const { title } = JSON.parse(json.out.stdout);
+
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2262', '--out-dir', '/x/subj'], deps), 0, out.stderr);
+  assert.equal(out.stdout, shellQuote(title) + '\n');
+  assert.equal(out.stdout.split('\n').length - 1, 1, 'exactly one newline');
+});
+
+test('--out-dir and --shell together is a usage error, exit 1', () => {
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2251', '--shell', '--out-dir', '/x/subj'], deps), 1);
+  assert.match(out.stderr, /--out-dir and --shell are mutually exclusive/);
+  assert.equal(Object.keys(out.files).length, 0);
+  assert.equal(out.dirs.length, 0);
+});
+
+test('--out-dir with no value is a usage error', () => {
+  assert.ok(parseArgs(['2251', '--out-dir']).error);
+  assert.ok(parseArgs(['2251', '--out-dir', '--shell']).error);
+  assert.equal(parseArgs(['2251', '--out-dir', 'd']).outDir, 'd');
+  assert.equal(parseArgs(['2251']).outDir, null);
+});
+
+test('no files on an uncomposable record', () => {
+  const { deps, out } = fakeDeps();
+  assert.equal(run(['2290', '--out-dir', '/x/subj'], deps), 1);
+  assert.equal(Object.keys(out.files).length, 0);
+});
+
+test('write failure exits 3 naming the path', () => {
+  const { deps, out } = fakeDeps({ writeError: new Error('EACCES: permission denied') });
+  assert.equal(run(['2251', '--out-dir', '/x/subj'], deps), 3);
+  assert.match(out.stderr, /compose-subject\.js: could not write .*title\.txt/);
+  assert.match(out.stderr, /EACCES/);
+  assert.equal(out.stdout, '');
+});
+
+test('USAGE advertises --out-dir', () => {
+  const { USAGE } = require('../../plugin/bin/lib/compose-subject.js');
+  assert.match(USAGE, /\[--out-dir <dir>\]/);
+});
+
+test('real fs: --out-dir creates the directory and writes the files', (t) => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-subject-outdir-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const dir = path.join(root, 'a', 'b');
+
+  const json = fakeDeps();
+  assert.equal(run(['2262'], json.deps), 0, json.out.stderr);
+  const { title, body } = JSON.parse(json.out.stdout);
+
+  const { deps, out } = fakeDeps();
+  deps.mkdirp = realDeps.mkdirp;
+  deps.writeFile = realDeps.writeFile;
+  assert.equal(run(['2262', '--out-dir', dir], deps), 0, out.stderr);
+  assert.equal(fs.readFileSync(path.join(dir, 'title.txt'), 'utf8'), title);
+  assert.equal(fs.readFileSync(path.join(dir, 'body.md'), 'utf8'), body);
+  assert.equal(fs.readFileSync(path.join(dir, 'message.txt'), 'utf8'), title + '\n\n' + body);
 });

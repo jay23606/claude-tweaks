@@ -14,22 +14,22 @@
 // bin/lib/release/subject.js's composeSubject() output. Skill prose reaches
 // the composer only through this CLI — the pure module has no shell surface.
 //
-// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--title-out <path> --body-out <path> | --shell] [--help]
+// Usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--shell] [--out-dir <dir>] [--help]
 // Numbers may be comma-joined and/or space-separated; the subject record is
 // the lowest number, and the body carries one `Fixes #n` line per number.
 // Output: JSON {"title","body"} by default; `--shell` prints two POSIX sh
 // assignments, SUBJECT_TITLE='…' then SUBJECT_BODY='…' (single-quoted, '
 // escaped as '\''); the body value spans physical lines, so consume it with
-// `eval "$(…)"`, never by line splitting. `--title-out <path> --body-out <path>`
-// writes the title (no trailing newline) and the body byte-exact to those files
-// and still prints the JSON line — the form merge sites use with
-// `gh pr merge -t "$(cat …)" --body-file …`, so merge text never passes through
-// shell parsing. The two flags go together and cannot be combined with --shell,
-// and any stale file at either path is removed before composing, so a failed
-// compose can never leave an earlier compose's files to be merged.
+// `eval "$(…)"`, never by line splitting. `--out-dir <dir>` (mutually
+// exclusive with --shell) instead writes <dir>/title.txt, <dir>/body.md and
+// <dir>/message.txt (= title, blank line, body; no trailing newline on any
+// of them), creating <dir> recursively, and prints only the single-quoted
+// title on one line. It exists because the Claude Code worktree Bash guard
+// refuses `eval` and `$(…)` wrapped around `gh`, which the --shell form needs
+// (#3522); a merge fence consumes the files with `-F`/`--body-file` instead.
+// `--shell` is kept as a manual/debug surface; no shipped merge fence consumes it since #3522.
 // Exit codes (Split-1/2, mirroring bin/resolve-blockers.js): 0 composed; 1
-// malformed invocation (including --range with --pr, --title-out without
-// --body-out or the reverse, either with --shell, or commit-scope-paths
+// malformed invocation (including --range with --pr, or commit-scope-paths
 // set with neither) OR a policy misconfiguration (a malformed
 // commit-scope-paths entry, a commit-scope token composeSubject rejects) OR a
 // record that cannot be composed (no resolvable Type, `breaking` label with no
@@ -37,7 +37,7 @@
 // stderr); 2 `gh` absent or owner/repo unresolvable (no --repo and no readable
 // origin remote); 3 an external read failed — a `gh issue view` call, the
 // `git diff --name-only -z` behind --range, or the `gh pr diff --name-only`
-// behind --pr — OR a --title-out/--body-out write or stale-file removal failed (stderr names the path).
+// behind --pr, or an `--out-dir` write failed.
 // --range is read with -z and --end-of-options so a C-quoted (non-ASCII) path
 // still matches its prefix and a dash-leading value can never be read as a git option.
 // Every side effect goes through deps so tests never touch gh or git
@@ -49,7 +49,7 @@
 // "bad CLI invocation" vs. "shaping defect in the record"; today every merge
 // site (pr-first-merge.md's two squash sites, and the four local-merge sites
 // in merge-subject-composer-conformance.test.js's LOCAL_SITES) treats any
-// non-zero compose-subject.js exit identically (`|| exit 1`), so a fourth
+// non-zero compose-subject.js exit identically (the composer exiting non-zero stops the fence before any merge), so a fourth
 // code would carry no distinguishable behavior at the only call sites that
 // exist — six merge-site fences would need editing for a distinction nothing
 // reads. Revisit if a caller ever needs to route "uncomposable" (park the
@@ -57,6 +57,7 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { execFileSync } = require('child_process');
 const { composeSubject, ComposeSubjectError } = require('./release/subject');
 const {
@@ -69,7 +70,7 @@ const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('./shared-primitives');
 const { readCommitScope, readListKey } = require('./policy');
 const { parseScopePaths, resolveCommitScope, CommitScopeError } = require('./commit-scope');
 
-const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--title-out <path> --body-out <path> | --shell] [--help]\n';
+const USAGE = 'usage: compose-subject.js <n>[,<m>...] [<k>...] [--repo owner/name] [--tag <tag>] [--scope <scope>] [--range <base>...<head>] [--pr <n>] [--shell] [--out-dir <dir>] [--help]\n';
 // Decision (#2319): kept at the single-call convention, not widened. Each
 // `gh issue view` call below fetches exactly one record — unlike
 // fetch-sub-issues.js's 30000ms bound, which covers a single batched
@@ -92,21 +93,18 @@ function errMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
-// Value flags whose option key is not their name with `--` stripped.
-const FILE_OUT_KEYS = { '--title-out': 'titleOut', '--body-out': 'bodyOut' };
-
 function parseArgs(argv) {
-  const opts = { numbers: [], repo: null, tag: null, scope: null, range: null, pr: null, shell: false, help: false, titleOut: null, bodyOut: null };
+  const opts = { numbers: [], repo: null, tag: null, scope: null, range: null, pr: null, outDir: null, shell: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { opts.help = true; return opts; }
     if (a === '--shell') { opts.shell = true; continue; }
-    if (a === '--repo' || a === '--tag' || a === '--scope' || a === '--range' || a === '--pr' || a === '--title-out' || a === '--body-out') {
+    if (a === '--repo' || a === '--tag' || a === '--scope' || a === '--range' || a === '--pr' || a === '--out-dir') {
       const v = argv[i + 1];
       if (v === undefined || v.startsWith('--')) return { error: `missing value for ${a}` };
       if (a === '--pr' && !/^\d+$/.test(v)) return { error: `invalid --pr value: ${v}` };
       if (a === '--range' && !/^[^\s-][^\s]*\.\.\.[^\s-][^\s]*$/.test(v)) return { error: `invalid --range value: ${v} — expected <base>...<head>` };
-      opts[FILE_OUT_KEYS[a] || a.slice(2)] = v;
+      opts[a === '--out-dir' ? 'outDir' : a.slice(2)] = v;
       i++;
       continue;
     }
@@ -119,8 +117,7 @@ function parseArgs(argv) {
   }
   if (opts.numbers.length === 0) return { error: 'missing <n> argument' };
   if (opts.range !== null && opts.pr !== null) return { error: '--range and --pr are mutually exclusive' };
-  if ((opts.titleOut === null) !== (opts.bodyOut === null)) return { error: '--title-out and --body-out must be passed together' };
-  if (opts.shell && opts.titleOut !== null) return { error: '--title-out/--body-out cannot be combined with --shell' };
+  if (opts.outDir !== null && opts.shell) return { error: '--out-dir and --shell are mutually exclusive' };
   opts.numbers = [...new Set(opts.numbers)].sort((a, b) => a - b);
   return opts;
 }
@@ -238,9 +235,8 @@ const realDeps = {
   readCommitScope: () => readCommitScope(process.cwd()),
   readCommitScopePaths: () => readListKey(process.cwd(), 'commit-scope-paths'),
   gitRunner: (args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true }),
-  writeFile: (p, text) => fs.writeFileSync(p, text, 'utf8'),
-  // Only a missing file is fine; anything else (EACCES, EISDIR) must surface.
-  unlink: (p) => { try { fs.unlinkSync(p); } catch (err) { if (!err || err.code !== 'ENOENT') throw err; } },
+  mkdirp: (d) => fs.mkdirSync(d, { recursive: true }),
+  writeFile: (p, s) => fs.writeFileSync(p, s, 'utf8'),
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
 };
@@ -250,14 +246,6 @@ function run(argv, deps = realDeps) {
   const opts = parseArgs(argv);
   if (opts.error) { deps.stderr(opts.error + '\n' + USAGE); return 1; }
   if (opts.help) { deps.stdout(USAGE); return 0; }
-  if (opts.titleOut !== null) {
-    for (const p of [opts.titleOut, opts.bodyOut]) {
-      try { deps.unlink(p); } catch (err) {
-        deps.stderr(`compose-subject.js: could not remove stale ${p}: ${errMessage(err)}\n`);
-        return 3;
-      }
-    }
-  }
   if (!deps.ghAvailable()) { deps.stderr('compose-subject.js: `gh` is required\n'); return 2; }
 
   let remote = null;
@@ -376,16 +364,22 @@ function run(argv, deps = realDeps) {
     return 1;
   }
 
-  if (opts.titleOut !== null) {
-    for (const [p, text] of [[opts.titleOut, composed.title], [opts.bodyOut, composed.body]]) {
-      try { deps.writeFile(p, text); } catch (err) {
-        deps.stderr(`compose-subject.js: could not write ${p}: ${errMessage(err)}\n`);
-        return 3;
-      }
+  if (opts.outDir !== null) {
+    const files = [
+      [path.join(opts.outDir, 'title.txt'), composed.title],
+      [path.join(opts.outDir, 'body.md'), composed.body],
+      [path.join(opts.outDir, 'message.txt'), `${composed.title}\n\n${composed.body}`],
+    ];
+    let current = opts.outDir;
+    try {
+      deps.mkdirp(opts.outDir);
+      for (const [file, text] of files) { current = file; deps.writeFile(file, text); }
+    } catch (err) {
+      deps.stderr(`compose-subject.js: could not write ${current}: ${errMessage(err)}\n`);
+      return 3;
     }
-  }
-
-  if (opts.shell) {
+    deps.stdout(shellQuote(composed.title) + '\n');
+  } else if (opts.shell) {
     deps.stdout(`SUBJECT_TITLE=${shellQuote(composed.title)}\nSUBJECT_BODY=${shellQuote(composed.body)}\n`);
   } else {
     deps.stdout(`${JSON.stringify(composed)}\n`);

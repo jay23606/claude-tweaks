@@ -19,7 +19,9 @@ const { spawn } = require('child_process');
 
 const { parseArgs, UsageError, USAGE } = require('./lib/verify/args');
 const { runChecks, runOne } = require('./lib/verify/run');
-const { adjudicate, realGit, findStaleBaselineWorktrees } = require('./lib/verify/baseline');
+const {
+  adjudicate, realGit, findStaleBaselineWorktrees, RUNNER_ERROR_RE,
+} = require('./lib/verify/baseline');
 const {
   sniffFamily, extractFailingRegion, parseCounts, summaryLine, extractFailingFiles, stripAnsi, unattributedFailureCount,
 } = require('./lib/verify/extract');
@@ -467,6 +469,8 @@ async function main() {
   // signal to read (`planRetry` already returns `retry: false` for an empty
   // allowlist, so gating classification on `flaky.files.length > 0` only
   // ever suppressed the decision, never changed whether a retry could run).
+  // Checks run in --cwd, so their logs' absolute frames sit under it, not under process.cwd().
+  const logCwd = parsed.cwd || process.cwd();
   const retryHook = async (result, ctx) => {
     if (!decl) return result;
     // `result.name === 'tests'` is belt-and-braces here: the --cmd-vs-
@@ -478,8 +482,8 @@ async function main() {
     try { text = fs.readFileSync(result.logPath, 'utf8'); } catch { return { ...result, retryDecision: { retry: false, reason: 'unreadable-log' } }; }
     const plain = stripAnsi(text);
     const family = sniffFamily(plain);
-    const failingFiles = extractFailingFiles(plain, family);
-    const unattributedCount = unattributedFailureCount(plain, family);
+    const failingFiles = extractFailingFiles(plain, family, { cwd: logCwd });
+    const unattributedCount = unattributedFailureCount(plain, family, { cwd: logCwd });
     const plan = planRetry({
       failingFiles, flaky: decl.flaky, retry: decl.retry, suite: result.name, unattributedCount, family,
     });
@@ -556,27 +560,45 @@ async function main() {
   // a run --baseline already passed. Failing files are extracted the same
   // way retryHook extracts them for flaky.files (extractFailingFiles,
   // `[]` on no-parse) — fail-closed: a check whose failure names no file at
-  // all (no-parse) makes the whole run ineligible, never "covered".
+  // all (no-parse) makes the whole run ineligible, never "covered". #3481:
+  // a named-file list is only complete when the log's failure accounting is
+  // (the same guard flaky retry applies, planRetry #3066/#3204): a family with
+  // no accounting guard refuses, and so does any failure no named file accounts for
+  // or a runner-level error line the count cannot see (baseline.js's RUNNER_ERROR_RE).
   let preExistingAdjudicated = null;
   if (decl && decl.preExisting && decl.preExisting.length && !rawPass && !adjudicatedPass) {
     const failingChecks = results.filter((c) => !c.skipped && c.exitCode !== 0);
     let noParse = false;
+    let noGuardFamily = null;
+    let unattributedTotal = 0;
+    let runnerError = false;
     const allFailingFiles = [];
     for (const check of failingChecks) {
       let text;
       try { text = fs.readFileSync(check.logPath, 'utf8'); } catch { noParse = true; continue; }
       const plain = stripAnsi(text);
-      const checkFiles = extractFailingFiles(plain, sniffFamily(plain));
+      const family = sniffFamily(plain);
+      const checkFiles = extractFailingFiles(plain, family, { cwd: logCwd });
       if (checkFiles.length === 0) { noParse = true; continue; }
       allFailingFiles.push(...checkFiles);
+      const unattributedCount = unattributedFailureCount(plain, family, { cwd: logCwd });
+      if (unattributedCount === null) noGuardFamily = noGuardFamily ?? family;
+      else unattributedTotal += unattributedCount;
+      // Node reports a runner-level error beside a failing test only as this log line (baseline.js).
+      if (RUNNER_ERROR_RE.test(plain)) runnerError = true;
     }
-    if (!noParse) {
+    let refusal = null;
+    if (noParse) refusal = 'no-parse';
+    else if (noGuardFamily !== null) refusal = `no-accounting-guard: ${noGuardFamily}`;
+    else if (unattributedTotal > 0) refusal = `unattributed-failures: ${unattributedTotal}`;
+    else if (runnerError) refusal = 'runner-error';
+    if (refusal) {
+      preExistingAdjudicated = { declared: decl.preExisting, eligible: false, reason: refusal };
+    } else {
       const verdict = matchPreExisting({ failingFiles: allFailingFiles, preExisting: decl.preExisting });
       preExistingAdjudicated = verdict.eligible
         ? { declared: decl.preExisting, matched: verdict.matched }
         : { declared: decl.preExisting, eligible: false, reason: verdict.reason };
-    } else {
-      preExistingAdjudicated = { declared: decl.preExisting, eligible: false, reason: 'no-parse' };
     }
   }
   const preExistingPass = Boolean(preExistingAdjudicated && preExistingAdjudicated.matched);

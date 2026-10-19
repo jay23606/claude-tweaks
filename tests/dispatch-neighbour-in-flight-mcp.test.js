@@ -13,25 +13,25 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { readExclusions } = require('../plugin/bin/lib/dispatch/exclusions.js');
+const { readText } = require('./helpers/read-skill.js');
 
 const ROOT = path.join(__dirname, '..');
-const MCP = fs.readFileSync(path.join(ROOT, 'plugin', 'skills', 'dispatch', 'mcp-transport.md'), 'utf8');
-const QUEUE_PULL = fs.readFileSync(path.join(ROOT, 'plugin', 'skills', 'dispatch', 'queue-pull-script.md'), 'utf8');
+const MCP = readText(path.join(ROOT, 'plugin', 'skills', 'dispatch', 'mcp-transport.md'));
+const QUEUE_PULL = readText(path.join(ROOT, 'plugin', 'skills', 'dispatch', 'queue-pull-script.md'));
 
 const HEADING = '## Step 2 — neighbour-in-flight pool (#3278, #3392)';
 const START = 'node "${CLAUDE_PLUGIN_ROOT}/bin/node-eval-file.js"';
-const END = 'NODE_EVAL_EOF\n';
 
-function section() {
-  const start = MCP.indexOf(HEADING);
+function section(text = MCP) {
+  const start = text.indexOf(HEADING);
   assert.notStrictEqual(start, -1, 'section heading anchor not found in mcp-transport.md');
-  const next = MCP.indexOf('\n## ', start + HEADING.length);
-  return MCP.slice(start, next === -1 ? undefined : next);
+  const next = text.indexOf('\n## ', start + HEADING.length);
+  return text.slice(start, next === -1 ? undefined : next);
 }
 
 // The Nth heredoc: from its node-eval-file.js line through its closing NODE_EVAL_EOF line.
-function snippet(index) {
-  const text = section();
+function snippet(index, source = MCP) {
+  const text = section(source);
   let from = 0;
   let found = -1;
   for (let i = 0; i <= index; i += 1) {
@@ -39,9 +39,11 @@ function snippet(index) {
     assert.notStrictEqual(found, -1, `heredoc #${index} not found in the section`);
     from = found + START.length;
   }
-  const close = text.indexOf('\n' + END, found);
-  assert.notStrictEqual(close, -1, `heredoc #${index} has no NODE_EVAL_EOF terminator`);
-  return text.slice(found, close + 1 + END.length);
+  const eof = /\r?\nNODE_EVAL_EOF\r?\n/g;
+  eof.lastIndex = found;
+  const close = eof.exec(text);
+  assert.notStrictEqual(close, null, `heredoc #${index} has no NODE_EVAL_EOF terminator`);
+  return text.slice(found, close.index + close[0].length);
 }
 
 function rec(number, files) {
@@ -67,10 +69,14 @@ function fixture(t, { groups = [[rec(1, ['a.js'])]], inFlight = [rec(9, ['a.js']
   return files;
 }
 
+// The unquoted heredoc expands ${CLAUDE_PLUGIN_ROOT} into a JS string literal, where a Windows
+// backslash path would be read as escapes — pass it with forward slashes.
+const PLUGIN_ROOT = path.join(ROOT, 'plugin').split(path.sep).join('/');
+
 function run(code, files) {
   const result = spawnSync('bash', ['-c', code], {
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(ROOT, 'plugin'), ...files },
+    env: { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT, ...files },
   });
   assert.strictEqual(result.status, 0, `snippet exited ${result.status}: ${result.stderr}`);
   return result;
@@ -86,6 +92,13 @@ test('AC1.1: the MCP claim-target snippet prints [9] and the MCP exclusion snipp
   assert.deepStrictEqual(readExclusions(files.DISPATCH_EXCLUSIONS), [
     { reason: 'neighbour-in-flight', records: [1], detail: { neighbours: [{ number: 9, files: ['a.js'] }] } },
   ]);
+});
+
+test('CRLF: snippet extracts heredocs 0 and 1 from CRLF text identically to LF text', () => {
+  const crlf = MCP.replace(/\n/g, '\r\n');
+  for (const i of [0, 1]) {
+    assert.strictEqual(snippet(i, crlf).replace(/\r\n/g, '\n'), snippet(i));
+  }
 });
 
 test('AC2.1: a stale label with no live claim (a tombstone, or no claim file) read over MCP writes no exclusion', (t) => {
@@ -135,4 +148,35 @@ test('queue-pull-script.md declares DISPATCH_IN_FLIGHT_CLAIMS and points MCP-tra
   const at = QUEUE_PULL.indexOf(anchor);
   assert.notStrictEqual(at, -1);
   assert.ok(QUEUE_PULL.slice(at, at + 400).includes('mcp-transport.md'));
+});
+
+// #3520: the pool carries title (the near-duplicate rule's title signal), and a strong
+// near-duplicate with no Key Files section is a neighbour.
+function recAnchors(number, title, anchors) {
+  return {
+    number,
+    title,
+    labels: [{ name: 'priority:medium' }],
+    body: '## Current State\n\n' + anchors.map((a) => `- \`${a}\` is wired`).join('\n') + '\n',
+  };
+}
+
+test('AC8: the pool shape the agent writes includes title', () => {
+  assert.ok(section().includes('[{number, title, body, labels}]'));
+});
+
+test('AC8: a strong near-duplicate with no Key Files is a claim target and its exclusion element carries sharedAnchors', (t) => {
+  const anchors = ['alpha.one', 'beta.two', 'gamma.three'];
+  const files = fixture(t, {
+    groups: [[recAnchors(1, 'Wire the cache layer', anchors)]],
+    inFlight: [recAnchors(9, 'Different words entirely', anchors)],
+    claims: { 9: liveClaim() },
+  });
+  assert.deepStrictEqual(JSON.parse(run(snippet(0), files).stdout), [9]);
+  run(snippet(1), files);
+  const [exclusion] = readExclusions(files.DISPATCH_EXCLUSIONS);
+  assert.strictEqual(exclusion.reason, 'neighbour-in-flight');
+  assert.deepStrictEqual(exclusion.records, [1]);
+  assert.deepStrictEqual(exclusion.detail.neighbours.map((n) => n.number), [9]);
+  assert.deepStrictEqual(exclusion.detail.neighbours[0].sharedAnchors, [...anchors].sort());
 });

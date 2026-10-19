@@ -78,9 +78,7 @@ test('#2015: pr-first-merge.md Step 3 defines {issue-list} as complete specs onl
   const text = norm(read(PR_FIRST_MERGE_PATH));
   const step3 = text.split('## Step 3: Attempt auto-merge')[1];
   assert.ok(step3, 'Step 3 must exist');
-  // 2200, not 1500: #3347's three-line file-mode fence and its paragraph moved the
-  // {issue-list} definition to offset ~1,720 of the normalized Step 3 body.
-  const window = step3.slice(0, 2200);
+  const window = step3.slice(0, 1500);
   assert.match(window, /the manifest's `complete` specs only/,
     'Step 3 must define {issue-list} as the manifest\'s complete specs only for a bundle');
   assert.match(window, /`never-started:`\/`abandoned:` reason/,

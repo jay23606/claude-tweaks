@@ -106,3 +106,68 @@ non-first parent is an ancestor of the integration ref. A branch takes in its in
 with a real merge commit even under `pr-first`, so squash never applies there. Every failed read
 returns `null`, so the fallback over-verifies rather than discarding anything. The bug this
 skill stops lives only in checks whose ancestor argument is the branch's own HEAD or tip.
+
+## Offline readers prove landing, never non-landing
+
+The squash proof needs the PR's `mergeCommit`, and only a forge read supplies it. A reader that
+must stay network-free, such as the SessionStart banner or any other hook, is left with ancestry
+and `git cherry`. Under `pr-first` those answer in one direction only:
+
+- `ancestor`, or a `git cherry` whose every line starts with `-`, proves the work landed.
+- An unmatched `git cherry` commit does not prove it didn't. A squash-merged multi-commit branch
+  produces exactly that output.
+
+So split the question by caller:
+
+- **Offline is advisory only.** An offline "not landed" may offer an action, such as a banner
+  line naming a command, but never takes one. Say at the call site that a squash-merged branch
+  can still read as unmerged there, and name the online check that refuses it.
+- **Online gates the action path.** The step that acts reads the PR's state first
+  (`resolvePrStateByNumber` in `plugin/bin/lib/reconcile/pr-state.js`). `MERGED` means landed.
+  `OPEN` means not landed, even when the offline evidence is indeterminate. Only then consult the
+  offline evidence.
+- **A degraded online check changes the instruction, not only the detail text.** When the PR
+  read fails (no `gh`, a network error, a throw), the verdict falls back to offline evidence,
+  which cannot rule out a squash merge. Prose that would proceed on that verdict must branch on
+  the degrade: confirm the PR is unmerged by another read (the GitHub MCP `pull_request_read`),
+  and stop when it cannot be confirmed. A pass verdict that carries "online check unavailable"
+  only in its detail string loses the failure discipline's "unproven means stop".
+
+**Reuse.** `checkBranchLanded` in `plugin/bin/lib/hooks/run-integrity.js` returns the offline
+evidence without `checkRunIntegrity`'s wrap-up event gate, which every multi-spec parent run
+trips. It returns `true` when merge is proven, `false` when an unmatched commit was found, and
+`null` when it could not tell. Its header comment calls `false` "definitively unmerged", but under
+`pr-first` read it as "unmatched commit found", not "unmerged". `checkPassReentry` in
+`plugin/bin/lib/flow/consolidated-pass.js` (#3497) is the shipped instance of the split.
+SessionStart calls it without `online`, and `flow/multispec-review-console.md`'s re-entry step
+calls it with `online: true`.
+
+**Recurrence.** #3497's review: the re-entry step first proceeded on an `eligible` verdict whose
+online PR check had degraded, with the degrade visible only in `detail`. The fix made an
+unconfirmable PR state a stop.
+
+## When "landed" picks the cautious action
+
+The rules above assume the risky action follows a *landed* verdict. Some checks run the other
+way: "landed" picks the cautious, non-destructive action, and "not landed" keeps the behavior
+that existed before the check. `_shared/worktree-setup.md`'s merged-branch precondition (#3572)
+is one. A merged branch makes the session leave its worktree with `ExitWorktree(action: "keep")`
+and create a fresh one. An unmerged branch adopts the current worktree, as every clean worktree
+did before the check existed. Before you choose a fail direction, name which verdict acts and
+what each wrong answer costs.
+
+- **Fail open toward the old behavior, and log the path.** When the check cannot run, fall through
+  to what happened before it existed, with a logged `could not run ({reason})` line, not a stop.
+  The degraded-online-check rule above guards prose that would act on "not landed" where acting
+  is risky. Here acting on "not landed" is the old behavior, so there is nothing to stop for.
+  When `gh` is absent, the PR read degrades on its own, as `_shared/github-write-transport.md`
+  documents for PR list and view reads.
+- **A weaker proof is acceptable only while a false "landed" costs nothing.**
+  `gh pr list --head "{branch}" --state merged` proves that a PR from that branch name merged, not
+  that HEAD's content landed. A reused branch name, or commits added after the merge, both read as
+  merged. Here that only makes a fresh worktree and keeps the old one. Never reuse such a lookup
+  to gate a delete or a discard. Use the squash row's content proof for those.
+- **The PR lookup is the only signal that sees a squash. Pair it with a git check for merge
+  commits.** A tip that is an ancestor of `origin/{integration-branch}` but absent from
+  `git rev-list --first-parent origin/{integration-branch}` was merged by a merge commit. A fresh
+  branch cut at an integration-branch commit sits on the first-parent line and is not merged.

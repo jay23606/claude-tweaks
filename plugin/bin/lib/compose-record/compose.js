@@ -8,6 +8,7 @@
 const { recordPayload } = require('../issues/record');
 const {
   REQUIRED_SECTIONS: GATE_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, sectionText, shapeGate, stripCodeSpans,
+  liftMetadata, describeDesignIntentError,
 } = require('../issues/materialize-format');
 
 // Derived from the gate's own lists — never a locally declared copy (#2827). Exported under
@@ -36,12 +37,15 @@ function splitSections(body) {
   return out;
 }
 
-// body -> { ok, gaps: string[] } — ok is shapeGate's verdict; gaps names every failing check at
-// once (never just the first), in REQUIRED_SECTIONS order then marker order.
+// body -> { ok, gaps: string[] } — ok is shapeGate's verdict plus the Design-intent: line check
+// (#3018: materialization rejects an invalid line, so a record must not be written ready with
+// one); gaps names every failing check at once (never just the first), in REQUIRED_SECTIONS
+// order, then marker order, then the Design-intent line.
 function validateShaped(body) {
   const text = String(body || '');
   const gate = shapeGate(text);
-  if (gate.ok) return { ok: true, gaps: [] };
+  const intentError = liftMetadata(text).designIntentError;
+  if (gate.ok && !intentError) return { ok: true, gaps: [] };
   const gaps = [];
   for (const name of SECTION_NAMES) {
     if (!gate.missing.includes(name)) continue;
@@ -54,6 +58,7 @@ function validateShaped(body) {
       if (re.test(authored)) gaps.push(`unresolved placeholder marker: ${marker}`);
     }
   }
+  if (intentError) gaps.push(`invalid Design-intent: line ("${intentError.raw}") — ${describeDesignIntentError(intentError)}`);
   return { ok: false, gaps };
 }
 

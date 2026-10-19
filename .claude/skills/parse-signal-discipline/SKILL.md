@@ -138,6 +138,12 @@ When mechanizing a prose heuristic into a deterministic check:
    quoting it counted as a pass and overrode a later `needs-human`. It now reads only
    `parseEntry` entries under the verdict steps, anchors the pass at both ends, and reads any
    other pass-shaped action as `unparsed`.
+   Widening a writer's output shape strands the recognisers anchored to the old shape. #2869 let
+   `log-decision.js --reversibility` carry a trailing ` (qualifier)`, while `claim-log.js`'s
+   `ACTION_RE` (`[^.\s][^.]*`, so a qualifier containing `.` reads as unrecognised) and
+   `merge-verdict.js`'s bare-tier pass pattern stay anchored to the bare tier. Both fail safe
+   today because their writers still pass bare tiers. When you widen a writer, grep every
+   recogniser of its lines and either widen it with the writer or record why it stays narrow.
    A fuzzy text match is the same leak with no anchor at all. `plugin/bin/lib/plan-audit/checks.js`'s
    Check E (#3099) reads an acceptance-criterion clause as `covered` when the plan quotes its text.
    Its first version was a bare substring `includes()`, so the one-word clause "Last." read as
@@ -235,6 +241,15 @@ When mechanizing a prose heuristic into a deterministic check:
     resolution, so a new claim read calls it rather than hand-building the chain, and
     `grep -rn 'readClaimBlob(' plugin/skills/` should stay empty. A reader copied from a sibling
     call site still carries the sibling's gap, so grep for other copies before fixing one.
+    A found answer has the same hole when the unresolved input is a filter: an empty filter value
+    drops the filter, so the lookup returns everything and reads as a confident match.
+    `_shared/worktree-setup.md`'s merged-branch precondition (#3572) asks
+    `gh pr list --head "{current-branch}" --state merged --json number --jq length` whether the
+    branch's PR merged. On a detached HEAD `git branch --show-current` prints nothing, and
+    `--head ""` prints `30` (the default page size) with exit 0, so a clean detached worktree read
+    as merged. The task review missed it, a review lens caught it, and the fix skips the lookup when
+    the branch name is empty. Check that every interpolated filter is non-empty before trusting
+    a match count, and route an empty one to the could-not-tell branch or skip that check.
 14. **A lenient reader in front of a strict validator turns "couldn't parse" into "not
     configured".** A free-form policy value can go wrong in two ways before it reaches the check
     that would reject it loudly. The parser can keep whitespace the writer never meant, so a
@@ -251,6 +266,21 @@ When mechanizing a prose heuristic into a deterministic check:
     that fails loudly, and pin each with its own test: a spaced `prefix = token` entry that must
     match, and a whitespace-bearing value that must exit non-zero. A schema resolver that falls
     back to a default on an invalid value is not the hard error "When not to use" exempts.
+15. **A transform in front of a scanner owes its own could-not-parse verdict.** A scan over
+    transformed text reads whatever the transform wrongly removed as "nothing here", so a
+    transform that mis-parses produces a clean scan. `tests/helpers/strip-comments.js`'s
+    `stripComments` blanks comments to spaces before the path-guard, windows-hide and git-status
+    conformance scans count tokens, and it does not model regex literals. In
+    `const a = /"/; const b = "//"; fs.existsSync(b);` the quote inside the regex pairs with a later
+    string, the `//` after it opens a line comment, and the guarded call counted as zero.
+    `stripperVerdict` (#3573) checks the transform with an oracle the raw input already passes: it
+    compiles both the raw file and the stripped text under a CommonJS wrapper with `vm.Script`. A
+    blanked comment never breaks syntax, but blanked code cuts a literal short. So "raw compiles,
+    stripped does not" is `misparsed`, and a raw file that does not compile at all (an ESM file) is
+    `unparseable`, its own outcome and never `ok`. Each scan reports either one as an offender.
+    State what the oracle cannot see, as the helper's header does: a mis-parse whose stripped text
+    still compiles passes unseen. Pin the planted mis-parse through every scan that calls the
+    verdict, not only through the helper's own tests.
 
 ## When to use
 

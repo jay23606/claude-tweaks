@@ -245,84 +245,53 @@ test('#1411: the auto-merge-not-enabled branch (item 1) always degrades — an i
   assert.match(MERGE, /under `merge-when-green` or `wait` — do not merge immediately: degrade to Step 2\.5's `wait`/);
 });
 
-// #3347: GitHub rejects `--auto` with `Protected branch rules not configured for this branch`
-// (not the #1411 wording) on a repo with auto-merge allowed and no branch protection. Step 3
-// item 1 must carry that literal. classifyStderr scans items 1-4 in order and returns the first
-// whose backticked literal is a substring of stderr, else 5 (the generic fallback).
-const PROTECTED = 'GraphQL: Pull request Protected branch rules not configured for this branch (enablePullRequestAutoMerge)';
-
-function step3Of(text) {
-  const start = text.indexOf('## Step 3: Attempt auto-merge');
-  const end = text.indexOf('## Conflict path');
-  assert.ok(start > 0 && end > start, 'Step 3 section must be locatable');
-  return text.slice(start, end);
-}
-
-function step3Items(step3Body) {
-  const starts = [1, 2, 3, 4, 5, 6].map((n) => {
-    const at = step3Body.indexOf(`\n${n}. **Command`);
-    assert.ok(at > 0, `Step 3 item ${n} marker must exist`);
-    return at;
-  });
-  return [0, 1, 2, 3, 4].map((i) => step3Body.slice(starts[i], starts[i + 1]));
-}
-
-function classifyStderr(stderr, items) {
-  for (let i = 0; i < 4; i++) {
-    // Drop fenced code blocks first: their triple backticks would pair up as bogus inline literals.
-    const prose = items[i].replace(/^[ \t]*```[\s\S]*?^[ \t]*```/gm, '');
-    const literals = [...prose.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-    if (literals.some((lit) => stderr.includes(lit))) return i + 1;
-  }
-  return 5;
-}
-
-// Frozen pre-#3347 Step 3 item 1, byte-for-byte from 294eac138 (before the degrade-fence edits).
-const PRE_3347_ITEM_1 = `1. **Command failed with an auto-merge-not-enabled signature** — stderr contains the literal
+// #3521: PR #3450 (2026-10-18) captured a second arm-unavailable wording on this
+// repo, and `enablePullRequestAutoMerge` alone (the arm mutation's name, which
+// GitHub appends to every arm-unavailable failure of an `--auto` call) must match
+// item 1 too. Pin item 1's lead paragraph against the frozen pre-change text, with
+// the same slice anchors as the #1411 block above.
+const PRE_3521_ITEM_1 = `1. **Command failed with an auto-merge-not-enabled signature** — stderr contains the literal
    captured GitHub GraphQL wording \`Auto merge is not allowed for this repository\` (captured
    verbatim on this repo, PR #1401, 2026-08-24: \`GraphQL: Auto merge is not allowed for this
    repository (enablePullRequestAutoMerge)\`), or the looser paraphrase — \`auto-merge\` and
    (\`not allowed\` or \`not enabled\`) — for a differently-worded GitHub response to the same
-   repository setting ("Allow auto-merge") being off:
+   repository setting ("Allow auto-merge") being off:`;
 
-   - under \`merge-verification: off\` only — degrade to an immediate merge, no \`--auto\` (today's
-     behavior):
+function item1Body() {
+  const step3 = MERGE.indexOf('## Step 3: Attempt auto-merge');
+  const conflictPath = MERGE.indexOf('## Conflict path');
+  const step3Body = MERGE.slice(step3, conflictPath);
+  const item1 = step3Body.indexOf('1. **Command failed with an auto-merge-not-enabled signature**');
+  const item2 = step3Body.indexOf('2. **Command failed with a checks-pending');
+  return step3Body.slice(item1, item2);
+}
 
-     \`\`\`bash
-     SUBJECT_EXPORTS=$(node "\${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-     eval "$SUBJECT_EXPORTS"
-     gh pr merge {pr-number} --repo {owner}/{repo} --squash \\
-       -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
-     \`\`\`
-
-   - under \`merge-when-green\` or \`wait\` — do not merge immediately: degrade to Step 2.5's \`wait\`
-     row instead (the immediate merge is exactly the race both values exist to close; \`wait\`
-     reaching here at all means arming was never its path — it lands in the same bounded watch).
-
-   This either succeeds (→ outcome \`merged\`, go to Step 4) or fails on one of the signatures
-   below (→ that signature's own degrade branch).
-`;
-
-test('AC3.1: the Protected-branch-rules stderr routes to Step 3 item 1 (auto-merge-not-enabled)', () => {
-  assert.equal(classifyStderr(PROTECTED, step3Items(step3Of(MERGE))), 1);
+test('#3521 AC1.1 AC1.2: Step 3 item 1 carries the PR #3450 literal', () => {
+  const body = item1Body();
+  assert.ok(body.includes('Protected branch rules not configured for this branch'));
+  assert.ok(body.includes('PR #3450'));
+  assert.ok(body.includes('2026-10-18'));
+  assert.ok(
+    !PRE_3521_ITEM_1.includes('Protected branch rules not configured for this branch'),
+    'pre-change text must NOT contain the PR #3450 literal (proves the pin can go red) [IL-105]',
+  );
 });
 
-test('AC3.1: the original #1411 capture still routes to item 1', () => {
-  const stderr = 'GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)';
-  assert.equal(classifyStderr(stderr, step3Items(step3Of(MERGE))), 1);
+test('#3521 AC2.1: Step 3 item 1 names enablePullRequestAutoMerge alone as a matching token', () => {
+  assert.match(item1Body(), /`enablePullRequestAutoMerge` alone/);
+  assert.doesNotMatch(PRE_3521_ITEM_1, /`enablePullRequestAutoMerge` alone/, 'pre-change text must NOT name the token-alone match (proves the pin can go red) [IL-105]');
 });
 
-test('AC3.1 go-red: against the frozen pre-#3347 item 1 the Protected stderr falls to item 5', () => {
-  const items = step3Items(step3Of(MERGE));
-  items[0] = PRE_3347_ITEM_1;
-  assert.equal(classifyStderr(PROTECTED, items), 5);
+test('#3521: Step 3 item 1 states allow_auto_merge without branch protection still fails to arm', () => {
+  const body = item1Body();
+  assert.match(body, /`allow_auto_merge: true`/);
+  assert.match(body, /branch protection or a ruleset/);
+  assert.doesNotMatch(PRE_3521_ITEM_1, /`allow_auto_merge: true`/, 'pre-change text must NOT carry the allow_auto_merge sentence (proves the pin can go red) [IL-105]');
 });
 
-test('item 1 names the mergeStateStatus DIRTY re-check for the Protected wording', () => {
-  const item1 = step3Items(step3Of(MERGE))[0];
-  assert.match(item1, /mergeStateStatus/);
-  assert.match(item1, /DIRTY/);
-  assert.match(item1, /Conflict path/);
+test('#3521: the token-alone match yields to item 3\'s and item 4\'s signatures', () => {
+  assert.match(item1Body(), /unless item 3's or item 4's signature is also present/);
+  assert.doesNotMatch(PRE_3521_ITEM_1, /unless item 3's or item 4's signature/, 'pre-change text must NOT carry the precedence clause (proves the pin can go red) [IL-105]');
 });
 
 test('/flow closing reports carry the release-status line verbatim (#678)', () => {

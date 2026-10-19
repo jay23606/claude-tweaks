@@ -59,13 +59,13 @@ const path = require('path');
 // vertical (see focus-generators.js's own header) in a fixed order with
 // candidates-dead-code.js first, so requiring the registry before anything
 // else forces that full cascade to run to completion before this module's
-// own `require('./candidates-dead-code')` below executes. Reversing this
-// order lets Node's circular-require semantics hand back an
-// still-mid-load, incomplete `candidates-dead-code` exports object whenever
-// this file is required directly (as its own test file does) rather than
-// via the registry — silently binding `listTrackedSourceFiles` and friends
-// to `undefined`. Requiring the registry first is what candidates-test-
-// hygiene.js does too, for the identical reason.
+// own `require('./candidates-dead-code')` below executes. This order is
+// defense in depth: the real guard is that `candidates-dead-code.js`
+// publishes `module.exports` before it requires the registry, so a direct
+// require of this file gets complete exports either way (the all-modules
+// fresh-process test in `candidates-require-order.test.js` pins that for
+// every module). Requiring the registry first is what candidates-test-
+// hygiene.js does too.
 const { registerGenerator } = require('./focus-generators');
 const {
   listTrackedSourceFiles,

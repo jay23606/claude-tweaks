@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 279,
+    "title": "Event-driven dispatch via GitHub webhook trigger",
+    "action": "Close as not planned — parked 56d, stale, trigger not met",
+    "command": "gh issue close 279 --reason \"not planned\" --comment \"tidy: parked 56d, trigger unmet\""
+  }
+]
