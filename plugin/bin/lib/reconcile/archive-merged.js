@@ -23,6 +23,7 @@ const { isWorktreeAlwaysOn } = require('../policy');
 const { repoSlugOf, prClosesIssue } = require('./release-merged');
 const { closeRunState } = require('../hooks/close-run-state');
 const { checkRunIntegrity, fallbackBranch } = require('../hooks/run-integrity');
+const { readManifest, readDeferredClosures, readSingleRecordDeferredClosure } = require('../flow/manifest');
 
 // Orphan case introduced by the dispatch/flow run-identity unification:
 // dispatch mints an empty, anchored run directory (mkdir only, no
@@ -805,6 +806,41 @@ function recordNumbersFromSlug(dir) {
   if (!m) return null;
   const nums = m[1].split('-').map(Number).filter((n) => Number.isInteger(n) && n > 0);
   return nums.length ? nums : null;
+}
+
+// #3503: the run's required record ids — what the merged-partial archive guard
+// (decideArchiveCore's recordCheck) must see closed before archiving. Manifest
+// present with specs: every spec id except a `failed`/`not-run` spec (it never
+// completed, so its record is not this run's to close) and a spec carrying a
+// deferred-closure entry (the run deliberately withheld its closing keyword).
+// No such manifest: the ids named in a `record-{n}`/`spec-{n}[-{m}]` slug,
+// minus any with a top-level deferred-closure entry. Neither: null. Integers,
+// deduplicated, first-occurrence order — prClosesIssue compares numbers strictly.
+// Separate from RECORD_SLUG_RE on purpose: that regex stays record-only for
+// isClosedSlugStuck.
+const RUN_RECORD_SLUG_RE = /-(?:record|spec)-(\d+(?:-\d+)*)$/;
+
+function runRecordSet(dir) {
+  const manifest = readManifest(dir);
+  const ids = [];
+  if (manifest && manifest.multispec.specs.length) {
+    const specs = manifest.multispec.specs;
+    const deferred = readDeferredClosures(dir, specs);
+    for (const spec of specs) {
+      if (spec.status === 'failed' || spec.status === 'not-run') continue;
+      if (deferred.has(String(spec.id))) continue;
+      ids.push(Number(spec.id));
+    }
+    return [...new Set(ids)];
+  }
+  const m = RUN_RECORD_SLUG_RE.exec(path.basename(dir));
+  if (!m) return null;
+  for (const raw of m[1].split('-')) {
+    const n = Number(raw);
+    if (readSingleRecordDeferredClosure(dir, n) !== undefined) continue;
+    ids.push(n);
+  }
+  return [...new Set(ids)];
 }
 
 // { root, dir, state, now, resolveIssueState } -> boolean. `state` must be
@@ -2029,6 +2065,6 @@ module.exports = {
   isStructurallyStuck, trackStuckSkip, STRUCTURALLY_STUCK_TTL_MS, STRUCTURALLY_STUCK_REASONS,
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand,
   compareWorkTwin, resolveIdenticalWorkTwin, listFilesRecursive,
-  isClosedSlugStuck, recordNumbersFromSlug,
+  isClosedSlugStuck, recordNumbersFromSlug, runRecordSet,
   refusal,
 };

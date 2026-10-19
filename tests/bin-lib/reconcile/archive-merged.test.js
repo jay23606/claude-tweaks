@@ -15,10 +15,11 @@ const {
   isStructurallyStuck, trackStuckSkip, STRUCTURALLY_STUCK_TTL_MS, isStaleDir,
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
   classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS,
-  isClosedSlugStuck, recordNumbersFromSlug, refusal, STRUCTURALLY_STUCK_REASONS, unclosedRecords,
+  isClosedSlugStuck, recordNumbersFromSlug, refusal, STRUCTURALLY_STUCK_REASONS, unclosedRecords, runRecordSet,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure } = require('../../../plugin/bin/lib/reconcile/cache');
 const { createIssueListCache } = require('../../../plugin/bin/lib/reconcile/issue-list-cache');
+const { serializeManifestYaml } = require('../../../plugin/bin/lib/flow/manifest');
 
 // #1892: stamps `worktree-always: true` in `.claude-tweaks/policy.yml` — the
 // flat kebab-case format `bin/lib/policy.js` reads directly (no YAML dep).
@@ -3326,6 +3327,96 @@ test('recordNumbersFromSlug: null for a non-record slug (topic name, standalone,
   assert.equal(recordNumbersFromSlug('/tmp/2026-08-01T090000-meal-planning'), null);
   assert.equal(recordNumbersFromSlug('/tmp/2026-08-01T090000-adhoc-standalone'), null);
   assert.equal(recordNumbersFromSlug('/tmp/2026-08-01T090000-tidy-standalone'), null);
+});
+
+// --- #3503: runRecordSet — the run's required record ids, the reader the
+// merged-partial archive guard feeds to decideArchiveCore's recordCheck. ---
+
+// A run dir named with a real run-dir slug, so the manifest-less path parses
+// its basename exactly as the sweep does.
+function mkRunRecordDir(slug) {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'run-record-set-'));
+  const dir = path.join(base, slug);
+  fs.mkdirSync(dir);
+  return dir;
+}
+
+function writeSpecManifest(dir, specs) {
+  fs.writeFileSync(path.join(dir, 'manifest.yml'), serializeManifestYaml({ multispec: { parent: 'parent/', specs } }));
+}
+
+function deferredLine(n) {
+  return `- AUTO 10:00:00 — spec #${n}: deferred-closure: spec #${n} closing keyword withheld (pending manual step).`;
+}
+
+test('runRecordSet: a manifest with a running spec keeps it required (the #3311 incident shape)', () => {
+  const dir = mkRunRecordDir('2026-10-17T062549-spec-3307-3311');
+  writeSpecManifest(dir, [
+    { id: 3307, status: 'complete', subdir: 'spec-3307/' },
+    { id: 3311, status: 'running', subdir: 'spec-3311/' },
+  ]);
+  const result = runRecordSet(dir);
+  assert.deepEqual(result, [3307, 3311]);
+  assert.ok(result.every((n) => Number.isInteger(n)), `expected integer ids, got ${JSON.stringify(result)}`);
+  fs.rmSync(path.dirname(dir), { recursive: true, force: true });
+});
+
+test('runRecordSet: failed and not-run specs are excluded', () => {
+  const dir = mkRunRecordDir('2026-10-17T062549-spec-1-2-3');
+  writeSpecManifest(dir, [
+    { id: 1, status: 'complete', subdir: 'spec-1/' },
+    { id: 2, status: 'failed', subdir: 'spec-2/' },
+    { id: 3, status: 'not-run', subdir: 'spec-3/' },
+  ]);
+  assert.deepEqual(runRecordSet(dir), [1]);
+  fs.rmSync(path.dirname(dir), { recursive: true, force: true });
+});
+
+test('runRecordSet: a spec with a deferred-closure entry in spec-{id}/decisions.md is excluded', () => {
+  const dir = mkRunRecordDir('2026-10-17T062549-spec-1-2');
+  writeSpecManifest(dir, [
+    { id: 1, status: 'complete', subdir: 'spec-1/' },
+    { id: 2, status: 'complete', subdir: 'spec-2/' },
+  ]);
+  fs.mkdirSync(path.join(dir, 'spec-2'));
+  fs.writeFileSync(path.join(dir, 'spec-2', 'decisions.md'), deferredLine(2) + '\n');
+  assert.deepEqual(runRecordSet(dir), [1]);
+  fs.rmSync(path.dirname(dir), { recursive: true, force: true });
+});
+
+test('runRecordSet: manifest-less record-{n} and spec-{n}-{m} slugs parse to their ids, deduplicated', () => {
+  const single = mkRunRecordDir('2026-10-19T185603-record-3503');
+  assert.deepEqual(runRecordSet(single), [3503]);
+  fs.rmSync(path.dirname(single), { recursive: true, force: true });
+
+  const multi = mkRunRecordDir('2026-08-01T090000-spec-10-11');
+  assert.deepEqual(runRecordSet(multi), [10, 11]);
+  fs.rmSync(path.dirname(multi), { recursive: true, force: true });
+
+  const repeated = mkRunRecordDir('2026-08-01T090000-record-4-4');
+  assert.deepEqual(runRecordSet(repeated), [4]);
+  fs.rmSync(path.dirname(repeated), { recursive: true, force: true });
+});
+
+test('runRecordSet: a manifest-less singleton with a top-level deferred-closure entry yields []', () => {
+  const dir = mkRunRecordDir('2026-10-19T185603-record-3503');
+  fs.writeFileSync(path.join(dir, 'decisions.md'), deferredLine(3503) + '\n');
+  assert.deepEqual(runRecordSet(dir), []);
+  fs.rmSync(path.dirname(dir), { recursive: true, force: true });
+});
+
+test('runRecordSet: topic, standalone and suffixed slugs yield null', () => {
+  const slugs = [
+    '2026-08-01T090000-meal-planning',
+    '2026-08-01T090000-record-42-standalone',
+    '2026-08-01T090000-tidy-standalone',
+    '2026-08-01T090000-record-3249-ordinary-empty',
+  ];
+  for (const slug of slugs) {
+    const dir = mkRunRecordDir(slug);
+    assert.equal(runRecordSet(dir), null, slug);
+    fs.rmSync(path.dirname(dir), { recursive: true, force: true });
+  }
 });
 
 function mkConfigOnlyDir(slugSuffix, ageMs) {
