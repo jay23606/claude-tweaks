@@ -318,7 +318,7 @@ function carriesCleanStatus(text) {
 test('#3269 AC3.1: Step 3 item 1 carries the PR #3427 clean-status literal', () => {
   const body = item1Body();
   assert.ok(carriesCleanStatus(body));
-  assert.ok(body.includes('2026-10-18'));
+  assert.ok(body.includes('PR #3427, 2026-10-18'));
 });
 
 test('#3269 AC2.1: the clean-status pin goes red on the pre-change item 1 text', () => {
