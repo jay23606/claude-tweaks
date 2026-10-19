@@ -566,13 +566,16 @@ function countUnmatchedFailures(text, family, { cwd = process.cwd(), exists } = 
 
 // The runner behind a summary-family log, from its own summary block: jest
 // prints `Test Suites:`/`Tests:` (colon), vitest a colon-free `Test Files  N`.
-// null when neither (pytest, anything unrecognized) or both — a log carrying
-// both dialects' markers is ambiguous, and accounting against the wrong
-// summary line would read as accounted (#3480). Expects ANSI-stripped text.
+// null when neither (pytest, anything unrecognized) or more than one — a log
+// carrying two runners' markers (jest and vitest, or either beside pytest's
+// `=== 1 failed in 0.02s ===` banner) is ambiguous, and accounting against
+// one runner's summary line would read the other's failures as accounted
+// (#3480). Expects ANSI-stripped text.
 function summaryDialect(text) {
   const jest = /^Test Suites:/m.test(text) || /^Tests:/m.test(text);
   const vitest = /^\s*Test Files\s+\d+/m.test(text);
-  if (jest === vitest) return null;
+  const pytest = /^=+ .*\b(?:passed|failed|errors?)\b.* in [\d.]+s.*=+$/m.test(text);
+  if (pytest || jest === vitest) return null;
   return jest ? 'jest' : 'vitest';
 }
 
@@ -680,7 +683,7 @@ function summaryUnattributedCount(text, { cwd }) {
 // jest obsolete snapshot, a crashed runner), an interrupted run, and a log
 // carrying more than one summary line — failures no file accounts for.
 // pytest (collection `ERROR`s sit outside every `FAILED` line) and an
-// ambiguous summary log (both dialects' markers, or neither) return null, as
+// ambiguous summary log (more than one runner's markers, or none) return null, as
 // does every family other than spec/tap/summary — no failure-accounting guard
 // exists for it (the same refusal `baseline.js`'s `adjudicate` applies), so a
 // caller must never read null as accounted (#3204).
