@@ -32,6 +32,14 @@ test('already-checked row is a no-op', () => {
   assert.equal(second.body, first.body);
 });
 
+test('--remove leaves an already-checked row in place', () => {
+  const checked = setPhaseRow({ body, phase: 'polish' });
+  const out = setPhaseRow({ body: checked.body, phase: 'polish', remove: true });
+  assert.equal(out.changed, false);
+  assert.equal(out.row, 'already-checked');
+  assert.equal(out.body, checked.body);
+});
+
 test('removing an absent row is a no-op', () => {
   const first = setPhaseRow({ body, phase: 'polish', remove: true });
   const second = setPhaseRow({ body: first.body, phase: 'polish', remove: true });

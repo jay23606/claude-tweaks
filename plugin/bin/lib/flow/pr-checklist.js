@@ -52,8 +52,12 @@ function setPhaseRow({ body, phase, remove = false }) {
     const isUnchecked = trimmed === unchecked;
     if (!isUnchecked && !checked.has(trimmed)) { out.push(line); return; }
     matched++;
-    if (remove) { edited++; return; }
-    if (isUnchecked) { edited++; out.push(line.replace('- [ ]', '- [x]')); return; }
+    // A checked row is never a skipped phase's row: --remove leaves it in place.
+    if (isUnchecked) {
+      edited++;
+      if (!remove) out.push(line.replace('- [ ]', '- [x]'));
+      return;
+    }
     out.push(line);
   });
 

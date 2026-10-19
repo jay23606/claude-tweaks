@@ -14,7 +14,9 @@
 // result back in one `gh pr edit`. Every byte outside the edited row stays
 // identical. Prints one JSON line: {action, pr, phase, row, restored,
 // summary: {uncovered, reason, changed}}; action is written | no-op | no-pr |
-// gh-absent (no-pr and gh-absent carry only {action} / {action, pr}).
+// gh-absent (no-pr and gh-absent carry only {action} / {action, pr}); a
+// `written` line adds `logFailed: true` when the restore line could not be
+// appended to decisions.md (the PR write still landed).
 //
 // Status is data: exit 0 for written, no-op, no-pr and gh-absent.
 // 2 malformed invocation, or an unreadable --summary-file.
@@ -24,7 +26,7 @@
 //   none) -- refused, nothing written. The caller logs the mismatch and never
 //   retries by hand.
 // 5 `gh pr view` or `gh pr edit` failed. The caller warns best-effort; the
-//   next phase's call re-flips the row.
+//   pre-merge refresh re-runs the CLI for that phase and catches the row up.
 // 4 and 5 are distinct because the refresh procedure branches on them: a
 // mismatch is a wrong-PR signal a retry cannot fix, a gh failure is transient.
 'use strict';

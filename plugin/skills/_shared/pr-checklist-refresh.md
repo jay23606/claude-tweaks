@@ -40,11 +40,11 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
 
   `{run-dir}`: a bundle's parent run dir, else this run's own;
   `--remove` drops a skipped phase's row at its would-be exit. It reads `run-state.json`'s `pr`,
-  runs `repairPrBody` (logging what it restored), flips or removes the one row in the phases span,
-  runs the Spec-summary check below, verifies the body's first line names this run, and writes
-  back with `gh pr edit --body-file -`. Exit codes:
-  - **0**, by `action`: `written`/`no-op` done; `no-pr` → the degraded-run recovery above;
-    `gh-absent` → the MCP path below.
+  runs `repairPrBody` (logging any restore), flips or removes the one row, runs the Spec-summary
+  check below, verifies the body's first line names this run, and writes via `gh pr edit`. Exit codes:
+  - **0**, by `action`: `written`/`no-op` done, but a flip's `row-absent`/`no-phases-span` checked
+    nothing → warn; `logFailed` → hand-log the restore line (`bin/log-decision.js`); `no-pr` → the
+    degraded-run recovery above; `gh-absent` → MCP below.
   - **4** (run marker mismatch, nothing written): log `AUTO {time} — PR checklist refresh: refused
     on PR #{number} — run marker mismatch ({stderr}). Reversibility: n/a.`; never edit by hand.
   - **5** (`gh` failed): the "Best-effort" warning below.
@@ -78,11 +78,11 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
   Locate the `[claude-tweaks-phases-start]`/`[claude-tweaks-phases-end]` pair (an MCP read strips
   the HTML-comment pair, per `_shared/pr-early-run-lifecycle.md`'s Root cause section) and flip
   that phase's row from `- [ ] {phase}` to `- [x] {phase}` inside it (drop it for a skipped
-  phase), touching nothing else. Write the body to a session temp file (`bin/session-tmp-resolve.js`,
+  phase), touching nothing else. Write the body to a session temp file `{body-file}` (`bin/session-tmp-resolve.js`,
   e.g. `PR_CHECKLIST_BODY=pr-checklist-{run-id}-{n}.md`) with the Write tool, then run `node
   "${CLAUDE_PLUGIN_ROOT}/bin/revise-pr-summary.js" --run-dir "{run-dir}" --body-file
-  "$PR_CHECKLIST_BODY"`; on non-empty `uncovered`, re-run with `--summary-file {file} --out
-  "$PR_CHECKLIST_BODY"`. Re-read that file's first line back before the write and
+  {body-file}`; on non-empty `uncovered`, re-run with `--summary-file {file} --out {body-file}`; a
+  non-zero exit → warn, write checklist-only. Re-read that file's first line back before the write and
   confirm it still names this run's `{run-id}`; hard-stop on a mismatch rather than push a wrong body.
 
 <!-- when: transport=mcp -->
@@ -102,8 +102,7 @@ refresh below re-runs this procedure for that phase.
 records built on the same branch behind the same draft PR, so this procedure's checklist rows
 are **cumulative across every spec in the run, never reset per spec** — see
 `flow/multispec-pr-checklist.md` for the full rationale and the per-spec status source
-(`manifest.yml`'s `specs[].status`) a maintainer should read instead when they need spec-level,
-not run-level, granularity.
+(`manifest.yml`'s `specs[].status`) to read instead for spec-level granularity.
 
 **Premise-reversal decisions (#3050).** The one `decisions.md` entry shape the Spec-summary
 refresh above reads. It is written through `bin/log-decision.js` (`--status AUTO`): to the run's
@@ -177,9 +176,8 @@ above), not necessarily every phase this run actually completed.
 Best-effort, like the phase-checklist update it extends — a failed `gh pr edit` at any step above
 logs a warning and the merge proceeds; a stale title or an unchecked-but-present checklist row is
 cosmetic, never a merge blocker. A **missing** run marker, phases pair, or `Fixes` block is not
-cosmetic (#2997): step 1 above already repairs it via `repairPrBody` before this refresh reaches
-step 2's rewrite, so by the time step 2 runs, a span to replace always exists — restoration is
-mechanical and happens before the merge sequence runs, never a new pipeline stop.
+cosmetic (#2997): step 1 above already repairs it via `repairPrBody`, so step 2's rewrite always
+finds a span to replace — mechanical, never a new pipeline stop.
 
 ## Merge-time gh-absent degrade
 

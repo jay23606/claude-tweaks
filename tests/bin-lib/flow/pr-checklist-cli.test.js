@@ -112,6 +112,16 @@ test('already-checked row is a no-op with no write', () => {
   assert.equal(j.row, 'already-checked');
 });
 
+test('--remove on an already-checked row is a no-op with no write', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, { prBody: earlyBody().replace('- [ ] polish', '- [x] polish') });
+  assert.equal(run(['--run', runDir, '--phase', 'polish', '--remove'], h.deps), 0);
+  assert.equal(h.edits.length, 0);
+  const j = h.json();
+  assert.equal(j.action, 'no-op');
+  assert.equal(j.row, 'already-checked');
+});
+
 test('missing markers are repaired and logged', () => {
   const { main, runDir } = fixture({ pr: { number: 7 } });
   const h = makeDeps(main, { prBody: 'Hand-written body\n' });
