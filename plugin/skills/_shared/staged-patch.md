@@ -16,8 +16,9 @@ is therefore structural, not an edge case: the literal diff bytes are the least 
 the proposal. Staleness isn't only a cross-phase, cross-run concern — `/claude-tweaks:review`'s own
 `review/code-mode-steps.md` Step 5 (`/claude-tweaks:simplify`) runs after Step 3 Routing within the
 same review pass, over the same diff scope a Step 3 patch may have just staged; a patch staged at
-Step 3 can go stale before the console ever sees it. Re-validate any patch staged this run with
-`git apply --check` after Step 5 runs, and re-derive it (same procedure as the console's own stale-diff
+Step 3 can go stale before the console ever sees it. Re-validate any patch staged this run after
+Step 5 runs by re-running the Staging-time gate's Stacked check (`bin/check-staged-stack.js` — not a standalone
+`git apply --check`, which would flag every re-derived patch), and re-derive it (same procedure as the console's own stale-diff
 fallback below) if it no longer applies — cheaper to catch here, against the diff still in this
 review's own context, than to leave it for the console's cold re-derivation later. This is `_shared/reverify-before-write.md`'s pattern applied to a staged diff
 specifically: the console is a long-lived human-confirmation gate, so the console apply step
@@ -147,7 +148,8 @@ None of these branches is a mid-flow stop under `auto`.
 For each staged `.patch` (and each description-only `.md` written by the gate above), in apply order
 (the Stacked check's **Apply order** paragraph — the same order the staging gate stacked them in):
 
-1. **Fast path** — `git -C "$WORKTREE" apply --check "$STAGE_PATH"`; on exit 0, `git -C "$WORKTREE" apply "$STAGE_PATH"` and
+1. **Fast path** — `git -C "$WORKTREE" apply --check "$STAGE_PATH"`, run on the cumulative tree (earlier
+   patches in apply order already applied, the state a re-derived patch was derived against); on exit 0, `git -C "$WORKTREE" apply "$STAGE_PATH"` and
    log `AUTO {time} — Review Console apply: staged/{slug}-{n}.patch applied. Reversibility: high (commit).`
 2. **Stale diff (expected, not exceptional)** — on a non-zero check (`patch does not apply`,
    `patch failed`), read the preamble's `Target:` and `Invariant:` line(s) — pair them in order — open each
