@@ -139,6 +139,7 @@ test('M-1: the qualifier distinguishes uncommitted Fix-now edits from the commit
 
 test('fix round 1 (#3598): the recompute applies to the merge path; the never-run rule replaces it', () => {
   assert.ok(step67.includes('instead of this recompute'));
+  assert.ok(step67.includes('then recompute Step 7') && step67.includes('With no pre-wave per-story results'), 'both ordering markers exist');
   assert.ok(step67.indexOf('then recompute Step 7') < step67.indexOf('With no pre-wave per-story results'), 'recompute sentence precedes the never-run branch');
 });
 
