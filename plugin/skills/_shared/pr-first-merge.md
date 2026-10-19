@@ -145,6 +145,8 @@ gh run list --repo {owner}/{repo} --commit {headRefOid} --limit 100 --json name,
 
 A failed or unparseable runs read is the `state-read-failed` report, same as the first bullet. An empty runs list adds nothing. The code twin is `bin/lib/pr-checks/classify.js`'s `classifyRollup` (with `headRuns`), which applies the same order.
 
+**`StatusContext` entries are normalized first.** A legacy commit-status entry (`StatusContext` — `context`/`state`/`targetUrl`, no `status` or `conclusion`) is read by its `state` before the rules below apply: `FAILURE` or `ERROR` → red, `PENDING` or `EXPECTED` → pending (as is any other unfinished state), `SUCCESS` → green — completed, never pending. The code twin is `bin/lib/pr-checks/classify.js`'s `normalizeEntry`.
+
 Classify from both reads, in this order:
 
 - The command failed, or its output is not parseable JSON with those four fields → report
