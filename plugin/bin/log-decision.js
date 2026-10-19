@@ -12,7 +12,8 @@ const { STATUSES, formatEntry, resolveTarget, appendEntry } = require('./lib/log
 
 const USAGE = 'usage: log-decision.js --run <run-dir> --status AUTO|STAGED|KEPT-PROMPT|SCANNED|REFUSED|SKIP --text "..." [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a[" (qualifier)"]] [--lever "<k>=<v> (<source>)"] [--section "/<skill>"] [--help]\n';
 const REVERSIBILITY = ['high', 'med', 'low', 'n/a'];
-const REVERSIBILITY_RE = /^(high|med|low|n\/a)(\s+\(.+\))?$/;
+// One literal space before the qualifier: \s would admit "\n"/"\t" and split one entry across lines.
+const REVERSIBILITY_RE = new RegExp(`^(?:${REVERSIBILITY.join('|')})( \\(.+\\))?$`);
 
 function parseArgs(argv) {
   const o = { run: null, status: null, text: null, spec: null, step: null, reversibility: 'n/a', lever: null, section: null, help: false };
@@ -49,8 +50,7 @@ function run(argv, deps = realDeps) {
   if (!o.run) return usageError('--run <run-dir> is required');
   if (!STATUSES.includes(o.status)) return usageError(`--status must be one of ${STATUSES.join('|')}`);
   if (!o.text || !String(o.text).trim()) return usageError('--text is required');
-  const reversibilityMatch = REVERSIBILITY_RE.exec(String(o.reversibility));
-  if (!reversibilityMatch || !REVERSIBILITY.includes(reversibilityMatch[1])) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`);
+  if (!REVERSIBILITY_RE.test(String(o.reversibility))) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`);
   if (o.spec !== null && !/^\d+$/.test(String(o.spec))) return usageError('--spec must be a record number');
   let target;
   try { target = resolveTarget({ runDir: o.run, cwd: deps.cwd(), mainRoot: deps.mainRoot }); } catch (err) { deps.stderr(`log-decision.js: ${err && err.message}\n`); return 3; }

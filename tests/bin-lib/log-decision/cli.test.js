@@ -124,8 +124,8 @@ test('AC3.2: --reversibility "bogus (x)" exits 2 and writes nothing', () => {
   assert.match(streamOf(r.out, 'err'), /--reversibility must be one of high\|med\|low\|n\/a/);
 });
 
-test('AC3.3: malformed qualifier shapes exit 2 and write nothing: "high(x)", "high ()", "high (x", "high (x) trailing"', () => {
-  for (const bad of ['high(x)', 'high ()', 'high (x', 'high (x) trailing']) {
+test('AC3.3: malformed qualifier shapes exit 2 and write nothing: "high(x)", "high ()", "high (x", "high (x) trailing", and a non-single-space separator', () => {
+  for (const bad of ['high(x)', 'high ()', 'high (x', 'high (x) trailing', 'high\n(x)', 'high\t(x)', 'high  (x)']) {
     const r = reversibilityRun(bad);
     assert.equal(r.code, 2, bad);
     assert.equal(r.text, null, `${bad}: decisions.md never created`);
