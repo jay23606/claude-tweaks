@@ -15,7 +15,7 @@ const { execFile: execFileCb, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const { resolvePolicyConfig } = require('../policy-schema');
 const { parseManifestYaml } = require('../flow/manifest');
-const { parseDependencies } = require('../issues/record');
+const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
@@ -378,6 +378,24 @@ function namesRecordReference(resolution, excludeRecords) {
   return false;
 }
 
+// #3004: /build must not park a review minor without a valid `Defer-reason:`
+// (_shared/deferral-gate.md). The backstop covers rows whose Phase is exactly
+// `build` (case-insensitive) with status `deferred` or `open`. `build/skill`,
+// `build/docs`, and `build/ops` rows are other producers (skill observations,
+// doc deferrals, ops items) and are out of scope. A blocked-work row must name
+// `blocked-dependency` or `blocked-external` like any other, so it is not
+// special-cased. A row naming a `staged/…` path or a record reference is
+// exempt: its reason lives in the staged proposal's or filed record's own
+// `Defer-reason:` (an SDD `Ruling:` row is `open` with a staged path). A
+// Resolution is valid iff it carries exactly one token and its value is in
+// DEFER_REASONS.
+const LEDGER_DEFER_REASON_RE = /Defer-reason:\s*`?([A-Za-z-]+)`?/g;
+
+function hasValidDeferReason(resolution) {
+  const matches = [...resolution.matchAll(LEDGER_DEFER_REASON_RE)];
+  return matches.length === 1 && DEFER_REASONS.includes(matches[0][1]);
+}
+
 function parseLedger(text, { excludeRecords = [] } = {}) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
@@ -385,6 +403,7 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
   let unrecognized = 0;
   const unrecognizedValues = new Set();
   const deferredUnstagedItems = [];
+  const missingDeferReasonItems = [];
   for (const row of rows) {
     const cells = row.split('|').slice(1, -1).map((c) => c.trim());
     const phase = cells[1] || 'unknown';
@@ -402,10 +421,17 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
         deferredUnstagedItems.push(cells[0]);
       }
     }
+    if (phase.toLowerCase() === 'build' && (status === 'deferred' || status === 'open')) {
+      const resolution = cells.slice(4).join('|');
+      const reasonLivesElsewhere = LEDGER_DEFERRED_STAGED_RE.test(cells[2] || '') || LEDGER_DEFERRED_STAGED_RE.test(resolution)
+        || namesRecordReference(resolution, excludeRecords);
+      if (!reasonLivesElsewhere && !hasValidDeferReason(resolution)) missingDeferReasonItems.push(cells[0]);
+    }
   }
   return {
     open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues],
     deferredUnstaged: deferredUnstagedItems.length, deferredUnstagedItems,
+    missingDeferReason: missingDeferReasonItems.length, missingDeferReasonItems,
   };
 }
 
@@ -442,13 +468,18 @@ function ledgerProbe(inputs, deps) {
   const ownRecords = (inputs.records || []).map(Number);
   if (runDirLedgerText !== null) {
     const one = parseLedger(runDirLedgerText, { excludeRecords: ownRecords });
-    return { ...one, deferredUnstagedItems: one.deferredUnstagedItems.map((i) => `ledger.md#${i}`), files: ['ledger.md'] };
+    return {
+      ...one,
+      deferredUnstagedItems: one.deferredUnstagedItems.map((i) => `ledger.md#${i}`),
+      missingDeferReasonItems: one.missingDeferReasonItems.map((i) => `ledger.md#${i}`),
+      files: ['ledger.md'],
+    };
   }
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
   const candidates = deps.readdir(dir).filter((f) => f.endsWith('-ledger.md'));
   if (candidates.length === 0) {
-    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [] };
+    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [], missingDeferReason: 0, missingDeferReasonItems: [] };
   }
   // Ownership decides which docs/plans ledgers belong to this run (#2887). A
   // ledger this branch's diff against the merge base adds, or that sits
@@ -485,6 +516,7 @@ function ledgerProbe(inputs, deps) {
     unattributedFiles: unattributedFiles.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
     deferredUnstaged: 0, deferredUnstagedItems: [],
+    missingDeferReason: 0, missingDeferReasonItems: [],
   };
   const unrecognizedValuesSet = new Set();
   for (const f of files) {
@@ -497,6 +529,8 @@ function ledgerProbe(inputs, deps) {
     const displayPath = path.posix.join('docs', 'plans', f);
     totals.deferredUnstaged += one.deferredUnstaged;
     totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${displayPath}#${i}`));
+    totals.missingDeferReason += one.missingDeferReason;
+    totals.missingDeferReasonItems.push(...one.missingDeferReasonItems.map((i) => `${displayPath}#${i}`));
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
