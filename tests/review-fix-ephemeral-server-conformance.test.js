@@ -15,7 +15,7 @@ const HEADING = '## Fix-wave server coordination (pipeline runs)';
 const FIX_LINE = /FIX AGENT: do not run the project's test suites, builds, dev servers, or e2e runners — make the edits and report them; the dispatcher re-verifies\./;
 const STOP = '**Stop before the wave builds.**';
 const REVERIFY = '**Re-verify.**';
-const RESTART = '**Restart once, only if a browser step is still ahead.**';
+const RESTART = '**Restart lazily, at the next browser step.**';
 
 function section(text, heading) {
   const start = text.indexOf(heading);
@@ -54,11 +54,24 @@ function assertRouting(text) {
     '[IL-127]',
     'once per wave',
     'standalone review behaves exactly as before',
-    'leave the server stopped',
     'Step 6.7 item 4',
-    're-read `{run-dir}/ephemeral-server.txt` first',
-    'reuse it and start nothing',
-    'or its pid is dead',
+    // spaced worktree paths: the root is everything between the port and the trailing detached: token
+    'everything between the port (the second field) and the trailing `detached:` token',
+    'the path may contain spaces',
+    // stop applies before every code-changing, re-verifying point
+    'Step 4 (before invoking `/claude-tweaks:reflect`',
+    'Step 5 (before invoking `/claude-tweaks:simplify`',
+    "Step 6.7's routing wave",
+    'the server stays stopped across the later points in the same review',
+    // stop failure degrades, never blocks
+    'log `SKIP` via `log-decision.js`',
+    "`_shared/auto-decision-log.md`'s degrade-trace rule",
+    'a degrade, never a block',
+    // lazy restart: the coordination itself starts nothing; the next browser step's detection does
+    'Do not start a server in this coordination',
+    'resolves its URL through `dev-url-detection.md`',
+    "reuses a server a re-verify's own QA already started",
+    'nothing is restarted',
   ]) {
     assert.ok(sec.includes(needle), `coordination section must include: ${needle}`);
   }
@@ -68,6 +81,8 @@ function assertRouting(text) {
   const iRestart = sec.indexOf(RESTART);
   assert.ok(iStop > -1 && iVerify > -1 && iRestart > -1, 'all three step labels must be present');
   assert.ok(iStop < iVerify && iVerify < iRestart, 'order must be stop -> re-verify -> restart');
+  assert.ok(!sec.includes('start a fresh one through'), 'the coordination must not itself start a server (lazy restart)');
+  assert.ok(!sec.includes('third field'), 'the worktree root must not be parsed as the third field (paths may contain spaces)');
 
   assert.ok(
     text.indexOf('## Fix-wave server coordination') < text.indexOf('## Parallel fix dispatch'),
@@ -115,15 +130,20 @@ test("AC3.1: the fix-agent prompt line is verbatim and worded like #3001's READ-
   );
 });
 
-test('AC1.1: code-mode-steps.md routes Step 4 and Step 6.7 fix waves through the coordination', () => {
+test('AC1.1: code-mode-steps.md applies the coordination stop before Step 4 reflect, Step 5 simplify, and Step 6.7 routing', () => {
   const cms = read('review', 'code-mode-steps.md');
-  assert.ok(
-    lineStarting(cms, 'If the reflect skill produces "Change now" fixes').includes('Fix-wave server coordination'),
-    "Step 4's reflect re-run must cite the coordination",
-  );
+  const reflectLine = lineStarting(cms, 'In a pipeline run, before invoking `/claude-tweaks:reflect`');
+  assert.ok(reflectLine.includes('step 1 of `step3-routing.md`\'s Fix-wave server coordination'), 'Step 4 must apply coordination step 1 before reflect');
+  const simplifyLine = lineStarting(cms, 'In a pipeline run, before invoking `/claude-tweaks:simplify`');
+  assert.ok(simplifyLine.includes('step 1 of `step3-routing.md`\'s Fix-wave server coordination'), 'Step 5 must apply coordination step 1 before simplify');
+  // Each sentence sits in its own step's section (Step 4 before Step 5 before Step 6.7).
+  assert.ok(cms.indexOf(reflectLine) > cms.indexOf('## Step 4:') && cms.indexOf(reflectLine) < cms.indexOf('## Step 5:'));
+  assert.ok(cms.indexOf(simplifyLine) > cms.indexOf('## Step 5:'));
   const s67 = section(cms, '## Step 6.7');
-  assert.ok(s67.includes('Fix-wave server coordination'), 'Step 6.7 must cite the coordination');
-  assert.ok(s67.includes('item 4'), "Step 6.7 must name item 4's QA re-run");
+  const s67Line = s67.split('\n').find((l) => l.includes('Fix-wave server coordination'));
+  assert.ok(s67Line, 'Step 6.7 must cite the coordination');
+  assert.ok(s67Line.includes('step 1 stops the run\'s ephemeral server before the wave'), 'Step 6.7 must apply the stop before the wave');
+  assert.ok(s67Line.includes('through its own `dev-url-detection.md` resolution'), "Step 6.7 item 4's QA re-run must restart lazily via detection");
 });
 
 test('AC1.2: dev-url-detection.md Cleanup names the rebuild exception and points at the review step', () => {
@@ -131,6 +151,19 @@ test('AC1.2: dev-url-detection.md Cleanup names the rebuild exception and points
   const cleanup = subsection(dud, '### Cleanup');
   assert.ok(cleanup.includes('rebuilds the served app'));
   assert.ok(cleanup.includes('review/step3-routing.md'));
+  assert.ok(cleanup.includes('the next browser step restarts it through this procedure'));
+  const header = dud.slice(0, dud.indexOf('## When This Runs'));
+  assert.ok(header.includes('does not call this procedure directly, but its Fix-wave server coordination'), 'the header must no longer claim review never touches this procedure');
+  assert.ok(!dud.includes('it does not call this procedure directly.)'));
+});
+
+test('docs/skill-graph.md ## review records the coordination edges', () => {
+  const graph = fs.readFileSync(path.join(__dirname, '..', 'docs', 'skill-graph.md'), 'utf8');
+  const rev = section(graph, '\n## review\n');
+  const wrapRow = rev.split('\n').find((l) => l.startsWith('| `/wrap-up` | Runs after `/review` passes'));
+  assert.ok(wrapRow && wrapRow.includes('Fix-wave server coordination') && wrapRow.includes('Section D steps 2-4'));
+  const dudRow = rev.split('\n').find((l) => l.startsWith('| `_shared/dev-url-detection.md` |'));
+  assert.ok(dudRow && dudRow.includes('step3-routing.md') && dudRow.includes('next browser step restarts it'));
 });
 
 test('AC2.1: Section D still stops whatever ephemeral-server.txt currently names', () => {
@@ -173,9 +206,19 @@ test('go-red: removing the FIX AGENT line fails the routing assertions', () => {
   assert.throws(() => assertRouting(mutated));
 });
 
-test('go-red: dropping the reuse-before-restart rule fails the routing assertions', () => {
+test('go-red: reverting to a third-field worktree-root parse fails the routing assertions', () => {
   const text = routing();
-  const mutated = text.replace('reuse it and start nothing', 'start a fresh one');
+  const mutated = text.replace(
+    'everything between the port (the second field) and the trailing `detached:` token, since the path may contain spaces',
+    'third field (worktree root)',
+  );
+  assert.notEqual(mutated, text);
+  assert.throws(() => assertRouting(mutated));
+});
+
+test('go-red: making the coordination start a server itself fails the routing assertions', () => {
+  const text = routing();
+  const mutated = text.replace('Do not start a server in this coordination', 'Start a fresh one through dev-url-detection.md');
   assert.notEqual(mutated, text);
   assert.throws(() => assertRouting(mutated));
 });

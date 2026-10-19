@@ -136,3 +136,15 @@ Also run the suites that read the edited files: `node --test tests/multi-agent-c
 git add tests/review-fix-ephemeral-server-conformance.test.js plugin/skills/review/step3-routing.md plugin/skills/review/code-mode-steps.md plugin/skills/_shared/dev-url-detection.md
 git commit -m "Coordinate review fix waves with the run's ephemeral server — stop before re-verify, restart once when a browser step remains (refs #3021)"
 ```
+
+## Revisions during execution
+
+- Fix round 1: after the wave's re-verify, step 3 re-reads `ephemeral-server.txt` and reuses a live server for this checkout (the re-verify's own QA started it) instead of starting a duplicate. (Superseded by the lazy-restart wave below; the reuse idea now lives in `dev-url-detection.md`'s detection.)
+- Fix round 1: the FIX AGENT line's list order is aligned with #3001's READ-ONLY REVIEW line (`test suites, builds, dev servers, or e2e runners`); the parallel-dispatch sentence about the stopped server is conditional on one having been running for this checkout.
+- Final whole-branch fix wave:
+  - Spaced paths: the worktree root is everything between the port (second field) and the trailing `detached:` token, not the third field.
+  - Lazy restart: the coordination no longer starts a server; the next browser step (Step 6 full mode, Step 6.7 item 4, or a later phase) restarts it through `dev-url-detection.md`'s Ephemeral server start.
+  - Steps 4 and 5: the stop (coordination step 1) applies before invoking `/reflect` and `/simplify`, which re-verify internally, as well as before Step 3's and Step 6.7's waves.
+  - Stop failure: a real Section D stop failure logs `SKIP` via `log-decision.js` (degrade-trace rule) and the wave proceeds.
+  - `dev-url-detection.md` header and "When This Runs" no longer claim `/review` never touches the procedure.
+  - `docs/skill-graph.md` `## review`: the `/wrap-up` row names the Section D steps 2-4 reuse; a `_shared/dev-url-detection.md` row is added.
