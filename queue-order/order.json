@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T16:05:28.103Z",
+  "computedAt": "2026-10-19T16:50:20.645Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -480,7 +480,7 @@
       },
       {
         "number": 3004,
-        "updatedAt": "2026-10-17T06:10:20Z",
+        "updatedAt": "2026-10-19T16:07:00Z",
         "state": "OPEN"
       },
       {
@@ -6868,96 +6868,6 @@
         "state": "OPEN",
         "title": "flow-preflight's pr probe omits mergeable state, so a two-call dispatch resume misses a PR that turned CONFLICTING between calls",
         "updatedAt": "2026-10-17T06:10:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`/claude-tweaks:build`'s default execution strategy invokes `/superpowers:subagent-driven-development` (`plugin/skills/build/build-options.md:11`, invocation instructions in `plugin/skills/build/dispatch.md:14`). SDD runs a reviewer per task and a whole-branch review at the end, and both can return Minor findings. `/build` never says what happens to those findings. No file under `plugin/skills/build/` cites `_shared/deferral-gate.md`, so the build agent improvises its ledger writes. The ledger's only build-time entry rule is Common Step 4 (`build/SKILL.md:244-252`), which covers blocked work: \"Append blocked items to the open items ledger ... with phase `build/*` and status `open`\".\n\n`_shared/deferral-gate.md:27` requires a ledger entry that recommends deferral to pass the same fix-now check and name its `Defer-reason:` inline. `:39` lists \"Minor / outside that scope / not load-bearing\" as a bad reason, since severity is never a defer reason. `_shared/ledger-format.md:59` additionally requires `deferred` resolution text to carry origin, affected files and a revisit trigger.\n\nIn the reported run (plugin 6.136.0), the build wrote review minors as `deferred | SDD minor (deferred), triaged fine-to-defer by the whole-branch review.` or `open | —`. Six of the eleven carried rows qualified for fix-now: a number-format call, two missing unit assertions, an indentation fix, a missing e2e fixture, a live-region condition and a design-doc note. The deferral gate first ran on them at the later call's review, which cost an extra fix wave and two scoped verification runs after the build's final verification had already passed.\n\n## Deliverables\n\n1. In `build/dispatch.md`'s SDD invocation instruction, add a rule for review findings: every Minor (or higher) finding from a per-task reviewer or the whole-branch review is either fixed in this build, or carried to the ledger only after passing `_shared/deferral-gate.md`'s fix-now check with exactly one `Defer-reason:` from that file's vocabulary, written inline in the row's Resolution text. Severity alone (\"minor\", \"fine to defer\") is never a reason. Cite the gate file rather than restating its criteria.\n2. Add the same rule to `build/SKILL.md`'s Common Step 4, next to the blocked-work ledger instruction, so the ledger-write site names the gate whatever execution strategy ran (subagent or inline).\n3. Make the gap visible mechanically: when the open-items ledger carries a `build/*`-phase row whose status is `deferred` or `open` and whose Resolution text has no valid `Defer-reason:` value, the wrap-up fact pack's ledger parse reports it. Surface it at wrap-up as a non-blocking warning naming the rows, mirroring the unrecognized-status warning (`wrap-up/SKILL.md:208`, `ledger-format.md:57`, `parseLedger` in `plugin/bin/lib/wrap-up/pack.js`). Reuse `DEFER_REASONS` from `plugin/bin/lib/issues/autonomy.js` for validity.\n\n## Acceptance Criteria\n\n- `build/dispatch.md` and `build/SKILL.md` both cite `_shared/deferral-gate.md` at the review-finding / ledger-write instruction. A conformance test pins both citations and the \"severity is never a reason\" wording, and goes red against the current text.\n- A unit test feeds `parseLedger` a ledger with three `build/*` rows: one `deferred` with a valid `Defer-reason:`, one `deferred` with \"SDD minor (deferred)\", and one `open | —`. It asserts that exactly the last two are reported as missing a defer reason.\n- The wrap-up warning names the rows and never blocks. An existing wrap-up/ledger test passes unchanged.\n- `npm test` passes in full.\n\n## Release Note\n\nBuild no longer parks minor review findings in the open-items ledger without a valid defer reason. It fixes them or names why they can wait.\n\n## Technical Approach\n\nThe prose fix is two citations of the existing gate, at the SDD invocation and at the ledger-write step. The mechanical backstop sits in the ledger parse that wrap-up already runs, reusing the closed `DEFER_REASONS` vocabulary, so a build that ignores the prose still gets caught before the end-of-run console rather than one call later at review.\n\n### Key Files\n\n- `plugin/skills/build/dispatch.md` — SDD invocation instruction gains the review-finding deferral rule\n- `plugin/skills/build/SKILL.md` — Common Step 4 cites `_shared/deferral-gate.md` for review findings carried to the ledger\n- `plugin/bin/lib/wrap-up/pack.js` — `parseLedger` reports `build/*` deferred/open rows lacking a valid `Defer-reason:`\n- `plugin/bin/lib/issues/autonomy.js` — reference only: `DEFER_REASONS` source of truth\n- `plugin/skills/wrap-up/SKILL.md` — surfaces the new non-blocking warning next to the out-of-enum status warning\n\n## Gotchas\n\n- Blocked-work rows (Common Step 4's original purpose) are `open` by design until the ledger resolve gate runs. The backstop must not flag a genuinely blocked row. Scope the check to rows that recommend deferral, or require blocked rows to name `Defer-reason: blocked-dependency` or `blocked-external` as well. Pick one and state it in the PR.\n- SDD is a third-party skill (superpowers). The instruction has to travel in `/build`'s invocation text. Do not edit the upstream skill.\n- `parseLedger` is at `plugin/bin/lib/wrap-up/pack.js:332`. Check that its row shape carries phase and Resolution text before extending it, and add fields rather than changing existing ones, since the Resolve Gate and the unrecognized-status warning (`wrap-up/SKILL.md:208`) already consume it.\n\n## Original request\n\nbuild: review minors are carried into the ledger as deferred with no Defer-reason\n\n**Summary:** `/build`'s subagent-driven review triage wrote minor findings into the open-items ledger as `deferred` (\"fine to defer\") or left them `open`, with no `Defer-reason:` and no fix-now attempt, so the deferral gate ran on them for the first time at wrap-up.\n\n**Kind:** Defect\n\n**Affected component:** `/claude-tweaks:build` (the review rulings' ledger writes) against `_shared/deferral-gate.md`\n\n**Repro steps:**\n1. Build a record whose whole-branch review returns Minor findings it triages as \"fine to defer\".\n2. Read the open-items ledger after the build: the rows read `deferred | SDD minor (deferred), triaged fine-to-defer by the whole-branch review.` or `open | —`.\n3. Run review and wrap-up in a later call.\n\n**Expected vs. actual:**\nExpected: per `_shared/deferral-gate.md` (\"A ledger entry recommending deferral runs this same check, even in prose\"), each such row is either fixed at build time or names exactly one `Defer-reason:` from the closed vocabulary; \"minor\" is listed there as a bad reason to skip a fix.\nActual: six of the eleven carried rows had no valid reason and qualified for fix-now (a number-format call, two missing unit assertions, an indentation fix, a missing e2e fixture, a live-region condition, a design-doc note). They were fixed during the later call's review instead, which cost an extra fix wave and two scoped verification runs after the build's own final verification had already passed.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-0af026a1 -->\n",
-        "createdAt": "2026-10-05T20:06:17Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3004,
-        "state": "OPEN",
-        "title": "build: review minors are carried into the ledger as deferred with no Defer-reason",
-        "updatedAt": "2026-10-17T06:10:20Z",
         "facets": {
           "origin": null,
           "risk": "medium",
