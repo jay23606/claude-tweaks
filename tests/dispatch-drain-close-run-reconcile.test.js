@@ -35,16 +35,16 @@ test('#2430/AC5.1/AC5.2: drain termination re-runs a scoped reconcile a second t
   const t = read('plugin/skills/dispatch/SKILL.md');
   const section = t.slice(t.indexOf('At loop termination'), t.indexOf('**`next` (deprecated alias'));
   assert.match(section, /run `node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/hooks\.js" reconcile --checks release,archive,reap` a second time/);
-  assert.match(section, /same generous timeout as Step 1/);
+  assert.match(section, /same generous timeout as Step 2's call/);
   assert.match(section, /reaped now rather than left for a future session's SessionStart hook to discover/);
   // AC5.2: the pre-queue-pull reconcile call lives in Step 2 (Step 1 is run-id resolution) and
   // stays unscoped -- narrowing it risks skipping a check the queue pull needs.
   const queuePullStep = t.slice(t.indexOf('### Step 2: Pull'), t.indexOf('### Step 3:'));
   assert.match(queuePullStep, /hooks\.js" reconcile --json/);
   assert.doesNotMatch(queuePullStep, /hooks\.js" reconcile[^`]*--checks/);
-  // Step 1's own first reconcile call stays as-is -- this is additive, not a replacement.
+  // Step 2's own first reconcile call (the queue-pull one) stays as-is -- this is additive, not a replacement.
   // Scope is Steps 1-3 (the drain-termination block lives at the end of Step 3's own text,
   // before the Step 4 heading) -- not literally "Step 1" alone.
   const throughStep3 = t.slice(t.indexOf('### Step 1: Resolve'), t.indexOf('### Step 4: Mint'));
-  assert.strictEqual((throughStep3.match(/hooks\.js" reconcile/g) || []).length, 2, 'exactly two reconcile call sites in Steps 1-3: Step 1\'s own call, and drain termination');
+  assert.strictEqual((throughStep3.match(/hooks\.js" reconcile/g) || []).length, 2, 'exactly two reconcile call sites in Steps 1-3: Step 2\'s own call, and drain termination');
 });
