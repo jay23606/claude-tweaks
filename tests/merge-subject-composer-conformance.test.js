@@ -117,7 +117,10 @@ test('AC2.1/AC2.2: no gh pr merge fence in plugin/skills/** eval-composes compos
   for (const file of skillMarkdown(path.join(ROOT, 'plugin', 'skills'))) {
     const blocks = fencedBlocks(readText(file));
     if (evalComposedMergeFences(blocks).length > 0) offenders.push(path.relative(ROOT, file));
-    composing += blocks.filter((b) => /gh pr merge/.test(b.join('\n')) && /compose-subject\.js/.test(b.join('\n'))).length;
+    composing += blocks.filter((lines) => {
+      const body = lines.join('\n');
+      return /gh pr merge/.test(body) && /compose-subject\.js/.test(body);
+    }).length;
   }
   assert.deepEqual(offenders, [], 'gh pr merge fences that eval compose-subject --shell output');
   assert.ok(composing >= 2, `expected >= 2 gh pr merge fences that run compose-subject.js, found ${composing}`);
