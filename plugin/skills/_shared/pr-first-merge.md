@@ -393,7 +393,7 @@ the result:
    ```
 
    - `state: MERGED`: outcome `merged`. **Read `statusCheckRollup` before reporting it green
-     (#2705) — never infer "merged once CI passed" from `state` alone.** All entries
+     (#2705) — never infer "merged once CI passed" from `state` alone.** A `StatusContext` entry is read by its `state` first, as in Step 2.5 (`SUCCESS`, `FAILURE`, `ERROR` concluded; `PENDING`, `EXPECTED` not). All entries
      `COMPLETED`+`SUCCESS`/`NEUTRAL`/`SKIPPED` → report "merged, {names} concluded {conclusions}";
      any entry still non-`COMPLETED` → report "merged — {name} had not concluded at merge time;
      this repo has no required checks (see Signatures below), so `--auto` did not wait on it";

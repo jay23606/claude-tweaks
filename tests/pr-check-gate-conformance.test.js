@@ -84,7 +84,8 @@ test('FAILING_CONCLUSIONS equals the merge gate prose list (code twin)', () => {
 // #3257: Step 2.5 normalizes StatusContext entries before the red/pending
 // rules, and its state → verdict prose must agree with classifyRollup.
 function statusContextBlock(text) {
-  return text.split('\n\n').find((b) => b.includes('`StatusContext`'));
+  // Step 3's post-merge report also names StatusContext; only Step 2.5's paragraph names the code twin.
+  return text.split('\n\n').find((b) => b.includes('`StatusContext`') && b.includes('`normalizeEntry`'));
 }
 
 function assertStatusContextNormalization(text) {
@@ -92,7 +93,6 @@ function assertStatusContextNormalization(text) {
   assert.ok(block, 'pr-first-merge.md Step 2.5 names StatusContext normalization');
   assert.ok(text.indexOf(block) > text.indexOf('**Read state first'), 'StatusContext paragraph sits inside Step 2.5');
   assert.ok(text.indexOf(block) < text.indexOf('entry with `conclusion` in'), 'StatusContext paragraph precedes the red/pending rules');
-  assert.ok(block.includes('`normalizeEntry`'), 'StatusContext paragraph names normalizeEntry');
   assert.ok(block.includes('bin/lib/pr-checks/classify.js'), 'StatusContext paragraph names the code twin');
   const verdicts = {};
   for (const m of block.matchAll(/((?:`[A-Z]+`(?: or |, ))*`[A-Z]+`) → (red|pending|green)/g)) {
