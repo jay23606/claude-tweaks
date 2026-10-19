@@ -25,6 +25,8 @@
 4. The `still-verified: bookkeeping-only delta` literal appears in `flow/multi-spec.md` exactly once (pinned) — this change must not add that literal to `multi-spec.md`.
 5. The existing Re-verify scoping table rows asserted by `tests/test-skill-affected-conformance.test.js` stay intact.
 
+Waived AC1.1: an end-to-end two-call dispatch property, not unit-testable here — the runner half (`none` stamp ⇒ `verifiedHead: true`) is already pinned at `tests/bin-lib/verify/cli.test.js:585`, Task 1 pins the prose half, and this run's own dispatched second call (`review,polish,wrap-up` against the same `PIPELINE_RUN_DIR`) observes the clause live at its review Step 1.5.
+
 ---
 
 ### Task 1: Route the Skip-if-recent Mismatch case through the runner, and pin it
