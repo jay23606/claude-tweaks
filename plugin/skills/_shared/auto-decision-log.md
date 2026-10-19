@@ -63,7 +63,7 @@ An aggregate line lists one `defer-reason` value per item, comma-separated in it
 
 ## Entry schema
 
-**`bin/log-decision.js --run <run-dir> --status <STATUS> --text "<message>" [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a] [--lever "<key>=<value> (<source>)"] [--section "/<skill>"]`** is the
+**`bin/log-decision.js --run <run-dir> --status <STATUS> --text "<message>" [--spec <n>] [--step <text>] [--reversibility high|med|low|n/a[" (qualifier)"]] [--lever "<key>=<value> (<source>)"] [--section "/<skill>"]`** is the
 canonical appender for this schema — it timestamps and status-prefixes `--text` (composed by the
 caller per the shape below) and inserts it under the given `--section` heading (creating the section
 if absent) or at end of file otherwise. Every consumer of this file writes through it instead of

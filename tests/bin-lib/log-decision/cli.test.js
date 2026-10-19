@@ -93,3 +93,47 @@ test('malformed invocations exit 2: missing --run, bad status, empty text, missi
   assert.equal(run(['--help'], deps(main, out)), 0);
   assert.match(out[0][1], /usage: log-decision\.js/);
 });
+
+const reversibilityRun = (value) => {
+  const { main, run: runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--status', 'AUTO', '--text', 'pushed x to origin', '--reversibility', value], deps(main, out));
+  const file = path.join(runDir, 'decisions.md');
+  return { code, out, text: fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null };
+};
+
+test('bare tiers still accepted unchanged: each of high|med|low|n/a renders `Reversibility: {tier}.`', () => {
+  for (const tier of ['high', 'med', 'low', 'n/a']) {
+    const r = reversibilityRun(tier);
+    assert.equal(r.code, 0, tier);
+    assert.equal(r.text, `- AUTO 09:05:07 — log-decision: pushed x to origin. Reversibility: ${tier}.\n`);
+    assert.match(r.text.trim(), SCHEMA);
+  }
+});
+
+test('AC3.1: --reversibility "high (branch can be reset/force-pushed)" exits 0 and writes the qualifier verbatim', () => {
+  const r = reversibilityRun('high (branch can be reset/force-pushed)');
+  assert.equal(r.code, 0);
+  assert.equal(r.text, '- AUTO 09:05:07 — log-decision: pushed x to origin. Reversibility: high (branch can be reset/force-pushed).\n');
+});
+
+test('AC3.2: --reversibility "bogus (x)" exits 2 and writes nothing', () => {
+  const r = reversibilityRun('bogus (x)');
+  assert.equal(r.code, 2);
+  assert.equal(r.text, null, 'decisions.md never created');
+  assert.match(streamOf(r.out, 'err'), /--reversibility must be one of high\|med\|low\|n\/a/);
+});
+
+test('AC3.3: malformed qualifier shapes exit 2 and write nothing: "high(x)", "high ()", "high (x", "high (x) trailing", and a non-single-space separator', () => {
+  for (const bad of ['high(x)', 'high ()', 'high (x', 'high (x) trailing', 'high\n(x)', 'high\t(x)', 'high  (x)']) {
+    const r = reversibilityRun(bad);
+    assert.equal(r.code, 2, bad);
+    assert.equal(r.text, null, `${bad}: decisions.md never created`);
+  }
+});
+
+test('nested parentheses in the qualifier render verbatim: "low (see (a))"', () => {
+  const r = reversibilityRun('low (see (a))');
+  assert.equal(r.code, 0);
+  assert.equal(r.text, '- AUTO 09:05:07 — log-decision: pushed x to origin. Reversibility: low (see (a)).\n');
+});

@@ -26,10 +26,16 @@ full `standard` ceremony for a `size:low` single-module fix — 12 minutes of fu
 currently reads `standard`, the header-fold default (`flow/manifesto.md`'s Ceremony profile
 computation), so there is nothing here to clobber:
 
-1. Compute this run's diff facts via `node "${CLAUDE_PLUGIN_ROOT}/bin/lib/dispatch/ceremony-derive.js"`'s
-   `computeDiffFacts` over `git diff --numstat` against the run's own merge-base (the same facts
+1. Compute this run's diff facts: parse `git diff --numstat` against the run's own merge-base with
+   `parseNumstat` (`bin/lib/blast-radius-cli.js`), then pass the parsed `{path, additions, deletions}[]`
+   array — never the raw string — to `computeDiffFacts` in `bin/lib/dispatch/ceremony-derive.js` (the same facts
    shape `blast-radius-cli.js`'s `computeBlastRadius` already derives for the merge-check verdict —
-   reuse `classifyDiffFiles`/`blastRadiusSummary`, don't re-derive).
+   reuse `classifyDiffFiles`/`blastRadiusSummary`, don't re-derive). The one-line composition
+   (substitute the run's integration branch for `origin/main`); it prints the diff-facts JSON:
+
+   ```bash
+   git diff --numstat "$(git merge-base HEAD origin/main)" | node -e "const { parseNumstat } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/blast-radius-cli.js'); const { computeDiffFacts } = require('${CLAUDE_PLUGIN_ROOT}/bin/lib/dispatch/ceremony-derive.js'); console.log(JSON.stringify(computeDiffFacts(parseNumstat(require('fs').readFileSync(0, 'utf8')))))"
+   ```
 2. When the diff touches zero production/implementation files — any mix of test and/or docs files
    only (`deriveCeremonyProfile`'s `lowSurface` classification; a test file plus a small amount of
    production code stays disqualified — a real behavioral change riding along with its own
