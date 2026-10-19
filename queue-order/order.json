@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T22:02:58.150Z",
+  "computedAt": "2026-10-19T22:28:24.653Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -225,7 +225,7 @@
       },
       {
         "number": 3477,
-        "updatedAt": "2026-10-18T06:41:34Z",
+        "updatedAt": "2026-10-19T22:09:28Z",
         "state": "OPEN"
       },
       {
@@ -320,7 +320,7 @@
       },
       {
         "number": 3338,
-        "updatedAt": "2026-10-17T09:04:16Z",
+        "updatedAt": "2026-10-19T22:27:11Z",
         "state": "OPEN"
       },
       {
@@ -2311,78 +2311,6 @@
     ],
     [
       {
-        "body": "Origin: reflect light from #3005\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/lib/dispatch/ceremony-derive.js` `isDocsPath` classifies every `*.md` path as docs, so `computeDiffFacts` reports `implFiles: 0` / `lowSurface: true` for a diff whose only production content is skill and agent prompt prose (`plugin/skills/**/*.md`, `plugin/agents/*.md`).\n- In this repo those markdown files are the shipped product (CLAUDE.md Stack table: \"Content | Markdown (SKILL.md files …)\"). Run `2026-10-17T194130-record-3005` (#3005: four `plugin/` prose files plus one test) derived `fast-lane` for `/claude-tweaks:wrap-up`: light-mode reflect, Skills registry cap 2 instead of 5, Docs cap 1 instead of 3.\n- `tests/bin-lib/dispatch/ceremony-derive.test.js` pins the docs-only and test-plus-docs cases but has no case for plugin prose; no doc records the behavior as intended.\n\n## Deliverables\n\n- [ ] Decide, and record in `ceremony-derive.js` and `wrap-up/ceremony-derivation.md`, whether shipped-prose paths (`plugin/skills/**`, `plugin/agents/**`, other plugin-payload markdown) count as production for the low-surface gate. A project-agnostic form (a policy key or path list) is acceptable if the plugin must stay generic.\n- [ ] Add the matching `computeDiffFacts`/`deriveCeremonyProfile` test cases, each shown to go red when the change is reverted.\n\n## Acceptance Criteria\n\n- [ ] A diff touching only `plugin/skills/test/qa-prompts.md` and a test file no longer derives `fast-lane` (or the exemption is documented as intentional, with its rationale).\n- [ ] A diff touching only `docs/**/*.md` still derives `fast-lane`.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed the wrap-up ceremony default so changes to a project's shipped skill prose no longer count as docs-only.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T21:44:01Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3477,
-        "state": "OPEN",
-        "title": "Wrap-up ceremony derivation treats shipped skill prose as docs-only",
-        "updatedAt": "2026-10-18T06:41:34Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up reflect from #3419 (run ledger row 3)\n\nDefer-reason: tangential\n\n## Current State\n\ndocs/hooks.md now states that every SessionStart inform-tier line names its relay and, when it carries a runnable command, says never to run it yourself (#3419). Two existing banners in plugin/bin/lib/hooks/session-start.js carry a runnable command and name a relay but omit the never-run clause: the unfinished-runs banner (the `node \"${pluginRoot}/bin/hooks.js\" close-run --run <dir>` line, session-start.js:146-148, which warns only that a listed run may be live) and the standalone staged-proposals banner (`/claude-tweaks:tidy --approve <dir>`, session-start.js:171-172). An autonomous run that receives either line may execute the command itself.\n\n## Deliverables\n\n- [ ] Add a never-run-it-yourself clause to the unfinished-runs banner's trailing instruction in `plugin/bin/lib/hooks/session-start.js`\n- [ ] Add the same clause to the standalone staged-proposals banner\n- [ ] Update the tests that pin each banner's exact copy\n\n## Acceptance Criteria\n\n- [ ] Both banners' trailing instruction tells the model to relay the line to the user and never run the command itself, and the SessionStart tests pin that copy\n- [ ] `npm test` passes\n\n## Release Note\n\nSessionStart banners that print a runnable command now tell the model to leave it for you to run.\n\n_Filed by `wrap-up` via specShapedBody._",
         "createdAt": "2026-10-17T21:40:05Z",
         "labels": [
@@ -2964,78 +2892,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\nOrigin: reflect hindsight from #2702\n\nDefer-reason: tangential\n\n**Related:** #3340\n\n## Current State\n\n`/claude-tweaks:feedback` (and the `by:feedback` records it files) keeps attributing the Claude Code harness's own worktree-session Bash refusals (\"too complex to verify that it stays inside the worktree\", \"a value computed at runtime … cannot be shown not to be git\", \"names git in a form too complex to verify\") to `plugin/bin/lib/hooks/pre-tool-use.js`. None of those strings exist anywhere under `plugin/bin/`; `docs/hooks.md` and `docs/skill-authoring.md` (\"Harness-level worktree Bash guard vs. the plugin's PreToolUse gate\") already say the guard is harness code the plugin cannot narrow.\n\nRecorded instances of the same misattribution: #174, #1785, #2548, #2739, #2742, and in this run #2702 and #2776 — each needed a premise-correction reshape (two of them in this /flow run's pre-flight, costing a user decision before any build could start). `plugin/skills/feedback/` carries no check for it (grep for \"harness\"/\"too complex to verify\" finds only an unrelated transcript-judge reference).\n\n## Deliverables\n\nIn `/claude-tweaks:feedback`'s filing path (session-evaluation and the bare/explicit report path), before naming `bin/lib/hooks/pre-tool-use.js` or any plugin hook as the affected component for a Bash refusal: grep the quoted refusal text under `plugin/bin/` (the installed build's `bin/` when filing from a consumer project). No match → attribute it to the Claude Code harness guard, and route the report as a `_shared/scratch-worktree.md` §7 addendum candidate (a documentation finding), never as a hook defect.\n\nThe plugin's own deny prefixes (`claude-tweaks: this project requires an isolated worktree…`, `claude-tweaks working-directory discipline: …`) are the positive signal for a plugin-hook attribution — cite `docs/skill-authoring.md`'s existing section rather than restating the rule.\n\n## Acceptance Criteria\n\nA feedback filing whose evidence quotes \"too complex to verify\" (or any refusal string absent from `plugin/bin/`) produces a record naming the harness guard and `_shared/scratch-worktree.md` §7, not `pre-tool-use.js`.\n\nA feedback filing quoting a `claude-tweaks:`-prefixed deny still attributes to the plugin hook, unchanged.\n\nA conformance test pins the new attribution check in the feedback skill prose.\n\n## Release Note\n\nStopped /feedback from blaming the Claude Code worktree guard's refusals on the plugin's own hook.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T06:19:22Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3338,
-        "state": "OPEN",
-        "title": "/feedback: check a quoted Bash refusal against plugin/bin before attributing it to pre-tool-use.js",
-        "updatedAt": "2026-10-17T09:04:16Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
