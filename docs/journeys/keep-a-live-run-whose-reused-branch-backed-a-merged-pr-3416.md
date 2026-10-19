@@ -47,3 +47,4 @@ files:
 - Steps 1-4 built in this session
 - Related specs: #3412 (claim release closes-this-issue gate — `keep-an-unfinished-records-claim-when-its-bundle-pr-merges-early-3412.md`), #3249 (no-console fast path, preserved), #3503 (manifest-closure archive check, same archive paths)
 - Updated during build of #3543: Steps 2 and 4 now name the `pr-not-found` stale-stamp classification and its escalation (full flow: `recover-a-run-stranded-by-a-stale-pr-number-3543.md`)
+- Updated during build of #3297: Step 3's pending-staged skip now reports `console-never-rendered-staged-pending` (full flow: `learn-a-merged-run-needs-you-3297.md`)
