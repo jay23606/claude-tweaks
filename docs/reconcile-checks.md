@@ -209,7 +209,12 @@ main loop, landed via #1962/#2226/#2228/#2231):
   (`no-worktree`, `no-branch`, `no-pr`, `console-never-rendered-pr-closed`, `console-never-rendered-staged-pending` (#3297), and #3543's
   `pr-not-found` — a stamped `run-state.json` `pr.number` GitHub's structured GraphQL error confirms
   names no PR, whose remedy is correcting or clearing that stamp); each path's own reason is its
-  residue entry's `lastError` (`stuck at {reason}`), not rendered per path. `cache.js`'s per-path consecutive-failure counter (`trackResidue`,
+  residue entry's `lastError` (`stuck at {reason}`), not rendered per path. The body also carries
+  one fixed remedy line for `console-never-rendered-staged-pending` — a merged run that never
+  rendered a Review Console (the fast-lane auto-merge short-circuit writes no `console.json`) while
+  its `staged/` or any `spec-*/staged/` still holds pending or unreadable items: apply or delete
+  those staged files, or write a resolved `console.json`, and the next reconcile archives the dir
+  and drops it from the record. `cache.js`'s per-path consecutive-failure counter (`trackResidue`,
   `RESIDUE_ESCALATE_THRESHOLD`) is unchanged and reason-agnostic already; only the filing/resolving
   side consolidates. Resolving one path (`resolveResidue` under `reason: 'structurally-stuck'`)
   removes just that path from the shared record's body — the record only actually closes once every
