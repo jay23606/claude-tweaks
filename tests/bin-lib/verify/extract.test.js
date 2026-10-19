@@ -584,8 +584,40 @@ test('unattributedFailureCount: jest repeating a FAIL line in its failing-tests 
 });
 
 test('unattributedFailureCount: a jest FAIL line naming a non-test file is unattributed (#3480)', () => {
-  const log = readDialect('jest-attributed.txt').replace('PASS tests/ok.test.js', 'FAIL src/setup.js\n  ● Test suite failed to run').replace('Test Suites: 1 failed', 'Test Suites: 2 failed');
+  // The summary's failed total stays 1 and one test file is named, so the
+  // total-vs-named difference alone is 0 — only the non-test FAIL line makes
+  // this 1.
+  const log = readDialect('jest-attributed.txt').replace('PASS tests/ok.test.js', 'FAIL src/setup.js\n  ● Test suite failed to run');
   assert.strictEqual(unattributedFailureCount(log, 'summary'), 1);
+});
+
+test('unattributedFailureCount: a vitest Errors count is read on its own, and the larger of it and the banner counts, never their sum (#3480)', () => {
+  const attributed = readDialect('vitest-attributed.txt');
+  const errorsLine = '     Errors  2 errors\n';
+  const bare = attributed.replace('   Start at', `${errorsLine}   Start at`);
+  assert.notStrictEqual(bare, attributed, 'the Errors line was inserted');
+  assert.strictEqual(unattributedFailureCount(bare, 'summary'), 2);
+  const banner = '⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯\n';
+  assert.strictEqual(unattributedFailureCount(attributed.replace(' RUN ', `${banner} RUN `), 'summary'), 1);
+  assert.strictEqual(unattributedFailureCount(bare.replace(' RUN ', `${banner} RUN `), 'summary'), 2);
+});
+
+test('unattributedFailureCount: a vitest typecheck Source Errors banner (errors outside every test file) is unattributed (#3480)', () => {
+  // Wording from vitest 1.6's reporter source: `divider(" Source Errors ")`, "Vitest found N
+  // error(s) not related to your test files."
+  const attributed = readDialect('vitest-attributed.txt');
+  const log = attributed.replace(' RUN ', '⎯⎯⎯⎯⎯⎯ Source Errors ⎯⎯⎯⎯⎯⎯\nVitest found 1 error not related to your test files.\n\n RUN ');
+  assert.notStrictEqual(log, attributed, 'the banner was inserted');
+  assert.strictEqual(unattributedFailureCount(log, 'summary'), 1);
+});
+
+test('unattributedFailureCount: a CRLF jest or vitest log is accounted the same as its LF twin (#3480)', () => {
+  for (const name of ['jest-attributed.txt', 'vitest-attributed.txt']) {
+    const lf = readDialect(name);
+    const crlf = lf.replace(/\n/g, '\r\n');
+    assert.strictEqual(unattributedFailureCount(crlf, 'summary'), 0, name);
+    assert.deepStrictEqual(extractFailingFiles(crlf, 'summary'), extractFailingFiles(lf, 'summary'), name);
+  }
 });
 
 for (const line of [

@@ -200,7 +200,7 @@ const TAP_FRAME_RE = /(?:location:\s*'(.+?):\d+:\d+'|\((.+?):\d+:\d+\)|\bat\s+(.
 // space-containing path. ` [` also terminates it: vitest's `Failed Suites`
 // block prints ` FAIL  path [ path ]` (#3480), and without the bracket
 // terminator the suffix is swallowed into the capture.
-const SUMMARY_FAIL_RE = /^\s*(?:FAIL|❯|FAILED)\s+(.+?)(?=\s>\s|\s\(|\s\[|::|$)/;
+const SUMMARY_FAIL_RE = /^\s*(?:FAIL|❯|FAILED)\s+(.+?)(?=\s>\s|\s\(|\s\[|::|\r?$)/;
 
 // A run of backslashes is ONE separator: node's TAP `location: '...'` line is
 // YAML-quoted, so on Windows it carries `\\` per separator — read as two, the
@@ -644,7 +644,9 @@ function summaryUnattributedCount(text, { cwd }) {
     const errors = clean.match(/^\s*Errors\s+(\d+) errors?\b/m);
     // `Unhandled Rejection` is the banner of a main-process rejection (a
     // reporter's `onFinished`) printed after the summary — no `Errors` line.
-    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ Unhandled (?:Errors?|Rejections?) ⎯+/m.test(clean) ? 1 : 0);
+    // `Source Errors` is the typecheck pool's block for errors outside every
+    // test file, which fails the run the same way.
+    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ (?:Unhandled (?:Errors?|Rejections?)|Source Errors) ⎯+/m.test(clean) ? 1 : 0);
   }
   // More than one summary line is a concatenated multi-run log: the first
   // run's total never accounts for the rest.
