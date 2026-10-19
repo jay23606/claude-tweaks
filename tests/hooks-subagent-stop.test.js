@@ -528,11 +528,13 @@ test('#3015 countPendingDispatches: returns null for an id-less task-notificatio
 test('#3015 AC2.2: every completion delivered as a queued_command attachment, ending in a non-compliant reply, is still blocked', () => {
   const sessionId = `cr-3015-ac2att-${process.pid}`;
   cleanupRetries(sessionId);
-  const p = writeTranscript([
+  const entries = [
     ...launches3(), queuedNotification('a1', 'toolu_1', 3), queuedNotification('a2', 'toolu_2', 3), queuedNotification('a3', 'toolu_3', 3),
     ...readCall(4), reply('All lenses back; folded the findings in.', 5),
-  ]);
-  const { out } = runOn(p, { session_id: sessionId, agent_id: 'parent-2att' });
+  ];
+  // block alone is also what an unrecognized carrier (null) yields — pin that the carrier IS recognized (count 0, not null).
+  assert.strictEqual(substop.countPendingDispatches(toLines(entries), entries.length - 1), 0);
+  const { out } = runOn(writeTranscript(entries), { session_id: sessionId, agent_id: 'parent-2att' });
   assert.strictEqual(out.json.decision, 'block');
   cleanupRetries(sessionId);
 });
