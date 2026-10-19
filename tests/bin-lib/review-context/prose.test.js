@@ -71,8 +71,9 @@ test('2956: neither step file directs writing the coordination inputs into {ctx-
     ['step3-debate-and-refutation.md', DEBATE_AND_REFUTATION],
   ];
   for (const [name, text] of stepFiles) {
-    assert.ok(!text.includes('{ctx-dir}/lens-'), `${name} must not write {ctx-dir}/lens-*.json`);
-    assert.ok(!text.includes('{ctx-dir}/findings-by-lens.json'), `${name} must not write {ctx-dir}/findings-by-lens.json`);
+    // Any {ctx-dir}-rooted path ending in lens-*.json or findings-by-lens.json, whatever sits between.
+    assert.ok(!/\{ctx-dir\}[^\s`]*\/lens-/.test(text), `${name} must not write {ctx-dir}/…/lens-*.json`);
+    assert.ok(!/\{ctx-dir\}[^\s`]*\/findings-by-lens\.json/.test(text), `${name} must not write {ctx-dir}/…/findings-by-lens.json`);
   }
 });
 
