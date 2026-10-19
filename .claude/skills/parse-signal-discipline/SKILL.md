@@ -235,6 +235,15 @@ When mechanizing a prose heuristic into a deterministic check:
     resolution, so a new claim read calls it rather than hand-building the chain, and
     `grep -rn 'readClaimBlob(' plugin/skills/` should stay empty. A reader copied from a sibling
     call site still carries the sibling's gap, so grep for other copies before fixing one.
+    A found answer has the same hole when the unresolved input is a filter: an empty filter value
+    drops the filter, so the lookup returns everything and reads as a confident match.
+    `_shared/worktree-setup.md`'s merged-branch precondition (#3572) asks
+    `gh pr list --head "{current-branch}" --state merged --json number --jq length` whether the
+    branch's PR merged. On a detached HEAD `git branch --show-current` prints nothing, and
+    `--head ""` prints `30` (the default page size) with exit 0, so a clean detached worktree read
+    as merged. The task review missed it, a review lens caught it, and the fix skips the lookup when
+    the branch name is empty. Check that every interpolated filter is non-empty before trusting
+    a match count, and route an empty one to the could-not-tell branch or skip that check.
 14. **A lenient reader in front of a strict validator turns "couldn't parse" into "not
     configured".** A free-form policy value can go wrong in two ways before it reaches the check
     that would reject it loudly. The parser can keep whitespace the writer never meant, so a
