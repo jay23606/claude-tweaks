@@ -311,14 +311,21 @@ test('AC5.1: missing-config under local-merge with a live matching claim -> repa
   assert.equal(calls.some((a) => a[0] === 'ls-remote'), false);
 });
 
-test('Review focus: policy.yml without an integration-model key resolves unresolved -> repairable: false', () => {
+test('Review focus: policy.yml without an integration-model key requires pr-first PR evidence', () => {
   const root = repoRootWithPolicy('autonomy: trusted\n');
-  const result = missingConfigRun(PR_RECORDED, {
-    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
-    gitRunner: fakeRepoGit(root, ['worktree-2806']),
-  });
-  assert.equal(result.reason, 'missing-config');
-  assert.equal(result.repairable, false);
+  const ghApi = fakeGhApi({ 2806: liveClaimContent(RUN_ID) });
+
+  const recordedAndPushed = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(root, ['worktree-2806']) });
+  assert.equal(recordedAndPushed.reason, 'missing-config');
+  assert.equal(recordedAndPushed.repairable, true);
+
+  const noPr = missingConfigRun({}, { ghApi, gitRunner: fakeRepoGit(root, ['worktree-2806']) });
+  assert.equal(noPr.reason, 'missing-config');
+  assert.equal(noPr.repairable, false);
+
+  const unpushed = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(root, []) });
+  assert.equal(unpushed.reason, 'missing-config');
+  assert.equal(unpushed.repairable, false);
 });
 
 test('Review focus: one member live, another absent -> repairable: false', () => {
@@ -378,10 +385,13 @@ test('AC9.1: a malformed status line with a repairable artifact resolves blocked
 });
 
 test('resolveFirstCallGate: clean pair + repairable -> repair; ok -> dispatch; non-repairable or other reason -> artifact-failed', () => {
-  for (const status of ['STATUS: DONE', 'STATUS: DONE_WITH_CONCERNS', 'STATUS: DONE   ']) {
+  for (const status of ['STATUS: DONE', 'STATUS: DONE_WITH_CONCERNS']) {
     assert.equal(resolveFirstCallGate({ reply: gateReply(status), artifact: REPAIRABLE }), 'repair');
     assert.equal(resolveFirstCallGate({ reply: gateReply(status), artifact: { ok: true } }), 'dispatch');
   }
+  // the status line must match exactly -- trailing spaces are malformed; a CRLF terminator is not
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE   '), artifact: REPAIRABLE }), 'blocked');
+  assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE').replace(/\n/g, '\r\n'), artifact: REPAIRABLE }), 'repair');
   const reply = gateReply('STATUS: DONE');
   assert.equal(resolveFirstCallGate({ reply, artifact: { ...REPAIRABLE, repairable: false } }), 'artifact-failed');
   assert.equal(resolveFirstCallGate({ reply, artifact: { ok: false, reason: 'claim-absent', message: 'm' } }), 'artifact-failed');

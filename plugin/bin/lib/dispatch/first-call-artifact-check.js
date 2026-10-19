@@ -74,13 +74,21 @@ function resolveIntegrationModel(configRaw) {
 //      no current producer writes that mixed layout.
 //
 // `repairable` (#3226): a `missing-config` first call is repairable when a re-dispatch of
-// call 2 would land in a recoverable /flow adoption case -- claim liveness/`runId` (check 3)
-// and, under pr-first, PR recorded and pushed (check 4) are exactly the facts
-// `plugin/bin/lib/flow/preflight.js`'s `computeAdoption` keys on to land call 2 in case 3
-// (a recorded `pr` with `dispatched: true` and no `config.yml` is case 3; without `pr`,
-// under local-merge, case 2 initializes in place -- #3242). No superset, no subset: the
-// integration model is read from policy.yml (config.yml is the thing missing), and any
-// failure to read it, or any throw while classifying, means `repairable: false`.
+// call 2 would land in a recoverable /flow adoption case, and the claim and PR evidence
+// say call 1 really ran. The relationship to `plugin/bin/lib/flow/preflight.js`'s
+// `computeAdoption` is partial, not an exact match:
+//   - `state.pr` is the one adoption input among these facts: recorded -> case 3; absent
+//     with `dispatched: true` -> case 2 (initializes config.yml in place); absent without
+//     the `dispatched` stamp but with other run content -> case 3. `computeAdoption`
+//     never reads claim liveness, `runId`, or branch-pushed.
+//   - Claim liveness/`runId` (check 3) is evidence call 1 actually ran /flow Step 2.8, and
+//     call 2's ownership-checked Settle/wrap-up release (`claim.runId === basename(runDir)`)
+//     needs the claim intact.
+//   - A pushed branch (check 4, under pr-first) is evidence the PR-early lifecycle ran.
+// The integration model is read from policy.yml (config.yml is the thing missing): an unset
+// `integration-model` key in policy.yml requires the same PR evidence as `pr-first`; an
+// invalid value never repairs. Any failure to read it, or any throw while classifying,
+// means `repairable: false`.
 
 // The run dir plus its worktree mirror (pack.js's worktreeMirror), deduplicated.
 function headerBases(runDir, runState) {
@@ -170,8 +178,10 @@ function assessRepairable({ runDir, issueNumbers, repoSlug, parsedRunState, read
     if (claimFailure({ ghApi, repoSlug, issueNumbers, runId: path.basename(runDir), now })) return false;
     const { result } = resolvePolicyConfig({ git: gitRunner, readFile, keys: ['integration-model'] });
     const entry = result['integration-model'];
-    if (!entry || entry.invalid || entry.error || entry.value == null) return false;
-    if (entry.value === 'pr-first') return prFailure(parsedRunState, gitRunner) === null;
+    if (!entry || entry.invalid || entry.error) return false;
+    // An unset key (value null, not invalid) is a project relying on forge detection --
+    // it requires the same PR evidence as `pr-first`, never claim-only and never false outright.
+    if (entry.value == null || entry.value === 'pr-first') return prFailure(parsedRunState, gitRunner) === null;
     return true;
   } catch {
     return false;
@@ -242,8 +252,8 @@ const STATUS_LINE_RE = /^STATUS: (DONE|DONE_WITH_CONCERNS|NEEDS_CONTEXT|BLOCKED)
 const OUTCOME_LINE_RE = /^OUTCOME:\s*(\S+)/;
 
 function resolveFirstCallGate({ reply, artifact }) {
-  const lines = String(reply == null ? '' : reply).split(/\r?\n/).map((l) => l.trimEnd());
-  const lastLine = lines.filter((l) => l.length > 0).pop();
+  const lines = String(reply == null ? '' : reply).split('\n').map((l) => l.replace(/\r$/, ''));
+  const lastLine = lines.filter((l) => l.trim().length > 0).pop();
   const status = lastLine ? STATUS_LINE_RE.exec(lastLine) : null;
   if (!status || (status[1] !== 'DONE' && status[1] !== 'DONE_WITH_CONCERNS')) return 'blocked';
 
