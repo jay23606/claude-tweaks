@@ -383,10 +383,9 @@ function parseLedger(text) {
 // (`#26` matching `2026-09-05-…`), silently folding a stranger's ledger into
 // this run's counts (#1930 review M5). `_shared/ledger-format.md`'s Location
 // section defines the canonical filename as embedding the plan/spec TOPIC
-// slug, not the record number — this check recognizes only the minority of
-// ledgers that happen to be named after a record — so `ledgerProbe` below
-// uses it as a disambiguator between multiple candidates, never as the sole
-// positive-match test (#2563).
+// slug, not the record number, so this check cannot be the test that makes a
+// ledger this run's. `ledgerProbe` uses it only to choose among ledgers the
+// branch already owns (#2563, #2887).
 function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
 }
@@ -406,28 +405,38 @@ function ledgerProbe(inputs, deps) {
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
   const candidates = deps.readdir(dir).filter((f) => f.endsWith('-ledger.md'));
-  // "One ledger per pipeline run" (_shared/ledger-format.md): when exactly
-  // one *-ledger.md file exists in the worktree, it's unambiguously this
-  // run's regardless of how its {feature} slug was named — a real
-  // topic-slug ledger (the observed #2563 case) has no filename convention
-  // `namesRecord` can positively match. Only when more than one candidate is
-  // present does the record-number boundary disambiguate a leftover
-  // stranger ledger from an earlier, uncleaned run (#1930 review M5's
-  // original false-positive fix) from this run's own.
-  let files = candidates.length <= 1 ? candidates : candidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
-  // When 2+ candidates exist and NONE names any of this run's records at a
-  // boundary — the common case, since a real topic-slug ledger (the #2563
-  // AC1 shape) has no record-number convention for `namesRecord` to match —
-  // the filter above can't disambiguate at all. Reporting zero here would
-  // silently hide every one of this run's own open items behind an unrelated
-  // stray ledger (e.g. a fully-resolved file left over from an earlier,
-  // already-merged run). Fail toward over-counting instead: include every
-  // candidate, so a human reviewing `files` sees exactly what was counted
-  // and can correct it, rather than the gate silently passing on a false
-  // "nothing open."
-  if (candidates.length > 1 && files.length === 0) files = candidates;
+  if (candidates.length === 0) {
+    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [] };
+  }
+  // Ownership decides which docs/plans ledgers belong to this run (#2887). A
+  // ledger this branch's diff against the merge base adds, or that sits
+  // untracked in the worktree, is this run's. A ledger inherited from the base
+  // was written by another run: it is listed as unattributed, never counted.
+  // Filename matching cannot make this call (a topic-slug ledger names no
+  // record, and a stray can name any), so a merge base is required, and a git
+  // failure fails the probe instead of guessing. Ownership also retires the
+  // #2563 fallback that counted every candidate when none named the record:
+  // that fallback traded hiding this run's items behind a stray ledger for
+  // over-counting strangers' ledgers, and ownership removes that dilemma.
+  if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
+  const PLANS = 'docs/plans/';
+  const ownedNames = (out) => out.split('\0')
+    .filter((p) => p.startsWith(PLANS) && !p.slice(PLANS.length).includes('/'))
+    .map((p) => p.slice(PLANS.length));
+  const owned = new Set([
+    ...ownedNames(deps.git(['diff', '--name-only', '-z', '--relative', inputs.base, '--', PLANS], { cwd: inputs.worktree })),
+    ...ownedNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS], { cwd: inputs.worktree })),
+  ]);
+  const ownedCandidates = candidates.filter((f) => owned.has(f));
+  // Two or more owned ledgers (a branch that carries an earlier run's ledger
+  // beside its own): the record-number boundary picks this run's, when it
+  // names one (#1930 review M5).
+  const named = ownedCandidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
+  const files = ownedCandidates.length > 1 && named.length > 0 ? named : ownedCandidates;
+  const unattributedFiles = candidates.filter((f) => !files.includes(f));
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
+    unattributedFiles: unattributedFiles.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
   };
   const unrecognizedValuesSet = new Set();
