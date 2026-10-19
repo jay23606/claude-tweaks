@@ -646,7 +646,9 @@ function summaryUnattributedCount(text, { cwd }) {
     // reporter's `onFinished`) printed after the summary — no `Errors` line.
     // `Source Errors` is the typecheck pool's block for errors outside every
     // test file, which fails the run the same way.
-    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ (?:Unhandled (?:Errors?|Rejections?)|Source Errors) ⎯+/m.test(clean) ? 1 : 0);
+    const errorsCount = errors ? Number(errors[1]) : 0;
+    const hasBanner = /^⎯+ (?:Unhandled (?:Errors?|Rejections?)|Source Errors) ⎯+/m.test(clean);
+    nonFile += Math.max(errorsCount, hasBanner ? 1 : 0);
   }
   // More than one summary line is a concatenated multi-run log: the first
   // run's total never accounts for the rest.
