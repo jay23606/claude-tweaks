@@ -551,3 +551,20 @@ test('#3015 countPendingDispatches: fails closed (null) on <task-notification> o
   assert.strictEqual(out.json.decision, 'block');
   cleanupRetries(sessionId);
 });
+
+test('#3015 countPendingDispatches: an origin-shaped notification with no message, or a message with no content, is indeterminate (null)', () => {
+  const noMessage = notification('a1', 'toolu_1', 1); delete noMessage.message;
+  const noContent = notification('a1', 'toolu_1', 1); delete noContent.message.content;
+  for (const drifted of [noMessage, noContent]) {
+    const entries = [agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), drifted, reply('x', 2)];
+    assert.strictEqual(substop.countPendingDispatches(toLines(entries), entries.length - 1), null);
+  }
+});
+
+test('#3015 countPendingDispatches: a queued_command prompt without <task-notification> (a relayed message) is not a completion carrier and is ignored', () => {
+  const relay = queuedNotification('a1', 'toolu_1', 1);
+  relay.attachment.prompt = 'Please also check the README.';
+  delete relay.attachment.commandMode;
+  const entries = [agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), relay, reply('x', 2)];
+  assert.strictEqual(substop.countPendingDispatches(toLines(entries), entries.length - 1), 1);
+});

@@ -315,8 +315,9 @@ function isForkBoundary(entry) {
 // in — `undefined` when `entry` is no carrier, a non-string when the carrier's
 // body has drifted from the live-verified shape (header comment, source 6).
 function notificationCarrierBody(entry, line) {
-  if (entry.origin && entry.origin.kind === 'task-notification') return entry.message && entry.message.content;
-  if (entry.attachment && entry.attachment.type === 'queued_command' && typeof entry.attachment.prompt === 'string') return entry.attachment.prompt;
+  if (entry.origin && entry.origin.kind === 'task-notification') return (entry.message && entry.message.content) ?? null;
+  // Only a queued prompt that IS a notification; any other (a relayed message) is ignored like every tag-less line.
+  if (entry.attachment && entry.attachment.type === 'queued_command' && typeof entry.attachment.prompt === 'string' && entry.attachment.prompt.includes('<task-notification>')) return entry.attachment.prompt;
   if (entry.type === 'api-request-blob' && line.includes('<task-notification>')) return line;
   return undefined;
 }
