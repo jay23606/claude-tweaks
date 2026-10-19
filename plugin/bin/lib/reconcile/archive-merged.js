@@ -11,6 +11,7 @@ const { runGit } = require('../hooks/git-exec');
 const { withIndexLockRetry } = require('../git-retry');
 const { mainCheckoutRoot } = require('../hooks/worktree-detect');
 const { parseWorktreeList } = require('../hooks/worktree-reap');
+const { isPathContained } = require('../shared-primitives');
 const {
   iterRunDirsWithState, writeRunState, readRunState, readEventLines, isAdHocRunDir,
 } = require('../hooks/context');
@@ -1211,8 +1212,8 @@ function archiveRunDir(root, runDir) {
     const trackedOutsideWork = (lsFiles.stdout || '')
       .split('\n')
       .filter(Boolean)
-      .map((p) => path.relative(runDir, path.join(root, p)))
-      .filter((rel) => rel && !rel.startsWith('work' + path.sep) && rel !== 'work');
+      .map((p) => path.join(root, p))
+      .filter((abs) => path.relative(runDir, abs) !== '' && !isPathContained(abs, path.join(runDir, 'work'), { orEqual: true }));
     if (trackedOutsideWork.length > 0) {
       return refuseAfterMarker('tracked-entry');
     }
