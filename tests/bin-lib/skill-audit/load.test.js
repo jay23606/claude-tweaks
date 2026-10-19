@@ -156,6 +156,24 @@ test('extractCitations rule (e) works under a repo-root plugin root (".")', () =
   assert.deepStrictEqual(r.resolved, ['skills/build/SKILL.md', 'skills/wrap-up/a.md']);
 });
 
+test('extractCitations rule (e): a dot-led first segment is never read as a skill directory', () => {
+  // Under a "." plugin root with a root-level SKILL.md, a "../README.md" token
+  // would otherwise build skills/../README.md = README.md and resolve. Rules
+  // (a)/(b) normalise it to skills/README.md, which the fixture lacks.
+  const r = load.extractCitations('`../README.md`', 'skills/flow/SKILL.md', '.',
+    { exists: existsIn(['SKILL.md', 'README.md']) });
+  assert.deepStrictEqual(r.resolved, []);
+  assert.strictEqual(r.unresolved.length, 1);
+});
+
+test('extractCitations rule (d) still wins over (e) when a {skill}/… token has both hits', () => {
+  const line = 'read `build/x.md` in the `/claude-tweaks:flow` skill\'s directory.';
+  const r = load.extractCitations(line, 'plugin/skills/stories/SKILL.md', 'plugin', {
+    exists: existsIn(['plugin/skills/flow/build/x.md', 'plugin/skills/build/SKILL.md', 'plugin/skills/build/x.md']),
+  });
+  assert.deepStrictEqual(r.resolved, ['plugin/skills/flow/build/x.md']);
+});
+
 test('extractCitations: an unresolvable token is recorded with its 1-based line, never counted', () => {
   const r = load.extractCitations('line one\nsee `docs/skill-graph.md` here', 'plugin/skills/flow/SKILL.md', 'plugin', { exists: () => false });
   assert.deepStrictEqual(r, {
