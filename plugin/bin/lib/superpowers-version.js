@@ -31,7 +31,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { selectEntry, safeRealpath } = require('./installed-plugins');
+const { readInstalledPlugins, selectEntry, safeRealpath } = require('./installed-plugins');
 
 // The last verified pin in tools/upstream-drift/manifest.yml. A future
 // superpowers re-pin deliberately raises the notice threshold for every project
@@ -76,9 +76,9 @@ function defaultDeps() {
 function effectiveSuperpowersVersion(projectDir, overrides = {}) {
   try {
     const deps = { ...defaultDeps(), ...overrides };
-    const configDir = deps.env.CLAUDE_CONFIG_DIR || path.join(deps.homedir(), '.claude');
-    const file = path.join(configDir, 'plugins', 'installed_plugins.json');
-    const parsed = JSON.parse(deps.readFile(file));
+    const read = readInstalledPlugins(deps);
+    if (!read.ok) return null;
+    const parsed = read.data;
     const plugins = parsed && parsed.plugins;
     if (!plugins || typeof plugins !== 'object' || Array.isArray(plugins)) return null;
 

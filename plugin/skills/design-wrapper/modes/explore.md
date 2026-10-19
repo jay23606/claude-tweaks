@@ -35,7 +35,7 @@ Division of labor, load-bearing: **upstream deals, this mode derives and renders
 
 The genesis worlds tournament renders CSS skins over an HTML scaffold in a browser; a native app has no page for that scaffold to become. This mirrors `live.md`'s Step 1.5 exactly, on the same upstream constraint (`reference/routing.md`: web-only).
 
-**Availability** is resolved through the `impeccable-engine` module (`bin/lib/impeccable-engine`, #2979) — not the looser skill-resolution check `review`/`shape`/`polish`/`live` use, and no longer the retired exact-pin plugin-cache resolver `doctor` still uses (sibling sub-issue, untouched by this record). The module finds the active Impeccable install (4.2.2+) directly from `~/.claude/plugins/installed_plugins.json` and its launcher script, so never glob the plugin cache directly, and never treat a resolved `/impeccable:impeccable*` skill as proof the engine binary is present.
+**Availability** is resolved through the `impeccable-engine` module (`bin/lib/impeccable-engine`, #2979) — not the looser skill-resolution check `review`/`shape`/`polish`/`live` use, and no longer the retired exact-pin plugin-cache resolver `doctor` still uses (sibling sub-issue, untouched by this record). The module finds the active Impeccable install (4.2.2+) directly from `installed_plugins.json` under `$CLAUDE_CONFIG_DIR` (default `~/.claude`) and its launcher script, so never glob the plugin cache directly, and never treat a resolved `/impeccable:impeccable*` skill as proof the engine binary is present.
 
 ## Availability (checked before any option is presented)
 

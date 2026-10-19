@@ -1,23 +1,50 @@
 'use strict';
-// bin/lib/installed-plugins.js — pick which ~/.claude/plugins/installed_plugins.json
-// entry of one plugin a session actually runs. Shared by two resolvers:
-//   - bin/lib/impeccable-engine/index.js (default rule — every project-scope
-//     entry that is an ancestor of the session's path is a candidate);
-//   - the superpowers version resolver (#3380), which passes
-//     `{ excludeHome: true }`.
+// bin/lib/installed-plugins.js — pick which $CLAUDE_CONFIG_DIR/plugins/installed_plugins.json
+// (default ~/.claude) entry of one plugin a session actually runs. readInstalledPlugins
+// is the one reader of that file; both resolvers use it and share selectEntry, and both
+// pass `{ excludeHome: true }`:
+//   - bin/lib/impeccable-engine/index.js;
+//   - the superpowers version resolver (#3380).
 //
 // Why excludeHome exists: a probe of real Claude Code sessions (#3380) showed
 // that a project-scope install whose `projectPath` is the user's home directory
 // is never applied to sessions under it, so a resolver reporting what a session
-// really runs must skip it. Impeccable keeps today's rule (the option defaults
-// off) — changing it there is a separate decision.
+// really runs must skip it. Build-time probe for #3415 (2026-10-19, Claude Code
+// 2.1.302, headless `claude -p` init events with hooks disabled): with a
+// project-scope `impeccable@impeccable` 3.0.6 entry at the home directory and a
+// user-scope 4.6.0, sessions in `~` and `~/Code Workspaces` both loaded the
+// user-scope 4.6.0, so both resolvers now pass `excludeHome: true`. Observed, not
+// encoded: `memenu-app` (its own 3.0.6 project entry, the `impeccable` marketplace
+// declared in its `extraKnownMarketplaces`) also loaded user 4.6.0, while its
+// superpowers 6.3.0 project entry did load — unexplained, so the resolver still
+// matches such entries.
 
+const path = require('path');
 const { canonicalRealpath, isAncestorOrSelf } = require('./path-guard');
 
-// The injected deps.realpath is passed through unchanged (superpowers-version
-// injects the native form, impeccable-engine and the tests the JS form), and a
-// failure falls back to the input so a stale projectPath still compares
-// lexically.
+// Reads the installed-plugins file of the config dir the session runs under.
+// deps: { readFile(p), homedir(), env? } — `env` is the caller's view of the
+// environment (never process.env here); an absent `env` means no override.
+// -> { ok: true, data, file } | { ok: false, file, detail }.
+function readInstalledPlugins(deps) {
+  const configDir = (deps.env && deps.env.CLAUDE_CONFIG_DIR) || path.join(deps.homedir(), '.claude');
+  const file = path.join(configDir, 'plugins', 'installed_plugins.json');
+  let text;
+  try {
+    text = deps.readFile(file);
+  } catch (err) {
+    return { ok: false, file, detail: err.code === 'ENOENT' ? `not found: ${file}` : err.message };
+  }
+  try {
+    return { ok: true, data: JSON.parse(text), file };
+  } catch (err) {
+    return { ok: false, file, detail: `malformed JSON (${err.message})` };
+  }
+}
+
+// The injected deps.realpath is passed through unchanged (both resolvers inject
+// `fs.realpathSync.native`; the tests inject their own), and a failure falls back
+// to the input so a stale projectPath still compares lexically.
 function safeRealpath(p, deps) {
   if (!deps || typeof deps.realpath !== 'function') return p;
   const r = canonicalRealpath(p, { realpath: deps.realpath });
@@ -53,4 +80,4 @@ function selectEntry(entries, projectPath, deps, opts = {}) {
   return entries.find((e) => e && typeof e === 'object' && e.scope === 'user') || null;
 }
 
-module.exports = { selectEntry, safeRealpath };
+module.exports = { readInstalledPlugins, selectEntry, safeRealpath };
