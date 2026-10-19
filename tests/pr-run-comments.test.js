@@ -317,7 +317,15 @@ test('regression: a second spec\'s brief/timing post no longer collides with the
 // #3333: the write side posts `brief:{n}` under a multi-spec run; the two readers (engine-verify.js's
 // acceptance-labeling check, /demo's PR run-comment lookup) must read the record's own qualified
 // marker first and fall back to the plain one, and the contract must state that order.
-const DEMO_LOOKUP = DEMO.split('### PR run-comment lookup')[1].split('### Full verification pointer')[0];
+// `between` fails loudly when either heading anchor is gone: a bare `split(start)[1].split(end)[0]`
+// turns a missing end anchor into "the rest of the file", which widens the region instead of emptying it.
+const between = (text, start, end) => {
+  const from = text.indexOf(start);
+  const to = from === -1 ? -1 : text.indexOf(end, from + start.length);
+  assert.ok(from !== -1 && to !== -1, `section anchors present: ${start} ... ${end}`);
+  return text.slice(from + start.length, to);
+};
+const DEMO_LOOKUP = between(DEMO, '### PR run-comment lookup', '### Full verification pointer');
 
 test("AC2.1: demo's PR lookup reads the record's own brief:{n} before the plain brief marker", () => {
   const brief = DEMO_LOOKUP.slice(DEMO_LOOKUP.indexOf('- **Brief**'));
@@ -332,7 +340,7 @@ test("AC2.1: demo's PR lookup reads the record's own brief:{n} before the plain 
 });
 
 test('AC3.1: pr-run-comments.md states the qualified-first brief read with a plain fallback', () => {
-  const section = COMMENTS.split('## Multi-spec brief and timing comments')[1].split('## Trusted authors')[0];
+  const section = between(COMMENTS, '## Multi-spec brief and timing comments', '## Trusted authors');
   assert.match(section, /engine-verify\.js/);
   assert.match(section, /entry-paths\.md/);
   assert.match(section, /`<!-- run-comment: brief:\{n\} -->`[\s\S]*first[\s\S]*plain `<!-- run-comment: brief -->`/);
