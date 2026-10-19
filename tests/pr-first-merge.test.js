@@ -294,6 +294,35 @@ test('#3521: the token-alone match yields to item 3\'s and item 4\'s signatures'
   assert.doesNotMatch(PRE_3521_ITEM_1, /unless item 3's or item 4's signature/, 'pre-change text must NOT carry the precedence clause (proves the pin can go red) [IL-105]');
 });
 
+// #3269: PR #3427 (2026-10-18) captured a third arm-unavailable wording — GitHub refuses to arm a PR it could merge right now. Pin it as a literal in item 1, with a frozen pre-change control.
+const PRE_3269_ITEM_1 = `1. **Command failed with an auto-merge-not-enabled signature** — stderr contains the literal
+   captured GitHub GraphQL wording \`Auto merge is not allowed for this repository\` (captured
+   verbatim on this repo, PR #1401, 2026-08-24: \`GraphQL: Auto merge is not allowed for this
+   repository (enablePullRequestAutoMerge)\`), or the second literal
+   \`Protected branch rules not configured for this branch\` (captured verbatim on this repo,
+   PR #3450, 2026-10-18: \`GraphQL: Pull request Protected branch rules not configured for this
+   branch (enablePullRequestAutoMerge)\`), or the looser paraphrase — \`auto-merge\` and
+   (\`not allowed\` or \`not enabled\`) — for a differently-worded GitHub response to the same
+   repository setting ("Allow auto-merge") being off. \`enablePullRequestAutoMerge\` alone in the
+   error text also matches, unless item 3's or item 4's signature is also present: it is the arm
+   mutation's name, which GitHub appends to every arm-unavailable failure of an \`--auto\` call.
+   \`allow_auto_merge: true\` alone, without
+   branch protection or a ruleset on the base branch, still fails this way — the setting by
+   itself does not make \`--auto\` armable (the Step 2.5 "Why \`--auto\` alone is not a wait"
+   mechanism):`;
+
+const carriesCleanStatus = (text) => text.includes('Pull request is in clean status') && text.includes('PR #3427');
+
+test('#3269 AC3.1: Step 3 item 1 carries the PR #3427 clean-status literal', () => {
+  assert.ok(carriesCleanStatus(item1Body()));
+  assert.ok(item1Body().includes('2026-10-18'));
+});
+
+test('#3269 AC2.1: the clean-status pin goes red on the pre-change item 1 text', () => {
+  assert.equal(carriesCleanStatus(PRE_3269_ITEM_1), false, '[IL-105]');
+  assert.ok(PRE_3269_ITEM_1.includes('Protected branch rules not configured for this branch'), 'control text is the post-#3521 paragraph');
+});
+
 test('/flow closing reports carry the release-status line verbatim (#678)', () => {
   const summary = read('plugin', 'skills', 'flow', 'summary-template.md');
   // The multi-spec closing template moved to multispec-summary.md in #724's
