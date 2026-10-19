@@ -26,6 +26,8 @@ Backstop scope: rows whose Phase is exactly `build` (case-insensitive), status `
 
 A Resolution is valid iff it contains exactly one `Defer-reason:` token and its value is in `DEFER_REASONS`. Match: `/Defer-reason:\s*`?([A-Za-z-]+)`?/g` over the Resolution text (`cells.slice(4).join('|')`).
 
+**As built (Common Step 4.5, Beneficial):** the final whole-branch review added two refinements — rows whose Item starts with the SDD carry-forward template `SDD ruling —` are exempt too (the no-run-dir and degraded-staging paths write a ruling row without a staged path; a ruling is a decision, not a deferral), and the `Defer-reason:` regex gained an end boundary `(?![\w-])`. Common Step 4's blocked-row instruction now names phase `build` (was `build/*`), so the producer text names exactly the phase the backstop checks. `DEFER_REASONS` is imported from `issues/record.js` (its only code home) rather than the spec's `autonomy.js` pointer.
+
 ## Review Focus
 
 1. A blocked-work `open` row naming `Defer-reason: blocked-dependency` — must NOT be flagged (Task 1 test).
