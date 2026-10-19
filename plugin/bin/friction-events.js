@@ -163,9 +163,6 @@ function computeClaimBoundary(runDir) {
   const entry = /^- \S+ (\d{2}:\d{2}:\d{2}) —/m.exec(raw);
   if (!entry) return null;
   const [hh, mm, ss] = entry[1].split(':').map(Number);
-  // #3442: the logged HH:MM:SS is the writer's local wall-clock time, while
-  // the mint instant is UTC — so the claim is read on the mint's LOCAL
-  // calendar day.
   let claimed = new Date(mint.getFullYear(), mint.getMonth(), mint.getDate(), hh, mm, ss);
   if (Number.isNaN(claimed.getTime())) return null;
   // decisions.md logs HH:MM:SS only, never the date — if the computed

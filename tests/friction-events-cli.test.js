@@ -226,7 +226,12 @@ test('#2350: readEvents drops a lenient-variant contract-violation event but kee
 function withTz(tz, fn) {
   const original = process.env.TZ;
   process.env.TZ = tz;
-  try { return fn(); } finally { if (original === undefined) delete process.env.TZ; else process.env.TZ = original; }
+  try {
+    return fn();
+  } finally {
+    if (original === undefined) delete process.env.TZ;
+    else process.env.TZ = original;
+  }
 }
 
 test('#2989: readEvents excludes an event timestamped before the run dir\'s first decisions.md entry', () => withTz('UTC', () => {
