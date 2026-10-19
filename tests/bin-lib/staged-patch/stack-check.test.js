@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { FIXTURE_TIMEOUT_MS } = require('../../helpers/git-fixtures');
-const { checkStack, stagedApplyOrder } = require('../../../plugin/bin/lib/staged-patch/stack-check');
+const { checkStack, rederive, stagedApplyOrder } = require('../../../plugin/bin/lib/staged-patch/stack-check');
 
 const FIXTURE_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const BASE = ['l1', 'l2', 'l3', 'l4', 'anchor', 'a1', 'a2', 'a3'].join('\n') + '\n';
@@ -154,4 +154,56 @@ test('an absolute copied path is skipped as unsafe and never read', (t) => {
 
 test('stagedApplyOrder sorts byte-wise and drops non-patches', () => {
   assert.deepEqual(stagedApplyOrder(['review-2.patch', 'x.md', 'review-10.patch']), ['review-10.patch', 'review-2.patch']);
+});
+
+const NINE = ['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9'].join('\n') + '\n';
+
+test('AC1.1: overlapping-context edits re-derive onto the earlier patch', (t) => {
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  const before = checkStack({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(before.targetConflict.conflictsWith, 'review-1.patch');
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(r.ok, true, r.reason);
+  assert.ok(r.patch.startsWith(PREAMBLE));
+  assert.match(r.patch, /^\+L5$/m);
+  assert.match(r.patch, /^ L2$/m);
+});
+
+test('re-derived patch passes the stacked check', (t) => {
+  const fx = gitFixture(t, NINE);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(r.ok, true, r.reason);
+  fs.writeFileSync(r2, r.patch);
+  const check = checkStack({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(check.ok, true);
+  assert.deepEqual(check.conflicts, []);
+});
+
+test('AC1.1: same-anchor insertions are not re-derived', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const r1 = stage(dir, 'review-1.patch', captureDiff(t, BASE, insertAboveAnchor('new1')));
+  const r2 = stage(dir, 'review-2.patch', captureDiff(t, BASE, insertAboveAnchor('new2')));
+  const r = rederive({ worktree: fx.dir, patches: [r1, r2], target: r2 });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /conflict/);
+});
+
+test('create-mode patch is not re-derived', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const creator = gitFixture(t);
+  fs.writeFileSync(path.join(creator.dir, 'g.txt'), 'new\n');
+  creator.runOk('add', '-N', 'g.txt');
+  const d = creator.git('diff');
+  assert.equal(d.status, 0, d.stderr);
+  const p = stage(dir, 'create.patch', d.stdout);
+  const r = rederive({ worktree: fx.dir, patches: [p], target: p });
+  assert.deepEqual(r, { ok: false, reason: 'non-modification hunk' });
 });

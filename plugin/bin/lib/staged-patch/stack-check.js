@@ -7,6 +7,8 @@
 // (bin/lib/console/resolve.js) applies to staged/ entries, so this check walks patches in the
 // order the console applies them. Results carry basenames only. A copied path that is absolute
 // or has a `..` segment is never read: its patch lands in `skipped`.
+//
+// `rederive` re-derives a conflicting patch onto the stacked state with a per-file 3-way merge.
 'use strict';
 
 const fs = require('fs');
@@ -52,28 +54,41 @@ function firstLine(stderr, abs) {
   return line.split(abs).join(path.basename(abs));
 }
 
-// { worktree, patches, target, git? } -> { ok, order, skipped, conflicts, targetConflict,
-// targetUnapplicable }. `patches` are absolute paths in apply order; `target` is one of them.
-function checkStack({ worktree, patches, target, git = defaultGit }) {
+// The git runner and scratch builders for one worktree. Every scratch is a fresh repo seeded
+// with `present` copies of the worktree's files; `withTemp` removes its directory however `fn`
+// exits.
+function toolkit(worktree, git) {
   const run = (args, cwd) => {
     const r = git(args, { cwd });
     if (r.status === null) throw new Error(`git ${args.join(' ')} did not complete (cwd ${cwd})`);
     return r;
   };
 
-  const withScratch = (present, fn) => {
+  const withTemp = (fn) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'staged-stack-'));
     try {
-      run(['init', '-q'], dir);
-      for (const rel of present) {
-        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-        fs.copyFileSync(path.join(worktree, rel), path.join(dir, rel));
-      }
       return fn(dir);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   };
+
+  const withScratch = (present, fn) => withTemp((dir) => {
+    run(['init', '-q'], dir);
+    for (const rel of present) {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.copyFileSync(path.join(worktree, rel), path.join(dir, rel));
+    }
+    return fn(dir);
+  });
+
+  return { run, withTemp, withScratch };
+}
+
+// Walks `patches` in apply order onto one scratch. Returns `skipped` and `conflicts`, `applied`
+// (the patches that applied, in apply order), and `present` (the worktree files the walk copied).
+function walkStack({ worktree, patches, git }) {
+  const { run, withScratch } = toolkit(worktree, git);
 
   // p failed in the apply walk. Re-check it alone on a fresh scratch: failing there means p is
   // broken by itself (skipped). Otherwise replay the applied patches one at a time and name the
@@ -112,8 +127,8 @@ function checkStack({ worktree, patches, target, git = defaultGit }) {
   const present = [...copied].filter((rel) => isFile(path.join(worktree, rel)));
 
   const conflicts = [];
+  const applied = [];
   withScratch(present, (dir) => {
-    const applied = [];
     for (const p of live) {
       if (run(['apply', '--check', p], dir).status === 0 && run(['apply', p], dir).status === 0) {
         applied.push(p);
@@ -128,6 +143,14 @@ function checkStack({ worktree, patches, target, git = defaultGit }) {
     }
   });
 
+  return { skipped, conflicts, applied, present };
+}
+
+// { worktree, patches, target, git? } -> { ok, order, skipped, conflicts, targetConflict,
+// targetUnapplicable }. `patches` are absolute paths in apply order; `target` is one of them.
+function checkStack({ worktree, patches, target, git = defaultGit }) {
+  const { skipped, conflicts } = walkStack({ worktree, patches, git });
+
   const targetName = path.basename(target);
   const targetConflict = conflicts.find((c) => c.patch === targetName || c.conflictsWith === targetName) || null;
   const targetUnapplicable = skipped.some((s) => s.patch === targetName);
@@ -141,4 +164,65 @@ function checkStack({ worktree, patches, target, git = defaultGit }) {
   };
 }
 
-module.exports = { stagedApplyOrder, checkStack };
+// { worktree, patches, target, git? } -> { ok: true, patch } | { ok: false, reason }. `target`
+// is re-derived per file: ours is the stacked state (the patches before it that the walk
+// applied), base is the worktree file, theirs is the worktree with only `target` applied.
+// `patch` is target's preamble verbatim followed by the diff of the merged files against the
+// stacked state. Creates, deletes, renames, and unsafe paths are refused.
+function rederive({ worktree, patches, target, git = defaultGit }) {
+  const { run, withTemp, withScratch } = toolkit(worktree, git);
+
+  const summary = run(['apply', '--summary', target], worktree);
+  if (summary.status !== 0) return { ok: false, reason: firstLine(summary.stderr, target) };
+  if (/^ (create mode|delete mode|rename )/m.test(summary.stdout)) {
+    return { ok: false, reason: 'non-modification hunk' };
+  }
+
+  const numstat = run(['apply', '--numstat', '-z', target], worktree);
+  if (numstat.status !== 0) return { ok: false, reason: firstLine(numstat.stderr, target) };
+  const rels = copiedPaths(numstat.stdout);
+  const unsafe = rels.find(isUnsafe);
+  if (unsafe !== undefined) return { ok: false, reason: `unsafe path ${unsafe}` };
+  const text = fs.readFileSync(target, 'utf8');
+  const head = text.search(/^diff --git /m);
+  if (head < 0 || rels.length === 0) return { ok: false, reason: 'target has no diff' };
+  const missing = rels.find((rel) => !isFile(path.join(worktree, rel)));
+  if (missing !== undefined) return { ok: false, reason: `${missing} is not a file in the worktree` };
+
+  const idx = patches.indexOf(target);
+  if (idx < 0) throw new Error(`rederive target ${path.basename(target)} is not in patches`);
+  const prior = walkStack({ worktree, patches: patches.slice(0, idx), git });
+  const present = [...new Set([...prior.present, ...rels])];
+
+  const theirs = withScratch(present, (dir) => {
+    const ap = run(['apply', target], dir);
+    if (ap.status !== 0) return { error: firstLine(ap.stderr, target) };
+    return { files: Object.fromEntries(rels.map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')])) };
+  });
+  if (theirs.error !== undefined) return { ok: false, reason: theirs.error };
+
+  return withScratch(present, (dir) => {
+    for (const p of prior.applied) {
+      if (run(['apply', p], dir).status !== 0) throw new Error(`replay of ${path.basename(p)} failed`);
+    }
+    run(['add', '-A'], dir);
+    return withTemp((work) => {
+      for (const rel of rels) {
+        const ours = path.join(work, 'ours');
+        const base = path.join(work, 'base');
+        const their = path.join(work, 'theirs');
+        fs.copyFileSync(path.join(dir, rel), ours);
+        fs.copyFileSync(path.join(worktree, rel), base);
+        fs.writeFileSync(their, theirs.files[rel]);
+        const merged = run(['merge-file', '-p', ours, base, their], work);
+        if (merged.status > 0) return { ok: false, reason: `conflict in ${rel}` };
+        fs.writeFileSync(path.join(dir, rel), merged.stdout);
+      }
+      const diff = run(['diff', '--no-color', '--no-ext-diff'], dir);
+      if (diff.stdout === '') return { ok: false, reason: 'already satisfied by an earlier patch' };
+      return { ok: true, patch: text.slice(0, head) + diff.stdout };
+    });
+  });
+}
+
+module.exports = { stagedApplyOrder, checkStack, rederive };
