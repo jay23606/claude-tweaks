@@ -2,3 +2,16 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | Task 1 review minor: vitest no-`Test Files`-line fail-closed branch in `summaryUnattributedCount` is unpinned | deferred | Origin: SDD task review (Task 1). File: `plugin/bin/lib/verify/extract.js`. Unreachable today — `summaryDialect` requires that line to classify vitest; revisit if dialect detection changes. |
+| 2 | build | Task 1 review minor: `extract.js` header family line left as-is, with an added `unattributedFailureCount` line beside it | deferred | Origin: SDD task review (Task 1). File: `plugin/bin/lib/verify/extract.js` header. Cosmetic; revisit on the next edit of that header. |
+| 3 | build | Task 2 review minor: Flake handling / journey Step 10 phrase read as if every unattributed signal were vitest-only | fixed | `b80caa0d2` (per-dialect lists). |
+| 4 | build | Task 2 review minor: SKILL.md "differ from `adjudicate`'s in three ways" miscount | fixed | `b80caa0d2` ("two ways"). |
+| 5 | build | Task 2 review minor: SKILL.md "each count" wording read additive (code takes the max of `Errors` count and banner) | fixed | `b80caa0d2` ("the larger … never their sum"). |
+| 6 | build | Task 2 parked: vitest log missing its `Test Files` line returns 1 but prose does not say so | observation | Unreachable — `summaryDialect` requires that line for vitest; prose stays. |
+| 7 | build | SDD ruling — fold a preExisting accepted-jest-log CLI test into Task 1 fix round 1: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 8 | build | SDD ruling — vitest bail: refuse on any non-zero skipped count in the `Test Files` line: ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
+| 9 | build | SDD ruling — jest bail: refuse on `N of M total` (superseded by ruling 6): ratify or reverse at the Review Console (staged/sdd-ruling-3.md) | open | — |
+| 10 | build | SDD ruling — refuse a log carrying more than one `Test Suites:`/`Test Files` summary line: ratify or reverse at the Review Console (staged/sdd-ruling-4.md) | open | — |
+| 11 | build | SDD ruling — fix the three Task 2 prose minors in the final fix wave: ratify or reverse at the Review Console (staged/sdd-ruling-5.md) | open | — |
+| 12 | build | SDD ruling — accept the fix-wave deviation: jest refuses when failed+skipped+passed < M, not on any `N of M total`: ratify or reverse at the Review Console (staged/sdd-ruling-6.md) | open | — |
+| 13 | build | SDD ruling — residual vitest `⎯ Unhandled Rejection ⎯` post-summary banner counts 0 (fail-open); left open for the review phase, no second SDD fix wave: ratify or reverse at the Review Console (staged/sdd-ruling-7.md) | open | — |
