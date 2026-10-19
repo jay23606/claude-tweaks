@@ -2274,9 +2274,9 @@ test('--baseline: the scratch worktree is gone after the run (#3043)', async () 
 
 // #3511: --scope + --baseline. baselineRepo() on a feature branch carrying a
 // map-form declaration (unit = the failing-at-base suite) plus src/a.js.
-// `other` is declared FIRST by default, so the original four tests do not depend
-// on --baseline running every suite; `unitFirst` puts the failing suite ahead of
-// `other` (the realistic ordering), which needs run.js's continueSuitesAfterFailure.
+// The failing suite is declared AHEAD of `other` (the realistic ordering, and
+// the #3401 incident's), so every test here depends on run.js's
+// continueSuitesAfterFailure keeping the later suite running.
 function scopedBaselineRepo(opts = {}) {
   // `'retry' in opts`, not a destructuring default: `{ retry: undefined }` must
   // mean "no retry key" (JSON.stringify drops it), not fall back to the default.
@@ -2289,9 +2289,7 @@ function scopedBaselineRepo(opts = {}) {
   if (opts.envProbe) commitFile(r, 'tests/env.test.js', "require('node:test')('env', () => { throw new Error('PROBE_ENV=' + process.env.PROBE_ENV); });\n");
   r.git('checkout', '-q', '-b', 'feature');
   commitFile(r, '.claude-tweaks/verify-scope.json', JSON.stringify({
-    checks: { tests: opts.unitFirst
-      ? { unit: SUITE.slice('tests='.length), other: 'node -e 0' }
-      : { other: 'node -e 0', unit: SUITE.slice('tests='.length) } },
+    checks: { tests: { unit: SUITE.slice('tests='.length), other: 'node -e 0' } },
     retry,
     rules: [
       { match: 'src/**', suites: ['unit'], static: false },
@@ -2310,13 +2308,13 @@ test('AC1.1: --scope + --baseline with no --baseline-cmd adjudicates via the dec
   const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
   // No prior stamp anchor → selectScope forces mode full (scope.js), exactly #3401's incident shape.
   assert.strictEqual(report.scope.mode, 'full');
-  assert.deepStrictEqual(report.scope.suites, ['other', 'unit']);
+  assert.deepStrictEqual(report.scope.suites, ['unit', 'other']);
   assert.strictEqual(report.baselineAdjudicated.verdict, 'pass');
   assert.deepStrictEqual(report.baselineAdjudicated.baselineFailing, ['tests/env.test.js']);
 });
 
 test('--scope + --baseline adjudicates when the failing suite is declared before a passing one — the later suite still runs (#3511)', async () => {
-  const r = scopedBaselineRepo({ unitFirst: true });
+  const r = scopedBaselineRepo();
   const { code, stdout, stderr } = await runCli(r.scoped, r.opts);
   assert.strictEqual(code, 0, stdout + stderr);
   const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
@@ -2335,8 +2333,10 @@ test('--scope: a --baseline-cmd naming neither a --cmd nor a declared suite is a
   const r = scopedBaselineRepo();
   const { code, stderr } = await runCli([...r.scoped, '--baseline-cmd', 'web=node --test {file}'], r.opts);
   assert.strictEqual(code, 2);
-  assert.match(stderr, /--baseline-cmd "web" names no --cmd or declared suite \(--cmd: none; suites: other, unit\)/);
-  assert.ok(!fs.existsSync(path.join(r.gitDir, 'claude-tweaks-verify', 'unit.log')));
+  assert.match(stderr, /--baseline-cmd "web" names no --cmd or declared suite \(--cmd: none; suites: unit, other\)/);
+  // Before any check runs: no log of any kind was written, not just no unit.log.
+  const logDir = path.join(r.gitDir, 'claude-tweaks-verify');
+  assert.deepStrictEqual(fs.existsSync(logDir) ? fs.readdirSync(logDir) : [], []);
 });
 
 test('--scope: --baseline with no --baseline-cmd and no declared retry template is a usage error (exit 2) (#3511)', async () => {
