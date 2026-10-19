@@ -104,10 +104,44 @@ git -C "$WORKTREE" apply --check "$STAGE_PATH"
   fallback it uses for a stale diff. Under `auto` this is a log line and a degraded artifact,
   never a mid-flow stop (`_shared/auto-mode-contract.md`).
 
+### Stacked check
+
+The solo check cannot see two staged patches that each apply alone but conflict once stacked: run
+2026-10-16T181217-spec-2882 staged `review-1.patch` and `review-2.patch`, both inserting above the
+same anchor in `tests/bin-lib/residue/probes-observed.test.js`, and the second failed only on top of
+the first. After the solo check exits 0, run the stacked check from the worktree:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/check-staged-stack.js" --worktree "$WORKTREE" --patch "$STAGE_PATH" --rederive-out "{session tmp}/rederive-{slug}-{n}.patch"
+```
+
+`{session tmp}` is the session-scoped temp root (`_shared/session-tmp-root.md`). The CLI derives the
+run dir from `--patch` and writes nothing except `--rederive-out`.
+
+**Apply order.** The gate and the console apply a run's `staged/` patches in one order: a byte-wise
+sort of their filenames, so `review-1.patch` < `review-10.patch` < `review-2.patch`.
+`bin/lib/console/resolve.js` reads them in that order, whatever order a console table displays them
+in. A multi-spec console walks its spec directories in manifest order and applies each one's
+patches in apply order.
+
+- **exit 0** — no conflict involves this patch. Write the site's normal `STAGED` entry, nothing else.
+- **exit 1 with `rederived`** — the patch failed on top of an earlier one and its 3-way re-derive
+  onto the stacked state succeeded. Overwrite `staged/{slug}-{n}.patch` with the re-derived file
+  (same writer the site used). The re-derived diff assumes the earlier patch, so re-run only the
+  stacked check. Then write the normal `STAGED` entry, suffixed ` Re-derived onto staged/{earlier}.patch.`
+- **exit 1, `rederived` null** — no re-derive was produced: `rederiveReason` says why, or the
+  target is the earlier patch, which never attempts one. If the edit admits another anchor,
+  recompose it once in the worktree, overwrite, and re-run both checks. Otherwise keep the
+  `.patch` and log `STAGED {time} — {step}: {finding} — stacked check: staged/{slug}-{n}.patch conflicts with staged/{earlier}.patch in apply order ({first stderr line}); kept — the console re-derives it from Invariant:. Stage path: staged/{slug}-{n}.patch. Reversibility: high.`
+- **exit 2, 3 or 4** — the stack is unverified and the patch, which passed its solo check, is kept
+  as written. Log `STAGED {time} — {step}: {finding} — gate could not run: stacked check exit {code} ({first stderr line}); kept unstacked — the console's stale path covers a conflict. Reversibility: high.`
+
+None of these branches is a mid-flow stop under `auto`.
+
 ## Console apply with description fallback
 
-For each staged `.patch` (and each description-only `.md` written by the gate above), in the
-order the console lists them:
+For each staged `.patch` (and each description-only `.md` written by the gate above), in apply order
+(the Stacked check's **Apply order** paragraph — the same order the staging gate stacked them in):
 
 1. **Fast path** — `git -C "$WORKTREE" apply --check "$STAGE_PATH"`; on exit 0, `git -C "$WORKTREE" apply "$STAGE_PATH"` and
    log `AUTO {time} — Review Console apply: staged/{slug}-{n}.patch applied. Reversibility: high (commit).`
