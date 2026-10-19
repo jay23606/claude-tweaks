@@ -16,12 +16,13 @@
 // inspection rather than trusting the call's own narrative (#1728's own
 // Acceptance Criteria).
 //
-// Reads: run-state.json (`worktree`, `pr`) and this run's own `config.yml`
-// (`integration-model`) from `--run <dir>`; the live claim state for each
-// `--targets` issue via git (never `gh` — `claims-git-cas.js`'s
-// `readClaimBlobGit`, the same git-CAS read `claim-store.js` already uses on
-// the `gh`-present path, so this check works identically whether `gh` is on
-// PATH or not).
+// Reads: run-state.json (`worktree`, `pr`), this run's own `config.yml`
+// (`integration-model`) and `decisions.md` (the claim-log line) from
+// `--run <dir>`; the live claim state for each `--targets` issue via git
+// (never `gh` — `claims-git-cas.js`'s `readClaimBlobGit`, the same git-CAS
+// read `claim-store.js` already uses on the `gh`-present path, so this check
+// works identically whether `gh` is on PATH or not); and each target's
+// committed spec via `git cat-file` at the recorded worktree's HEAD.
 //
 // Usage: node bin/verify-run-bookends.js --run <dir> --targets <n,n,...> [--help]
 // Exit 0 = every bookend confirmed — {ok:true, confirmed:{...}}.
@@ -101,35 +102,48 @@ function readDecisions(runDir) {
 
 // Repo-relative paths a target's materialized spec can live at. A `spec-{n}`
 // run dir nests under its parent run id; a run dir that is itself the run id
-// holds the spec at `work/` (single-spec) or under `spec-{n}/work/`.
-function specCandidatePaths(runDir, issue) {
+// holds the spec at `work/` (single-spec) or under `spec-{n}/work/`. A
+// multi-target parent run is a bundle, which never uses flat `work/`.
+function specCandidatePaths(runDir, issue, multiTarget) {
   const base = path.basename(runDir);
   const parent = path.basename(path.dirname(runDir));
   const root = '.claude-tweaks/pipelines';
   if (/^spec-\d+$/.test(base) && RUN_ID_RE.test(parent)) {
     return [`${root}/${parent}/${base}/work/${issue}-spec.md`];
   }
-  return [`${root}/${base}/work/${issue}-spec.md`, `${root}/${base}/spec-${issue}/work/${issue}-spec.md`];
+  const nested = `${root}/${base}/spec-${issue}/work/${issue}-spec.md`;
+  return multiTarget ? [nested] : [`${root}/${base}/work/${issue}-spec.md`, nested];
 }
 
-function gitSucceeds(worktree, args) {
+// true = git exited 0; false = git ran and exited non-zero; null = git did not
+// get to answer (timeout, or a spawn error such as ENOENT) — "absent" would be
+// a claim the probe cannot make.
+function gitProbe(worktree, args, exec) {
   try {
-    execFileSync('git', ['-C', worktree, ...args], { stdio: 'ignore', windowsHide: true, timeout: GIT_TIMEOUT_MS });
+    exec('git', ['-C', worktree, ...args], { stdio: 'ignore', windowsHide: true, timeout: GIT_TIMEOUT_MS });
     return true;
-  } catch {
+  } catch (err) {
+    if (err && (err.signal || err.code === 'ETIMEDOUT' || typeof err.code === 'string')) return null;
     return false;
   }
 }
 
 // true = committed at HEAD; false = provably not (git ran, HEAD resolves, no
 // candidate path in it); null = could not determine (no worktree, or git
-// could not run) — the caller reports that as its own reason, never as done.
-function isSpecCommitted({ runDir, worktree, issue }) {
+// could not run or timed out) — the caller reports that as its own reason,
+// never as done. `exec` is injectable for tests.
+function isSpecCommitted({
+  runDir, worktree, issue, multiTarget,
+}, exec = execFileSync) {
   if (typeof worktree !== 'string' || !worktree || !fs.existsSync(worktree)) return null;
-  for (const rel of specCandidatePaths(runDir, issue)) {
-    if (gitSucceeds(worktree, ['cat-file', '-e', `HEAD:${rel}`])) return true;
+  let undetermined = false;
+  for (const rel of specCandidatePaths(runDir, issue, multiTarget)) {
+    const found = gitProbe(worktree, ['cat-file', '-e', `HEAD:${rel}`], exec);
+    if (found === true) return true;
+    if (found === null) undetermined = true;
   }
-  return gitSucceeds(worktree, ['rev-parse', '--verify', 'HEAD']) ? false : null;
+  if (undetermined) return null;
+  return gitProbe(worktree, ['rev-parse', '--verify', 'HEAD'], exec) === true ? false : null;
 }
 
 function readRunState(runDir) {
@@ -154,7 +168,10 @@ function run(argv, deps) {
   const runId = path.basename(opts.runDir);
   const runDir = opts.runDir;
   const hooks = `node "${PLUGIN_ROOT}/bin/hooks.js"`;
-  const claimRemedy = (n) => `node "${PLUGIN_ROOT}/bin/claim-targets.js" --run-id "${runId}" --targets ${n} --run "${runDir}"`;
+  const claimRemedy = (n) => `node "${PLUGIN_ROOT}/bin/claim-targets.js" --run-id "${runId}" --targets ${n} --run "${runDir}" (gh-absent: flow/claim-targets.md's MCP claim procedure)`;
+  // A bundle's parent run dir holds each member's spec under spec-{n}/; a spec-{N} run dir already is that dir.
+  const bundleParent = targets.length > 1 && !/^spec-\d+$/.test(runId);
+  const materializeRemedy = (n) => `node "${PLUGIN_ROOT}/bin/materialize.js" ${n} --run-dir "${runDir}"${bundleParent ? ` --multi-record-slug ${n}` : ''} [--record-json <path> when gh is absent] then commit work/${n}-spec.md`;
 
   const runState = deps.readRunState(opts.runDir);
   if (!runState || !runState.worktree) {
@@ -199,16 +216,19 @@ function run(argv, deps) {
     }
   }
 
+  const claimMissing = new Set(missing.filter((m) => m.bookend === 'claim').map((m) => m.issue));
   const worktree = runState && typeof runState.worktree === 'string' ? runState.worktree : null;
   const decisions = deps.readDecisions(runDir);
   for (const issue of targets) {
-    const committed = deps.isSpecCommitted({ runDir, worktree, issue });
+    const committed = deps.isSpecCommitted({
+      runDir, worktree, issue, multiTarget: bundleParent,
+    });
     if (committed !== true) {
       missing.push({
         bookend: 'materialize',
         issue,
         reason: committed === false ? 'not-committed' : 'undetermined',
-        remedy: `node "${PLUGIN_ROOT}/bin/materialize.js" ${issue} --run-dir "<worktree-local run dir>" then commit work/${issue}-spec.md`,
+        remedy: materializeRemedy(issue),
       });
     }
     if (!hasCanonicalClaimLogFor(decisions, issue)) {
@@ -216,7 +236,9 @@ function run(argv, deps) {
         bookend: 'claim-log',
         issue,
         reason: 'no canonical Step 2.8 line',
-        remedy: `node "${PLUGIN_ROOT}/bin/log-decision.js" --run "${runDir}" --section "/flow" --step "Step 2.8" --status AUTO --reversibility high --text "claimed #${issue} (bin/claim-targets.js, transport: {git|contents-api|mcp})"`,
+        remedy: claimMissing.has(issue)
+          ? 'covered by the claim remedy above (claim-targets.js --run writes the canonical line)'
+          : `node "${PLUGIN_ROOT}/bin/log-decision.js" --run "${runDir}" --section "/flow" --step "Step 2.8" --status AUTO --reversibility high --text "claimed #${issue} (bin/claim-targets.js, transport: {git|contents-api|mcp})"`,
       });
     }
   }

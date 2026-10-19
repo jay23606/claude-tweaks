@@ -245,8 +245,9 @@ test('isSpecCommitted returning null -> missing materialize with reason "undeter
   assert.strictEqual(m.reason, 'undetermined');
 });
 
-test('AC1.1: realDeps.isSpecCommitted is true only for a spec committed at HEAD', () => {
+test('AC1.1: realDeps.isSpecCommitted is true only for a spec committed at HEAD', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-spec-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd: root, stdio: 'pipe' });
   git('init', '-q');
   fs.writeFileSync(path.join(root, 'README.md'), 'x\n');
@@ -333,9 +334,99 @@ test('AC4.1: a run in this record\'s own pre-fix shape (pr-first, no PR, paraphr
   for (const b of ['pr', 'materialize', 'claim-log']) assert.ok(names.includes(b), b);
 });
 
-test('realDeps.readDecisions reads decisions.md and returns null when absent', () => {
+test('realDeps.readDecisions reads decisions.md and returns null when absent', (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-dec-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   assert.strictEqual(realDeps.readDecisions(dir), null);
   fs.writeFileSync(path.join(dir, 'decisions.md'), 'hello\n');
   assert.strictEqual(realDeps.readDecisions(dir), 'hello\n');
+});
+
+// #2912 final review: remedies must be runnable as printed, on either transport.
+const BUNDLE_TARGETS = '1728,1729';
+const BUNDLE_CLAIMS = {
+  1728: { content: liveMarker(RUN_ID), absent: false, failure: null },
+  1729: { content: liveMarker(RUN_ID), absent: false, failure: null },
+};
+
+test('a bundle-shaped materialize remedy carries the literal run dir and --multi-record-slug, never the placeholder', () => {
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize' && x.issue === 1729);
+  assert.ok(m.remedy.includes(`--run-dir "${RUN_DIR}"`), m.remedy);
+  assert.ok(m.remedy.includes('--multi-record-slug 1729'), m.remedy);
+  assert.ok(!m.remedy.includes('<worktree-local run dir>'), m.remedy);
+  assert.ok(m.remedy.includes('[--record-json <path> when gh is absent]'), m.remedy);
+});
+
+test('a single-target materialize remedy has no --multi-record-slug', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize');
+  assert.ok(!m.remedy.includes('--multi-record-slug'), m.remedy);
+  assert.ok(!m.remedy.includes('<worktree-local run dir>'), m.remedy);
+});
+
+test('a spec-{N} run dir with several targets gets no --multi-record-slug (the run dir already is the per-spec dir)', () => {
+  const specRunDir = `${RUN_DIR}/spec-1728`;
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', specRunDir, '--targets', BUNDLE_TARGETS], deps), 1);
+  const ms = JSON.parse(deps.out[0]).missing.filter((x) => x.bookend === 'materialize');
+  assert.ok(ms.length >= 1);
+  for (const m of ms) assert.ok(!m.remedy.includes('--multi-record-slug'), m.remedy);
+});
+
+test('the claim remedy names the MCP claim procedure for a gh-absent run', () => {
+  const deps = captured(makeDeps({ claims: {} }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'claim');
+  assert.match(m.remedy, /gh-absent: flow\/claim-targets\.md's MCP claim procedure/);
+});
+
+test('a claim-log remedy defers to the claim remedy when the same issue\'s claim is also missing', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, readDecisions: () => '' }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 1);
+  const { missing } = JSON.parse(deps.out[0]);
+  const logFor = (n) => missing.find((x) => x.bookend === 'claim-log' && x.issue === n);
+  assert.match(logFor(1728).remedy, /log-decision\.js/, '1728 claim is held: the log line is its own remedy');
+  assert.strictEqual(logFor(1729).remedy, 'covered by the claim remedy above (claim-targets.js --run writes the canonical line)');
+});
+
+test('a two-target parent run with a spec committed only at flat work/{n}-spec.md reports materialize missing (real git)', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-bundle-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd: root, stdio: 'pipe' });
+  git('init', '-q');
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
+  const flatRel = `.claude-tweaks/pipelines/${RUN_ID}/work/1729-spec.md`;
+  const nestedRel = `.claude-tweaks/pipelines/${RUN_ID}/spec-1728/work/1728-spec.md`;
+  fs.mkdirSync(path.join(root, path.dirname(flatRel)), { recursive: true });
+  fs.mkdirSync(path.join(root, path.dirname(nestedRel)), { recursive: true });
+  fs.writeFileSync(path.join(root, flatRel), 'spec\n');
+  fs.writeFileSync(path.join(root, nestedRel), 'spec\n');
+  git('add', flatRel, nestedRel);
+  git('commit', '-q', '-m', 'specs');
+  const deps = captured({
+    ...makeDeps({ runState: { worktree: root, pr: { number: 1, url: 'https://x' } } }),
+    isSpecCommitted: realDeps.isSpecCommitted,
+    readClaimBlobGit: () => ({ content: liveMarker(RUN_ID), absent: false, failure: null }),
+  });
+  assert.strictEqual(run(['--run', runDir, '--targets', BUNDLE_TARGETS], deps), 1);
+  const mat = JSON.parse(deps.out[0]).missing.filter((x) => x.bookend === 'materialize');
+  assert.deepStrictEqual(mat.map((x) => x.issue), [1729], 'the flat-layout bundle member is missing; the nested one is found');
+  assert.strictEqual(mat[0].reason, 'not-committed');
+});
+
+test('isSpecCommitted: a git timeout or spawn error is undetermined (null), never "not committed"', () => {
+  const args = { runDir: RUN_DIR, worktree: os.tmpdir(), issue: 1728 };
+  const timeout = () => { const e = new Error('timed out'); e.code = 'ETIMEDOUT'; e.signal = 'SIGTERM'; throw e; };
+  const spawnFail = () => { const e = new Error('spawn git ENOENT'); e.code = 'ENOENT'; throw e; };
+  const exitNonZero = () => { const e = new Error('fatal'); e.status = 128; throw e; };
+  assert.strictEqual(realDeps.isSpecCommitted(args, timeout), null, 'timeout');
+  assert.strictEqual(realDeps.isSpecCommitted(args, spawnFail), null, 'spawn error');
+  assert.strictEqual(realDeps.isSpecCommitted(args, exitNonZero), null, 'cat-file and rev-parse both exit non-zero: HEAD unresolvable');
+  const catFileMissRevParseOk = (cmd, argv) => { if (argv.includes('cat-file')) exitNonZero(); };
+  assert.strictEqual(realDeps.isSpecCommitted(args, catFileMissRevParseOk), false, 'git ran, HEAD resolves, spec absent');
+  const catFileTimeoutRevParseOk = (cmd, argv) => { if (argv.includes('cat-file')) timeout(); };
+  assert.strictEqual(realDeps.isSpecCommitted(args, catFileTimeoutRevParseOk), null, 'cat-file timed out: not provably absent');
 });
