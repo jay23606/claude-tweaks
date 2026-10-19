@@ -291,11 +291,11 @@ test('AC2.1: an instruction appended to the marker line reads batched: false —
 });
 
 test('AC2.2: a plan with two adjacent tasks merged into one counts one fewer task and stays batched: false without a marker (#3379)', () => {
-  const separate = '# Plan\n\n### Task 1: Add a column\n\n### Task 2: Expose it as a constant\n\n### Task 3: Wire the reader\n';
-  const merged = '# Plan\n\n### Task 1: Add a column and expose it as a constant\n\n### Task 2: Wire the reader\n';
-  assert.deepStrictEqual(countTasks(separate), { tasks: 3, batched: false });
-  assert.deepStrictEqual(countTasks(merged), { tasks: 2, batched: false });
-  assert.deepStrictEqual(countTasks('# Plan\n\n**Execution:** batched\n\n' + merged.replace('# Plan\n\n', '')), { tasks: 2, batched: true });
+  const separate = '### Task 1: Add a column\n\n### Task 2: Expose it as a constant\n\n### Task 3: Wire the reader\n';
+  const merged = '### Task 1: Add a column and expose it as a constant\n\n### Task 2: Wire the reader\n';
+  assert.deepStrictEqual(countTasks(`# Plan\n\n${separate}`), { tasks: 3, batched: false });
+  assert.deepStrictEqual(countTasks(`# Plan\n\n${merged}`), { tasks: 2, batched: false });
+  assert.deepStrictEqual(countTasks(`# Plan\n\n**Execution:** batched\n\n${merged}`), { tasks: 2, batched: true });
 });
 
 // ── #3099 Check E — acceptance-criterion clause splitter ────────────────────
