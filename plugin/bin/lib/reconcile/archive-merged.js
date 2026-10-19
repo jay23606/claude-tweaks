@@ -1943,8 +1943,7 @@ function archiveMerged({
             // A CLOSED (never-merged) PR keeps the distinct, tracked reason
             // below unconditionally — there's no run left to converge
             // toward regardless of staged/'s contents.
-            const hasPending = hasStagedItems(dir);
-            if (byNumber.state === 'MERGED' && !hasPending) {
+            if (byNumber.state === 'MERGED' && !hasStagedItems(dir)) {
               finishArchiveAttempt(cacheBatch, repoSlug, dir, dryRun, runner, archived, skipped, () => archiveRunDir(root, dir));
               continue;
             }
