@@ -17,3 +17,4 @@
 | 13 | build | SDD ruling — snapshot-header pin line escalated from review Minor into Task 2 fix round 1: ratify or reverse at the Review Console (staged/sdd-ruling-5.md) | open | — |
 | 14 | build | SDD ruling — Task 4 asserts the specific degrade phrase and exactly-once warn: ratify or reverse at the Review Console (staged/sdd-ruling-6.md) | open | — |
 | 15 | build | SDD ruling — final fix wave folded Minors 1-4 and the Task 3 regex in with Important 1: ratify or reverse at the Review Console (staged/sdd-ruling-7.md) | open | — |
+| 16 | build/skill | Extends `prose-code-twin-pin`: the Manifesto's `--set` batch string is a prose twin of `MANIFESTO_LEVERS ∪ RUN_PINS`, pinned by executing it through `set-config.js`'s `run()` (tests/flow-manifesto-integration-model-pin.test.js), not by a set-equality check, so a key dropped from the prose batch is not caught | observation | Head start for wrap-up's Skills curation row |
