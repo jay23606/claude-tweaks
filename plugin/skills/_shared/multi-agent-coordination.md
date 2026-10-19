@@ -58,6 +58,10 @@ Two findings match when **all three** hold:
 
 No outcome is "ask the user inline." Unconfirmed findings stage; the caller's Review Console handles disposition.
 
+### Cross-lens corroboration (/review medium tier)
+
+At `/review`'s `medium` tier only, the `unconfirmed` findings of *different* lenses are matched once more, by `corroborateCrossLens` (`bin/lib/coordination.js`; CLI `review-coordination.js corroborate-cross-lens`). Two findings corroborate when they come from different lenses, share an exact path, sit within ±5 lines, both carry text, and their substance similarity is at least `SUBSTANCE_SIMILARITY_MIN` (0.2) — missing text never corroborates. A corroborated finding is `confirmed`; no agents are dispatched. Procedure and log line: `review/step3-cross-lens-corroboration.md`.
+
 ### Dispatch template (inline in caller's Task() calls)
 
 ```
