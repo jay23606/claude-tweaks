@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { computeDiffFacts, deriveCeremonyProfile, shouldDerive } = require('../../../plugin/bin/lib/dispatch/ceremony-derive');
+const { computeDiffFacts, deriveCeremonyProfile, isDocsPath, isPromptProsePath, shouldDerive } = require('../../../plugin/bin/lib/dispatch/ceremony-derive');
 
 // #1545 evidence shape: a +75/-2 test file plus its own materialized
 // work/{n}-spec.md doc — a mix of test + docs files, zero production files.
@@ -102,4 +102,42 @@ test('shouldDerive: only an auto-mode run whose profile is still standard derive
   }
   assert.strictEqual(shouldDerive({ mode: 'auto', ceremonyProfile: 'fast-lane' }), false, 'already fast-lane: nothing to narrow');
   assert.strictEqual(shouldDerive({}), false, 'no config at all (standalone wrap-up) never derives');
+});
+
+// #3477: shipped prompt prose (skills/agents/commands markdown) is production.
+test('AC1.1: a plugin-prose diff (plugin/skills/test/qa-prompts.md + a test file) does not derive fast-lane', () => {
+  const files = [
+    { path: 'plugin/skills/test/qa-prompts.md', additions: 18, deletions: 1 },
+    { path: 'tests/qa-prompts-step-origin.test.js', additions: 183, deletions: 0 },
+  ];
+  const facts = computeDiffFacts(files);
+  assert.equal(facts.implFiles, 1);
+  assert.equal(facts.lowSurface, false);
+  assert.equal(deriveCeremonyProfile(files, 'standard'), 'standard');
+});
+
+test('AC2.1: a docs/**/*.md-only diff still derives fast-lane', () => {
+  const files = [
+    { path: 'docs/plugin-structure.md', additions: 5, deletions: 0 },
+    { path: 'docs/reference/claude-quality-levers.md', additions: 3, deletions: 1 },
+  ];
+  assert.equal(computeDiffFacts(files).lowSurface, true);
+  assert.equal(deriveCeremonyProfile(files, 'standard'), 'fast-lane');
+});
+
+test('isPromptProsePath: markdown under skills/, agents/, commands/ at any prefix is prompt prose', () => {
+  for (const p of ['plugin/skills/test/qa-prompts.md', 'plugin/skills/_shared/work-record.md', 'plugin/agents/qa-agent.md',
+    '.claude/skills/upstream-drift/SKILL.md', 'skills/foo/SKILL.md', '.claude/commands/ship.md', 'plugin/skills/foo/SKILL.MD']) {
+    assert.equal(isPromptProsePath(p), true, p);
+    assert.equal(isDocsPath(p), false, p);
+  }
+});
+
+test('isPromptProsePath: other markdown stays docs, including basenames that merely contain the word', () => {
+  for (const p of ['docs/skill-authoring.md', 'docs/agents.md', 'README.md', 'CLAUDE.md',
+    '.claude-tweaks/pipelines/2026-08-26T000000-spec-1/work/1-spec.md', 'docs/superpowers/plans/2026-10-20-x.md']) {
+    assert.equal(isPromptProsePath(p), false, p);
+    assert.equal(isDocsPath(p), true, p);
+  }
+  assert.equal(isPromptProsePath('plugin/skills/foo/helper.js'), false, 'non-markdown is never prompt prose');
 });
