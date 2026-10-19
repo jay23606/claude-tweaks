@@ -75,6 +75,29 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows regression: 1 test file(s) newly failing after… ([#3523](https://github.com/thn-inc/claude-tweaks/issues/3523)) ([59406eb](https://github.com/thn-inc/claude-tweaks/commit/59406ebe9944c8f8434f487fd957fd05c5f3bc3b))
 * Windows regression: 2 test file(s) newly failing after… ([#3518](https://github.com/thn-inc/claude-tweaks/issues/3518)) ([e4d6b12](https://github.com/thn-inc/claude-tweaks/commit/e4d6b12bf9745a39f3c3e737a9f51ef89367f4f6))
 
+### Highlights
+* Plans now check that an "expect no matches" grep can actually match before relying on it.
+* Internal test hardening — no user-visible change.
+* Fix the phase-timing CLI tests so they pass on a Windows checkout.
+* Fixed a wrap-up conformance test that failed on Windows checkouts because it converted already-CRLF text to CRLF a second time.
+* The harness cost report now includes subagent tool scopes alongside skills, as its documentation already claimed.
+* Moves the Pipeline Summary's Timing and Dispatches render rules into one shared contract that all three summary templates cite, so the three can no longer drift apart.
+* Fix the reconciler archiving a live run, and releasing its claims, when an earlier PR from a reused branch name had already merged, or when a multi-spec run still had staged items under its per-spec directories.
+* Internal test hardening — no user-visible change.
+* Dispatch no longer prints a spurious "No such file or directory" error each time it pulls the queue.
+* Fixed five dispatch and specify prose tests that failed only on Windows checkouts.
+* Defer a dispatch drain's record while a strong near-duplicate of it is still being built or awaiting merge, and name the predicted conflict and merge order before an explicit-list firing dispatches both.
+* Finish a multi-spec /flow run's consolidated wrap-up after its parent session ended, with `/claude-tweaks:flow #A,#B review-console`; session start now names that command for such runs.
+* Internal: the pr-first merge snippet becomes runnable from a worktree session without hand-editing, so dispatched and close-out merges stop tripping the worktree Bash guard.
+* Harness-health premise checks filed by scheduled runs now detect already-fixed findings on any machine.
+* Fixed a dispatch test that failed on Windows checkouts because of line-ending differences.
+* The statusline no longer makes your own git commands fail with an index.lock error while it refreshes.
+* No user-visible change.
+* No user-visible change.
+* Tell review lens agents in worktree-isolated sessions a scratch-file recipe the harness accepts, so their probes stop being refused.
+* No user-visible change — the pr-first merge procedure recognizes one more GitHub wording for "auto-merge cannot be armed", so a repo with auto-merge allowed but no branch protection degrades to the documented wait path instead of an unrecognized-error park.
+* docs/incident-log.md's IL-162 entry now reads as a complete sentence instead of cutting off mid-clause.
+
 ## [6.145.0](https://github.com/thn-inc/claude-tweaks/compare/v6.144.0...v6.145.0) (2026-10-18)
 
 
