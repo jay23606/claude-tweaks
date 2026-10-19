@@ -116,7 +116,8 @@ function flipLedgerRow(text, { item, status, resolution }) {
   }
   cells[4] = ` ${status} `;
   // Line breaks collapse to one space: a raw newline would split the row across lines.
-  cells[5] = ` ${escapeLedgerCell(String(resolution || '').replace(/\s*\r?\n\s*/g, ' ').trim()) || '—'} `;
+  const singleLine = String(resolution || '').replace(/\s*\r?\n\s*/g, ' ').trim();
+  cells[5] = ` ${escapeLedgerCell(singleLine) || '—'} `;
   table.rows.set(key, cells.join('|'));
   return serializeLedgerTable(table);
 }
