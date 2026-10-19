@@ -57,6 +57,8 @@ The flaky-retry hook applies this accounting too, through `unattributedFailureCo
 - TAP gets an entry check as well: `tapBlockCount` must equal `# fail` + `# cancelled`, as spec entries must equal `ℹ fail` + `ℹ cancelled`.
 - Any family other than spec or tap returns `null` (#3204) — no accounting guard exists, so a caller must never read it as accounted. `planRetry` refuses with `no-accounting-guard: {family}` (`baseline.js`'s `adjudicate` applies the same refusal).
 
+The declared `preExisting` allowlist (#3129) is a third consumer of the same count (#3481). It waives a failing run without re-running anything, so a named-file list that undercounts clears a failure nothing checked. `plugin/bin/verify.js` therefore asks `unattributedFailureCount` for every non-skipped failing check and refuses with `no-parse`, then `no-accounting-guard: {family}` (any one check whose count is `null`), then `unattributed-failures: {N}` (the counts summed across checks, so types and lint failing together add up), before `matchPreExisting` ever sees the file list. This is the only reachable multi-check case: `runChecks` fail-fast skips `tests` once a stage-1 check (`types`, `lint`) fails. `unattributedFailureCount` does not read `RUNNER_ERROR_RE`, so a runner-level `ℹ Error:` beside an allowlisted failing test is invisible to this guard, unlike `accountedFamily`.
+
 ### Node's runner-level diagnostics are visible only in the log
 
 An uncaught error from async work that outlived its test is reported as a separate file-level failure only when no test in the file failed. Beside a failing test it appears only as an `ℹ Error:` line, or as text containing `generated asynchronous activity after the test ended`. `baseline.js`'s `RUNNER_ERROR_RE` treats a log carrying either as no evidence. A bare `# Error:` line in TAP output is the test's own console output, not Node's.
@@ -113,4 +115,4 @@ node --test --test-reporter=tap tests/bin-lib/verify/extract.test.js   # capture
 - Tests: `tests/bin-lib/verify/extract.test.js`, `tests/bin-lib/verify/baseline.test.js`, `tests/bin-lib/verify/cli.test.js`, `tests/bin-lib/verify/flaky.test.js`
 - Contract: `plugin/skills/test/verification.md`'s Baseline adjudication and Flake handling
 - Related skills: `parse-signal-discipline` (couldn't parse versus doesn't apply; reconciling a list against an independent count), `windows-checkout-test-parity` (the Windows failure baseline this adjudicator exists for)
-- Origin: #3043; the flaky-retry consumer: #3066; the shared `tapLines` classifier and the Windows filer's reuse of it: #3404
+- Origin: #3043; the flaky-retry consumer: #3066; the `preExisting` consumer: #3481; the shared `tapLines` classifier and the Windows filer's reuse of it: #3404
