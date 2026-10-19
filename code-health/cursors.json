@@ -294,5 +294,9 @@
   "plugin/bin/lib/pr-checks": {
     "lastSweptMs": 1792206542333,
     "lastHash": "3affd1f8576d0fba5b0a36e46dfd83d552f195d5"
+  },
+  "plugin/bin/lib/path-guard": {
+    "lastSweptMs": 1792379299485,
+    "lastHash": "455792bbd3039f7967a5cb91f8cd3fec3aba1ce3"
   }
 }
