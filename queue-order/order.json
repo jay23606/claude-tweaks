@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T12:39:04.277Z",
+  "computedAt": "2026-10-19T13:16:32.685Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -445,7 +445,7 @@
       },
       {
         "number": 3257,
-        "updatedAt": "2026-10-17T09:03:05Z",
+        "updatedAt": "2026-10-19T12:40:25Z",
         "state": "OPEN"
       },
       {
@@ -6363,78 +6363,6 @@
           "origin": null,
           "risk": "medium",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Verified-as-of: d81250829ae2c3db172448be1f3588da29b78222\n\nPremise-check: ! grep -q StatusContext plugin/skills/_shared/pr-first-merge.md\n\nOrigin: reflect full from #3013\n\nDefer-reason: tangential\n\n## Current State\n\n`_shared/pr-first-merge.md` Step 2.5 classifies `statusCheckRollup[]` entries by `conclusion` (red) and `status` (pending). GitHub returns two entry shapes: a `CheckRun` (`status` + `conclusion`) and a legacy commit-status `StatusContext` (`state` = SUCCESS/FAILURE/ERROR/PENDING/EXPECTED, with no `status` or `conclusion`).\n\nRead literally, the rules mishandle a `StatusContext`: a failing one has no `conclusion`, so it never reads red, and its absent `status` is \"not COMPLETED\", so even a passing one reads pending. A repo whose required check is posted by a commit-status app (e.g. a third-party deploy or review bot) gets a failing check merged past the red path, or a merge that never leaves pending.\n\n#3013 found this while building `bin/pr-checks.js`: `plugin/bin/lib/pr-checks/classify.js`'s `normalizeEntry` maps a `StatusContext`'s `state` onto `status`/`conclusion` before classifying. The merge gate's own read has no such normalization.\n\n## Deliverables\n\n- `_shared/pr-first-merge.md` Step 2.5: one sentence normalizing a `StatusContext` entry (`state` FAILURE/ERROR → red, PENDING/EXPECTED → pending, SUCCESS → completed-green) before the red/pending rules apply, citing `bin/lib/pr-checks/classify.js`'s `normalizeEntry` as the code twin.\n\n- A conformance test pinning that the merge gate's prose names the `StatusContext` normalization and that its state mapping matches `normalizeEntry`.\n\n## Acceptance Criteria\n\n- [ ] Step 2.5 classifies a `StatusContext` with `state: FAILURE` as red and `state: SUCCESS` as green, never as pending.\n\n- [ ] The new conformance test fails when the normalization sentence is removed.\n\n## Release Note\n\nThe pr-first merge gate now reads commit-status checks (StatusContext) correctly: a failing status parks the merge instead of passing, and a passing one no longer leaves the merge pending.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T17:40:24Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3257,
-        "state": "OPEN",
-        "title": "Normalize StatusContext entries in the pr-first merge gate rollup read",
-        "updatedAt": "2026-10-17T09:03:05Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
