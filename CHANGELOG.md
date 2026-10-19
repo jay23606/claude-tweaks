@@ -71,6 +71,16 @@ Three conventions follow from how this repo works, and all are visible below:
 * One reader for installed_plugins.json — Impeccable's… ([#3415](https://github.com/thn-inc/claude-tweaks/issues/3415)) ([9441f5b](https://github.com/thn-inc/claude-tweaks/commit/9441f5b4d176b25c9b8c87aa8f638ee88459b9e9))
 * SubagentStop contract check fires on an intermediate… ([#3015](https://github.com/thn-inc/claude-tweaks/issues/3015)) ([37950c2](https://github.com/thn-inc/claude-tweaks/commit/37950c276a9c5480d919d9338bafd281993dcbf9))
 
+### Highlights
+* Fixed misleading circular-dependency warnings from code-health scanners and let the decision logger record reversibility notes the pipeline docs require.
+* Dispatch now notices when another session, including one on a different machine, already holds a record's claim, before it sets up a worktree for it.
+* Code review no longer stalls on refused file writes when it runs in an isolated worktree session.
+* Subagents that pause while their own background agents are still running are no longer forced to report a final status early.
+* Records with more than one design intent now carry every intent into the build, so polish runs each one instead of only the first.
+* Find the Impeccable install under a custom `CLAUDE_CONFIG_DIR` and when the working directory's letter case differs from the path on disk.
+* Declared pre-existing test failures can no longer hide an additional failure the runner could not attribute to a test file.
+* A run started from a worktree whose PR already merged now gets a fresh worktree instead of reusing the merged branch.
+
 ## [6.146.0](https://github.com/thn-inc/claude-tweaks/compare/v6.145.0...v6.146.0) (2026-10-19)
 
 
