@@ -27,8 +27,7 @@
 // key's enum — batch or single, nothing is written on this exit code); 3 when
 // the run dir is missing or not anchored under the main checkout (a
 // worktree-local shadow — _shared/pipeline-run-dir.md's Anchoring section,
-// [IL-127]), or
-// config.yml is unwritable. config.yml is the third of the sanctioned-write
+// [IL-127]), or config.yml is unwritable. config.yml is the third of the sanctioned-write
 // family: bin/log-decision.js (decisions.md), bin/stage-item.js (staged/),
 // this (config.yml levers — the ceremony escape hatch's downgrade path, and
 // the Manifesto's own batch write).
@@ -40,14 +39,15 @@
 // *after* this CLI's write call, and it was observed being silently
 // skipped. When a `--set` batch supplies the 13 canonical Manifesto levers
 // (any order), plus at most the run pins (`RUN_PINS`), with `mode=auto`,
-// this is unambiguously that write call, so success also prints the FYI table itself — a mechanical side
-// effect of the write, not a separate step to forget. Any other invocation
-// shape (single-key form, a partial batch, `mode` other than `auto`) prints
-// only the existing per-lever lines, unchanged.
+// this is unambiguously that write call, so success also prints the FYI
+// table itself — a mechanical side effect of the write, not a separate step
+// to forget. Any other invocation shape (single-key form, a partial batch,
+// `mode` other than `auto`) prints only the existing per-lever lines,
+// unchanged.
 'use strict';
 
 const { resolveTarget } = require('./lib/stage-item/write');
-const { MANIFESTO_LEVERS, RUN_PINS, validateLever, setConfigLever } = require('./lib/set-config/write');
+const { MANIFESTO_LEVERS, RUN_PINS, isConfigKey, validateLever, setConfigLever } = require('./lib/set-config/write');
 
 // Canonical lever numbering/labels, per manifesto.md's "Canonical lever
 // numbering" paragraph — presentation-only, so kept here rather than in
@@ -100,9 +100,7 @@ function isManifestoAutoBatch(results) {
   const keys = new Set(results.map((r) => r.key));
   if (keys.size !== results.length) return false;
   for (const lever of MANIFESTO_LEVERS) if (!keys.has(lever)) return false;
-  for (const key of keys) {
-    if (!MANIFESTO_LEVERS.includes(key) && !RUN_PINS.includes(key)) return false;
-  }
+  for (const key of keys) if (!isConfigKey(key)) return false;
   const modeResult = results.find((r) => r.key === 'mode');
   return !!modeResult && modeResult.value === 'auto';
 }
