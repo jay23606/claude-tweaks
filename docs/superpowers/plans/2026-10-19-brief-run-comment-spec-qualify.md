@@ -174,3 +174,9 @@ Expected: PASS, 0 failures.
 git add plugin/skills/demo/entry-paths.md plugin/skills/_shared/pr-run-comments.md tests/pr-run-comments.test.js
 git commit -m "Read brief:{n} before plain brief in /demo's PR lookup — and state the read order in pr-run-comments.md, refs #3333"
 ```
+
+## Build notes (Common Step 4.5 alignment)
+
+- Beneficial: `engine-verify.js` acceptance-labeling failure detail now names the markers it looked for (`looked for brief:{n}, then brief`) — final-review Minor 3, so an operator can tell a multi-spec miss from a single-spec one (d81746d43).
+- Beneficial: `_shared/pr-run-comments.md` gained a **Read side (#3333)** paragraph stating the reader order and that only the plain fallback can be shared — the contract now names its readers, not just its writer (2b322457f, softened in d81746d43).
+- Update the spec (staged): spec Deliverable 1 / Current State predate #2970, which already shipped the writer and the `_shared` kind; staged as `build-deviation-1` for the Review Console.
