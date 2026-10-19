@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T16:50:20.645Z",
+  "computedAt": "2026-10-19T17:45:43.004Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -420,22 +420,12 @@
       },
       {
         "number": 3263,
-        "updatedAt": "2026-10-17T09:03:12Z",
+        "updatedAt": "2026-10-19T16:52:22Z",
         "state": "OPEN"
       },
       {
         "number": 3258,
         "updatedAt": "2026-10-19T13:17:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3257,
-        "updatedAt": "2026-10-19T12:40:25Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3226,
-        "updatedAt": "2026-10-19T14:17:45Z",
         "state": "OPEN"
       },
       {
@@ -459,11 +449,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3047,
-        "updatedAt": "2026-10-19T12:34:44Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3026,
         "updatedAt": "2026-10-17T06:11:04Z",
         "state": "OPEN"
@@ -479,11 +464,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3004,
-        "updatedAt": "2026-10-19T16:07:00Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3002,
         "updatedAt": "2026-10-15T16:22:22Z",
         "state": "OPEN"
@@ -491,11 +471,6 @@
       {
         "number": 2987,
         "updatedAt": "2026-10-15T16:21:53Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2986,
-        "updatedAt": "2026-10-19T15:04:19Z",
         "state": "OPEN"
       },
       {
@@ -6203,78 +6178,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect hindsight from #3059\n\nDefer-reason: tangential\n\n## Current State\n\nEvery pr-first phase exit (build, test, review, polish, wrap-up) asks the orchestrating agent to flip its PR checklist row by hand, per `plugin/skills/_shared/pr-checklist-refresh.md`'s \"Phase-checklist update\" section: read the body with `gh pr view`, run `repairPrBody` (`plugin/bin/lib/flow/pr-body.js`), find the `<!-- phases-start -->`/`<!-- phases-end -->` span, flip `- [ ] {phase}`, write a `{run-id}`-scoped temp file, re-read and check its first line, then `gh pr edit --body-file`.\n\nNo `plugin/bin/` CLI does this. `ls plugin/bin` has `check-pr-bookkeeping.js` and `flow-preflight.js`, but nothing that writes the checklist. During #3059's `/flow` run (PR #3252), the orchestrator hand-wrote a scratch `pr-phase.js` to avoid recomposing the same six steps at every phase exit. The same prose also governs removing a skipped phase's row (e.g. `polish` on a non-frontend record).\n\n## Deliverables\n\n1. Add a `plugin/bin/` CLI (e.g. `pr-checklist.js --run <dir> --phase <name> [--remove]`) that resolves the PR from `run-state.json`, repairs, flips or removes one row inside the phases span, verifies the run marker, and writes back. Follow the injectable-runner `run(argv, deps)` seam and exit-code conventions of the existing `gh`-calling CLIs.\n2. Point `_shared/pr-checklist-refresh.md`'s Phase-checklist update at the CLI rather than restating the steps, keeping the `gh`-absent MCP path documented for sandboxes without `gh`.\n3. Tests sized like the neighbouring `tests/bin-lib/` suites: flip, remove, already-checked no-op, missing-markers repair, run-marker mismatch hard stop.\n\n## Acceptance Criteria\n\n- One CLI call flips or removes a single phase row on the run's PR and leaves the rest of the body byte-identical.\n- A body whose first line names a different run id is refused with a non-zero exit, and nothing is written.\n- `_shared/pr-checklist-refresh.md` cites the CLI. The six-step prose is gone from the `gh`-present path.\n\n## Release Note\n\nNo user-visible change. Pipeline phase exits update the PR checklist through one command rather than hand-composed steps.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T17:54:19Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3263,
-        "state": "OPEN",
-        "title": "Add a bin CLI for the PR phase-checklist flip at every pr-first phase exit",
-        "updatedAt": "2026-10-17T09:03:12Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
