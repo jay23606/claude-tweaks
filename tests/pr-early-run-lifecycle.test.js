@@ -335,3 +335,59 @@ test('#2997 follow-up: Step 3\'s "Composed shape" fence is byte-identical to com
 
   assert.strictEqual(fence, composed.replace(/\n$/, ''), 'the prose fence and the composer\'s real output have drifted apart');
 });
+
+// #3263: the gh-present Phase-checklist update is one `bin/pr-checklist.js` call, not a
+// hand-composed locate/flip/temp-file/`gh pr edit` sequence. The two AC3 assertions are
+// factored so a frozen excerpt of the pre-#3263 prose (same style as PRE_REFRESH in
+// premise-reversal-spec-summary-3050.test.js) proves each one can go red.
+const GH_ABSENT_HEADING = '**`gh` absent (MCP).**';
+const phaseChecklistUpdate = () => {
+  const s = CHECKLIST_REFRESH.split('## Phase-checklist update (every phase exit)')[1];
+  assert.ok(s, 'Phase-checklist update section must exist');
+  return s.split('## Pre-merge title/description refresh')[0];
+};
+function assertCliCited(text) {
+  assert.match(text, /bin\/pr-checklist\.js" --run "\{run-dir\}" --phase \{phase\}/);
+  assert.match(text, /--remove/);
+}
+function assertNoHandSteps(ghPresent, whole = ghPresent) {
+  assert.doesNotMatch(ghPresent, /\/tmp\/pr-checklist-/);
+  assert.doesNotMatch(ghPresent, /gh pr edit \{number\} --repo/);
+  assert.doesNotMatch(ghPresent, /Locate the checklist span/);
+  assert.doesNotMatch(whole, /\/tmp\/pr-checklist-/, 'the MCP path resolves its temp file through session-tmp-resolve');
+}
+// Frozen from the pre-#3263 file (lines 49-60 and 84-86, 1c3950f96).
+const PRE_3263 = `  Locate the checklist span using
+  whichever delimiter pair this (possibly-repaired) body actually carries: the
+  \`<!-- phases-start -->\`/\`<!-- phases-end -->\` pair on a \`gh\`-present read (the real body,
+  unsanitized); the \`[claude-tweaks-phases-start]\`/\`[claude-tweaks-phases-end]\` pair on a
+  \`gh\`-absent MCP read (the HTML-comment pair is invisibly stripped from what this read
+  returns, per \`_shared/pr-early-run-lifecycle.md\`'s Root cause section, even though it still
+  exists in the stored body). Flip that phase's checklist row from
+  \`- [ ] {phase}\` to \`- [x] {phase}\` inside whichever span was found, leaving everything else —
+  including the *other* delimiter pair, which this read may not even show — untouched, then
+  write back through the same transport that did the read, to
+  \`/tmp/pr-checklist-{run-id}-{n}.md\` — scoped by \`{run-id}\`, same reason as \`_shared/pr-early-run-lifecycle.md\`'s
+  Step 3 path.
+
+  \`\`\`bash
+  gh pr edit {number} --repo {host}/{owner}/{repo} --body-file /tmp/pr-checklist-{run-id}-{n}.md
+  \`\`\``;
+
+test('#3263 AC3.1: the Phase-checklist update cites bin/pr-checklist.js', () => {
+  assertCliCited(phaseChecklistUpdate());
+});
+
+test('#3263 AC3.2: the gh-present path carries no hand-composed six-step prose', () => {
+  const update = phaseChecklistUpdate();
+  const from = update.indexOf('bin/pr-checklist.js" --run');
+  const to = update.indexOf(GH_ABSENT_HEADING);
+  assert.ok(from !== -1, 'the CLI call must exist');
+  assert.ok(to > from, 'the gh-absent heading must follow the CLI call');
+  assertNoHandSteps(update.slice(from, to), update);
+});
+
+test('#3263: the AC3 assertions go red on the pre-#3263 prose (frozen excerpt)', () => {
+  assert.throws(() => assertCliCited(PRE_3263));
+  assert.throws(() => assertNoHandSteps(PRE_3263));
+});
