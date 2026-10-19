@@ -10,6 +10,9 @@ const { RAIL_BYTES } = require('../plugin/bin/lib/skill-audit/budgets');
 
 const REVIEW = path.join(__dirname, '..', 'plugin', 'skills', 'review');
 const steps = fs.readFileSync(path.join(REVIEW, 'code-mode-steps.md'), 'utf8');
+for (const heading of ['## Step 6.7:', '## Step 7:', '## Important Notes']) {
+  assert.ok(steps.includes(heading), `anchor heading missing: ${heading}`);
+}
 const step67 = steps.slice(steps.indexOf('## Step 6.7:'), steps.indexOf('## Step 7:'));
 const step7 = steps.slice(steps.indexOf('## Step 7:'), steps.indexOf('## Important Notes'));
 
@@ -28,6 +31,18 @@ test('Deliverable 3: the rule covers interactive Fix now as well as auto-applied
 test('AC2.1: no intersection (or no stories, or no applied fix) means no QA re-run', () => {
   assert.ok(step67.includes('No intersection — or no stories, or no applied fix — means no QA re-run'));
   assert.ok(step67.includes('no added cost for a non-UI wave'));
+});
+
+test('WAVE_BASE is carried as a literal SHA, never as shell state that a later Bash call has lost', () => {
+  assert.ok(step67.includes('paste that literal SHA wherever `{WAVE_BASE}` appears'));
+  assert.ok(step67.includes('Shell state does not persist between Bash calls'));
+});
+
+test('a touched story left unexecuted (skipped, stopped, unresolved base) renders the qualifier, not a green line', () => {
+  assert.ok(step67.includes('did not actually re-execute'));
+  assert.ok(step67.includes('reports that story SKIPPED'));
+  assert.ok(step67.includes('No QA stories affected by current changes.'));
+  assert.ok(qa.includes('left such a story unexecuted'));
 });
 
 test('Gotcha: a self-skipped or errored re-run renders the stale-QA qualifier, never the pre-wave status', () => {
@@ -61,10 +76,11 @@ test('AC4.1: the template states the verdict comment copies the qualified line v
 });
 
 test('I-1: a failing post-wave re-run blocks the verdict', () => {
-  assert.ok(step67.includes('makes the verdict BLOCKED'));
+  assert.ok(step67.includes('A re-run that reports PARTIAL FAILURE or ALL FAILED makes the verdict BLOCKED'));
 });
 
 test('I-2: the subset re-run merges into pre-wave results and the status is recomputed over all stories', () => {
+  assert.ok(step67.includes("merge its results into `/test`'s pre-wave per-story results (re-run stories take their new result, the rest keep theirs)"));
   assert.ok(step67.includes('recompute'));
   assert.ok(step67.includes('over all stories'));
   assert.ok(qa.includes('recomputed over all stories'));
