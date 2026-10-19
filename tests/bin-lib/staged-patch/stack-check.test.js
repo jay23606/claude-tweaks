@@ -116,17 +116,25 @@ test('worktree untouched: the check leaves git status clean and f.txt at its bas
   assert.equal(fs.readFileSync(path.join(fx.dir, 'f.txt'), 'utf8'), BASE);
 });
 
+// Real git for every call except those `intercept` answers (it returns a result, or null to pass).
+function gitIntercepting(intercept) {
+  return (args, { cwd }) => {
+    const faked = intercept(args);
+    if (faked) return faked;
+    const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: FIXTURE_ENV });
+    return { status: r.status, stdout: r.stdout, stderr: r.stderr };
+  };
+}
+
 // Injectable-git seam: the numstat call reports `reported` as the patch's copied path; every other
 // call runs real git. `calls` records each invocation so a test can prove what was never run.
 function numstatReporting(reported, calls) {
-  return (args, { cwd }) => {
+  return gitIntercepting((args) => {
     calls.push(args);
-    if (args[0] === 'apply' && args[1] === '--numstat') {
-      return { status: 0, stdout: `1\t1\t${reported}\0`, stderr: '' };
-    }
-    const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
-    return { status: r.status, stdout: r.stdout, stderr: r.stderr };
-  };
+    return args[0] === 'apply' && args[1] === '--numstat'
+      ? { status: 0, stdout: `1\t1\t${reported}\0`, stderr: '' }
+      : null;
+  });
 }
 
 test('a copied path with a .. segment is skipped as unsafe and never read', (t) => {
@@ -277,16 +285,6 @@ test('M3: a Latin-1 file re-derives byte-safely — applies on the stacked state
   fs.writeFileSync(r2, r.patch);
   assert.equal(checkStack({ worktree: fx.dir, patches: [r1, r2], target: r2 }).ok, true);
 });
-
-// Real git for every call except those `intercept` answers (it returns a result, or null to pass).
-function gitIntercepting(intercept) {
-  return (args, { cwd }) => {
-    const faked = intercept(args);
-    if (faked) return faked;
-    const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: FIXTURE_ENV });
-    return { status: r.status, stdout: r.stdout, stderr: r.stderr };
-  };
-}
 
 test('T2: a failing final git diff is reported, not read as already satisfied', (t) => {
   const fx = gitFixture(t, NINE);
