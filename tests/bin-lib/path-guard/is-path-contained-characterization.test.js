@@ -58,3 +58,10 @@ test('AC1.1: isPathContained has no containment logic of its own — it delegate
   assert.match(body, /isAncestorOrSelf\(/);
   assert.doesNotMatch(body, /startsWith/);
 });
+
+// Not a pure string comparison: path.relative resolves a relative argument
+// against process.cwd(), so callers must pass absolute, resolved paths.
+test('AC2.1: a relative candidate resolves against process.cwd() (callers pass absolute paths)', () => {
+  assert.equal(isPathContained('x', process.cwd()), true);
+  assert.equal(isPathContained(path.join(process.cwd(), 'x'), process.cwd()), true);
+});

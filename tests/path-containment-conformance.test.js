@@ -5,11 +5,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('./helpers/strip-comments');
 
-// Path containment ("is this resolved path inside that one") has one home:
+// New path-containment code ("is this resolved path inside that one") calls
 // `isPathContained` in plugin/bin/lib/shared-primitives.js, a thin wrapper over
 // path-guard's `isAncestorOrSelf` (#3498). A hand-rolled
 // `x.startsWith(root + path.sep)` test re-derives it without the win32
-// casing/drive semantics, so none may remain under plugin/bin/.
+// casing/drive semantics, so none may remain under plugin/bin/. This pins only
+// that idiom; other `path.relative`-based re-derivations are out of scope.
 const ROOT = path.join(__dirname, '..');
 const BIN_ROOT = path.join(ROOT, 'plugin', 'bin');
 
