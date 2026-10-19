@@ -631,7 +631,19 @@ function buildProbes(inputs, deps) {
     pr: async () => {
       backendOrThrow(); forgeOrThrow(); if (inputs.pr === null) throw new Error('no PR number in run-state.json');
       const { stdout } = await gh(['pr', 'view', String(inputs.pr), '--json', 'state,isDraft,mergeStateStatus,headRefOid,statusCheckRollup,reviewDecision']);
-      return JSON.parse(stdout);
+      const view = JSON.parse(stdout);
+      // #3469: the rollup alone reads a partial run green — pr-checks.js adds
+      // the head-run read and classifies, so the console never re-derives it.
+      let ci;
+      try {
+        const { stdout: out } = await deps.execFile('node', [path.join(BIN, 'pr-checks.js'), '--run', String(inputs.runDir)], { cwd: inputs.worktree || undefined, ...EXEC_OPTS });
+        const lines = String(out).split('\n').map((l) => l.trim()).filter(Boolean);
+        ci = JSON.parse(lines[lines.length - 1]);
+        if (ci === null || typeof ci !== 'object') throw new Error('pr-checks.js output is not a JSON object');
+      } catch (err) {
+        ci = { state: 'read-failed', reason: (err && err.message) || String(err) };
+      }
+      return { ...view, ci };
     },
     // Concurrency-capped (gh-pool.js's DEFAULT_CONCURRENCY) rather than a
     // raw unbounded Promise.all fan-out, so a large multi-spec record list

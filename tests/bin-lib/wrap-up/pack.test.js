@@ -75,6 +75,7 @@ function okDeps(overrides = {}) {
       }
       if (cmd === 'node' && String(args[0]).endsWith('wrap-up-state.js')) return { stdout: JSON.stringify({ state: { isRepo: true, branch: 'b' }, ops: [], since: 'abc123', sinceDate: '2026-09-05T00:00:00Z', rendered: 'Branch b\n' }), stderr: '' };
       if (cmd === 'node' && String(args[0]).endsWith('resolve-blockers.js')) return { stdout: JSON.stringify({ 1600: { blockedBy: [1535], openBlocker: false } }), stderr: '' };
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return { stdout: JSON.stringify({ state: 'green', failing: [], pending: [] }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify({ state: 'OPEN', isDraft: false, mergeStateStatus: 'CLEAN', headRefOid: 'deadbee', statusCheckRollup: [], reviewDecision: null }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') return { stdout: JSON.stringify({ labels: [{ name: 'ready' }, { name: 'auto:merge' }] }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'list') return { stdout: JSON.stringify([{ number: 1600, title: 'Dependent', body: '' }]), stderr: '' };
@@ -1428,4 +1429,50 @@ test('#3399: parkedAtShaping is true for a record when any of its header files c
   const res = resolveRecords(deps, dir, null);
   assert.deepStrictEqual(res.records, [5]);
   assert.deepStrictEqual(res.parkedAtShaping, { 5: true });
+});
+
+test('pr probe attaches the pr-checks.js --run verdict as ci (#3469)', async () => {
+  const runDir = fixtureRunDir();
+  const seen = [];
+  const deps = okDeps({
+    execFile: async (cmd, args) => {
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) {
+        seen.push(args);
+        return { stdout: '{"state":"pending","pending":["test"],"failing":[]}\n', stderr: '' };
+      }
+      return okDeps().execFile(cmd, args);
+    },
+  });
+  const pack = await gatherPack({ runDir, cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
+  assert.strictEqual(seen.length, 1);
+  assert.deepStrictEqual(seen[0], [path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'pr-checks.js'), '--run', runDir]);
+  assert.strictEqual(pack.pr.value.ci.state, 'pending');
+  assert.strictEqual(pack.pr.value.state, 'OPEN');
+});
+
+test('pr probe: a failed pr-checks.js spawn is ci read-failed, pr still ok (#3469)', async () => {
+  const deps = okDeps({
+    execFile: async (cmd, args) => {
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) throw new Error('spawn node ENOENT');
+      return okDeps().execFile(cmd, args);
+    },
+  });
+  const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
+  assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
+  assert.ok(typeof pack.pr.value.ci.reason === 'string' && pack.pr.value.ci.reason.length > 0);
+  assert.strictEqual(pack.pr.value.state, 'OPEN');
+});
+
+test('pr probe: unparseable pr-checks.js output is ci read-failed (#3469)', async () => {
+  const deps = okDeps({
+    execFile: async (cmd, args) => {
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return { stdout: 'not json\n', stderr: '' };
+      return okDeps().execFile(cmd, args);
+    },
+  });
+  const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true);
+  assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
 });
