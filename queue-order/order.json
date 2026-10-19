@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T04:46:47.479Z",
+  "computedAt": "2026-10-19T05:27:51.944Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -15,7 +15,7 @@
       },
       {
         "number": 3521,
-        "updatedAt": "2026-10-18T19:46:26Z",
+        "updatedAt": "2026-10-19T05:15:46Z",
         "state": "OPEN"
       },
       {
@@ -30,7 +30,7 @@
       },
       {
         "number": 3517,
-        "updatedAt": "2026-10-18T19:46:15Z",
+        "updatedAt": "2026-10-19T05:01:10Z",
         "state": "OPEN"
       },
       {
@@ -140,7 +140,7 @@
       },
       {
         "number": 3481,
-        "updatedAt": "2026-10-18T06:41:08Z",
+        "updatedAt": "2026-10-19T04:48:16Z",
         "state": "OPEN"
       },
       {
@@ -255,7 +255,7 @@
       },
       {
         "number": 3413,
-        "updatedAt": "2026-10-18T19:45:37Z",
+        "updatedAt": "2026-10-19T04:49:35Z",
         "state": "OPEN"
       },
       {
@@ -459,11 +459,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3187,
-        "updatedAt": "2026-10-19T04:34:17Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3079,
         "updatedAt": "2026-10-17T06:12:08Z",
         "state": "OPEN"
@@ -565,7 +560,7 @@
       },
       {
         "number": 2870,
-        "updatedAt": "2026-10-18T19:45:27Z",
+        "updatedAt": "2026-10-19T04:52:42Z",
         "state": "OPEN"
       },
       {
@@ -596,78 +591,6 @@
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Origin: reflect full from #3417 (Surprises lens), deferred at the Wrap-Up Review Console\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/_shared/pr-first-merge.md` Step 3 branch 1 recognizes an \"auto-merge cannot be armed\" failure only by the literal `Auto merge is not allowed for this repository (enablePullRequestAutoMerge)` (PR #1401's 2026-08-24 capture) or the paraphrase `auto-merge` plus `not allowed`/`not enabled`. On 2026-10-18 `gh pr merge 3450 --repo thn-inc/claude-tweaks --auto --squash …` on this repo (`allow_auto_merge: true`, no branch protection, no rulesets) failed with `GraphQL: Pull request Protected branch rules not configured for this branch (enablePullRequestAutoMerge)`. Neither signature matches, so a reader following Step 3 literally lands in branch 5 (unrecognized error → ready+comment, `pending-review`) instead of branch 1's documented degrade to Step 2.5's `wait` row; the merge proceeded only because the operator judged the two messages equivalent. The repo setting `allow_auto_merge: true` alone does not make `--auto` armable — GitHub requires branch protection or a ruleset on the base branch — which Step 2.5's \"Why `--auto` alone is not a wait\" paragraph states as a mechanism but Step 3 never lists as a signature.\n\n## Deliverables\n\nAdd the captured wording `Protected branch rules not configured for this branch (enablePullRequestAutoMerge)` to `_shared/pr-first-merge.md` Step 3 branch 1's signature list as a second literal, dated and citing PR #3450 (2026-10-18), beside the existing PR #1401 capture.\n\nWiden branch 1's paraphrase so `enablePullRequestAutoMerge` in the GraphQL error text alone also matches (it is the mutation name GitHub appends to every arm-unavailable failure), with one sentence noting that `allow_auto_merge: true` without branch protection or a ruleset still produces this failure.\n\nIf a conformance test pins Step 3's signature list, extend it to the new literal; otherwise none is added.\n\n## Acceptance Criteria\n\n`grep -c \"Protected branch rules not configured for this branch\" plugin/skills/_shared/pr-first-merge.md` returns 1 or more, and the match sits inside Step 3 branch 1.\n\nStep 3 branch 1 names `enablePullRequestAutoMerge` as a matching token for the arm-unavailable case.\n\n`npm test` passes.\n\n## Release Note\n\nNo user-visible change — the pr-first merge procedure recognizes one more GitHub wording for \"auto-merge cannot be armed\", so a repo with auto-merge allowed but no branch protection degrades to the documented wait path instead of an unrecognized-error park.\n\n_Filed by `reflect` via specShapedBody (deferred at the Wrap-Up Review Console, run 2026-10-17T215350-record-3417)._\n\nhttps://claude.ai/code/session_01QGrWbAJ6KVbLkyCLrrphEx\n\n**Related:** #3522\n",
-        "createdAt": "2026-10-18T06:53:45Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3521,
-        "state": "OPEN",
-        "title": "pr-first-merge Step 3: recognize 'Protected branch rules not configured for this branch (enablePullRequestAutoMerge)' as the arm-unavailable signature",
-        "updatedAt": "2026-10-18T19:46:26Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "# Ledger item #1 — record proposal\n\nOrigin: ledger Phase 2 narrowing on #3401 (row 1)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`bin/flow-preflight.js` classifies a run directory as case 3 (adopted, pre-existing) whenever its `events.jsonl` is non-empty. On run `2026-10-17T190411-spec-3401` the self-minted directory held two `gate-exempt-gitignored` events before `config.yml` existed — both attributed from a sibling session's worktree (`dispatch-record-3405`) by the hook's fallback run-dir resolver — so a fresh mint was classified as an adoption. `/flow` Step 3 recovered by hand (treated it as case 2, wrote `config.yml` from the precedence chain, appended `decisions.md`), but nothing mechanical distinguishes \"events this run produced\" from \"events a sibling misattributed here\".\n\nCross-run event attribution to an empty mint is the hazard `flow/claim-targets.md` already names. The fallback resolver in `bin/lib/hooks/run-dir-resolve.js` picks the most recent matching run dir when `PIPELINE_RUN_DIR` is unset in the hook's environment, which a sibling session's subagent shell routinely is. Refs #3401 (ledger row 1).\n\n## Deliverables\n\n`bin/flow-preflight.js` case classification treats `events.jsonl` as adoption evidence only when at least one event carries this run's own worktree or session (the `worktree`/`sessionId` fields `run-state.json` records), or when `config.yml` exists; an events file holding only foreign-attributed events classifies as case 2 and is reported as such in `preflight.json` (`eventsForeign: N`).\n\n`bin/lib/hooks/run-dir-resolve.js`'s fallback never selects a run dir whose `run-state.json` names a different `worktree` than the hook's own resolved toplevel; when no run dir matches, it drops the event with a `sweep:`-style diagnostic to stderr instead of attributing it to the newest mint.\n\n`tests/bin-lib/flow-preflight/*.test.js` and `tests/bin-lib/hooks/run-dir-resolve.test.js` each gain the foreign-events fixture: a freshly minted dir with two events from another worktree classifies case 2, and the resolver refuses the cross-worktree attribution.\n\n## Acceptance Criteria\n\n`node plugin/bin/flow-preflight.js --run {fresh-mint-with-foreign-events}` reports `case: 2` and `eventsForeign: 2`; with one own-worktree event it reports `case: 3`.\n\nThe hook resolver test fails when the worktree guard in the fallback is removed.\n\n`npm test` passes in full.\n\n## Release Note\n\nFlow: a freshly minted run directory is no longer mistaken for an adoption because a sibling session's hook events landed in it first.\n\n_Filed by `wrap-up` via specShapedBody._\n",
@@ -1876,78 +1799,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (from #3204 wrap-up)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`matchPreExisting` (`plugin/bin/lib/verify/pre-existing.js`, #3129) returns `eligible: true` when every failing file the log names matches the declared `preExisting` allowlist. Its caller (`plugin/bin/verify.js`, the `matchPreExisting({ failingFiles: allFailingFiles, ... })` call) builds that file list with `extractFailingFiles` and runs no unattributed-failure accounting for any family.\n\nA failure the log carries but extraction cannot tie to a file is therefore invisible: the run can be adjudicated as fully covered by the allowlist while an unaccounted failure remains. #3066 closed the same gap for flaky retry (`unattributedFailureCount`) and #3204 extended that to the summary family; `pre-existing.js` was outside both diffs. Raised in #3204's final whole-branch review.\n\n## Deliverables\n\n- [ ] In `plugin/bin/verify.js`, compute each non-skipped failing check's `unattributedFailureCount` and refuse the `preExisting` adjudication when any check reports a positive count (`unattributed-failures: {N}`) or `null` (`no-accounting-guard: {family}`), the same fail-closed posture flaky retry takes.\n\n- [ ] Tests for a spec log and a TAP log with an unattributed failure, and for a summary-family log, each refused.\n\n- [ ] Update the `preExisting` prose in `plugin/skills/test/verification.md` to name the new refusal reasons.\n\n## Acceptance Criteria\n\n- [ ] A spec or TAP run whose failing files are all covered by `preExisting` but whose log also carries an unattributed failure is not adjudicated as passing.\n\n- [ ] A summary-family run is not adjudicated through `preExisting` and the refusal names `no-accounting-guard`.\n\n- [ ] A fully attributed run covered by `preExisting` is still adjudicated as before.\n\n## Release Note\n\nDeclared pre-existing test failures can no longer hide an additional failure the runner could not attribute to a test file.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T21:46:56Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3481,
-        "state": "OPEN",
-        "title": "matchPreExisting adjudicates a run as covered while failures no named file accounts for remain",
-        "updatedAt": "2026-10-18T06:41:08Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (from #3204 wrap-up)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nAfter #3204, `unattributedFailureCount` (`plugin/bin/lib/verify/extract.js`) returns `null` for every output family other than spec/TAP, and `planRetry` (`plugin/bin/lib/verify/flaky.js`) refuses with `no-accounting-guard: {family}`. Runner-owned flaky retry therefore never fires for a jest, vitest or pytest suite; those failures route to the whole-suite re-run path in `plugin/skills/test/verification.md`.\n\n#3204 chose refusal over an accounting check because no single cross-check fits every summary dialect: jest prints `FAIL` lines per test file while its `Tests:` totals count individual tests, and pytest collection `ERROR`s and vitest `Unhandled Errors` sit outside any `FAIL`/`FAILED` line, so a count comparison could report a log as fully accounted while a failure is not.\n\n## Deliverables\n\n- [ ] Add per-dialect accounting for jest (the `FAIL` file lines against `Test Suites: N failed`) and for vitest (`Test Files N failed` plus a check for an `Errors` block), so `unattributedFailureCount` returns `0` or a positive count for them instead of `null`.\n\n- [ ] Keep pytest refusing with `no-accounting-guard: summary` unless a sound check exists: collection `ERROR`s sit outside every `FAILED` line.\n\n- [ ] Tests with a captured log per dialect, each with an all-attributed case and an unattributed-failure case.\n\n- [ ] Update `plugin/skills/test/verification.md` (Flake handling), `docs/journeys/run-a-deterministic-verification-check.md` Step 10, and `.claude/skills/node-test-output-evidence/SKILL.md` to match.\n\n## Acceptance Criteria\n\n- [ ] A jest log whose every failing file is allowlisted and fully attributed retries those files.\n\n- [ ] A jest or vitest log carrying a failure no named file accounts for refuses with `unattributed-failures: {N}`.\n\n- [ ] A pytest log still refuses with `no-accounting-guard: summary`.\n\n- [ ] The prose in the three documents above names the dialects that retry and the one that does not.\n\n## Release Note\n\nRunner-owned flaky retry works again for jest and vitest suites whose failure output the runner can fully account for; pytest suites still fall back to a whole-suite re-run.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-17T21:46:51Z",
         "labels": [
@@ -3059,90 +2910,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3377 #3470 #3496\n\n## Current State\n\n- Three Pipeline Summary templates each carry a `### Timing` section that restates the render rules for `phase-timing.js --markdown --auto-transcript` output: `plugin/skills/wrap-up/summary-template.md` (Timing at line 101), `plugin/skills/flow/summary-template.md` (line 39) and `plugin/skills/flow/multispec-summary.md` (line 35). Each restates two prose blocks plus the table skeletons:\n  - **Phase-table paragraph**: verbatim-render rule, the `unattributed` phase reading, `{Minutes}` with `(own N)`, the `unattributed` row placement, the `tokens: transcript not found (...)` line rendered verbatim above the table, and the `Tokens (in/out)` footnote (raw `input_tokens`/`output_tokens` only, cache fields separate).\n  - **Dispatches paragraph (#3375)**: the scope line, the tier enumeration (`fast`, `standard`, `capable`, `frontier`, `unmapped`), the role enumeration (implementer, task review, re-review, whole-branch review, plan review, lens reviewer, unlabelled), agent-seconds vs elapsed, the not-comparable and never-summed rules, and the not-found and per-dispatch lines.\n  - **Table skeletons**: the `| Phase | Minutes | Verify | …` table, the `Guard denials:` line, and the `| Tier |` and `| Role |` Dispatches tables.\n- The copies are not byte-identical (premise check against the live files). The Dispatches paragraph and the two Dispatches tables match exactly in all three files. The phase-table paragraph drifts between them. The two flow templates carry an archive-path sentence (pass `$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/` as `--run` once wrap-up's cleanup item 8 has archived the run) that `wrap-up/summary-template.md` lacks. `flow/summary-template.md` describes the `unattributed` row as \"below `total`'s neighbor rows, above `total` itself\", while the other two say \"below the phase rows, above `total`\". `multispec-summary.md` passes `$MULTISPEC_PARENT_DIR` where the others pass `$PIPELINE_RUN_DIR`. That drift is the hazard this record exists to remove.\n- `tests/timing-prose-conformance.test.js` pins chosen phrases separately in each template: `#1928 AC6` and the multispec `#1928` test (heading, invocation, phase header), `#1929 AC5` (invocation with `--auto-transcript` and the `tokens: transcript not found` note), and `#3375 AC10.1` (Tier/Role headers, the scope line, the not-found, per-dispatch and excluded lines, the comparability phrases, the placement phrase, and a stale-placement absence). An edit to one copy passes as long as the pinned phrases survive, so the other two can drift. #3375's review and wrap-up each had to make the same edit three times.\n- The tier and role vocabularies the prose restates are defined in code: `plugin/bin/lib/timing/derive.js` exports `TIERS` (`[...Object.keys(PROFILES), 'unmapped']`, line 345) and `ROLE_PATTERNS` (six `{ role, re }` entries, line 364; `roleOf` returns `unlabelled` when none match). Nothing pins the prose sets to these, so a profile or role added in code leaves all three templates stale with every test green.\n- Two sibling paragraphs point at the Timing section's archive rule by reference. `flow/summary-template.md` line 7 (\"the Timing section's rule\") and `flow/multispec-summary.md` line 7 (\"as for Timing\") both sit in the `Needs a human` residue paragraph.\n- CLAUDE.md's Structure section says cross-skill contracts live in `plugin/skills/_shared/*.md` and are cited, not restated. No `_shared` file covers Timing rendering today.\n\n## Deliverables\n\n- [ ] New `plugin/skills/_shared/timing-render.md` holding the Timing render rules once: the phase-table paragraph (one wording, resolving the `unattributed`-row drift to \"below the phase rows, above `total`\"), the archive-path `--run` rule, the `tokens: transcript not found (...)` rule, the `Tokens (in/out)` footnote, the Dispatches paragraph, and the Phase/Tier/Role table skeletons plus the `Guard denials:` line. The file opens with a header naming its three consumers.\n- [ ] Each of the three templates keeps its `### Timing` heading and its own `phase-timing.js` invocation line, because the `--run` value differs per template. Each replaces its restated paragraphs and table skeletons with one citation of `_shared/timing-render.md`.\n- [ ] The two `Needs a human` paragraphs in `flow/summary-template.md` and `flow/multispec-summary.md` repoint their archive-path back-reference at the contract.\n- [ ] `tests/timing-prose-conformance.test.js` is restructured: the contract-content assertions move into one test against `_shared/timing-render.md`. A per-template test asserts each template cites the contract, still carries its invocation line, and no longer carries the retired paragraph body. A new test asserts the contract's tier set equals `derive.js`'s `TIERS` and its role set equals `ROLE_PATTERNS`' roles plus `unlabelled`.\n- [ ] `docs/skill-graph.md` gains the new contract's consumer edges in the `flow` and `wrap-up` sections. The existing `bin/phase-timing.js` rows (around lines 295 and 650) are updated to name the contract as where the render rules live.\n\n## Acceptance Criteria\n\n1. None of the three templates contains the phrase \"sums each dispatch's span with overlap kept\", the phrase \"blank token columns are a fact about the run\", or the header fragment `| Tier | Dispatches |`. Each contains a citation of `_shared/timing-render.md` and its own `bin/phase-timing.js\" --run \"…\" --markdown --auto-transcript` invocation.\n2. `_shared/timing-render.md` contains every phrase the retired per-template `#3375 AC10.1` and `#1929 AC5` assertions pinned: Tier and Role headers, the scope line, `dispatches: subagent transcripts not found`, the per-dispatch line, `dispatches: {n} outside the run window excluded`, `not comparable to phase minutes`, `never summed with the phase table`, the placement phrase, and `tokens: transcript not found`. It also contains the `| Phase | Minutes | Verify |` header and the archive-path rule.\n3. The conformance test goes red in each of these cases, each proven by temporarily reverting the element and re-running the suite: the contract loses a not-found form, a tier name, or a role name; a template drops its citation; a template regains the retired Dispatches paragraph.\n4. The test reads the contract's tier and role sets and asserts them equal, as sets, to `require('plugin/bin/lib/timing/derive.js').TIERS` and to `ROLE_PATTERNS.map((p) => p.role)` plus `'unlabelled'`. Adding a profile to `PROFILES` without updating the contract turns the test red.\n5. `grep -n \"Timing section's rule\\|as for Timing\" plugin/skills/flow/` returns no hit that points at a template's own Timing paragraph. Each archive-path back-reference names `_shared/timing-render.md`.\n6. `npm test` passes, including `tests/skill-graph-dangling-pointer.test.js`, `tests/skill-graph-table-structure.test.js` and the `rail:` suite in `tests/bin-lib/skill-audit/context-cost.test.js` for every changed `plugin/skills/**/*.md`.\n\n## Release Note\n\nMoves the Pipeline Summary's Timing and Dispatches render rules into one shared contract that all three summary templates cite, so the three can no longer drift apart.\n\n## Technical Approach\n\nFollow the `shared-contract-extraction` project skill. The consumer derivation is already done (see Current State and Key Files). All three templates are \"retired a standalone clause\" consumers. `wrap-up/verification-brief.md` stays out of scope: its line 360 states what gets posted to the PR `timing` comment, which is that consumer's outcome rather than a render rule, and `#3375 M3` pins it separately.\n\n1. Write `_shared/timing-render.md`. Take the phase-table paragraph from `flow/summary-template.md`, since it carries the archive-path sentence, and normalize the `unattributed`-row wording to the two-of-three form. Copy the Dispatches paragraph and tables byte-for-byte. Express the `--run` value generically (\"the citing template's run dir\"), so the multispec parent dir and the single-spec run dir both read correctly.\n2. In each template, replace the paragraphs and table skeletons under `### Timing` with a short block: the invocation line plus one sentence citing `_shared/timing-render.md` for how the output renders. Write the citation in the backticked `_shared/{file}.md` form these templates already use (`_shared/try-it.md`, `_shared/release-recommendation-gate.md`).\n3. Repoint the two `Needs a human` back-references (`flow/summary-template.md` line 7, `flow/multispec-summary.md` line 7) at the contract.\n4. Restructure `tests/timing-prose-conformance.test.js` per the `skill-prose-conformance-tests` project skill. Retarget the content pins of `#1928 AC6`, the multispec `#1928` test, `#1929 AC5` and `#3375 AC10.1` to the contract. Keep the invocation-line pins per template, because the run-dir variable lives there. Add per-template citation-presence and retired-body-absence assertions, each with a whitespace-collapsed control. Add the derive.js set-equality test, which parses the backticked tier list and the role list out of the contract's Dispatches paragraph. `#1929 AC5`'s list also covers `verification-brief.md`, `_shared/pr-run-comments.md` and two journeys. Leave those entries as they are, and drop only the three templates from its `tokens: transcript not found` note check, since that note now lives in the contract.\n5. Add the `docs/skill-graph.md` edges and update the two `bin/phase-timing.js` rows.\n\n### Key Files\n\n- `plugin/skills/_shared/timing-render.md` — new: the single Timing/Dispatches render contract\n- `plugin/skills/wrap-up/summary-template.md` — `### Timing` body replaced by invocation line plus citation\n- `plugin/skills/flow/summary-template.md` — `### Timing` body replaced by invocation line plus citation; line 7 archive back-reference repointed\n- `plugin/skills/flow/multispec-summary.md` — `### Timing` body replaced by invocation line plus citation; line 7 archive back-reference repointed\n- `tests/timing-prose-conformance.test.js` — content pins retargeted to the contract; citation, absence and derive.js set-equality assertions added\n- `plugin/bin/lib/timing/derive.js` — read-only source of `TIERS` and `ROLE_PATTERNS` for the set-equality test; not edited\n- `docs/skill-graph.md` — new contract edges under `flow` and `wrap-up`; `bin/phase-timing.js` rows updated\n\n## Gotchas\n\n- The archive-path rule exists in only two of the three templates. Folding it into the contract makes `wrap-up/summary-template.md` cite it too. The rule is conditional (it applies only once the run dir is archived), so it is harmless where it never fires. Still, for wrap-up this is new text in effect, not a pure move. Say so in the commit.\n- `ROLE_PATTERNS` holds six roles. `unlabelled` is `roleOf`'s fallback, not an entry. The set-equality assertion must add `unlabelled` explicitly or it can never pass. The prose lists roles in a different order from `ROLE_PATTERNS`, so compare as sets, not sequences.\n- `TIERS` derives from `PROFILES` keys, so the test must `require` derive.js rather than hard-code `fast/standard/capable/frontier`. A hard-coded copy reintroduces the drift this record removes.\n- `#3375 AC10.1` carries an absence assertion (`rendered verbatim below the Guard denials line`). Move it to the contract with its presence twin, and keep a per-template absence check so a template cannot silently regain the stale placement.\n- `docs/journeys/attribute-agent-cost-to-dispatches-3375.md` describes the Dispatches output as a user would see it. It is a journey, not a restatement of the render rules, and needs no edit. The `#1929 AC5` journey pins stay as they are.\n- `tests/console-resolve-conformance.test.js` pins the `Needs a human` paragraph's `console-residue.js` wording in both flow templates. Repointing the archive back-reference (Deliverable 3) must leave those pinned phrases intact.\n\n## Original request\n\nConsolidate the Timing/Dispatches render prose into one cited contract\n\nOrigin: /claude-tweaks:review Step 3 Routing for #3375 — lens 3a, both reproduction agents (ledger row 32)\nDefer-reason: genuinely-larger — a cross-template contract extraction outside #3375's scope; the triplication predates it (the #1928/#1929 Timing paragraph), #3375 only extended it\n\n## Current State\n\n- `plugin/skills/wrap-up/summary-template.md`, `plugin/skills/flow/summary-template.md` and `plugin/skills/flow/multispec-summary.md` each restate the `### Timing` render rules for `phase-timing.js --markdown` output: the verbatim-render rule, the `tokens: transcript not found` line, the `Tokens (in/out)` footnote and, since #3375, the Dispatches paragraph (scope line, tier/role enumerations, agent-seconds vs elapsed, the per-dispatch not-found lines).\n- The three copies are byte-identical. `tests/timing-prose-conformance.test.js` pins chosen phrases in each, so a body edit to one copy passes as long as those phrases survive, and the other two drift. #3375's review and wrap-up each had to make the same edit three times.\n- CLAUDE.md says cross-skill contracts live in `plugin/skills/_shared/*.md` and are cited, not restated.\n\n## Deliverables\n\n- [ ] One `_shared` contract holding the Timing render rules (phase table and Dispatches section), cited from the three templates in place of the restated paragraphs.\n- [ ] `tests/timing-prose-conformance.test.js` pins the contract's content once and asserts that each template cites it.\n\n## Acceptance Criteria\n\n1. The three templates no longer carry the Timing/Dispatches paragraph body. Each cites the shared contract.\n2. The conformance test fails when the contract loses a not-found form, a role or a tier name, or when a template stops citing it. The tier and role sets are asserted equal to `derive.js`'s `TIERS` and `ROLE_PATTERNS`, not just non-lossy.\n3. `npm test` passes, and every changed `plugin/skills/**/*.md` stays under its byte ceiling.\n\n_Filed by `review` via specShapedBody._\n\nhttps://claude.ai/code/session_011DTkWJFv9fkJj7ntsifbkj\n",
-        "createdAt": "2026-10-17T18:38:55Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3413,
-        "state": "OPEN",
-        "title": "Consolidate the Timing/Dispatches render prose into one cited contract",
-        "updatedAt": "2026-10-18T19:45:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
@@ -7066,84 +6833,6 @@
     ],
     [
       {
-        "body": "## Current State\n\nDuring a standalone /claude-tweaks:backlog refine run (2026-10-01), `resolve-run-dir --spec-slug backlog-standalone --create` returned a pre-existing run directory, `20260911T131119-backlog-standalone` (last touched 2026-09-20, ~3 weeks stale, never closed), instead of minting a fresh one. The directory carries no `run-state.json`, so nothing marks it closeable or orphaned, which lets it be resolved as \"the current run\" indefinitely. The agent that hit this detected the staleness from the directory's age and missing run-state.json, declined to write into it, and hand-minted a separate directory instead rather than risk mixing new writes into stale history. The old directory is still sitting there unclosed.\n\n## Deliverables\n\nMake the standalone-run resolution path (`resolve-run-dir --spec-slug <slug> --create`, or whatever backs it) detect a candidate directory with no `run-state.json` and either (a) refuse to hand it back as the current run and mint fresh instead, or (b) flag it for reconcile/close-run cleanup rather than silently sitting there as a live-looking resolution target.\n\n## Acceptance Criteria\n\n- A `resolve-run-dir --spec-slug <slug> --create` call no longer hands back a pre-existing directory that has no `run-state.json`; it mints a fresh directory instead.\n- A regression test reproduces the original symptom (a fixture directory with decisions.md content but no run-state.json) and asserts the new behavior.\n- The pre-existing `20260911T131119-backlog-standalone` directory gets an explicit disposition (closed or reconciled) as part of or alongside this fix.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-01T17:17:41Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 2870,
-        "state": "OPEN",
-        "title": "resolve-run-dir mis-resolves a stale, never-closed standalone run directory as current",
-        "updatedAt": "2026-10-18T19:45:27Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #3044 (item 1 of the original request — the AC-forwarding sample's sanctioned writer — is already its own `ready` record; out of scope here)\n\n## Current State\n\nThe original report bundles four friction points from one `/flow` run on 6.132.0 (Windows, worktree-isolated). Checked against this tree:\n\n1. **AC-forwarding sample path unwritable from a worktree session** — already shaped as #3044, which covers exactly this. Excluded from this record.\n2. **`computeDiffFacts` input shape vs its documented call — confirmed.** `plugin/skills/build/dispatch.md:19` says to compute diff facts \"via `bin/lib/dispatch/ceremony-derive.js`'s `computeDiffFacts` over the branch's `git diff --numstat` output\". `plugin/skills/wrap-up/ceremony-derivation.md:30` uses the same phrasing. But `computeDiffFacts(files)` (`plugin/bin/lib/dispatch/ceremony-derive.js:25-29`) takes the parsed `[{path, additions, deletions}]` array, which `parseNumstat` produces. `parseNumstat` is exported from `plugin/bin/lib/blast-radius-cli.js:40,145`. Neither doc names the parser, so following the prose literally passes a raw string and throws.\n3. **Circular-dependency warnings on the documented security-hardening invocation — confirmed, but the false-clean claim is not reproduced.** Running `plugin/skills/review/focus-criterion-passes.md:12`'s direct `require` of `candidates-security-hardening.js` emits `Accessing non-existent property 'listTrackedSourceFiles' … inside circular dependency`, along with the same warning for `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp` and `listTrackedFiles`. The cause is require order. `candidates-security-hardening.js:143-144` requires `./candidates-dead-code` before `./focus-generators`. `candidates-experiment-cleanup.js:60-61` does the same and also emits warnings when required directly. The ordering rule documented at `candidates-abstraction-police.js:56-68` says to require the registry first, because otherwise Node hands a sibling generator a partially loaded `candidates-dead-code` exports object and its helpers bind to `undefined`. On this repo, `scanSecurityHardening(process.cwd())` still returns a non-empty `{candidates: [...]}`. The scan itself therefore works here, and the generator actually affected by the half-loaded exports is `candidates-abstraction-police.js` in that same process.\n4. **`log-decision.js --reversibility` rejects the documented qualifier form — confirmed.** `plugin/bin/log-decision.js:51` accepts only `high|med|low|n/a`. Meanwhile `plugin/skills/_shared/pr-early-run-lifecycle.md:154,307,333` mandates log lines such as `Reversibility: high (branch can be reset/force-pushed).`, and `plugin/bin/lib/log-decision/append.js:51` renders `Reversibility: ${reversibility}.`. The sanctioned writer cannot produce the documented line.\n\n## Deliverables\n\n1. **Item 2:** in `build/dispatch.md:19` and `wrap-up/ceremony-derivation.md:30`, state that the numstat output is parsed with `parseNumstat` (`bin/lib/blast-radius-cli.js`) before `computeDiffFacts` is called. Give a one-line runnable `node -e` composing the two.\n2. **Item 3:** fix the require order in `candidates-security-hardening.js` and `candidates-experiment-cleanup.js` so `./focus-generators` is required before `./candidates-dead-code`, matching `candidates-abstraction-police.js`'s documented rule. Add a regression test: requiring each `candidates-*.js` module directly in a fresh `node` process emits no `inside circular dependency` warning.\n3. **Item 4:** make `log-decision.js --reversibility` accept a tier with a trailing parenthetical qualifier (`high (branch can be reset/force-pushed)`). Validate the tier against the existing enum and render the qualifier verbatim, so the written line matches `pr-early-run-lifecycle.md`'s mandated form. A bare tier keeps working unchanged. Check that `claim-log.js`'s `ACTION_RE` (`plugin/bin/lib/log-decision/claim-log.js:23`) still parses lines that carry a qualifier.\n\n## Acceptance Criteria\n\n- `build/dispatch.md` and `wrap-up/ceremony-derivation.md` name `parseNumstat` as the step between `git diff --numstat` and `computeDiffFacts`.\n- `node -e \"require('./plugin/bin/lib/code-health/candidates-security-hardening.js')\" 2>&1 | grep -c \"circular dependency\"` prints `0`, and the same holds for every other `candidates-*.js` module. A test pins this.\n- `log-decision.js --reversibility \"high (branch can be reset/force-pushed)\"` exits 0 and writes `Reversibility: high (branch can be reset/force-pushed).`. `--reversibility \"bogus (x)\"` still exits non-zero. Tests cover both cases.\n- `npm test` passes in full.\n\n## Release Note\n\nFixed misleading circular-dependency warnings from code-health scanners and let the decision logger record reversibility notes the pipeline docs require.\n\n## Technical Approach\n\nThe three items are independent, small, and touch disjoint files, so build them as three separate commits. Item 3: swap the two require lines in each offending module. The warning test spawns `node -e \"require(...)\"` per module and asserts that stderr contains no `circular dependency` string. Item 4: parse `^(high|med|low|n/a)(\\s+\\(.+\\))?$`, validate group 1 against `REVERSIBILITY`, and pass the full string through to `formatEntry`. Item 2 is prose only.\n\n### Key Files\n\n- `plugin/skills/build/dispatch.md` — name `parseNumstat` before `computeDiffFacts` (line 19)\n- `plugin/skills/wrap-up/ceremony-derivation.md` — same correction (line 30)\n- `plugin/bin/lib/code-health/candidates-security-hardening.js` — require `./focus-generators` before `./candidates-dead-code`\n- `plugin/bin/lib/code-health/candidates-experiment-cleanup.js` — same require-order fix\n- `plugin/bin/log-decision.js` — accept a tier with a trailing parenthetical qualifier\n- `plugin/bin/lib/log-decision/append.js` — render the qualifier verbatim\n- `plugin/bin/lib/log-decision/claim-log.js` — confirm `ACTION_RE` tolerates a qualifier\n- `tests/bin-lib/code-health/candidates-security-hardening.test.js` — add the no-circular-warning assertion (or a sibling test covering every `candidates-*.js`)\n\n## Gotchas\n\n- ASSUMPTION — verify at build: the reporter's `[]` result from `scanSecurityHardening` on their own repo was a legitimate zero-match rather than a cycle-induced false clean. It was not reproduced here (the scan returns candidates on this repo), and this run's return shape (`{candidates}`) differs from the array the reporter saw on 6.132.0. Confirm by running the scan against a fixture containing an `api/` route with a known finding, both before and after the require-order fix.\n- Do not fix item 3 by suppressing Node warnings. The undefined bindings are real for whichever generator loads mid-cycle.\n- Item 1 belongs to #3044. Do not fold a sample-file writer into this record.\n\n## Original request\n\nFour friction points in a /flow build-review-wrap-up run under worktree isolation (claude-tweaks 6.132.0)\n\nComponent: claude-tweaks plugin (skills/build/dispatch.md, bin/lib/dispatch/ceremony-derive.js, bin/lib/code-health/candidates-security-hardening.js, bin/log-decision.js)\nKind: defect\n\n## Summary\n\nA single-record `/claude-tweaks:flow` run (worktree-isolated session, Windows, plugin 6.132.0) hit four plugin-side issues. Item 3 is the most important: it looks like a silent false-clean in review's Step 6.6 security-hardening pass.\n\n## 1. `build/dispatch.md`'s AC-forwarding sample path is unwritable from a worktree session\n\n`skills/build/dispatch.md` (\"Standing AC-forwarding verification\") tells the run to copy the first reviewer prompt to `$PIPELINE_RUN_DIR/sdd-dispatch-sample.txt`. In a worktree-isolated session the harness's Write tool refuses that path (\"Edit the worktree copy of this file instead of the shared-checkout path\"), because the run dir is anchored in the main checkout. Workaround used: write inside the worktree, then `cp`. Suggest: document a sanctioned writer (as for `log-decision.js`/`stage-item.js`), or name a worktree-local sample path.\n\n## 2. `computeDiffFacts` input shape vs. its documented call\n\n`skills/build/dispatch.md` (\"Whole-branch review model\") says to compute diff facts \"via `bin/lib/dispatch/ceremony-derive.js`'s `computeDiffFacts` over the branch's `git diff --numstat` output\". The function expects the parsed `{path, additions, deletions}[]` array (`blast-radius-cli.js`'s `parseNumstat` shape). Passing the raw numstat string throws `TypeError: (files || []).map is not a function` at `bin/lib/issues/blast-radius.js:91`. Suggest: export or document the parser in the same sentence, or have `resolve-profile.js` accept `--numstat`.\n\n## 3. `scanSecurityHardening` appears to fail silently on a circular import\n\nRunning review Step 6.6's documented invocation:\n\n```\nnode -e \"const {scanSecurityHardening}=require('<plugin>/bin/lib/code-health/candidates-security-hardening.js'); console.log(JSON.stringify(scanSecurityHardening(process.cwd())))\"\n```\n\nprinted `[]`, preceded by repeated warnings: `Accessing non-existent property 'listTrackedSourceFiles' of module exports inside circular dependency` (also `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp`, `listTrackedFiles`). It returned 0 candidates repo-wide on a repo with an `api/` routes tree. If those helpers resolve to `undefined` because of the cycle, every per-review security-hardening pass reports a false clean. Suggest: break the cycle (lazy require), and have the pass fail loudly when its helpers are unresolved.\n\n## 4. `log-decision.js --reversibility` rejects the documented parenthesised form\n\n`_shared/pr-early-run-lifecycle.md`'s mandatory log lines read e.g. `Reversibility: high (branch can be reset/force-pushed).` Passing that as `--reversibility \"high (branch can be reset/force-pushed)\"` fails: `--reversibility must be one of high|med|low|n/a`. Suggest: accept a trailing parenthetical, or document that the qualifier goes into `--text`.\n\n## Environment\n\nclaude-tweaks 6.132.0; Claude Code on Windows 11, Git Bash; worktree-isolated session (`worktree-always` policy).\n\n**Plugin version:** 6.132.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-c8c954ba -->\n",
         "createdAt": "2026-10-01T16:30:10Z",
         "labels": [
@@ -7543,96 +7232,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3392, #3429, #3440, #3505, #3506, #3507, #3509, #3518, #3523\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39103544055, on `windows-latest`) flagged `tests/dispatch-neighbour-in-flight-mcp.test.js` as newly failing after PR #3441 merged as `c65b3fdbb` (#3392's MCP-transport branch for dispatch's neighbour-in-flight pass). That merge added the file, so it has no earlier Windows baseline. The run's `verify-report` artifact lists it as the only `attributable` file. The other 102 files failing at head were already failing at base `2514e406c`.\n\nThe issue excerpt quotes one failure. The run's `tests` log shows four of the file's six tests failing, all with the same assertion:\n\n- `AC1.1: the MCP claim-target snippet prints [9] …` (line 81): `heredoc #0 has no NODE_EVAL_EOF terminator`\n- `AC2.1: a stale label with no live claim …` (line 91): `heredoc #1 has no NODE_EVAL_EOF terminator`\n- `AC3.1: a failed MCP claim read prints the AUTO line …` (line 99): `heredoc #1 has no NODE_EVAL_EOF terminator`\n- `AC3.1: a failed MCP pool list is documented to write [] …` (line 109): `heredoc #0 has no NODE_EVAL_EOF terminator`\n\nThe two passing tests (lines 118 and 132) only call `includes` on single-line tokens.\n\nRoot cause, checked against the file at `origin/main` `7852fd8bf` (it has not changed since `c65b3fdbb`):\n\n- Lines 18-19 read `plugin/skills/dispatch/mcp-transport.md` and `plugin/skills/dispatch/queue-pull-script.md` with raw `fs.readFileSync(..., 'utf8')`. This repo's `.gitattributes` pins only `tools/upstream-drift/fixtures/**`. A Windows checkout with `core.autocrlf=true` therefore reads both files with `\\r\\n` line endings.\n- `snippet(index)` (lines 33-45) finds a heredoc's end with `text.indexOf('\\n' + END, found)`, where `END = 'NODE_EVAL_EOF\\n'` (line 23). On CRLF text the terminator line is `\\r\\nNODE_EVAL_EOF\\r\\n`, so the search returns -1 and line 43's `assert.notStrictEqual(close, -1, …)` throws. That is the reported error.\n- Reproduced on macOS from an `origin/main` tree export. The file passes 6/6 as checked out. After converting the two markdown inputs to CRLF it fails exactly the four tests above, with the same `heredoc #N` messages. Routing both reads through `readText()` makes it pass 6/6 again on the CRLF inputs. This was a CRLF simulation on a POSIX host, not a Windows run.\n- Normalizing at read time also matters past the extractor. The extracted snippet is run through `bash -c` (`run`, lines 70-77), and a heredoc carrying `\\r` would not match its own `NODE_EVAL_EOF` terminator in bash either.\n\nThe repo already has the house fix for this class: `tests/helpers/read-skill.js`'s `readText(absPath)`, which normalizes EOLs (#2763). `skill-prose-conformance-tests` requires every prose suite to read governed markdown through it. This file, added by #3392, does not use it. The production prose (`mcp-transport.md`'s two heredocs at lines 121-124 and 132-141) is correct.\n\n## Deliverables\n\n1. `tests/dispatch-neighbour-in-flight-mcp.test.js` reads `mcp-transport.md` and `queue-pull-script.md` through `readText()` from `./helpers/read-skill.js` instead of raw `fs.readFileSync`. The `fs` import stays, because the fixture helper uses it.\n2. The extractor itself tolerates CRLF input, not only the read. `section` and `snippet` take the source text as a parameter, defaulting to `MCP`. `snippet`'s terminator search accepts an optional `\\r` before each newline around `NODE_EVAL_EOF`, and the start-anchor and missing-terminator asserts are kept.\n3. A new CRLF test case. Build `crlf = MCP.replace(/\\n/g, '\\r\\n')`, then assert for heredocs 0 and 1 that `snippet(i, crlf).replace(/\\r\\n/g, '\\n')` strictly equals `snippet(i)` on the LF text.\n\n## Acceptance Criteria\n\n- [ ] `grep -n \"fs.readFileSync\" tests/dispatch-neighbour-in-flight-mcp.test.js` returns no match, and the file requires `readText` from `./helpers/read-skill.js`.\n- [ ] `node --test tests/dispatch-neighbour-in-flight-mcp.test.js` passes on macOS/Linux with 0 failures: the 6 existing tests plus the new CRLF case, with none skipped or removed.\n- [ ] Go-red check: temporarily reverting `snippet`'s terminator search to the bare `'\\n' + END` form makes the new CRLF case fail, and restoring it makes the case pass again. Do the revert and the restore in the same command.\n- [ ] The file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's result for this file. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not count a CRLF or `path.win32` simulation as a Windows run.\n- [ ] No file under `plugin/` changes. `mcp-transport.md` and `queue-pull-script.md` stay byte-identical.\n- [ ] `npm test` passes with no new failures compared to `origin/main`.\n\n## Release Note\n\nFixed a dispatch test that failed on Windows checkouts because of line-ending differences.\n\n## Technical Approach\n\nThis is a test-only change to one file. It follows `.claude/skills/windows-checkout-test-parity/SKILL.md` (\"Build CRLF inputs from the LF text\") and `.claude/skills/skill-prose-conformance-tests/SKILL.md` (\"Prose reads come from the shared helper\", plus the Anti-Patterns row on anchoring an extractor on a bare `\\n`). Replace the two raw reads with `readText(path.join(ROOT, 'plugin', 'skills', 'dispatch', …))`. Thread an optional `text` argument through `section`/`snippet`, and make the terminator search CRLF-tolerant with a regex or an equivalent pair of `indexOf` probes. Add one `test()` for the CRLF case. Keep `run`'s `bash -c` input LF: every snippet the suite executes comes from the `readText`-normalized `MCP`.\n\nAlternative rejected: a `.gitattributes` `eol=lf` rule for `*.md`. It would change checkout behavior for every Windows user of the repo, and the only `.gitattributes` rule today is a narrow fixture-hash carve-out. `readText()` is the convention that #2763 settled on and that sibling records #3429, #3440 and #3507 apply.\n\n### Key Files\n\n- `tests/dispatch-neighbour-in-flight-mcp.test.js` — use `readText()` for the two markdown reads, parameterize `section`/`snippet` on the source text with a CRLF-tolerant terminator, and add the CRLF case\n- `tests/helpers/read-skill.js` — unchanged; the existing `readText()` helper being consumed\n- `plugin/skills/dispatch/mcp-transport.md` — unchanged; read-only input (the `## Step 2 — neighbour-in-flight pool (#3278, #3392)` section's two heredocs)\n- `plugin/skills/dispatch/queue-pull-script.md` — unchanged; read-only input\n\n## Gotchas\n\n- Scope is this one file. Each sibling \"Windows regression: N test file(s) newly failing after …\" record (#3429, #3440, #3505, #3506, #3507, #3509, #3518, #3523) covers its own commit and files.\n- `tests/dispatch-named-target-exclusion-fixture.test.js` also extracts a `NODE_EVAL_EOF` heredoc. The same run shows it failing at both base and head, so it is a pre-existing Windows failure and not part of this record. `tests/dispatch-per-record-groups-prose.test.js` uses the same `'\\nNODE_EVAL_EOF\\n'` terminator shape and passed on this run. Leave both alone here.\n- Do not run CRLF text through `bash -c`. The CRLF case compares extractions only. A `\\r`-bearing heredoc fails in bash for a reason unrelated to the extractor, and that failure would be misread as a regression.\n- ubuntu CI cannot see this failure class. The CRLF case is the pin that runs on Linux. Without it, a later edit could reintroduce the raw read or the bare-`\\n` terminator and stay green on every PR.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after c65b3fdbb\n\nThe post-merge Windows check failed on commit c65b3fdbb29eb298f26be628859b2f0d65d444e8 (compared against 2514e406c).\n\n**Merged PR:** #3441 (https://github.com/thn-inc/claude-tweaks/pull/3441)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39103544055\n\n### Newly failing test files\n- `tests/dispatch-neighbour-in-flight-mcp.test.js`\n\n### Failure excerpts\n\n#### `tests/dispatch-neighbour-in-flight-mcp.test.js`\n\n```\nnot ok 8436 - AC1.1: the MCP claim-target snippet prints [9] and the MCP exclusion snippet writes a neighbour-in-flight exclusion for a live MCP-read claim\n  ---\n  duration_ms: 7.6235\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\dispatch-neighbour-in-flight-mcp.test.js:81:1'\n  failureType: 'testCodeFailure'\n  error: 'heredoc #0 has no NODE_EVAL_EOF terminator'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: -1\n  actual: -1\n  operator: 'notStrictEqual'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T06:35:41Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3517,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after c65b3fdbb",
-        "updatedAt": "2026-10-18T19:46:15Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
