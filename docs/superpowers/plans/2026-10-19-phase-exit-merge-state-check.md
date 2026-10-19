@@ -221,3 +221,10 @@ git commit -m "Check the run PR's merge state at every phase-exit push — auto 
 | AC2.1 | Task 2 `AC2.1` pins (second half waived — forge behavior) |
 | AC3.1 | Task 1 `AC3.1`, Task 2 `AC3.1` pin |
 | AC4.1 | Task 1 `AC4.1` ×2, Task 2 `AC4.1` pin |
+
+## Build deviations (Common Step 4.5, Beneficial — applied)
+
+1. `not-open` state: a PR whose `state` is not `OPEN` is no signal (a CLOSED PR can still report `DIRTY`; acting on it would merge and push to a dead branch). Final review #5.
+2. Unresolvable auto catch-up: spec D3 says resolve per the merge-conflict procedure, whose fallback asks the user; in `auto` that is a forbidden mid-flow stop, so an unresolvable conflict is aborted (`merge --abort`), logged, and left for the merge path. Task 2 review.
+3. `unknown` writes a non-alarming `SKIP` degrade trace (spec D4 forbids alarming logs, not degrade traces) so "checked, clean" and "no signal" stay distinguishable. Final review #1.
+4. The CLI is a standalone `bin/pr-merge-state.js` (sibling of `bin/pr-checks.js`), the spec's "small CLI" option, so `plugin/bin/hooks.js` and `docs/hooks.md` are untouched.
