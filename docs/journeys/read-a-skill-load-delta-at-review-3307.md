@@ -45,4 +45,5 @@ files:
 
 ## Origin
 - Created during build of #3307 (per-invocation skill load model and review step 3j — parent #3305, skill size limits guard platform limits only).
+- Updated during build of #3457, which added citation-grammar rule (e): plugin-root-relative `skills/…` and skills-dir-relative `{skill}/…` tokens now resolve, so closures stop undercounting.
 - Related specs: #3309 (transcript-measured actual load in `/harness-health`, which consumes `entryPointLoads`), #3310 (cuts every size consumer over to the rail, load delta, and size outlier), #3311 (retires the old per-file size-ceiling code and its merge-time probe).
