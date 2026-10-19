@@ -15,7 +15,7 @@
 - Corroboration runs at `medium` only. `high`+ (Step 3.5 debate) is unchanged, and so is the `low` single-read rule.
 - It runs over `unconfirmed` findings only; a `confirmed` finding is never an input.
 - Match rule: different lenses, exact path, |line delta| ≤ 5, both texts known, and `substanceSimilarity` ≥ `SUBSTANCE_SIMILARITY_MIN` (0.2). Missing text never corroborates.
-- Log line (exact): `AUTO {HH:MM:SS} — Cross-lens corroboration (medium tier): finding {path}:{line} reported independently by lenses {lens list}. Confirmed. Reversibility: high.`
+- Log line (exact): `AUTO {HH:MM:SS} — Cross-lens corroboration (medium tier): finding {path}:{line} reported independently by lenses {lens list}. Confirmed. Reversibility: high.` When `severityContested` is set (exact): `AUTO {HH:MM:SS} — Cross-lens corroboration (medium tier): finding {path}:{line} reported independently by lenses {lens list}, severity contested (took the highest). Confirmed. Reversibility: high.`
 - No file under `plugin/skills/**` may exceed `RAIL_BYTES` (52,500).
 - Scope keywords: corroborate, cross-lens, detect-overlap
 
@@ -24,7 +24,7 @@
 1. Two findings from the *same* lens (the two agents of one pair that didn't reproduce) must not corroborate each other. Pinned in Task 1 (`same lens never self-corroborates`).
 2. A lens 3f vacuity finding downgraded for missing execution evidence must not be re-confirmed through agreement with another lens: the same shared-misread risk applies. The prose excludes it from the input (Task 2, pinned in the conformance test).
 3. Three lenses on one defect must yield **one** confirmed row, not three. Pinned in Task 1 (`three lenses collapse to one row`).
-4. Lenses that disagree on severity: the confirmed row takes the lowest member severity and sets `severityContested: true`, following #733's reproduction precedent. Pinned in Task 1.
+4. Lenses that disagree on severity: the confirmed row takes the highest member severity (its representative is the most severe member) and sets `severityContested: true`, mirroring `step3-routing.md`'s cross-lens de-dup rule (keep the higher severity) — the lowest would let a corroborating `low` finding demote a `critical` one into AUTO-apply (final-review ruling R1, superseding the original #733-precedent choice). A chain cluster is carved into rows of members that directly match each row's representative, so no distinct finding is absorbed (ruling R3). Pinned in Task 1.
 5. Findings 6+ lines apart, or with different substance, stay unconfirmed. Pinned in Task 1.
 
 ---

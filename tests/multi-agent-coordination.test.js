@@ -842,7 +842,7 @@ test('corroborateCrossLens: same lens never self-corroborates', () => {
   assert.deepStrictEqual(r.unconfirmed['3a'], [f1, twin]);
 });
 
-test('corroborateCrossLens: three lenses collapse to one row with the lowest severity, contested', () => {
+test('corroborateCrossLens: three lenses collapse to one row with the highest severity, contested', () => {
   const r = c.corroborateCrossLens({
     '3a': [{ path: 'x.js', line: 10, severity: 'high', text: CORROB_A }],
     '3b': [{ path: 'x.js', line: 11, severity: 'low', text: CORROB_B }],
@@ -850,12 +850,69 @@ test('corroborateCrossLens: three lenses collapse to one row with the lowest sev
   });
   assert.strictEqual(r.corroborated.length, 1);
   const row = r.corroborated[0];
-  assert.strictEqual(row.severity, 'low');
+  assert.strictEqual(row.severity, 'high');
   assert.strictEqual(row.severityContested, true);
   assert.deepStrictEqual(row.lenses, ['3a', '3b', '3c']);
   assert.strictEqual(row.members.length, 3);
-  // Representative is the first member in input key order.
+  // Representative is the most severe member: 3a's finding.
+  assert.strictEqual(row.path, 'x.js');
   assert.strictEqual(row.line, 10);
+});
+
+test('corroborateCrossLens: critical security finding corroborated by a low convention finding stays critical', () => {
+  const r = c.corroborateCrossLens({
+    '3a': [{ path: 'x.js', line: 10, severity: 'low', text: CORROB_A }],
+    '3b': [{ path: 'x.js', line: 13, severity: 'critical', text: CORROB_B }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  const row = r.corroborated[0];
+  assert.strictEqual(row.severity, 'critical');
+  assert.strictEqual(row.severityContested, true);
+  assert.strictEqual(row.line, 13);
+  assert.strictEqual(row.text, CORROB_B);
+  assert.deepStrictEqual(row.lenses, ['3a', '3b']);
+});
+
+test('corroborateCrossLens: chain cluster keeps every distinct finding routed', () => {
+  const CORROB_C = 'superseded failed base run marks the real PR failure inherited';
+  // 3c@10 and 3c@18 are 8 lines apart (outside +/-5); 3b@14 bridges both.
+  const r = c.corroborateCrossLens({
+    '3b': [{ path: 'x.js', line: 14, severity: 'low', text: CORROB_B }],
+    '3c': [
+      { path: 'x.js', line: 10, severity: 'medium', text: CORROB_A },
+      { path: 'x.js', line: 18, severity: 'high', text: CORROB_C },
+    ],
+  });
+  assert.strictEqual(r.corroborated.length, 2);
+  const at = (line) => r.corroborated.find((row) => row.line === line);
+  const memberKeys = (row) => row.members.map((m) => `${m.lens}@${m.line}`).sort();
+  const row18 = at(18);
+  assert.ok(row18, 'no row at line 18');
+  assert.strictEqual(row18.severity, 'high');
+  assert.deepStrictEqual(row18.lenses, ['3b', '3c']);
+  assert.deepStrictEqual(memberKeys(row18), ['3b@14', '3c@18']);
+  const row10 = at(10);
+  assert.ok(row10, 'no row at line 10');
+  assert.strictEqual(row10.severity, 'medium');
+  assert.deepStrictEqual(row10.lenses, ['3b', '3c']);
+  assert.deepStrictEqual(memberKeys(row10), ['3c@10']);
+  assert.deepStrictEqual(r.unconfirmed['3b'], []);
+  assert.deepStrictEqual(r.unconfirmed['3c'], []);
+});
+
+test('corroborateCrossLens: corroborated rows carry no nearLocation/source', () => {
+  const r = c.corroborateCrossLens({
+    '3b': [{
+      path: 'x.js', line: 10, severity: 'high', text: CORROB_A,
+      source: 'A', nearLocation: { source: 'B', path: 'x.js', line: 11 },
+    }],
+    '3c': [{ path: 'x.js', line: 12, severity: 'low', text: CORROB_B }],
+  });
+  assert.strictEqual(r.corroborated.length, 1);
+  const row = r.corroborated[0];
+  assert.strictEqual(row.line, 10);
+  assert.ok(!('nearLocation' in row), 'row carries nearLocation');
+  assert.ok(!('source' in row), 'row carries source');
 });
 
 test('corroborateCrossLens: matching-bucket members carry no severityContested', () => {

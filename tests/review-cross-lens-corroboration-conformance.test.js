@@ -32,11 +32,34 @@ function bullet(dispatch) {
   return line;
 }
 
+const CONTESTED_LOG_LINE =
+  'AUTO {HH:MM:SS} — Cross-lens corroboration (medium tier): finding {path}:{line} reported independently by lenses {lens list}, severity contested (took the highest). Confirmed. Reversibility: high.';
+const PROMOTE_CLAUSE = 'Emit each `corroborated` entry as `confirmed`';
+const INPUT_STEP = '1. **Collect the input.**';
+const VACUITY_SCOPE = 'however it became `unconfirmed`';
+const OVERRIDES_FIRST = 'Direct-verification overrides run before the pass';
+
 function assertPromotes(file) {
   assert.match(file, /corroborate-cross-lens/);
   assert.ok(file.includes(LOG_LINE), 'missing the exact corroboration log line');
-  assert.match(file, /confirmed/);
+  assert.ok(file.includes(CONTESTED_LOG_LINE), 'missing the exact contested corroboration log line');
+  assert.ok(file.includes(PROMOTE_CLAUSE), 'missing the promote-to-confirmed clause');
   assert.match(file, /Step 3 Routing/);
+}
+
+function inputStep(file) {
+  const line = file.split('\n').find((l) => l.startsWith(INPUT_STEP));
+  assert.ok(line, 'input step not found');
+  return line;
+}
+
+function assertInputScope(file) {
+  const step = inputStep(file);
+  assert.match(step, /vacuity/);
+  assert.match(step, /excluded/);
+  assert.ok(step.includes(VACUITY_SCOPE), 'vacuity exclusion is not scoped to every route into unconfirmed');
+  assert.ok(step.includes('Direct-verification override'), 'vacuity exclusion does not cite the override paragraph');
+  assert.ok(step.includes(OVERRIDES_FIRST), 'input step does not order overrides before the pass');
 }
 
 function assertKeepsStaged(file, dispatch) {
@@ -121,8 +144,27 @@ test('gate: code-mode-steps.md reads the file at medium, before Step 3.5', () =>
   assert.ok(steps.indexOf('### Cross-Lens Corroboration') < steps.indexOf('### Step 3.5 & 3.6'));
 });
 
-test('lens 3f vacuity downgrades are excluded from the input', () => {
+test('AC1.1 go-red: dropping the contested log line fails the same assertions', () => {
   const file = read('review', 'step3-cross-lens-corroboration.md');
-  assert.match(file, /vacuity/);
-  assert.match(file, /excluded|exclude/);
+  const mutated = file.replace(', severity contested (took the highest)', '');
+  assert.notEqual(mutated, file, 'mutation did not change the text');
+  assert.throws(() => assertPromotes(mutated));
+});
+
+test('every lens 3f vacuity finding is excluded from the input; overrides run before the pass', () => {
+  assertInputScope(read('review', 'step3-cross-lens-corroboration.md'));
+});
+
+test('go-red: narrowing the vacuity exclusion fails the same assertions', () => {
+  const file = read('review', 'step3-cross-lens-corroboration.md');
+  const mutated = file.replace(VACUITY_SCOPE, 'when downgraded');
+  assert.notEqual(mutated, file, 'mutation did not change the text');
+  assert.throws(() => assertInputScope(mutated));
+});
+
+test('go-red: dropping the overrides-before-the-pass clause fails the same assertions', () => {
+  const file = read('review', 'step3-cross-lens-corroboration.md');
+  const mutated = file.replace(OVERRIDES_FIRST, 'Overrides may run');
+  assert.notEqual(mutated, file, 'mutation did not change the text');
+  assert.throws(() => assertInputScope(mutated));
 });

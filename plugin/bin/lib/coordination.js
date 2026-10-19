@@ -457,6 +457,16 @@ function detectCrossLensOverlap(findingsByLens) {
 // Greedy-assignment stranding precedent, #2907). A cluster qualifies when it
 // spans >= 2 distinct lenses; one lens never corroborates itself.
 //
+// A qualifying cluster is then carved into rows so a chain (A~B, B~C, A and C
+// apart) never silently absorbs a distinct finding: members ordered by
+// severityRank descending, then input order; the first remaining member is a
+// row's representative, and the row takes every remaining member that directly
+// matches it (same location within ±5 and known substance agreement, any lens).
+// A row's severity is its representative's — the highest, mirroring
+// step3-routing.md's cross-lens de-dup rule — so a corroborating low finding
+// never demotes a critical one. A row's `lenses` are its members' lenses plus
+// those of the representative's cross-lens edge partners.
+//
 // Input: { [lens]: Finding[] } — the findings still `unconfirmed` per lens.
 // Output: { corroborated: CorroboratedFinding[], unconfirmed: { [lens]: Finding[] } };
 // `unconfirmed` keeps every input lens key (empty array when none remain).
@@ -469,6 +479,12 @@ function corroborateCrossLens(unconfirmedByLens) {
     });
   });
 
+  const directMatch = (i, j) => {
+    if (!sameLocation(nodes[i].finding, nodes[j].finding, LINE_TOLERANCE_CORROBORATION)) return false;
+    const score = substanceSimilarity(nodes[i].finding, nodes[j].finding);
+    return score !== null && score >= SUBSTANCE_SIMILARITY_MIN;
+  };
+
   const parent = nodes.map((_, i) => i);
   const find = (i) => {
     while (parent[i] !== i) {
@@ -477,12 +493,13 @@ function corroborateCrossLens(unconfirmedByLens) {
     }
     return i;
   };
+  const partners = nodes.map(() => []); // cross-lens edge partners per node
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       if (nodes[i].lens === nodes[j].lens) continue;
-      if (!sameLocation(nodes[i].finding, nodes[j].finding, LINE_TOLERANCE_CORROBORATION)) continue;
-      const score = substanceSimilarity(nodes[i].finding, nodes[j].finding);
-      if (score === null || score < SUBSTANCE_SIMILARITY_MIN) continue;
+      if (!directMatch(i, j)) continue;
+      partners[i].push(j);
+      partners[j].push(i);
       parent[find(j)] = find(i);
     }
   }
@@ -497,22 +514,35 @@ function corroborateCrossLens(unconfirmedByLens) {
   const corroborated = [];
   const consumed = new Set();
   for (const members of clusters.values()) {
-    const clusterLenses = [...new Set(members.map((i) => nodes[i].lens))];
-    if (clusterLenses.length < 2) continue;
+    const clusterLenses = new Set(members.map((i) => nodes[i].lens));
+    if (clusterLenses.size < 2) continue;
     members.forEach((i) => consumed.add(i));
-    const lowestRank = Math.min(...members.map((i) => severityRank(nodes[i].finding.severity)));
-    const buckets = new Set(members.map((i) => severityBucket(nodes[i].finding.severity)));
-    const row = {
-      ...nodes[members[0]].finding,
-      severity: SEVERITY_RANK[lowestRank],
-      lenses: lenses.filter((lens) => clusterLenses.includes(lens)),
-      members: members.map((i) => {
-        const { lens, finding } = nodes[i];
-        return { lens, path: finding.path, line: finding.line, severity: finding.severity, text: finding.text };
-      }),
-    };
-    if (buckets.size > 1) row.severityContested = true;
-    corroborated.push(row);
+    let remaining = [...members].sort((x, y) => severityRank(nodes[y].finding.severity)
+      - severityRank(nodes[x].finding.severity) || x - y);
+    while (remaining.length > 0) {
+      const rep = remaining[0];
+      const rowMembers = [rep, ...remaining.slice(1).filter((m) => directMatch(rep, m))];
+      remaining = remaining.filter((m) => !rowMembers.includes(m));
+      const rowLenses = new Set(rowMembers.map((i) => nodes[i].lens));
+      partners[rep].forEach((p) => rowLenses.add(nodes[p].lens));
+      if (rowLenses.size < 2) {
+        throw new Error('corroborateCrossLens: a qualifying-cluster row names fewer than 2 lenses');
+      }
+      // eslint-disable-next-line no-unused-vars
+      const { nearLocation, source, ...repFinding } = nodes[rep].finding;
+      const buckets = new Set(rowMembers.map((i) => severityBucket(nodes[i].finding.severity)));
+      const row = {
+        ...repFinding,
+        severity: SEVERITY_RANK[severityRank(repFinding.severity)],
+        lenses: lenses.filter((lens) => rowLenses.has(lens)),
+        members: rowMembers.map((i) => {
+          const { lens, finding } = nodes[i];
+          return { lens, path: finding.path, line: finding.line, severity: finding.severity, text: finding.text };
+        }),
+      };
+      if (buckets.size > 1) row.severityContested = true;
+      corroborated.push(row);
+    }
   }
 
   const unconfirmed = {};

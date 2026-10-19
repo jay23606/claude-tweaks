@@ -8,7 +8,8 @@
 //   node bin/review-coordination.js corroborate-cross-lens <unconfirmed-by-lens.json>
 //   node bin/review-coordination.js resolve-debate <verdictA> <verdictB>
 //   node bin/review-coordination.js resolve-refutation <verdict>
-// categorise-reproduction/detect-overlap/corroborate-cross-lens print JSON (corroborate-cross-lens: #3604); resolve-debate/resolve-refutation print
+// categorise-reproduction/detect-overlap/corroborate-cross-lens print JSON
+// (corroborate-cross-lens: #3604); resolve-debate/resolve-refutation print
 // the bare resolution string. Exit 0 ok; 2 malformed invocation or unreadable/invalid input.
 'use strict';
 
