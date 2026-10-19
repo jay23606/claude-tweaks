@@ -531,16 +531,20 @@ const SUBJECT_TEST_B = [
   { path: 'tests/bin-lib/compose-subject.test.js', line: 454, severity: 'medium', text: 'Implementation detail coupling: test reads source code for literal string `stdio: [\'ignore\', \'pipe\', \'pipe\']` instead of testing behavior. Refactoring to `const stdio = [\'ignore\', \'pipe\', \'pipe\']; runner: ... stdio ...` would make test fail despite identical behavior.' },
 ];
 
-test('AC1 reproduction (#3326): the three observed independently worded same-line pairs are confirmed', () => {
-  for (const [label, agentA, agentB] of [
-    ['#3003 lens 3c', QA_STAMP_A, QA_STAMP_B],
-    ['#3023 lens 3b', RELEASE_A, RELEASE_B],
-    ['#3028 lens 3f', SUBJECT_TEST_A, SUBJECT_TEST_B],
-  ]) {
+// One test per pair, so a regression reports every pair it breaks rather than only the first.
+for (const [label, agentA, agentB] of [
+  ['#3003 lens 3c', QA_STAMP_A, QA_STAMP_B],
+  ['#3023 lens 3b', RELEASE_A, RELEASE_B],
+  ['#3028 lens 3f', SUBJECT_TEST_A, SUBJECT_TEST_B],
+]) {
+  test(`AC1 reproduction (#3326): the independently worded same-line pair from ${label} is confirmed`, () => {
     const { confirmed, unconfirmed } = c.categoriseReproduction(agentA, agentB);
-    assert.strictEqual(confirmed.length, agentA.length, `${label}: every agent A finding should confirm`);
-    assert.strictEqual(unconfirmed.length, 0, `${label}: no finding should stay unconfirmed`);
-  }
+    assert.strictEqual(confirmed.length, agentA.length, 'every agent A finding should confirm');
+    assert.strictEqual(unconfirmed.length, 0, 'no finding should stay unconfirmed');
+  });
+}
+
+test('reproduction (#3326): the #3028 pair keeps agent A\'s severity', () => {
   // low and medium share one severity bucket, so the pair keeps agent A's severity and raises no contest flag.
   const { confirmed } = c.categoriseReproduction(SUBJECT_TEST_A, SUBJECT_TEST_B);
   assert.strictEqual(confirmed[0].severity, 'low');
