@@ -187,38 +187,11 @@ test('realTarget: routes through the injected fs\'s .native realpath, never its 
   assert.equal(isPolicyFile(root, alias, { fsImpl: { ...fs, realpathSync: patched } }), true);
 });
 
-// #3495: a case-insensitive volume model. `entries` maps canonical absolute
-// paths to { type: 'file' | 'directory' } or { type: 'symlink', target }; lookup
-// is by lowercased path. The JS realpathSync echoes the caller's casing; the
-// .native form returns the canonical key, as the OS does on such a volume.
-function caseInsensitiveFs(entries) {
-  const byLower = new Map(Object.entries(entries).map(([key, v]) => [key.toLowerCase(), { key, ...v }]));
-  const lookup = (p) => {
-    const e = byLower.get(p.toLowerCase());
-    if (!e) throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
-    return e;
-  };
-  const jsRealpath = (p) => {
-    const e = lookup(p);
-    return e.type === 'symlink' ? jsRealpath(e.target) : p;
-  };
-  const nativeRealpath = (p) => {
-    const e = lookup(p);
-    return e.type === 'symlink' ? nativeRealpath(e.target) : e.key;
-  };
-  const realpathSync = (p) => jsRealpath(p);
-  realpathSync.native = (p) => nativeRealpath(p);
-  const lstatSync = (p) => {
-    const e = lookup(p);
-    return { isSymbolicLink: () => e.type === 'symlink', isFile: () => e.type === 'file', isDirectory: () => e.type === 'directory' };
-  };
-  return { ...fs, realpathSync, lstatSync };
-}
+const { caseInsensitiveFs } = require('../../helpers/case-insensitive-fs');
 
 // The fake is keyed on POSIX-literal paths, but isPolicyFile runs path.resolve /
 // path.join, which prefix a drive letter and use backslashes on win32 — so the
-// lookups would miss there. Same posix-only stance as path-guard.test.js's
-// caseInsensitiveVolume.
+// lookups would miss there (tests/helpers/case-insensitive-fs.js is posix-only).
 const POSIX_ONLY = process.platform === 'win32' && 'posix-only case-insensitive fake: path.resolve/join rewrite its literal paths on win32';
 
 const CI_DIRS = {
