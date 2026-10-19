@@ -27,13 +27,13 @@ files:
 ### 2. Check whether the branch already merged
 - **URL:** the **Merged-branch precondition (clean tree only)** paragraph in the same section.
 - **Action:** After `git fetch origin {integration-branch}`, run both checks:
-  - `gh pr list --head {current-branch} --state merged --json number --jq length` returning non-zero.
+  - `gh pr list --head "{current-branch}" --state merged --json number --jq length` printing a count above 0, with exit 0.
   - The tip being an ancestor of `origin/{integration-branch}` but absent from its first-parent line.
 - **Should feel:** Mechanical. Two lookups answer whether this branch is spent.
 - **Should understand:**
   - A squash merge is invisible to git. Only the `gh` lookup catches it, and #3536's run met exactly that case (PR #3526).
   - A fresh branch cut at an integration-branch commit sits on the first-parent line, so it reads as not merged.
-  - When `gh` is absent, the git check still runs, so only a squash-merged branch adopts as before. A check that errors fails open.
+  - When `gh` is absent, the git check still runs, so only a squash-merged branch adopts as before. A check that errors fails open, and the run logs `Adopt-or-create: {check} could not run ({reason}), adopted`.
   - The branch name goes in as one quoted argument. On a detached HEAD the `gh` lookup is skipped, because an empty `--head` matches every merged PR.
 - **Red flags:**
   - Treating "ancestor of the integration branch" alone as merged. That catches every fresh branch.
