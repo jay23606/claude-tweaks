@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T20:27:30.417Z",
+  "computedAt": "2026-10-19T21:08:30.911Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -15,12 +15,12 @@
       },
       {
         "number": 3604,
-        "updatedAt": "2026-10-19T18:56:29Z",
+        "updatedAt": "2026-10-19T21:03:36Z",
         "state": "OPEN"
       },
       {
         "number": 3598,
-        "updatedAt": "2026-10-19T20:19:25Z",
+        "updatedAt": "2026-10-19T20:41:04Z",
         "state": "OPEN"
       },
       {
@@ -205,7 +205,7 @@
       },
       {
         "number": 3483,
-        "updatedAt": "2026-10-18T06:41:41Z",
+        "updatedAt": "2026-10-19T20:38:52Z",
         "state": "OPEN"
       },
       {
@@ -235,7 +235,7 @@
       },
       {
         "number": 3470,
-        "updatedAt": "2026-10-19T18:59:59Z",
+        "updatedAt": "2026-10-19T20:31:02Z",
         "state": "OPEN"
       },
       {
@@ -274,11 +274,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3442,
-        "updatedAt": "2026-10-18T06:41:11Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3431,
         "updatedAt": "2026-10-19T19:00:15Z",
         "state": "OPEN"
@@ -295,7 +290,7 @@
       },
       {
         "number": 3363,
-        "updatedAt": "2026-10-17T09:05:11Z",
+        "updatedAt": "2026-10-19T20:41:16Z",
         "state": "OPEN"
       },
       {
@@ -310,7 +305,7 @@
       },
       {
         "number": 3341,
-        "updatedAt": "2026-10-17T09:04:53Z",
+        "updatedAt": "2026-10-19T20:39:08Z",
         "state": "OPEN"
       },
       {
@@ -405,7 +400,7 @@
       },
       {
         "number": 3290,
-        "updatedAt": "2026-10-17T09:03:29Z",
+        "updatedAt": "2026-10-19T20:59:42Z",
         "state": "OPEN"
       },
       {
@@ -415,7 +410,7 @@
       },
       {
         "number": 3284,
-        "updatedAt": "2026-10-17T09:03:23Z",
+        "updatedAt": "2026-10-19T21:06:14Z",
         "state": "OPEN"
       },
       {
@@ -614,78 +609,6 @@
         "state": "OPEN",
         "title": "pr-first-merge Step 2.5: route a DIRTY PR with an empty rollup to the Conflict path",
         "updatedAt": "2026-10-19T18:57:14Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3258\n\nDefer-reason: tangential\n\n## Current State\n\n/claude-tweaks:review confirms a lens finding only when both agents of that lens's reproduction pair report it (`step3-lens-dispatch.md`). Cross-lens agreement is used only at review-effort `high` and above, where Step 3.5's overlap detection runs. At `medium` (the default for risk:medium x size:medium records, e.g. record #3258) a defect that three different lens agents each reported independently (3a-B high, 3b-B low, 3c-A low: a superseded failed workflow run at the base sha marking a real PR failure inherited) stayed `unconfirmed` in every lens, because the partner agent of each lens missed it. It only reached a fix through the reviewing agent's manual Direct-verification override.\n\n## Deliverables\n\nAt `medium` tier, after the per-lens reproduction pairs return, run `review-coordination.js detect-overlap` (or an equivalent cross-lens match on path +-5 lines and substance similarity) over the `unconfirmed` findings only, and treat a finding reported by two or more different lenses as corroborated: emit it `confirmed` with a log line naming the lenses. Keep `high`+ behavior (Step 3.5 debate) unchanged. Pin the new rule in the review prose conformance tests.\n\n## Acceptance Criteria\n\nA review at `medium` effort where two different lenses each have one agent reporting the same path/line and substance routes that finding as `confirmed` (not `unconfirmed`), with a decisions.md line naming both lenses. A finding reported by one lens only stays `unconfirmed`. The `low` tier single-read rule is unchanged.\n\n## Release Note\n\nReview at medium effort now treats a defect reported independently by two different lenses as confirmed instead of leaving it as a low-confidence finding.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T14:11:53Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3604,
-        "state": "OPEN",
-        "title": "Review medium tier: count cross-lens agreement as corroboration for unconfirmed findings",
-        "updatedAt": "2026-10-19T18:56:29Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -2316,78 +2239,6 @@
     ],
     [
       {
-        "body": "Origin: wrap-up of #3298\n\nDefer-reason: tangential\n\n## Current State\n\nWhen the Review Console resolves the merge half to **leave-open** (`pending-review`), `wrap-up/execution-and-verification.md`'s phase-exit push ships the branch and the run ends. Nothing re-reads the PR's `mergeStateStatus` after that push. On #3298's run the pushed head `eb759e308` was `DIRTY` against `main` (three commits had landed since the fork, one touching the same journey Origin list), so GitHub suppressed the `test` workflow entirely (#3298 wrap-up, `decisions.md` 23:42:18) — the parked PR showed one green label job and no test run, which a human reading the PR would mistake for \"checks still pending\".\n\n`_shared/pr-first-merge.md` Step 2.5's merge-verification gate reads this state, but only on the merge path. The parked path has no equivalent, so a conflict introduced by a sibling merge during the run is discovered only when a human opens the PR later.\n\n## Deliverables\n\n- [ ] After the wrap-up phase-exit push under `integration-model: pr-first` with a leave-open outcome, read `gh pr view {n} --json mergeStateStatus` once (via `pack.pr`'s shape); on `DIRTY`, merge `origin/{integration-branch}` into the branch in the worktree, resolve nothing automatically beyond git's own auto-merge, and push again — a real content conflict stays `DIRTY` and is reported, never silently left.\n- [ ] Log the outcome to `decisions.md` (`AUTO … mergeability: {CLEAN|BLOCKED|DIRTY → merged main as {sha}|DIRTY — conflict in {files}}`) and name it in the phase-trace report's Verdict line and the flow summary's resume-to-merge row, so a parked PR with a suppressed test run is visible from the summary.\n- [ ] A conformance test pins the new paragraph in `execution-and-verification.md` and `flow/summary-template.md`'s resume row wording.\n\n## Acceptance Criteria\n\n- A `pr-first` run whose console resolves leave-open and whose PR reads `DIRTY` after the phase-exit push ends with a merge-from-main commit pushed (when git auto-merges cleanly) and a `decisions.md` line naming the merge sha; the flow summary's resume-to-merge row names the merge.\n- A run whose PR reads `DIRTY` with a genuine content conflict ends with a `decisions.md` line naming the conflicting file(s) and the Verdict line reads `blocked — conflict with main in {files}`, never \"everything shipped\".\n- A `CLEAN`/`BLOCKED`/`UNKNOWN` read changes nothing beyond the one log line.\n\n## Release Note\n\nA parked pr-first run now notices when a sibling merge made its PR conflict with main, merges main when git can, and says so instead of leaving a PR whose CI never ran.\n\n_Filed by `wrap-up` via specShapedBody._",
-        "createdAt": "2026-10-17T21:52:01Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3483,
-        "state": "OPEN",
-        "title": "Wrap-up leave-open outcome: re-check PR mergeability after the phase-exit push and merge main when a sibling merge made it DIRTY",
-        "updatedAt": "2026-10-18T06:41:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (spec-2977-3330 item #5, follow-up to #3330)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nRequiring `plugin/bin/lib/code-health/candidates-dead-code.js` directly in a fresh process (`node -e \"require('./plugin/bin/lib/code-health/candidates-dead-code')\"`) prints 12 `Accessing non-existent property ... inside circular dependency` warnings (`listTrackedSourceFiles`, `isGlobDiscoveredTestFile`, `extractModuleExports`, `escapeRegExp`, repeated across the sibling verticals), verified at 5bff50b17. The cause is the hub shape: `candidates-dead-code.js` requires `./focus-generators` (line 110), whose tail (lines 44-51) requires all eight `candidates-*.js` verticals, each of which destructures helpers from `./candidates-dead-code` before that module's `module.exports` is populated. `.claude/skills/code-health-focus-vertical/SKILL.md` pitfall 1 prescribes a require order for the verticals, and dead-code is the module they import from, so the fix needs a design choice about where the shared helpers live. #2908 (security-hardening) and #3330 (experiment-cleanup) fixed the two verticals whose own order was reversed; the dead-code entry point itself was out of scope for both and is untouched.\n\n## Deliverables\n\n- [ ] Break the `candidates-dead-code` <-> `focus-generators` cycle at the source (for example, extract the helpers the verticals import from `candidates-dead-code` into a leaf module that has no `focus-generators` dependency, and repoint the verticals), rather than reordering requires again.\n\n- [ ] Add a regression test that loads `candidates-dead-code.js` in a fresh child process and asserts stderr carries no `circular dependency` warning, proven red against the current tree.\n\n## Acceptance Criteria\n\n- `node -e \"require('./plugin/bin/lib/code-health/candidates-dead-code')\"` prints no circular-dependency warning.\n\n- The new fresh-process test fails before the fix and passes after it.\n\n- `node --test \"tests/bin-lib/code-health/*.test.js\"` passes.\n\n## Release Note\n\nFixed a module load-order hazard when the code-health dead-code check is loaded directly.\n\n_Filed by `ledger resolve gate` via specShapedBody._",
         "createdAt": "2026-10-17T21:44:11Z",
         "labels": [
@@ -2969,228 +2820,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3404\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/friction-events.js`'s `computeClaimBoundary` (#2989) reads the first `decisions.md` entry's `HH:MM:SS` and builds `new Date(`${mintDay}T${hh}:${mm}:${ss}Z`)` — it interprets the time as UTC.\n\n`plugin/bin/lib/log-decision/append.js`'s `hms()` writes that time with `getHours()/getMinutes()/getSeconds()` — local time. `events.jsonl` timestamps are ISO UTC.\n\nOn any machine east of UTC the computed claim boundary lands hours after the run's real events, so `readEvents` drops every event as \"pre-claim noise\". Observed on #3404's run (UTC+2): `events.jsonl` held 5 `wd-guard-refusal` events, yet `node bin/friction-events.js --run <run-dir>` printed `[]`, so `/reflect`'s Friction lens saw a frictionless run.\n\n## Deliverables\n\n- [ ] Make `computeClaimBoundary` read the `decisions.md` time as local time, matching `hms()`, so the boundary is the same instant the entry was written.\n\n- [ ] Add a regression test that runs the boundary computation under a non-UTC `TZ` (for example `Europe/Copenhagen`) and asserts events after the first claim entry survive while earlier unrelated events are still dropped.\n\n## Acceptance Criteria\n\n- Under `TZ=Europe/Copenhagen`, a run dir whose `decisions.md` first entry reads `20:39:18` and whose `events.jsonl` holds events at `2026-10-17T18:40:00Z` returns those events from `friction-events.js`.\n\n- The existing #2989 tests (pre-claim events still dropped) pass unchanged, and a new test fails with the old `Z` construction (revert to confirm).\n\n## Release Note\n\nFixes the Friction lens silently reporting a frictionless run for operators east of UTC.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T19:40:39Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3442,
-        "state": "OPEN",
-        "title": "friction-events.js reads decisions.md local times as UTC and drops every event east of UTC",
-        "updatedAt": "2026-10-18T06:41:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\nOrigin: reflect light from #3337\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:flow` Step 2.8 mints the run directory (`resolve-run-dir --create`) and then immediately writes the claim-log line into its `decisions.md` (`flow/claim-targets.md`, #2492), before Step 3 writes `config.yml` or any `run-state.json` exists.\n\n`plugin/bin/lib/hooks/context.js` `isUnadoptedMint` (line 54) excludes a mint from fallback event attribution only while it carries neither `run-state.json` nor `decisions.md`. Once the claim line lands, the mint is an unowned, newest, non-terminal run, so `post-tool-use.js`'s fallback attribution (`attribution: 'fallback'`) routes sibling sessions' events into its `events.jsonl`.\n\n`plugin/bin/lib/flow/preflight.js:145` then computes `hasOtherContent = decisionsHasContent || nonEmpty(events.jsonl) || specMaterialized`, so a fresh mint with only foreign fallback events adopts as **case 3** (repair: backfill worktree, PR, materialize) instead of **case 2** (fresh). #3242 fixed the same misclassification for Step 1.5/1.8 `decisions.md` content; the `events.jsonl` arm is untouched.\n\nObserved in run `2026-10-17T075913-spec-3337` (#3337): within 30 seconds of the claim, `events.jsonl` held three foreign lines — a `claude-tweaks:dispatch` `skill_invoked` and two `session-end` events from sessions `2a784df0…` and `57ef0028…`, all `\"attribution\":\"fallback\"` — and `flow-preflight.js` reported `case: 3` with backfills `worktree registration, PR-early lifecycle, materialize commit`. The orchestrator had to override the case by hand.\n\n## Deliverables\n\n- `isUnadoptedMint` treats a directory whose `decisions.md` classifies as `claim-log-only` (`bin/lib/log-decision/claim-log.js` `classifyDecisions`) and that has no `run-state.json` as still unadopted, so fallback attribution never targets it.\n- `computeAdoption` ignores `events.jsonl` lines carrying `\"attribution\":\"fallback\"` when deciding `hasOtherContent` (only `env`/`session`-attributed events are evidence this run did anything).\n- A regression test for each: a claim-log-only mint is skipped by the fallback resolver; a mint whose `events.jsonl` holds only fallback-attributed lines adopts as case 2.\n\n## Acceptance Criteria\n\n1. With a minted run dir holding only a Step 2.8 claim line, a hook event from a different session with no `PIPELINE_RUN_DIR` is not appended to that dir's `events.jsonl`.\n2. `flow-preflight.js --run <dir>` on a dir with a claim-log-only `decisions.md` and an `events.jsonl` holding only `\"attribution\":\"fallback\"` lines reports `adoption.value.case === 2`.\n3. A dir whose `events.jsonl` holds an `env`- or `session`-attributed line still reports `hasOtherContent: true`.\n\n## Release Note\n\nA freshly claimed `/flow` run no longer picks up other sessions' hook events, and no longer misreads them as an interrupted earlier run.\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-17T08:49:15Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3363,
-        "state": "OPEN",
-        "title": "flow: a freshly claimed run dir absorbs other sessions' fallback-attributed events and preflight adopts it as case 3",
-        "updatedAt": "2026-10-17T09:05:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\n\nOrigin: reflect full (batch) from #2702, #2727, #2776\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/check-artifact-overwrite.js` (`bin/lib/flow/artifact-overwrite-check.js`) is the multi-spec HARD-GATE run before the consolidated Review Console. It clears a later commit's deletions on another spec's journey/story file only by two tests: same-spec self-edit (`git blame` to the same `refs #N`) or list reflow (every deleted line a `- ` entry). A content-preserving markup conversion passes neither.\n\nIn run 2026-10-16T173115-spec-2702-2727-2776, review lens 3a found this run's three journeys used numbered-list steps instead of the canonical `### N.` step headers (`_shared/diataxis-genre-templates.md`). The fix commit `80e3dad2d` (refs #2776) converted all three. The gate flagged the #2702 and #2727 journeys as overwrites, even though both files are identical once step markup is normalized. Clearing it took a manual normalization script and a human HARD-GATE ruling.\n\n## Deliverables\n\n- Add a third clearing test to `artifact-overwrite-check.js`: a later commit whose removed and added lines on the path are equal once journey step markup is normalized (`N. **Name** — x` / `### N. Name — x`, list indentation) is a reformat, not an overwrite.\n- Fixture coverage in `tests/bin-lib/flow/artifact-overwrite-check.test.js`: a cross-spec list-to-header conversion with zero content change passes; the same conversion that also drops a step still fails.\n- Update `flow/multispec-artifact-namespacing.md`'s \"Append vs. overwrite\" section to name the third test.\n\n## Acceptance Criteria\n\n- Replaying the check over this run's range (`--base d81250829` through `80e3dad2d`) exits 0 with `overwrites: []`.\n- A fixture where a later spec's commit converts step markup and also deletes a step body still exits 1 naming that commit.\n- `npm test` passes.\n\n## Release Note\n\nLet the multi-spec overwrite check pass a journey reformat that changes markup but no content.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T06:19:34Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3341,
-        "state": "OPEN",
-        "title": "check-artifact-overwrite: pass a content-preserving step-markup reformat instead of HARD-GATEing it",
-        "updatedAt": "2026-10-17T09:04:53Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -4476,78 +4105,6 @@
     ],
     [
       {
-        "body": "Origin: reflect light from #2882\n\nDefer-reason: tangential\n\n**Related:** #3297\n\n## Current State\n\n`plugin/skills/_shared/staged-patch.md` requires every staging site to validate its patch with `git apply --check` against the worktree as it stands. Its Console apply section then applies a run's patches one after another, \"against the cumulative pipeline state\". Nothing checks a patch against the state left by the patches staged before it in the same run.\n\nObserved in run 2026-10-16T181217-spec-2882 (#2882 review): `staged/review-1.patch` and `staged/review-2.patch` both inserted a new test directly above the same anchor line in `tests/bin-lib/residue/probes-observed.test.js`. Each passed `--check` on its own. With review-1 applied, review-2 failed: `error: patch failed: tests/bin-lib/residue/probes-observed.test.js:214`. Only an extra stacking check, run by hand outside the contract, caught this. Without it, the console would have taken the description-only fallback for a patch that was valid when staged.\n\n## Deliverables\n\n- `staged-patch.md`'s staging gate also checks each new patch stacked on the run's already-staged `.patch` files, in console order: apply the earlier ones to a scratch copy (or a temporary index via `git apply --cached` against a throwaway `GIT_INDEX_FILE`), then `--check` the new one.\n- When the stacked check fails but the solo check passes, the staging site re-derives the diff against the stacked state, or re-anchors the hunk, before writing the artifact. If neither works, it logs the conflict in the STAGED line.\n- A test pins that two patches with the same insertion anchor are caught at staging time, not at the console.\n\n## Acceptance Criteria\n\n- [ ] Staging a second patch whose hunk context is invalidated by an earlier patch from the same run is reported at staging time, naming both patch paths.\n- [ ] Patches that stack cleanly stage exactly as they do today, with no extra log noise.\n- [ ] The Console apply section's cumulative-order wording and the staging gate describe the same order.\n\n## Release Note\n\nStaged code-fix proposals are now checked against each other at staging time, so a later patch no longer silently falls back to the description path at the Review Console.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T19:52:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3290,
-        "state": "OPEN",
-        "title": "Check same-run staged patches stacked, not only alone, at staging time",
-        "updatedAt": "2026-10-17T09:03:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "# Reflect — staged finding 1\n\n**Category:** tangential\n\nOrigin: reflect light from #2999,#3000\nDefer-reason: tangential\n\n**Related:** #3245 #3335 #3336\n\n## Current State\n\n`/claude-tweaks:flow/SKILL.md`'s Step 3 (\"Pipeline Config Manifesto\") states it runs in every mode\nexcept `interactive`, writing `config.yml` and initializing `decisions.md`'s config snapshot\nheader before Step 4 begins — and Step 1.8 states the open-items ledger is created unconditionally\nbefore Step 2's pre-flight checks. On this run (dispatch bundle `2026-10-16T180901-record-2999`,\ncovering #2999 and #3000), a first `/flow \"#2999,#3000\" build,test` call completed build and test\nsuccessfully (two real commits, a draft PR opened, `TEST_PASSED=true` logged) but left no trace of\neither step ever running: no `config.yml` existed anywhere under the run directory or its would-be\n`spec-2999/`/`spec-3000/` subdirectories, and no open-items ledger existed at\n`docs/plans/*-record-2999*-ledger.md`. `decisions.md`'s `## /flow` section began directly at\n\"Step 2.8: claimed #2999\" with no preceding Manifesto log line. This second call (review, polish,\nwrap-up) had to backfill both — writing `config.yml` via `set-config.js`, scaffolding the per-spec\nsubdirectories per `multispec-config-scaffold.md`, and creating the ledger via `ledger/SKILL.md`'s\nCreate operation — before continuing, per this call's own explicit instruction not to skip the\nManifesto write.\n\n## Deliverables\n\n- Investigate whether `/flow`'s Step 3 and Step 1.8 have a code path that returns without writing\n  `config.yml`/creating the ledger when invoked as the first of a dispatch bundle's two planned\n  calls (`build,test` then `review,polish,wrap-up`) — e.g. an early-return before Step 3 on some\n  input shape, or a step-list check that (incorrectly) ties the Manifesto/ledger write to the\n  presence of `review`/`wrap-up` in the resolved step list.\n- Add a `node --test` assertion (or a prose self-check) that a `/flow` run reaching Step 4 for\n  ANY step list always has `config.yml` and a ledger file by that point, so a future regression\n  here surfaces mechanically instead of being caught by a second call's own defensive instructions.\n\n## Acceptance Criteria\n\n- The root cause (or: \"no defect found — these two runs are explained by {reason}\") is identified\n  and written up.\n- Either a fix lands, or this record is closed with the explanation if investigation finds the\n  gap was something else entirely (e.g. operator/dispatch-prompt behavior rather than `/flow`\n  skill-prose/implementation).\n\n## Release Note\n\nN/A (internal tooling correctness).\n\n### Key Files\n\n- `plugin/skills/flow/SKILL.md` — Step 3, Step 1.8\n- `plugin/skills/flow/manifesto.md`\n- `plugin/skills/flow/multi-spec.md`, `multispec-config-scaffold.md`\n\n_Filed by `reflect` via specShapedBody._\n\n## Suggested resolution\n\nSee Deliverables above.\n\n## Decision-log reference\n\nAUTO 21:31:37 — log-decision: Step 3 Manifesto (deferred from first call): wrote config.yml (13 levers, auto mode FYI) and scaffolded spec-2999/, spec-3000/ per-spec subdirectories. ...\nAUTO 21:39:42 — log-decision: flow: created open-items ledger docs/plans/2026-10-16-record-2999-ledger.md (deferred from first call's Step 1.8).\n\n**Evidence:** `decisions.md`'s `## /flow` section (lines visible at this call's start) opens directly\nat \"Step 2.8: claimed #2999\" with no Manifesto log line before it; `find .claude-tweaks/pipelines/2026-10-16T180901-record-2999 -type f` before this call's writes showed no `config.yml` anywhere and no `docs/plans/*-ledger.md` existed for this record.\n**Cost this session:** ~10 minutes backfilling config.yml scaffolding, per-spec subdirectories, and\nledger creation that should have already existed from the first call.\n",
         "createdAt": "2026-10-16T19:52:18Z",
         "labels": [
@@ -4592,78 +4149,6 @@
         "state": "OPEN",
         "title": "flow Step 3 (Manifesto) and Step 1.8 (ledger creation) can silently not run on a bundle dispatch's first /flow call",
         "updatedAt": "2026-10-17T09:03:26Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "## Current State\n\nUnder `dispatch/SKILL.md`'s two-call pattern (`/flow {target} build,test` then, in a fresh\nTask-tool dispatch, `/flow {target} review,polish,wrap-up` against the same run dir), the first\ncall's `/test` phase logged its result to `decisions.md` as a plain summary line\n(`npm test: full suite green at HEAD {sha}: {n} pass, 0 fail, {m} skipped`) rather than through\n`test/verification.md`'s stamped `verify.js` invocation, which writes the runner-level pass stamp\n`verify.js --stamp-status` reads. On this run (#3034), the second call's review Step 1.5\n(`node bin/verify.js --stamp-status`) found `present: false` at the same HEAD the first call had\nalready verified, so it had no choice but to re-run the full suite from scratch (~117s) rather\nthan trusting the first call's already-passing result.\n\n## Deliverables\n\n1. Confirm whether `/claude-tweaks:test`'s own invocation path always writes the stamp, or\n   whether some call shape (standalone CLI, a particular dispatch route) can log a pass without\n   it, as observed here.\n2. If a gap exists, close it so a `/flow {target} build,test` first call's test phase always\n   leaves a stamp the second call's review-gate can trust.\n\n## Acceptance Criteria\n\n- A fresh two-call dispatch run (`build,test` then `review,polish,wrap-up` against the same\n  `PIPELINE_RUN_DIR`) shows `verify.js --stamp-status` returning `verifiedHead: true` at the\n  second call's review Step 1.5, with no full-suite re-run.\n\n## Release Note\n\nNo user-visible change — internal pipeline-plumbing fix so a dispatched two-call run's second\ncall trusts the first call's own test pass instead of re-running it.\n\n## Suggested resolution\n\nAudit `/claude-tweaks:test`'s dispatch-context code path (the one `dispatch/SKILL.md`'s first\ncall invokes) against `test/verification.md`'s stamped-invocation requirement; add the stamp\nwrite there if missing.\n\n## Origin\n\nDefer-reason: tangential\n\nFiled by `reflect` (full mode) from #3034's wrap-up, Surprises/Near-misses lens.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T19:24:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3284,
-        "state": "OPEN",
-        "title": "dispatch two-call split (build,test / review,polish,wrap-up) leaves no verify.js pass stamp for the second call to trust",
-        "updatedAt": "2026-10-17T09:03:23Z",
         "facets": {
           "origin": null,
           "risk": "low",
