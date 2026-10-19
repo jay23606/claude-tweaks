@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T21:08:30.911Z",
+  "computedAt": "2026-10-19T22:02:58.150Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -90,7 +90,7 @@
       },
       {
         "number": 3562,
-        "updatedAt": "2026-10-19T12:29:15Z",
+        "updatedAt": "2026-10-19T21:24:36Z",
         "state": "OPEN"
       },
       {
@@ -325,7 +325,7 @@
       },
       {
         "number": 3333,
-        "updatedAt": "2026-10-19T20:23:11Z",
+        "updatedAt": "2026-10-19T21:18:24Z",
         "state": "OPEN"
       },
       {
@@ -340,7 +340,7 @@
       },
       {
         "number": 3326,
-        "updatedAt": "2026-10-18T07:43:05Z",
+        "updatedAt": "2026-10-19T21:45:48Z",
         "state": "OPEN"
       },
       {
@@ -390,7 +390,7 @@
       },
       {
         "number": 3297,
-        "updatedAt": "2026-10-17T09:03:35Z",
+        "updatedAt": "2026-10-19T21:09:55Z",
         "state": "OPEN"
       },
       {
@@ -440,7 +440,7 @@
       },
       {
         "number": 3078,
-        "updatedAt": "2026-10-17T21:42:53Z",
+        "updatedAt": "2026-10-19T21:41:19Z",
         "state": "OPEN"
       },
       {
@@ -3199,78 +3199,6 @@
     ],
     [
       {
-        "body": "Origin: reflect full (batch) from #3072,#3003\n\nDefer-reason: tangential\n\n**Related:** #3329\n\n## Current State\n\n`bin/lib/coordination.js` `categoriseReproduction` pairs a same-location candidate (path exact, line ±2) only when `sameSubstance` is not `false`. For two independently worded reports of the same issue, the substance score falls below the threshold, so a genuinely reproduced finding comes out as two `nearLocation` unconfirmed entries.\n\nObserved three times: #3023 (lens 3b, `release.js` `merge-base --is-ancestor` missing `--end-of-options`), #3028 (lens 3f, `tests/bin-lib/compose-subject.test.js:454`, rows copied verbatim), and #3003 (lens 3c, `plugin/bin/qa-stamp.js:121` and `:132`, rows copied verbatim, both pairs split). Each time the controller fell back to the direct-verification override. Re-checked after #2955 widened the location band to ±5: the merged categoriser still returns all four #3003 entries unconfirmed, so the gap is the same-line substance test, not the band. In an unattended run where no source read happens, a reproduced medium finding routes to the Review Console's low-confidence section instead of being auto-applied under the ceiling.\n\n## Deliverables\n\nMake the same-substance decision robust to independent wording for same-file, same-line (±2) pairs. Options: weight shared code identifiers and backticked tokens, or treat an exact-line match plus a shared identifier as same substance.\n\nKeep #1980's guard: two different issues at the same location must still stay split.\n\n## Acceptance Criteria\n\nA fixture test built from the three observed pairs (each agent's Finding text verbatim) categorises every pair as `confirmed`.\n\n#1980's existing near-location, different-substance fixtures still come out `unconfirmed`.\n\n## Release Note\n\nReview reproduction pairs that report the same issue in different words are now recognized as reproduced.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T21:36:04Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3326,
-        "state": "OPEN",
-        "title": "review: categorise-reproduction splits a reproduced finding when the two agents word it differently",
-        "updatedAt": "2026-10-18T07:43:05Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate\nDefer-reason: genuinely-larger\n\n## Current State\n\n#2719 (refine-mode.md Step 5 / refine-closing-summary.md) made a grant row's pre-write reverify\nlog *why* it was skipped when a concurrent write already granted the record differently — naming\nboth this run's discarded `RECOMMEND_MERGE` verdict and the live grant that won the race, instead\nof the generic `AUTO … skipped … (what changed)` line.\n\nThe same race exists on flag-back rows: when this run's grant-check computed `RECOMMEND_BUILD:\nfalse` (or downgraded the row), and a concurrent actor granted the record anyway, the pre-write\nreverify currently drops the flag-back write with the same generic skip line — it does not\ndistinguish \"a concurrent actor disagreed with this run's own recommendation\" from any other\nreason a flag-back row might be dropped. This was flagged during #2719's own whole-branch review\nas a related but larger class of disagreement than that record's grant-row-only Technical\nApproach covered.\n\n## Deliverables\n\n- Extend `refine-mode.md` Step 5's flag-back reverify branch to compare the flag-back row's own\n  `RECOMMEND_BUILD` verdict (and rationale) against the live grant state, the same way the grant\n  row's comparison (#2719) already does for `RECOMMEND_MERGE`.\n- Add the distinguishable skip-line template(s) to `refine-closing-summary.md`'s template list,\n  mirroring the grant-row \"agreed\"/\"DIVERGED\" shape.\n\n## Acceptance Criteria\n\n- A flag-back row dropped by the pre-write reverify because a concurrent write granted the\n  record logs whether that concurrent grant agreed with or diverged from this run's own\n  `RECOMMEND_BUILD` verdict, distinguishably from the existing generic skip line.\n- `decisions.md` lets a human find every such flag-back divergence from one sweep, the same way\n  `refine-closing-summary.md`'s Concurrent-grant comparison section already does for grant rows.\n\n## Release Note\n\nFlag-back rows now log the same concurrent-grant-divergence detail grant rows do when a concurrent actor's decision disagrees with this run's own recommendation.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-16T21:32:39Z",
         "labels": [
@@ -3955,84 +3883,6 @@
     ],
     [
       {
-        "body": "**Related:** #3249 #3290 #3327\n\nOrigin: whole-branch review of #3249 (Finding 3)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#3249 (branch `worktree-dispatch-record-3249`) makes `archive-merged.js` archive a MERGED run with no `console.json` when its `staged/` holds nothing pending (`decideArchiveCore`'s `hasStagedPending` exception, reached from both `archiveMergedRun` and the by-number fallback). A run whose `staged/` holds real pending items still skips `console-never-rendered` by design — the #657/#1130 protection.\n\nThat remaining sub-case can never converge automatically: the fast-lane auto-merge short-circuit (`plugin/skills/wrap-up/auto-merge-short-circuit.md`) surfaces its console content only as a non-blocking PushNotification FYI and never writes `console.json`, so nothing later resolves the staged items. The #3130 incident run (`.claude-tweaks/pipelines/archive/2026-10-16T155630-record-3130/`) has exactly this shape: no `console.json`, `staged/reflect-1.md` and `staged/wrap-up-skill-1.md` pending.\n\n`plugin/skills/_shared/pr-first-merge-post-merge.md` Step 4.2 says a reconcile failure \"is logged and left for the next trigger point\". #3249 amended that paragraph to name the exception, but the logged/reported skip itself still does not distinguish a transient gh/network failure (converges later) from a structural `console-never-rendered` with pending staged items (needs a human first). Plain `console-never-rendered` is also deliberately excluded from `STRUCTURALLY_STUCK_REASONS`, so it never escalates.\n\n## Deliverables\n\n1. Make the post-merge reconcile report distinguish \"transient failure, will converge at the next trigger point\" from \"staged/ holds pending items, needs human action before this run can converge\" — in Step 4.2's logged line and in whatever the reconcile result exposes to it (e.g. a distinct skip reason for a MERGED, console-never-rendered run with pending staged items).\n\n2. Evaluate, and record the decision on, having the fast-lane auto-merge short-circuit write a minimal `console.json` recording that its staged items were surfaced via the PushNotification — which would let #3249's archive exception apply even when `staged/` is non-empty. If adopted, implement it with a test; if rejected, record why in the short-circuit file.\n\n3. Decide whether that structurally-stuck sub-case should escalate via `STRUCTURALLY_STUCK_REASONS` / `trackStuckSkip` like `console-never-rendered-pr-closed` does, so it surfaces somewhere a human looks.\n\n## Acceptance Criteria\n\n- Step 4.2's log/report line never claims convergence is coming for a run that structurally cannot converge without human action; a test pins the distinct reason or wording.\n\n- A transient gh/network failure is still reported as \"left for the next trigger point\", unchanged.\n\n- The #657/#1130 protection holds: a run with genuinely pending staged items is never archived out of sight without either a resolved console or an explicit recorded surfacing.\n\n## Release Note\n\nAfter a fast-lane pr-first merge, a run left with unresolved staged items is reported as needing your attention instead of as cleanup that will finish on its own.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-16T20:23:49Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3297,
-        "state": "OPEN",
-        "title": "Post-merge reconcile reports a console-never-rendered run with pending staged items as converging later",
-        "updatedAt": "2026-10-17T09:03:35Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Defer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/tidy/scan-procedures.md` collects every `kind: release` residue finding as `[git] {subject} — {evidence} — Backfill`. Since #2882 there are two flavors: `remedy: auto` (a `v*` tag with no CHANGELOG heading) and `remedy: record` (a CHANGELOG heading with no local or remote tag, where tagging released history is a human call).\n\n`plugin/skills/tidy/step-6-auto.md`'s routing table, which gives every recommendation an auto-apply tier per aggressiveness level (`conservative` / `moderate` / `aggressive`), has no **Backfill** row. Neither release flavor has a stated tier, so the step's own rule applies: \"a finding class that keeps staging needs a routing row\". Found by the journeys curation judge in the #2882 wrap-up and confirmed by grep: the only `Backfill` occurrence in `plugin/skills/tidy/` is the scan-procedures line.\n\n## Deliverables\n\n- A **Backfill** row (or two, one per remedy) in `step-6-auto.md`'s routing table. The `remedy: record` flavor never auto-applies at any tier, because creating or pushing a tag is an outward-facing write. The `remedy: auto` flavor gets an explicit tier for adding the missing CHANGELOG heading.\n- `scan-procedures.md`'s release paragraph points at that row instead of carrying the disposition inline, keeping the file within its `tests/release-lifecycle-byte-budget.test.js` bound.\n- A conformance test pins that every `— {Action}` verb `scan-procedures.md` emits has a matching routing row in `step-6-auto.md`.\n\n## Acceptance Criteria\n\n- [ ] `step-6-auto.md` states a tier for both release-finding flavors at all three aggressiveness levels.\n- [ ] The heading-with-no-tag flavor is never Auto-apply at any tier.\n- [ ] The new conformance test fails when a scan action verb has no routing row (checked by temporarily deleting the Backfill row).\n\n## Release Note\n\n`/claude-tweaks:tidy` now states how it routes release tag/CHANGELOG mismatches at each aggressiveness level, and never auto-tags released history.\n\n_Filed by `wrap-up` via specShapedBody._\n",
         "createdAt": "2026-10-16T19:52:44Z",
         "labels": [
@@ -4466,7 +4316,7 @@
         "number": 3078,
         "state": "OPEN",
         "title": "review/step3-lens-dispatch: medium+ lens dispatch has no rule for a reviewer running as a dispatched subagent, and the low-tier carve-out contradicts the dispatch prompt",
-        "updatedAt": "2026-10-17T21:42:53Z",
+        "updatedAt": "2026-10-19T21:41:19Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -5066,90 +4916,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3507, #3509, #3563, #3564, #3565, #3581\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39212936982, on `windows-latest`) flagged `tests/pipeline-run-dir-adoption-anchoring.test.js` as newly failing after PR #3547 merged as `a865bb71d` (#2870's change). The excerpt names one test, but the file's full Windows log shows **all five tests failing**, and the latest run (39242652806, HEAD `7eaa543fc`, base `df15212d5`) still fails all five. That run lists the file under `baselineFailing`, so it is now a failure inherited at base. The file's tests, test names abbreviated:\n\n| # | Test (line on `origin/main`) | Windows error |\n|---|---|---|\n| 1 | adoption anchoring (shared snippet): trapped `PIPELINE_RUN_DIR` rejected (85) | `skills/_shared/run-dir-resolution.md must have a \"## Bash snippet (resolution)\" fenced bash block — extraction pattern is out of sync with the doc` |\n| 2 | adoption anchoring (shared snippet): anchored value still adopted (115) | same |\n| 3 | adoption anchoring (wrap-up's own copy): trapped value rejected (85) | `skills/wrap-up/SKILL.md must have a \"### Establish the run directory (unconditional)\" section with a fenced bash block — extraction pattern is out of sync with the doc` |\n| 4 | adoption anchoring (wrap-up's own copy): anchored value still adopted (115) | same |\n| 5 | step 2 (shared snippet): a non-canonical dir is never adopted over a canonical match (138) | the shared-snippet message again |\n\nWhy the record says \"newly\": `a865bb71d` added test 5. Tests 1-4 were already failing on Windows for the same reason, and the new test 5 gave the file a new failing test identity.\n\nRoot cause, test-side only. The suite reads both skill files with a raw `fs.readFileSync(…, 'utf8')` (lines 24-31). Its extractors anchor on bare `\\n`: `/## Bash snippet \\(resolution\\)\\n\\n```bash\\n([\\s\\S]*?)\\n```/` (line 35) and `/### Establish the run directory \\(unconditional\\)[\\s\\S]*?```bash\\n([\\s\\S]*?)\\n```/` (line 49). A Windows checkout with `core.autocrlf=true` gives both files `\\r\\n` line endings, because `.gitattributes` pins only `tools/upstream-drift/fixtures/**`. Neither regex then matches, and every test fails at the extractor's `assert.ok`. The skill prose is correct.\n\nReproduced in scratch on macOS against `origin/main` copies of the test and both skill files, with the two docs rewritten to CRLF (`perl -pi -e 's/\\r?\\n/\\r\\n/'`). This is a CRLF simulation, not a Windows run:\n\n- Unchanged test against the CRLF docs: `# pass 0` / `# fail 5`, with exactly the two extractor messages above. This matches the Windows log test for test.\n- Regex-only fix (`\\r?\\n` in both patterns): still `# fail 5`, now with `bash: -c: line 8: syntax error near unexpected token $'in\\r'` and `unexpected end of file from 'if' command`. The captured snippet keeps its `\\r`s, and bash cannot run it.\n- Reading both files through `tests/helpers/read-skill.js`'s `readText()`: `# pass 5` / `# fail 0` on the CRLF docs and on the LF docs.\n\nA second Windows-only failure is expected behind the CRLF one in test 5. It is inferred, not observed, because the extractor fails first on Windows today. Test 5 asserts `strictEqual(resolved, canonical)`. In the shared snippet, `resolved` comes from `find \"$RUN_ROOT/…\"`, and `RUN_ROOT` comes from `cd … && pwd`. Under Git Bash, `pwd` prints the MSYS form `/d/a/_temp/…`, while `canonical` is the native `D:\\a\\_temp\\…` path built by `path.join`. So the full-string compare cannot match on Windows even when the snippet picks the right directory. Tests 1-4 should not hit this:\n\n- Test 1 (shared snippet) resolves to `''`, which skips the `startsWith` check.\n- Test 2 (shared snippet) returns the raw native env value unchanged.\n- Tests 3-4 (wrap-up) get their path from `node bin/hooks.js resolve-run-dir`. That command's native-path equality pins in `tests/hooks-run-dir-resolve.test.js` pass on `windows-latest`.\n\nThe `windows-checkout-test-parity` skill's Anti-Patterns row \"Treating a CRLF fix as the whole Windows fix for a test that extracts and runs a skill's shell snippet\" records the same two-layer shape from #3517.\n\nRepo-wide sibling grep on `origin/main` (`1c8cda70b`): `git grep -lE '```(bash|sh|js|json|yaml|yml)?\\\\n' -- tests tools`, cross-checked by hand against each file's read and against the latest Windows run's failing set. 14 other files apply a bare-`\\n` fence regex (or a `'\\n```\\n'` search) to a raw read of live markdown, and all 14 fail on `windows-latest` with an extractor-not-found message:\n\n- Already claimed by an open record:\n  - `tests/specify-ceremony-tally-prose.test.js` and `tests/specify-crossref-manifest-resolve.test.js` (#3587)\n  - `tests/console-autoresolve-drain-overlap-carveout.test.js` (#3565)\n  - `tests/skill-load-report-cli.test.js` (#3574)\n- Claimed by no open record (an issue search for each filename returns nothing):\n  - `tests/bin-lib/issues/labels.test.js`\n  - `tests/blast-radius-snippet.test.js`\n  - `tests/capture-native-branch-guard-shapes.test.js`\n  - `tests/harness-health-runaway-section.test.js`\n  - `tests/init-port-isolation-conformance.test.js`\n  - `tests/plan-audit-check-e-prose.test.js`\n  - `tests/tidy-release-note-repair-conformance.test.js`\n  - `tests/dispatch-firing-exclusion.test.js`\n  - `tests/multispec-not-run-callsite.test.js`\n  - `tests/verify-expectations-writer-conformance.test.js`\n\nThe other grep hits are out of scope. `tests/bin-lib/harness-health/issue-payload.test.js`, `tests/comment-trust-conformance.test.js` and `tests/payload-boundary.test.js` match only on in-test string literals. The files that already read through `readText()` (for example `tests/adopted-branch-collision-snippet-fixture.test.js`) pass on Windows.\n\n## Deliverables\n\n1. `tests/pipeline-run-dir-adoption-anchoring.test.js`: read `plugin/skills/_shared/run-dir-resolution.md` and `plugin/skills/wrap-up/SKILL.md` through `tests/helpers/read-skill.js`'s `readText()` instead of raw `fs.readFileSync`. The extracted snippets are then LF on every checkout, which is what makes them runnable by `bash -c`. Leave both extraction regexes as they are.\n2. Same file, test 5 (line 147): replace `assert.strictEqual(resolved, canonical)` with a comparison by directory name, `assert.strictEqual(path.basename(resolved), path.basename(canonical))`. Add a one-line comment saying the shared snippet's step-2 path comes from `pwd` and is MSYS-form under Git Bash. `tests/hooks-run-dir-resolve.test.js` lines 186 and 210 already pin step-2 picks by `path.basename`. The test still separates the canonical pick (`2026-09-20T080000-…`) from the stale one (`20260911T131119-…`).\n3. Same file: add one CRLF control test. Give `extractSnippet` and `extractWrapUpSnippet` a `text` parameter that defaults to the module-level read. For each doc:\n   - build a CRLF string from the LF `readText()` result with `.replace(/\\n/g, '\\r\\n')`;\n   - assert that the string contains `\\r\\n` and no `\\r\\r\\n`;\n   - write it to a temp file, read it back through `readText()`, and assert the extractor returns the same snippet as for the LF text.\n\n   Remove the temp directory when the test ends. This control pins that the file's read-plus-extract path survives a CRLF checkout on ubuntu-only CI.\n4. Sibling follow-up: file one backlog record through `/claude-tweaks:capture` with a spec-shaped body for the ten unclaimed sibling files listed in Current State, so they are not left as an implicit deferral. First re-run the sibling grep and re-check open records, and drop any file that a record claims by then. Record the grep output and the new record number in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/pipeline-run-dir-adoption-anchoring.test.js` passes on macOS/Linux with all five existing tests plus the new CRLF control, none skipped or removed.\n- [ ] CRLF simulation on macOS/Linux:\n  - Build a scratch copy of the repo's `tests/` helpers, this test file and `plugin/`, then convert both skill files to `\\r\\n`.\n  - The pre-fix test fails all five tests with the two extractor messages.\n  - The fixed test passes all six.\n  - Quote both runs' `# pass` / `# fail` lines in the PR body.\n- [ ] The file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the per-test `ok` lines for this file from the run's log. Do not rely on the run's adjudication verdict alone (see Gotchas). A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat an in-process CRLF simulation as a Windows run.\n- [ ] The suite still discriminates. Run each doctoring in the same command as its restore, and quote the red lines:\n  - Drop the `| grep -E '/[0-9]{4}-[0-9]{2}-[0-9]{2}T[^/]*$'` filter from `run-dir-resolution.md`'s snippet: test 5 goes red.\n  - Change the anchoring arm `*) RUN_DIR=\"\" ;;` to `*) : ;;`: the shared-snippet trapped-value test goes red.\n  - Replace `readText(f)` with a raw `fs.readFileSync(f, 'utf8')` in the new CRLF control: the control goes red.\n- [ ] No file under `plugin/` changes. The skill prose and both snippets are correct, and only the test's read and one assertion change.\n- [ ] The sibling follow-up record from Deliverable 4 exists, and the PR body names its number along with the re-run grep result.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a run-directory test that failed on Windows checkouts because of line-ending and path-format differences.\n\n## Technical Approach\n\nThe change is test-side only and follows the \"Build CRLF inputs from the LF text\" pattern in `.claude/skills/windows-checkout-test-parity/SKILL.md`, plus its two-layer Anti-Patterns row from #3517. `readText()` (`fs.readFileSync(p, 'utf8').replace(/\\r\\n/g, '\\n')`) is the repo's single EOL-normalizing read for governed markdown. `skill-prose-conformance-tests` already requires it for every prose suite.\n\nThis suite extracts the snippets and then executes them, so normalizing at the read is the right fix, not a CRLF-tolerant regex. The scratch run showed that a `\\r?\\n`-only regex fix still hands bash a snippet full of `\\r`.\n\nThe test-5 assertion changes because the shared snippet's step-2 output is a bash-side path. Under Git Bash it is MSYS-form, so it can never byte-equal a native `path.join` result. The test's claim is which directory gets selected, and the basename carries that claim on every platform. `path.basename` splits on both `/` and `\\` on win32, so it handles the MSYS string there too.\n\nTests 1-4 keep their full-path assertions:\n\n- Test 1 (shared snippet) resolves to `''`, which skips the `startsWith` check.\n- Test 2 (shared snippet) passes the native env value through unchanged.\n- Tests 3-4 (wrap-up) get native paths back from `resolve-run-dir`.\n\nThe `windows-regression.yml` dispatch is the ground truth for whether those predictions hold.\n\nMake Deliverables 1-3 together in one commit. Then run the doctoring checks, then the dispatch. File the Deliverable 4 record during the build, not after merge.\n\n### Key Files\n\n- `tests/pipeline-run-dir-adoption-anchoring.test.js` — the change: the two skill reads (lines 24-31) go through `readText()`; both extractors (lines 33, 47) take a `text` parameter; test 5's assertion (line 147) compares by `path.basename`; a new CRLF control test is added\n- `tests/helpers/read-skill.js` — read-only reference: `readText()`\n- `plugin/skills/_shared/run-dir-resolution.md` — read-only reference: the `## Bash snippet (resolution)` section (lines 40-67) and its step-2 `find … | grep -E … | sort | tail` line (56)\n- `plugin/skills/wrap-up/SKILL.md` — read-only reference: `### Establish the run directory (unconditional)` (line 82) and its fenced snippet (lines 88-98)\n- `tests/hooks-run-dir-resolve.test.js` — read-only reference: the `path.basename(out.path)` step-2 pins (lines 186, 210) and the native-path equality pins that pass on `windows-latest`\n- `.claude/skills/windows-checkout-test-parity/SKILL.md` — read-only reference: the CRLF-input rule and the two-layer snippet-test Anti-Patterns row\n\n## Gotchas\n\n- Do not fix this by making the extraction regexes `\\r?\\n`-tolerant alone. The captured snippet keeps its `\\r`s, and `bash -c` fails with `syntax error near unexpected token $'in\\r'`, as the scratch run reproduced. The general advice in `skill-prose-conformance-tests` to \"write `\\r?\\n`\" covers extract-and-compare suites. This suite extracts and then executes.\n- Do not add a `.gitattributes` `eol=lf` rule for the skill files or `tests/` as the fix. The parity skill scopes `.gitattributes` to the hashed upstream-drift fixtures on purpose.\n- Do not \"fix\" test 5 by translating MSYS paths inside the skill snippet, or by changing `run-dir-resolution.md`. The snippet is the documented reference implementation, and its paths are correct for the shell that runs them. The mismatch exists only in the test's JS-side comparison.\n- Test 5's MSYS-path failure is inferred from Git Bash's `pwd` behavior, not observed, because the CRLF failure masks it on Windows today. If the Windows dispatch shows test 5 failing with a different shape, investigate that shape and do not skip the test on win32. One possibility is an empty `resolved` because a non-GNU `find` resolved first on `PATH`.\n- A `workflow_dispatch` of `windows-regression.yml` on a branch baselines against the branch's previous commit (`HEAD^1`, see #3568). If the fix is already in that commit, the adjudication verdict proves nothing. Read this file's per-test `ok` / `not ok` lines in the run's log.\n- Keep this record to this one test file plus the Deliverable 4 capture. The other unclaimed siblings have the same CRLF shape but different extractors. Some also run what they extract, so a backslash `CLAUDE_PLUGIN_ROOT` second layer may apply to them, as in #3555 and #3587. Each needs its own Windows proof.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after a865bb71d\n\nThe post-merge Windows check failed on commit a865bb71d72935471f39c361f48971236d30c56a (compared against 5e116e0ff).\n\n**Merged PR:** #3547 (https://github.com/thn-inc/claude-tweaks/pull/3547)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39212936982\n\n### Newly failing test files\n- `tests/pipeline-run-dir-adoption-anchoring.test.js`\n\n### Failure excerpts\n\n#### `tests/pipeline-run-dir-adoption-anchoring.test.js`\n\n```\nnot ok 10663 - adoption anchoring (shared run-dir-resolution.md snippet): an inherited PIPELINE_RUN_DIR trapped inside a linked worktree is rejected, not adopted\n  ---\n  duration_ms: 189.8444\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\pipeline-run-dir-adoption-anchoring.test.js:85:3'\n  failureType: 'testCodeFailure'\n  error: 'skills/_shared/run-dir-resolution.md must have a \"## Bash snippet (resolution)\" fenced bash block — extraction pattern is out of sync with the doc'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: ~\n  operator: '=='\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-19T07:10:44Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3562,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after a865bb71d",
-        "updatedAt": "2026-10-19T12:29:15Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
