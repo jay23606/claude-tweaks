@@ -1,7 +1,8 @@
 # Sibling-session check (Steps 4-5)
 
-Branches, claims, and labels are all remote-facing signals — none of them can see a live
-session already standing in an unpushed worktree. `[IL-107]`'s actual incident was a
+Branches and labels are remote-facing signals, and a claim is only visible once it is written —
+none of them can see a live session already standing in an unpushed worktree, which is why the
+check has a worktree half; its claims half covers a sibling on another machine. `[IL-107]`'s actual incident was a
 nine-task implementation, eleven commits deep in an unpushed worktree, nearly redone from
 scratch for exactly this reason: `origin/main`, the record's labels, and the claim refs all
 showed the work as untouched.
@@ -25,7 +26,8 @@ Branch on the printed line:
   with the claim manually.
 - `claude-tweaks: no sibling-session conflict found for record...` — proceed to the claim
   procedure below exactly as before this check existed. The check also fails open (an
-  unresolvable `git worktree list`, a dead pid, or an unparseable lock all print this same
+  unresolvable `git worktree list`, a dead pid, an unparseable lock, a claim read failure —
+  offline, auth, an unresolved repo slug — or an unreadable claim blob all print this same
   no-conflict line) — never treat silence as a reason to escalate.
 
 This check is advisory. `/claude-tweaks:flow` Step 2.8's atomic claim (`flow/claim-targets.md`,

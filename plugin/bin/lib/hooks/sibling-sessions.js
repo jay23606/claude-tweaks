@@ -30,7 +30,7 @@
 const path = require('path');
 const { parseWorktreeList, lockVerdict } = require('./worktree-reap');
 const { safeReal } = require('./worktree-detect');
-const { runGit } = require('./git-exec');
+const { runGit, repoSlugOf } = require('./git-exec');
 const ctxLib = require('./context');
 
 // `git worktree list --porcelain` canonicalizes symlinks in its `path` field;
@@ -178,7 +178,6 @@ function defaultReadClaim(cwd) {
   return (n) => {
     const { createClaimReader } = require('../issues/claim-store');
     const { defaultRunner } = require('../issues/claims-git-cas');
-    const { repoSlugOf } = require('./git-exec');
     const r = createClaimReader({
       gitRunner: (args, o) => defaultRunner(args, { cwd, ...o }),
       repoSlug: repoSlugOf(cwd),
@@ -201,7 +200,11 @@ function defaultReadClaim(cwd) {
 // null without reading. Every other non-match — absent, tombstone, stale,
 // unparseable, throwing reader, the caller's own claim — is null too. When no
 // session id is resolvable the caller's own claim cannot be told from a
-// sibling's, so a live claim reports as a sibling's.
+// sibling's, so a live claim reports as a sibling's. Own-claim exclusion keys on
+// sessionId, while flow Step 2.8's write path keys on runId (dispatch Step 4 has
+// no run id yet), so a live claim this session holds under a different run reads
+// as no-conflict here and is contested later at Step 2.8 — today's behavior, not
+// a regression.
 function findLiveClaim(recordRef, opts = {}) {
   const ref = String(recordRef);
   if (!/^#?[1-9]\d*$/.test(ref)) return null;
