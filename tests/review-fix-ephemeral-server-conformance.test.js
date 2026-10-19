@@ -12,7 +12,7 @@ const SKILLS = path.join(__dirname, '..', 'plugin', 'skills');
 const read = (...p) => fs.readFileSync(path.join(SKILLS, ...p), 'utf8');
 
 const HEADING = '## Fix-wave server coordination (pipeline runs)';
-const FIX_LINE = /FIX AGENT: do not run the project's builds, test suites, dev servers, or e2e runners — make the edits and report them; the dispatcher re-verifies\./;
+const FIX_LINE = /FIX AGENT: do not run the project's test suites, builds, dev servers, or e2e runners — make the edits and report them; the dispatcher re-verifies\./;
 const STOP = '**Stop before the wave builds.**';
 const REVERIFY = '**Re-verify.**';
 const RESTART = '**Restart once, only if a browser step is still ahead.**';
@@ -56,6 +56,9 @@ function assertRouting(text) {
     'standalone review behaves exactly as before',
     'leave the server stopped',
     'Step 6.7 item 4',
+    're-read `{run-dir}/ephemeral-server.txt` first',
+    'reuse it and start nothing',
+    'or its pid is dead',
   ]) {
     assert.ok(sec.includes(needle), `coordination section must include: ${needle}`);
   }
@@ -101,6 +104,11 @@ test("AC3.1: the fix-agent prompt line is verbatim and worded like #3001's READ-
   assert.doesNotMatch(line, /READ-ONLY REVIEW/);
   const core = read('_shared', 'subagent-dispatch-core.md');
   assert.match(core, /never run the project's test suites, builds, dev servers, or e2e runners/);
+  const ITEMS = 'test suites, builds, dev servers, or e2e runners';
+  const readOnlyLine = core.split('\n').find((l) => l.includes('READ-ONLY REVIEW:'));
+  assert.ok(readOnlyLine, 'the READ-ONLY REVIEW line must be present');
+  assert.ok(readOnlyLine.includes(ITEMS), 'READ-ONLY REVIEW line carries the shared item order');
+  assert.ok(line.includes(ITEMS), 'FIX AGENT line carries the same item order as the READ-ONLY REVIEW line');
   assert.ok(
     !section(core, '## Read-only Reviewer Discipline').includes('FIX AGENT'),
     'the read-only reviewer rule and the fix-agent rule stay separate',
@@ -161,6 +169,13 @@ test('go-red: removing the FIX AGENT line fails the routing assertions', () => {
     .split('\n')
     .filter((l) => !l.includes('FIX AGENT:'))
     .join('\n');
+  assert.notEqual(mutated, text);
+  assert.throws(() => assertRouting(mutated));
+});
+
+test('go-red: dropping the reuse-before-restart rule fails the routing assertions', () => {
+  const text = routing();
+  const mutated = text.replace('reuse it and start nothing', 'start a fresh one');
   assert.notEqual(mutated, text);
   assert.throws(() => assertRouting(mutated));
 });
