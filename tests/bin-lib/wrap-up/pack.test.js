@@ -870,13 +870,15 @@ test('#3004 review focus: blocked reason ok, bad/duplicate reason flagged, other
     '| 7 | review | h | open | — |',
     '| 8 | build | i | fixed | abc1234 |',
     '| 9 | build | j | deferred | filed as #77 |',
+    '| 10 | build | SDD ruling — chose X over Y: ratify or reverse at the Review Console | open | — |',
+    '| 11 | build | k | deferred | Defer-reason: tangential2 |',
   ].join('\n');
   const r = parseLedger(text);
-  assert.deepStrictEqual(r.missingDeferReasonItems, ['2', '3']);
-  assert.strictEqual(r.missingDeferReason, 2);
+  assert.deepStrictEqual(r.missingDeferReasonItems, ['2', '3', '11']);
+  assert.strictEqual(r.missingDeferReason, 3);
   // A record reference carries the reason in that record's own Defer-reason:, except
   // the run's own record, which is not a carrying reference.
-  assert.deepStrictEqual(parseLedger(text, { excludeRecords: [77] }).missingDeferReasonItems, ['2', '3', '9']);
+  assert.deepStrictEqual(parseLedger(text, { excludeRecords: [77] }).missingDeferReasonItems, ['2', '3', '9', '11']);
 });
 
 test('AC2.1: gatherPack reports missingDeferReasonItems qualified by file, without changing open (#3004)', async () => {
@@ -887,6 +889,18 @@ test('AC2.1: gatherPack reports missingDeferReasonItems qualified by file, witho
   assert.deepStrictEqual(pack.ledger.value.missingDeferReasonItems, ['docs/plans/2026-09-05-spec-1535-ledger.md#2']);
   assert.strictEqual(pack.ledger.value.missingDeferReason, 1);
   assert.strictEqual(pack.ledger.value.open, 1);
+});
+
+test('AC2.1: missingDeferReasonItems keeps both file-qualified ids when two ledgers flag the same row id (#3004)', async () => {
+  const { pack } = await probeLedgers({
+    '2026-09-05-a-ledger.md': ['| 2 | build | a | open | — |'],
+    '2026-09-05-b-ledger.md': ['| 2 | build | b | deferred | Defer-reason: tangential2 |'],
+  });
+  assert.strictEqual(pack.ledger.value.missingDeferReason, 2);
+  assert.deepStrictEqual(pack.ledger.value.missingDeferReasonItems.sort(), [
+    'docs/plans/2026-09-05-a-ledger.md#2',
+    'docs/plans/2026-09-05-b-ledger.md#2',
+  ]);
 });
 
 test('AC2.1: the run-dir ledger.md branch reports missingDeferReasonItems with ledger.md#N ids (#3004)', async () => {

@@ -386,10 +386,14 @@ function namesRecordReference(resolution, excludeRecords) {
 // `blocked-dependency` or `blocked-external` like any other, so it is not
 // special-cased. A row naming a `staged/…` path or a record reference is
 // exempt: its reason lives in the staged proposal's or filed record's own
-// `Defer-reason:` (an SDD `Ruling:` row is `open` with a staged path). A
-// Resolution is valid iff it carries exactly one token and its value is in
-// DEFER_REASONS.
-const LEDGER_DEFER_REASON_RE = /Defer-reason:\s*`?([A-Za-z-]+)`?/g;
+// `Defer-reason:`. A row whose Item starts with the SDD ruling producer's
+// fixed `SDD ruling —` template is exempt too: a ruling states a decision to
+// ratify, not a deferral, and the producer's no-run-dir and degraded
+// stage-item.js paths emit it `open` with no staged path
+// (build/dispatch.md). A Resolution is valid iff it carries exactly one token
+// and its value is in DEFER_REASONS.
+const LEDGER_DEFER_REASON_RE = /Defer-reason:\s*`?([A-Za-z-]+)(?![\w-])`?/g;
+const LEDGER_SDD_RULING_ITEM_RE = /^SDD ruling —/;
 
 function hasValidDeferReason(resolution) {
   const matches = [...resolution.matchAll(LEDGER_DEFER_REASON_RE)];
@@ -424,7 +428,7 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
     if (phase.toLowerCase() === 'build' && (status === 'deferred' || status === 'open')) {
       const resolution = cells.slice(4).join('|');
       const reasonLivesElsewhere = LEDGER_DEFERRED_STAGED_RE.test(cells[2] || '') || LEDGER_DEFERRED_STAGED_RE.test(resolution)
-        || namesRecordReference(resolution, excludeRecords);
+        || LEDGER_SDD_RULING_ITEM_RE.test(cells[2] || '') || namesRecordReference(resolution, excludeRecords);
       if (!reasonLivesElsewhere && !hasValidDeferReason(resolution)) missingDeferReasonItems.push(cells[0]);
     }
   }
