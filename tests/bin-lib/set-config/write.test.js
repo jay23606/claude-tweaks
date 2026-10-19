@@ -87,7 +87,7 @@ test('MANIFESTO_LEVERS matches manifesto.md\'s config.yml example block (the can
   const keys = [];
   for (const rawLine of block.split('\n')) {
     const m = /^([a-z0-9-]+):/.exec(rawLine.trim());
-    if (m && m[1] !== 'spec' && m[1] !== 'created') keys.push(m[1]);
+    if (m && m[1] !== 'spec' && m[1] !== 'created' && !RUN_PINS.includes(m[1])) keys.push(m[1]);
   }
   assert.deepEqual(keys, [...MANIFESTO_LEVERS],
     'MANIFESTO_LEVERS must track manifesto.md\'s config.yml example block, in order');
