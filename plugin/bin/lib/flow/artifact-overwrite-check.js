@@ -198,7 +198,7 @@ function normalizeStepMarkup(line) {
 function isStepMarkupReformat(hunk) {
   if (hunk.deletedLines.length === 0) return false;
   const removed = hunk.deletedLines.map((d) => normalizeStepMarkup(d.content)).filter((l) => l.length > 0);
-  const added = hunk.addedLines.map((l) => normalizeStepMarkup(l)).filter((l) => l.length > 0);
+  const added = hunk.addedLines.map(normalizeStepMarkup).filter((l) => l.length > 0);
   return removed.length === added.length && removed.every((l, i) => l === added[i]);
 }
 
