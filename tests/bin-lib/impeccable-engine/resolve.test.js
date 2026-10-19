@@ -116,7 +116,6 @@ test('AC4b: malformed installed_plugins.json -> not-installed with the /plugin i
 
 test('installed_plugins.json missing entirely -> not-installed, detail names the missing file', () => {
   const deps = fakeDeps({
-    exists: () => true,
     readFile: () => { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); },
   });
   const out = resolve({ projectPath: '/repo' }, deps);
