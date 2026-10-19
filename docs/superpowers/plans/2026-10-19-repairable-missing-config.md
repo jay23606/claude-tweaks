@@ -22,6 +22,12 @@ Scope keywords: checkFirstCallArtifacts, missing-config, repairable
 - Call 2 is dispatched byte-identical to the normal second call — no repair flag or hint.
 - Corrected premise (logged in decisions.md): `sequential-execution.md`'s stale `/claude-tweaks:flow {target} wrap-up` teardown reference was already fixed by #3367 and is pinned by `tests/dispatch-sequential-execution-conformance.test.js` AC2 — no edit for that deliverable. Waived AC8.2 (already satisfied at base; the existing #3367 pin covers it).
 
+## Build deviations (Common Step 4.5)
+
+- Beneficial: an unset `integration-model` key in `policy.yml` (`value: null`, not `invalid`) requires the same PR evidence as `pr-first` — never claim-only, never outright `false` (final-review ruling, `729a9e544`). The spec's "any other resolved value" rule covers resolved non-`pr-first` values only; an unresolved key is not one, and claim-only repair on it would repair on less evidence than `pr-first` demands. This supersedes the Review Focus line below that expected `false`.
+- Beneficial: `resolveFirstCallGate` is the tested code twin of §2's ordering, so AC9's fixture test has a function to drive. It is not called at runtime; the prose pin (AC9.2) guards the executed gate.
+- Update the spec (staged): the spec's "these fields are exactly what `computeAdoption` needs, no superset or subset" premise is wrong. `computeAdoption` keys on `state.pr`/`dispatched`/run content, and claim liveness serves call 2's ownership-checked release. The shipped comment states the real relationship.
+
 ## Review Focus
 
 - `policy.yml` present but with no `integration-model:` key — resolves `value: null`; must be `repairable: false` (unresolved is missing evidence, not "some other value"). Test in Task 1.
