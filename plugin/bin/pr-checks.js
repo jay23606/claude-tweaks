@@ -19,8 +19,9 @@
 // failing check `inherited` when it also fails there; every failing check
 // inherited is `inherited-red`. The base is the branch the PR merges into (its
 // `baseRefName`), the integration-branch resolver only when the PR view carries
-// none; `baseBranch` names the branch actually compared. A failed base read
-// leaves plain `red` with a baseReason -- never green. Only `red` triggers the
+// none; `baseBranch` names the branch actually compared. A failed or truncated
+// base read leaves plain `red` with a baseReason -- never green. Only the newest
+// run of a workflow counts at the base tip (classify.js). Only `red` triggers the
 // base read. A failed head-runs read that would leave a non-red verdict
 // (including inherited-red) is `read-failed`: the read is partial.
 //
