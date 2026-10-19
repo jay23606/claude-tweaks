@@ -261,3 +261,89 @@ test('a green rollup plus a completed failing head run is red, naming that run (
   assert.equal(j.state, 'red');
   assert.deepEqual(j.failing, [{ name: 'lint', url: 'https://ci.example/r/2' }]);
 });
+
+const BASE_SHA = 'e'.repeat(40);
+// gh fake for a red PR (failing: given names) and a base tip failing `baseFailing` (as check-run names).
+function redWithBase(prFailing, baseFailing, over = {}) {
+  const calls = [];
+  const gh = (args) => {
+    calls.push(args);
+    if (args[0] === 'pr') return JSON.stringify({ headRefOid: HEAD, statusCheckRollup: prFailing.map((n) => ({ __typename: 'CheckRun', name: n, status: 'COMPLETED', conclusion: 'FAILURE', detailsUrl: `https://ci.example/${n}` })) });
+    if (args[0] === 'run' && args[3] === HEAD) return '[]';
+    if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/commits/main') return `${BASE_SHA}\n`;
+    if (args[0] === 'api' && args[1] === `repos/{owner}/{repo}/commits/${BASE_SHA}/check-runs?per_page=100`) return JSON.stringify({ total_count: baseFailing.length, check_runs: baseFailing.map((n) => ({ name: n, status: 'completed', conclusion: 'failure' })) });
+    if (args[0] === 'api' && args[1] === `repos/{owner}/{repo}/commits/${BASE_SHA}/status`) return JSON.stringify({ state: 'failure', statuses: [] });
+    if (args[0] === 'run' && args[3] === BASE_SHA) return '[]';
+    throw new Error('unexpected gh ' + args.join(' '));
+  };
+  return { calls, over: { integrationBranch: () => 'main', gh, ...over } };
+}
+
+test('AC1.1: a PR red only on a check also red at the integration tip reads inherited-red, naming baseSha', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, f.over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseSha, BASE_SHA);
+  assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test', inherited: true }]);
+  assert.deepEqual(f.calls.find((a) => a[0] === 'run' && a[3] === BASE_SHA), ['run', 'list', '--commit', BASE_SHA, '--limit', '100', '--json', 'name,workflowName,status,conclusion,url']);
+});
+
+test('AC2.1: one inherited + one new failing check stays red; only the new one is attributable', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, redWithBase(['test', 'lint'], ['test']).over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'red');
+  assert.deepEqual(j.failing.filter((x) => !x.inherited).map((x) => x.name), ['lint']);
+});
+
+test('AC3.1: a base read that throws leaves plain red (never green) with baseReason', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, { ...f.over, gh: (args) => { if (args[0] === 'api') throw new Error('HTTP 502'); return f.over.gh(args); } });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'red');
+  assert.match(j.baseReason, /HTTP 502/);
+  assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test' }]);
+});
+
+test('an unresolvable integration branch is plain red and makes no gh api call', () => {
+  for (const integrationBranch of [() => null, () => { throw new Error('no origin'); }]) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const f = redWithBase(['test'], ['test'], { integrationBranch });
+    const h = makeDeps(main, f.over);
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    assert.equal(h.json().state, 'red');
+    assert.ok(h.json().baseReason);
+    assert.equal(f.calls.some((a) => a[0] === 'api'), false);
+  }
+});
+
+test('a non-sha base response is plain red and skips the check-runs read', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, { ...f.over, gh: (args) => (args[1] === 'repos/{owner}/{repo}/commits/main' ? 'Not Found\n' : f.over.gh(args)) });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  assert.equal(h.json().state, 'red');
+  assert.match(h.json().baseReason, /base sha unreadable/);
+  assert.equal(f.calls.some((a) => String(a[1]).includes('/check-runs')), false);
+});
+
+test('green, pending and stale verdicts never read the base tip', () => {
+  const rollups = {
+    green: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    pending: [{ __typename: 'CheckRun', name: 'test', status: 'IN_PROGRESS', conclusion: '' }],
+  };
+  for (const [state, rollup] of Object.entries(rollups)) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const calls = [];
+    const h = makeDeps(main, { integrationBranch: () => 'main', gh: (args) => { calls.push(args); return args[0] === 'pr' ? JSON.stringify({ headRefOid: HEAD, statusCheckRollup: rollup }) : '[]'; } });
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    assert.equal(h.json().state, state);
+    assert.equal(calls.some((a) => a[0] === 'api'), false);
+  }
+});
