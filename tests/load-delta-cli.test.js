@@ -12,6 +12,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const { run } = require('../plugin/bin/load-delta');
+const { readText } = require('./helpers/read-skill');
 
 const REPO = path.join(__dirname, '..');
 
@@ -340,7 +341,7 @@ test('AC12: this repo — exits 0 and lists both the plugin and .claude roots', 
 const REVIEW = path.join(REPO, 'plugin', 'skills', 'review');
 
 test('review 3j pointer: at most 4 lines, cites step3-skill-load-delta.md', () => {
-  const text = fs.readFileSync(path.join(REVIEW, 'code-mode-steps.md'), 'utf8');
+  const text = readText(path.join(REVIEW, 'code-mode-steps.md'));
   const start = text.indexOf('### 3j: Skill Load Delta (informational)');
   assert.ok(start !== -1, '3j heading missing');
   const end = text.indexOf('\n### ', start + 1);
@@ -351,7 +352,7 @@ test('review 3j pointer: at most 4 lines, cites step3-skill-load-delta.md', () =
 });
 
 test('step3-skill-load-delta.md quotes every outcome line the CLI prints, verbatim', () => {
-  const doc = fs.readFileSync(path.join(REVIEW, 'step3-skill-load-delta.md'), 'utf8');
+  const doc = readText(path.join(REVIEW, 'step3-skill-load-delta.md'));
   for (const line of [
     'Skill load delta: no plugin roots discovered — skipped (pass --plugin-root <dir>)',
     '— skill files changed under {parent}',
@@ -371,7 +372,7 @@ test('step3-skill-load-delta.md quotes every outcome line the CLI prints, verbat
 });
 
 test('review summary template carries the Skill Load Delta section and a compact-form line', () => {
-  const t = fs.readFileSync(path.join(REVIEW, 'review-summary-template.md'), 'utf8');
+  const t = readText(path.join(REVIEW, 'review-summary-template.md'));
   const full = t.slice(t.indexOf('## Full template'));
   assert.match(full, /### Skill Load Delta\n/);
   const compact = t.slice(t.indexOf('## Compact form'), t.indexOf('## Full template'));
