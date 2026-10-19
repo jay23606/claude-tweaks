@@ -27,7 +27,7 @@ files:
 - **URL:** the review's Step 3 Routing table, and `{run-dir}/decisions.md` under `## /review`
 - **Action:** find the promoted finding and its corroboration line.
 - **Should feel:** traceable. The line names every lens that reported the finding, so the maintainer can check each lens's own evidence.
-- **Should understand:** the routed row takes the most severe member's severity and Category. A `critical` security finding corroborated by a `low` convention finding stays `critical` and still interrupts. When members disagree on severity, the line reads `…, severity contested (took the highest). Confirmed.` A chain of matches never merges two distinct findings, so a cluster can produce several confirmed rows.
+- **Should understand:** the routed row takes the most severe member's severity and Category. A `critical` security finding corroborated by a `low` convention finding stays `critical` and still interrupts. When members' severities fall in different buckets (critical/high versus medium/low/info), the line reads `…, severity contested (took the highest). Confirmed.` A `high` and a `critical` member share a bucket, so that row is not contested. A chain of matches never merges two distinct findings, so a cluster can produce several confirmed rows.
 - **Red flags:** a `critical` routed as `low` and auto-applied. A distinct finding that appears only inside another row's `members`. A corroboration line that names one lens.
 
 ### 3. Check the Wrap-Up Review Console — end of the run
