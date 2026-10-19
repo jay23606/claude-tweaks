@@ -19,15 +19,17 @@ const CEREMONY = read('plugin', 'skills', 'wrap-up', 'ceremony-derivation.md');
 
 // assertNamesParser(text, label): the paragraph (blank-line-delimited block) containing
 // `computeDiffFacts` also contains `parseNumstat` and `blast-radius-cli.js`, with
-// `parseNumstat` appearing first.
+// `parseNumstat` followed by `computeDiffFacts` within 400 characters (adjacency, not just
+// first-occurrence order, because the dispatch.md block is one very long paragraph).
 function assertNamesParser(text, label) {
   const block = text.split(/\n\s*\n/).find((b) => b.includes('computeDiffFacts'));
   assert.ok(block, `${label}: no paragraph contains computeDiffFacts`);
   assert.ok(block.includes('parseNumstat'), `${label}: paragraph does not name parseNumstat`);
   assert.ok(block.includes('blast-radius-cli.js'), `${label}: paragraph does not name blast-radius-cli.js`);
-  assert.ok(
-    block.indexOf('parseNumstat') < block.indexOf('computeDiffFacts'),
-    `${label}: parseNumstat must appear before computeDiffFacts`,
+  assert.match(
+    block,
+    /parseNumstat[\s\S]{0,400}?computeDiffFacts/,
+    `${label}: parseNumstat must be followed by computeDiffFacts within 400 characters`,
   );
 }
 
@@ -39,15 +41,22 @@ test('AC1.1: wrap-up/ceremony-derivation.md names parseNumstat before computeDif
   assertNamesParser(CEREMONY, 'wrap-up/ceremony-derivation.md');
 });
 
-test('negative control: the assertion throws on a paragraph without parseNumstat', () => {
+test('negative control: the assertion throws on each way a paragraph can fail to name the parser', () => {
+  // No parseNumstat at all.
   assert.throws(() => assertNamesParser('… `computeDiffFacts` over `git diff --numstat` output …', 'control'));
+  // parseNumstat named only after computeDiffFacts.
+  assert.throws(() =>
+    assertNamesParser('… `computeDiffFacts` over the output, then `parseNumstat` (`bin/lib/blast-radius-cli.js`) …', 'control'));
+  // parseNumstat named but the module that exports it is not.
+  assert.throws(() => assertNamesParser('… `parseNumstat` first, then `computeDiffFacts` …', 'control'));
 });
 
 test('the documented node -e composition runs and yields a diff-facts object', () => {
   const line = CEREMONY.split('\n').find((l) => l.includes('parseNumstat') && l.includes('node -e'));
   assert.ok(line, 'ceremony-derivation.md has no line with both parseNumstat and node -e');
-  const afterPipe = line.slice(line.indexOf('| ') + 2);
-  const cmd = afterPipe.split('${CLAUDE_PLUGIN_ROOT}').join(PLUGIN);
+  const nodeStart = line.indexOf('| node -e');
+  assert.ok(nodeStart >= 0, 'the composition line must pipe the numstat output into `node -e`');
+  const cmd = line.slice(nodeStart + 2).split('${CLAUDE_PLUGIN_ROOT}').join(PLUGIN);
   const res = spawnSync('sh', ['-c', cmd], { input: '3\t1\tsrc/a.js\n', encoding: 'utf8' });
   assert.equal(res.status, 0, `snippet exited ${res.status}: ${res.stderr}`);
   const facts = JSON.parse(res.stdout);
