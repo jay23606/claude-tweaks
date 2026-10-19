@@ -34,6 +34,8 @@ test('the git-only check is an ancestor not on the first-parent line', () => {
   const r = region();
   assert.ok(r.includes('git merge-base --is-ancestor HEAD origin/{integration-branch}'));
   assert.ok(r.includes('git rev-list --first-parent origin/{integration-branch}'));
+  assert.ok(r.includes("does not list the tip's sha"));
+  assert.ok(r.includes('Run both after `git fetch origin {integration-branch}`'));
 });
 
 test('a merged branch falls through like a dirty tree', () => {
@@ -44,6 +46,8 @@ test('a merged branch falls through like a dirty tree', () => {
 test('the check fails open and logs its path', () => {
   const r = region();
   assert.ok(r.includes('a squash-merged branch adopts as before (fail open)'));
+  assert.ok(r.includes('Adopt-or-create: {adopted | not adopted, merged ({check}) | lookup failed, adopted}'));
+  assert.ok(r.includes('`_shared/worktree-catchup-no-run-dir.md`'));
 });
 
 test('the adopt condition cites the precondition', () => {
@@ -57,4 +61,9 @@ test('consumers restate the narrowed adopt condition', () => {
   assert.ok(BUILD_WORKTREE_SETUP.includes('branch (not isolated, dirty, or on a merged branch)'));
   assert.ok(BUILD_WORKTREE_SETUP.includes('branch (already isolated, clean tree, branch not merged'));
   assert.ok(ROUTINE_CREATE_AND_UPDATE.includes('already isolated (with a clean tree on an unmerged branch)'));
+});
+
+test('the idempotency claim names the unmerged condition', () => {
+  const r = region();
+  assert.ok(r.includes('the tree stays clean and the branch stays unmerged'));
 });
