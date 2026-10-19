@@ -204,11 +204,31 @@ test('spec subdirectory reads the parent run dir pr', () => {
   assert.equal(h.json().pr, 9);
 });
 
-test('resolver is called with the cwd as repoRoot', () => {
+test('resolver is called with the cwd as repoRoot, not the main root', () => {
   const { main, runDir } = fixture({ pr: { number: 7 } });
-  const h = makeDeps(main, null);
+  const elsewhere = path.join(main, 'a-worktree-cwd');
+  fs.mkdirSync(elsewhere, { recursive: true });
+  const h = makeDeps(main, null, { cwd: () => elsewhere });
   run(['--run', runDir, '--phase', 'build'], h.deps);
-  assert.equal(h.calls[0][0], main);
+  assert.equal(h.calls[0][0], elsewhere);
+  assert.notEqual(h.calls[0][0], main);
+});
+
+test('a corrupt run-state.json reads as no-pr and never reaches the resolver', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), '{ not json');
+  const h = makeDeps(main, DIRTY);
+  assert.equal(run(['--run', runDir, '--phase', 'build'], h.deps), 0);
+  assert.equal(h.json().state, 'no-pr');
+  assert.equal(h.calls.length, 0);
+});
+
+test('a throwing run-state reader reads as no-pr and never reaches the resolver', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, DIRTY, { readRunState: () => { throw new Error('unreadable'); } });
+  assert.equal(run(['--run', runDir, '--phase', 'build'], h.deps), 0);
+  assert.equal(h.json().state, 'no-pr');
+  assert.equal(h.calls.length, 0);
 });
 
 test('append failure still reports conflicting, logged false, one stderr line', () => {

@@ -44,6 +44,12 @@ function assertMergeStateSection(text) {
     /\*\*`conflicting`\*\*[^]*?\bDIRTY\b[^]*?\bCONFLICTING\b[^]*?already written one `AUTO` entry/,
     'AC1.1: the conflicting bullet names DIRTY and CONFLICTING and says the CLI already wrote the AUTO entry',
   );
+  has('on `logged: false` the append failed', 'AC1.1: a failed CLI append (logged: false) is handed back to the caller');
+  // AC1.1 — the conflict line the phase output carries.
+  has(
+    'PR #{pr} conflicts with `{integration-branch}` at {phase} exit — no `pull_request` CI runs until the branch is caught up.',
+    'AC1.1: the phase output states the conflict',
+  );
 
   // AC2.1 — auto catch-up: status, fetch, merge, push, in that order, merge never rebase.
   const order = [
@@ -54,6 +60,7 @@ function assertMergeStateSection(text) {
     'git -C "{worktree-path}" add',
     'git -C "{worktree-path}" commit --no-edit',
     'git -C "{worktree-path}" merge --abort',
+    'git -C "{worktree-path}" rev-parse --short HEAD', // step 5: the post-merge HEAD, {after short}
     'git -C "{worktree-path}" push origin {branch}',
   ];
   let from = 0;

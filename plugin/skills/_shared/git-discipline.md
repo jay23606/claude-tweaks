@@ -87,8 +87,9 @@ itself — route it like `read-failed`. `local-merge` and `current-branch` runs 
 check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no-pr`.
 
 - **`conflicting`** (`mergeStateStatus: DIRTY` or `mergeable: CONFLICTING`) — the CLI has
-  already written one `AUTO` entry to `decisions.md` naming the PR and the phase. Say it in the
-  phase output: "PR #{pr} conflicts with `{integration-branch}` at {phase} exit — no
+  already written one `AUTO` entry to `decisions.md` naming the PR and the phase (`logged: true`;
+  on `logged: false` the append failed — write that entry yourself with `log-decision.js`). Say
+  it in the phase output: "PR #{pr} conflicts with `{integration-branch}` at {phase} exit — no
   `pull_request` CI runs until the branch is caught up." Then route on the run's mode
   (`_shared/auto-mode-contract.md`):
   - **`auto`** (and `confirm`, which runs as `auto` once approved) — run the catch-up below
@@ -138,8 +139,9 @@ the following phases re-verify the merged tree. One plain command per Bash call:
    confidently — left for the merge path (_shared/pr-first-merge.md) at merge time"`), skip
    step 5 (HEAD is unchanged by the abort, so its "stale forge" line would be false), and let
    the next phase start on the un-merged, clean branch.
-5. If HEAD is unchanged, the forge's conflict state was stale and there is nothing to push; log
-   one `AUTO` entry (same `--step`, `--text "local merge brought in nothing — the forge's
+5. `git -C "{worktree-path}" rev-parse --short HEAD` — the post-merge HEAD, the `{after short}`
+   below. If it equals step 3's `{before short}` (HEAD is unchanged), the forge's conflict state
+   was stale and there is nothing to push; log one `AUTO` entry (same `--step`, `--text "local merge brought in nothing — the forge's
    conflict state was stale"`) and stop. Otherwise `git -C "{worktree-path}" push origin
    {branch}` — the re-push is what lets GitHub run the PR's `pull_request` workflows — and log:
    `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --section "{/build|/test|/review|/flow|/wrap-up}" --step "Post-push merge-state check" --reversibility high --text "caught PR #{pr}'s branch up with origin/{integration-branch} before the next phase ({before short} → {after short}); re-pushed"`.
