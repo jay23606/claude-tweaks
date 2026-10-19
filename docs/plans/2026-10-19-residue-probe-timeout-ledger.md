@@ -2,3 +2,9 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | SDD task review (Task 1): the `--scope blast-radius` short-circuit in `probeWorktrees` duplicates `scope-filter`'s observed-drop rule inside the probe — a future blast-radius-scoped worktree finding would be silently dropped | accepted | Final whole-branch review triaged fine-to-defer: the equivalence test in `tests/bin-lib/residue/probes-git.test.js` pins short-circuit == filtered output, and a guard note now sits on the `scope: 'observed'` line (abf543f1d) |
+| 2 | build | SDD task review (Task 1): `cliScope` parameter name sits beside the probe's own `scope` object — potentially confusing | accepted | Cosmetic; the code comment at the short-circuit explains it; final review triaged fine-to-defer |
+| 3 | build | SDD task review (Task 2): the timeout rethrow in `pack.js` `execBounded` discarded the original error (child stderr, cmd) | fixed | abf543f1d — `new Error(msg, { cause: err })` keeps the original error, message unchanged |
+| 4 | build | SDD task review (Task 2): killed-path tests cover the `residue` and `gh` call sites only, not `state`/`unblocked` | accepted | All four call sites route through the one `execBounded` helper (single `deps.execFile` call in pack.js); the existing "every subprocess call is bounded" test still checks their options; final review triaged fine-to-defer |
+| 5 | build | SDD task review (Task 2): `gh` timeout label is the subcommand only (`gh pr`, not `gh pr view`) | accepted | Plan-pinned format; the pack field name (`pr`, `recordLabels`, …) already identifies which call timed out |
+| 6 | build | SDD task review (Task 2): a kill with a null `err.signal` would print `killed by null` | fixed | abf543f1d — `${err.signal \|\| 'timeout'}` fallback plus a `signal: null` test in `tests/bin-lib/wrap-up/pack.test.js` |
