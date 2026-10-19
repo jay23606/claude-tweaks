@@ -1012,7 +1012,7 @@ function archiveRunDir(root, runDir) {
   // nothing) rather than guessing which copy is canonical.
   const twinPlan = [];
   // #1323: `runDir` can itself already equal its own `archiveDir` (a caller
-  // — e.g. teardown-run's AC7 — passing an already-archived path as `runDir`
+  // passing an already-archived path as `runDir`
   // directly, where `path.basename` round-trips to the same archive twin).
   // `topWork === topWorkDest` there, and comparing a directory against
   // itself trivially reads "identical," which would route straight into

@@ -144,7 +144,7 @@ const KNOWN_FLAGS = {
   // Remove it in two releases. (1) Drop it from the three skill-prose call sites
   // (`wrap-up/cleanup-procedures-execution.md` Section C steps 5 and 5.5, `flow/multispec-review-console.md`
   // Shared teardown step 7) and from their pins in `tests/scratch-worktree-remote-branch-delete.test.js`,
-  // in any release after the one that ships #3490. (2) Only in a release after (1) has shipped, remove
+  // and every other prose mention or pin of it (`git grep -n -F -- --remote-ref-only`), in any release after the one that ships #3490. (2) Only in a release after (1) has shipped, remove
   // it from `KNOWN_FLAGS` and `USAGE` here. Until then a session can still hold pre-(1) prose in context
   // while the running build's hooks.js is newer, and the unknown-flag guard would refuse that call.
   'teardown-run': ['--run', '--merged', '--abandoned', '--remote-ref-only'],

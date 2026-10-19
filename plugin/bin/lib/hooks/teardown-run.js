@@ -3,8 +3,8 @@
 // the 4-5 hand-assembled commands a finished /flow run needed before this: (1) close-run's
 // terminal-state flip (close-run-state.js), (2) worktree-reap.js's lock/eligibility predicate for
 // worktree removal, (3) a local branch delete, (4) the remote ref delete `pr-first-merge-post-merge.md`
-// Step 5 already specifies. Archival left this verb in #3490: `archive-run` (console-gated, #1130)
-// is the only path that moves a run directory, and it runs as the caller's own last cleanup step.
+// Step 5 already specifies. Archival left this verb in #3490; it is `archive-run`'s (console-gated, #1130) and the
+// reconciler's job.
 //
 // Cardinal invariant (bin/hooks.js's own header comment): it never sets a non-zero exit and
 // never throws past its own boundary — every step is try/skip/report — unlike close-run's
@@ -121,8 +121,8 @@ function teardownRun(runDir, opts = {}) {
   // already-archived one (.claude-tweaks/pipelines/archive/{run-id}). Replaces the former fixed
   // `path.resolve(runDir, '..', '..', '..')`, which silently assumed the 3-level case and, given
   // the 4-level archived case, landed one directory short — {root}/.claude-tweaks instead of
-  // {root} — corrupting every downstream git-rooted call (most visibly a doubled
-  // .claude-tweaks/.claude-tweaks/... path out of archiveRunDir).
+  // {root} — corrupting every downstream root-rooted read (e.g. the policy.yml lookup behind
+  // the integration-branch guard).
   const root = mainCheckoutRoot(runDir);
   const lines = [];
 
@@ -184,7 +184,7 @@ function teardownRun(runDir, opts = {}) {
   // has no "override the refusal" input of its own the way close-run's --run does (--run here
   // just names which run to act on) — extending close-run's foreignOwner refusal means it applies
   // unconditionally, the same shape as close-run's own implicit path. A foreign-owned run refuses
-  // the WHOLE teardown (no archive, no worktree removal, no branch/ref delete) rather than
+  // the WHOLE teardown (no worktree removal, no branch/ref delete) rather than
   // partially acting — tearing down another session's live run out from under it is the hazard.
   // `state.notYetArchived` (closeRunState's #1103 advisory field, surfaced as a warning by
   // hooks.js's standalone close-run verb) is deliberately left unread here — teardown-run never
@@ -222,7 +222,7 @@ function teardownRun(runDir, opts = {}) {
   // so skip them all individually here (same try/skip/report posture as every other step) rather
   // than letting a null root reach runGit and produce a confusing downstream failure.
   if (!root) {
-    lines.push('archive: skipped — could not determine main checkout root from run dir');
+    lines.push("archive: skipped — teardown-run does not archive (archival is the caller's own last cleanup step: hooks.js archive-run)");
     lines.push('worktree: skipped — could not determine main checkout root from run dir');
     lines.push('branch: skipped — could not determine main checkout root from run dir');
     lines.push('remote ref: skipped — could not determine main checkout root from run dir');
