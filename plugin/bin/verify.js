@@ -269,8 +269,11 @@ async function main() {
   // that are not a parsed --cmd entry itself (tool-scoped's synthesized
   // `tests`, and a flaky retry of a check), so they run in the same
   // environment as the check they stand in for.
+  // #3511: resolves through the effective check set (`cmds`, which --scope
+  // rebuilds with declared-only suites carrying their --cmd-env), falling
+  // back to the parsed --cmd entries.
   const envOf = (name) => {
-    const declared = parsed.cmds.find((c) => c.name === name);
+    const declared = cmds.find((c) => c.name === name) || parsed.cmds.find((c) => c.name === name);
     return declared && declared.env ? declared.env : null;
   };
   // #3063: a check's own --cmd-timeout, reused as the bounded default for

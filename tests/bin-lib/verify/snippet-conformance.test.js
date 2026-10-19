@@ -125,7 +125,7 @@ test('the scoped snippet tokenizer can go red on an injected unknown flag (#1923
 test('verification.md states the map-form baseline resolution rule (#3511)', () => {
   const section = DOC.slice(DOC.indexOf('### Baseline adjudication'), DOC.indexOf('### Declared pre-existing failures'));
   assert.ok(section.includes('`retry.{name}`'), 'names the retry fallback');
-  assert.ok(section.includes('names no `--cmd` or declared suite'), 'names the one usage error');
+  assert.ok(section.includes('names no `--cmd` or declared suite'), 'names the unmatched-name usage error');
 });
 
 test('agents never write the stamp: no redirect into claude-tweaks-verify-pass remains, and the foreground rule is stated (#1921 AC6)', () => {
