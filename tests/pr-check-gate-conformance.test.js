@@ -118,5 +118,5 @@ test('AC2.1 go-red control: removing the StatusContext paragraph fails the pin',
   const block = statusContextBlock(MERGE);
   const mutated = block ? MERGE.replace(block, '') : MERGE;
   assert.notEqual(mutated, MERGE, 'the StatusContext paragraph is present to remove');
-  assert.throws(() => assertStatusContextNormalization(mutated));
+  assert.throws(() => assertStatusContextNormalization(mutated), /names StatusContext normalization/);
 });
