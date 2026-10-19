@@ -116,6 +116,17 @@ test('AC1.1: a plugin-prose diff (plugin/skills/test/qa-prompts.md + a test file
   assert.equal(deriveCeremonyProfile(files, 'standard'), 'standard');
 });
 
+test('computeDiffFacts: a prompt-prose file outside any test directory plus a test file is not lowSurface (#3477)', () => {
+  const files = [
+    { path: 'plugin/skills/foo/SKILL.md', additions: 4, deletions: 1 },
+    { path: 'tests/foo.test.js', additions: 10, deletions: 0 },
+  ];
+  const facts = computeDiffFacts(files);
+  assert.equal(facts.implFiles, 1);
+  assert.equal(facts.lowSurface, false);
+  assert.equal(deriveCeremonyProfile(files, 'standard'), 'standard');
+});
+
 test('AC2.1: a docs/**/*.md-only diff still derives fast-lane', () => {
   const files = [
     { path: 'docs/plugin-structure.md', additions: 5, deletions: 0 },
