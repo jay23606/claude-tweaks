@@ -89,7 +89,9 @@ function parseTargets(raw) {
 function readConfigIntegrationModel(runDir) {
   try {
     const raw = fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8');
-    const m = raw.match(/^integration-model:\s*(\S+)/m);
+    // [^\S\n]*, not \s*: an empty `integration-model:` line must read as absent,
+    // never capture the next line's key as the value (the degrade line prints it).
+    const m = raw.match(/^integration-model:[^\S\n]*(\S+)/m);
     return m ? m[1] : null;
   } catch {
     return null;

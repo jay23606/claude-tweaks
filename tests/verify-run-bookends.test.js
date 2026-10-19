@@ -182,6 +182,13 @@ test('AC2.1: readConfigIntegrationModel reads a pin written by set-config.js', (
   assert.strictEqual(realDeps.readIntegrationModel(runDir), 'pr-first');
 });
 
+test('readConfigIntegrationModel: an empty integration-model line reads as absent, not the next line\'s key', (t) => {
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-emptypin-'));
+  t.after(() => fs.rmSync(runDir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(runDir, 'config.yml'), 'mode: auto\nintegration-model:\nspec: 42\n');
+  assert.strictEqual(realDeps.readIntegrationModel(runDir), null);
+});
+
 test('AC3.1: with no integration-model pin, a degrade line is printed instead of passing silently', () => {
   const deps = captured(makeDeps({ integrationModel: null, claims: OWN_CLAIM }));
   assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);

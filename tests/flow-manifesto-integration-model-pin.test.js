@@ -124,6 +124,20 @@ test('manifesto.md Write mechanism: an empty integration-model resolve omits the
   assert.match(para, /log-decision\.js --status SKIP/, 'Write mechanism must log the omission as a SKIP decision');
 });
 
+test('the degrade-line prefixes the readers print are the ones the skill prose tells callers to log as SKIP', () => {
+  const read = (...p) => fs.readFileSync(path.join(REPO_ROOT, ...p), 'utf8');
+  const sites = [
+    ['plugin/bin/verify-run-bookends.js', 'verify-run-bookends: degraded —', ['plugin/skills/dispatch/task-prompt.md', 'plugin/skills/flow/claim-targets.md']],
+    ['plugin/bin/lib/dispatch/first-call-artifact-check.js', 'first-call-artifact-check: degraded —', ['plugin/skills/dispatch/two-call-gate.md']],
+  ];
+  for (const [code, prefix, prose] of sites) {
+    assert.ok(read(...code.split('/')).includes(prefix), `${code} no longer prints "${prefix}"`);
+    for (const file of prose) {
+      assert.ok(read(...file.split('/')).includes(prefix), `${file} does not name "${prefix}" — the SKIP-logging instruction lost its trigger`);
+    }
+  }
+});
+
 test('steps-and-gates.md case 3 fresh-resolve branch reaches the empty-resolve omit-and-SKIP rule', () => {
   const steps = fs.readFileSync(STEPS, 'utf8');
   const start = steps.indexOf('### Adopting an inherited run directory');

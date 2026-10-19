@@ -259,6 +259,16 @@ test('cli: a partial --set batch (even with mode=auto) does NOT print the Manife
   assert.ok(!out.join('').includes('Pipeline Config'));
 });
 
+test('cli: a 13-entry batch of 12 levers plus the integration-model pin (one lever missing) does NOT print the FYI table', () => {
+  const { main, runDir } = fixture();
+  const { deps, out } = fakeDeps(main);
+  const batch = FULL_MANIFESTO_BATCH_AUTO.replace(',merge-authorization=ask', '') + ',integration-model=pr-first';
+  assert.equal(batch.split(',').length, 13);
+  assert.ok(!batch.includes('merge-authorization'));
+  assert.equal(run(['--run', runDir, '--set', batch], deps), 0);
+  assert.ok(!out.join('').includes('Pipeline Config'));
+});
+
 test('cli: the single-key form never prints the Manifesto FYI table, even for mode=auto', () => {
   const { main, runDir } = fixture();
   const { deps, out } = fakeDeps(main);
