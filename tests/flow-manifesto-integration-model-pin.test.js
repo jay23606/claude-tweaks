@@ -100,6 +100,13 @@ test('the On-approval yaml example carries the integration-model pin', () => {
   assert.match(block, /^integration-model: pr-first$/m);
 });
 
+test('manifesto.md says the config snapshot header lists the integration-model pin after the levers', () => {
+  const manifesto = fs.readFileSync(MANIFESTO, 'utf8');
+  const init = manifesto.split('\n').find((l) => l.startsWith('Initialize `decisions.md` in the same directory'));
+  assert.ok(init, 'manifesto.md: "Initialize `decisions.md` in the same directory" paragraph not found');
+  assert.match(init, /snapshot header[^\n]*`- integration-model: \{v\}`/, 'the snapshot header must list "- integration-model: {v}" after the levers');
+});
+
 test('steps-and-gates.md case 3 recovery batch carries the integration-model pin', () => {
   const steps = fs.readFileSync(STEPS, 'utf8');
   const start = steps.indexOf('### Adopting an inherited run directory');
