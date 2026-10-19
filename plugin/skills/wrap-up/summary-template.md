@@ -50,8 +50,10 @@ never a general license to downgrade an unrelated failure.
 
 **Leave-open mergeability (#3483).** When the run left its PR open,
 `execution-and-verification.md`'s Leave-open mergeability re-check logged
-one `mergeability:` outcome — read it from that `decisions.md` line, never
-from memory, and name it in the Verdict. `DIRTY → merged main as {sha}`
+one `mergeability:` outcome — read it from that `decisions.md` line (at
+`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/decisions.md` once
+cleanup item 8 archived the run), never from memory, and name it in the
+Verdict. `DIRTY → merged main as {sha}`
 reads as caught up ("PR #{n} left open, caught up with main as {sha} — CI
 runs on the new head"); `DIRTY → nothing to merge (forge state stale)`
 reads as caught up too, with nothing to merge. `DIRTY — conflict in {files}` makes the Verdict

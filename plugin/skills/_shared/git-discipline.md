@@ -80,7 +80,10 @@ decision. One plain command:
 node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --phase {build|test|review|polish|wrap-up}
 ```
 
-It reads `run-state.json`'s `pr.number` and the PR through `bin/lib/reconcile/pr-state.js`'s
+At wrap-up's exit, pass `--run` the archive path
+(`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/`, `_shared/timing-render.md`'s archive-path
+rule) once cleanup item 8 archived the run directory — the CLI exits 3 on the live path it moved
+from. It reads `run-state.json`'s `pr.number` and the PR through `bin/lib/reconcile/pr-state.js`'s
 `resolvePrStateByNumber` — one resolver call — prints `{state, pr, mergeable, mergeStateStatus, phase,
 logged, reason?}`, and exits 0 in every state; exit 2 or 3 is a tooling problem with the read
 itself — route it like `read-failed`. `local-merge` and `current-branch` runs never reach this

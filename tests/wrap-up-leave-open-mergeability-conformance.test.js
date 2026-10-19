@@ -68,6 +68,10 @@ function assertLeaveOpenParagraph(text) {
   const abort = p.indexOf('merge --abort');
   assert.ok(list !== -1 && abort !== -1 && list < abort, 'AC2.1: conflicting paths are listed before merge --abort');
   has('`DIRTY — conflict in {files}`', 'AC2.1: decisions line names the conflicting files');
+  has('and skip step 5', 'AC2.1: a conflicted merge never reaches the push');
+  // The two other DIRTY outcomes, each its own logged line.
+  has('`DIRTY → nothing to merge (forge state stale)`', 'DIRTY outcome: a merge that brought in nothing');
+  has('`DIRTY — not caught up ({reason})`', 'DIRTY outcome: a catch-up that could not run');
   // AC3.1 — any other read: one log line, nothing else.
   has('log `mergeability: {mergeStateStatus}`', 'AC3.1: CLEAN/BLOCKED/UNKNOWN log one line');
   has('nothing else changes', 'AC3.1: nothing beyond the one log line');
@@ -101,6 +105,8 @@ function assertGitDisciplineException(text) {
   has("`wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it, in every mode — only git's own auto-merge runs",
     'modes: the wrap-up-exit bullet names the leave-open exception in every mode');
   has('The one exception is an `unknown` at wrap-up\'s exit under a leave-open Review Console', 'late read: the never-re-read bullet names its one exception');
+  has("At wrap-up's exit, pass `--run` the archive path (`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/`",
+    'archived run: the wrap-up-exit read names the archive path, so it does not exit 3');
   has('`interactive` and `hybrid` never run this merge themselves — they only surface the commands (except wrap-up\'s Leave-open mergeability re-check',
     'modes: the interactive/hybrid rule excepts the leave-open re-check');
 }
@@ -125,6 +131,9 @@ function assertVerdictRule(text) {
   assert.ok(rule.includes('`decisions.md` line'), 'AC2.1: read from the decisions line, never memory');
   assert.ok(rule.includes('`DIRTY → nothing to merge (forge state stale)` reads as caught up'), 'Verdict: a stale-forge outcome reads as caught up');
   assert.ok(rule.includes('"mergeability not re-checked"'), 'Verdict: a leave-open run with no mergeability line is named');
+  assert.ok(rule.includes('`blocked — PR conflicts with main, not caught up ({reason})`'), 'Verdict: a catch-up that could not run reads blocked');
+  assert.ok(rule.includes('`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/decisions.md` once cleanup item 8 archived the run'),
+    'Verdict: the outcome line is read from the archive path once cleanup item 8 ran');
 }
 
 function assertResumeRow(text) {
@@ -138,6 +147,8 @@ function assertResumeRow(text) {
   assert.ok(para.includes('Leave-open mergeability re-check'), 'AC1.2: the row cites its producer');
   assert.ok(para.includes('`$RUN_ROOT/.claude-tweaks/pipelines/archive/{run-id}/decisions.md`'), 'AC1.2: the row reads the possibly archived decisions.md');
   assert.ok(para.includes('DIRTY → merged main as {sha}'), 'AC1.2: the row names the merge');
+  assert.ok(para.includes('`is blocked` replaces `is ready` when that outcome is `DIRTY — conflict in {files}` or `DIRTY — not caught up ({reason})`'),
+    'AC2.1: a conflict or a failed catch-up flips the row to blocked');
   assert.ok(para.includes('only when it starts with `DIRTY`'), 'AC3.1: the suffix carries the outcome only for a DIRTY outcome');
   assert.ok(para.includes('any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed read)'), 'AC3.1: any other outcome is named');
   assert.ok(para.includes('drops the ` — mergeability: {outcome}` suffix'), 'AC3.1: any other outcome drops the suffix');
