@@ -138,6 +138,12 @@ When mechanizing a prose heuristic into a deterministic check:
    quoting it counted as a pass and overrode a later `needs-human`. It now reads only
    `parseEntry` entries under the verdict steps, anchors the pass at both ends, and reads any
    other pass-shaped action as `unparsed`.
+   Widening a writer's output shape strands the recognisers anchored to the old shape. #2869 let
+   `log-decision.js --reversibility` carry a trailing ` (qualifier)`, while `claim-log.js`'s
+   `ACTION_RE` (`[^.\s][^.]*`, so a qualifier containing `.` reads as unrecognised) and
+   `merge-verdict.js`'s bare-tier pass pattern stay anchored to the bare tier. Both fail safe
+   today because their writers still pass bare tiers. When you widen a writer, grep every
+   recogniser of its lines and either widen it with the writer or record why it stays narrow.
    A fuzzy text match is the same leak with no anchor at all. `plugin/bin/lib/plan-audit/checks.js`'s
    Check E (#3099) reads an acceptance-criterion clause as `covered` when the plan quotes its text.
    Its first version was a bare substring `includes()`, so the one-word clause "Last." read as
