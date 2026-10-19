@@ -129,6 +129,23 @@ rule needs no equality pin: its closed vocabulary is `FAILING_CONCLUSIONS`, whic
 and `tests/pr-check-gate-conformance.test.js` already deep-equals against the prose list, and the
 pending/green clauses are behavior, which `tests/bin-lib/pr-checks/classify.test.js` exercises.
 
+**Emitted-status instance (#2986, #3013, unpinned today):** a status-as-data CLI's `state`
+vocabulary is closed, but its code side is no constant: each value is a string literal in one
+`report(deps, { state: … })` call. `plugin/bin/pr-merge-state.js` emits seven (`conflicting`,
+`no-conflict`, `unknown`, `not-open`, `no-pr`, `read-failed`, `gh-absent`), restated in its own
+`USAGE`, in `docs/plugin-structure.md`'s CLI line, and as the routing bullets of
+`_shared/git-discipline.md`'s Post-push merge-state check.
+`tests/git-discipline-merge-state-conformance.test.js` matches those bullets against state names
+typed into the test, and `tests/bin-lib/pr-merge-state/cli.test.js` asserts one state per case, so
+an eighth state the CLI starts emitting reaches no routing bullet with every suite green.
+`plugin/bin/pr-checks.js` and `_shared/pr-check-gate.md` have the same shape
+(`tests/pr-check-gate-conformance.test.js` checks its fail-open bullet with `includes`). Step 1's
+key/case/array-literal grep misses this twin; grep each term as a property value
+(`grep -rn "state: 'no-pr'" plugin/bin/`). The pin needs a constant first: export a frozen state
+list from the CLI, assert in its suite that every emitted `state` is a member and the cases cover
+the list, and `deepEqual` the list against the backticked state words parsed from the routing
+bullets.
+
 **Candidate instance (a live, currently-unpinned gap this check surfaces today):**
 `plugin/bin/lib/compose-subject.js:69`'s `TYPE_PRECEDENCE = ['feature', 'bug', 'task']` is a
 *third* copy of the same closed vocabulary `TYPES`/`TYPE_PREFIX` above already key off — used to
