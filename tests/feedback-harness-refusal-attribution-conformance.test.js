@@ -7,15 +7,15 @@
 // bare-invocation.md's batch derivation points at that same check.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
 const path = require('node:path');
+const { readText } = require('./helpers/read-skill');
 
 const MD_PATH = path.join(__dirname, '..', 'plugin', 'skills', 'feedback', 'SKILL.md');
-const md = fs.readFileSync(MD_PATH, 'utf8');
+const md = readText(MD_PATH);
 const step1 = md.slice(md.indexOf('### Step 1: Gather'), md.indexOf('### Step 2'));
 
 const BARE_PATH = path.join(__dirname, '..', 'plugin', 'skills', 'feedback', 'bare-invocation.md');
-const bare = fs.readFileSync(BARE_PATH, 'utf8');
+const bare = readText(BARE_PATH);
 
 test('Step 1 greps the quoted refusal under the plugin\'s bin/ before naming a plugin hook', () => {
   assert.ok(/Bash-refusal attribution/.test(step1), 'Step 1 must carry the Bash-refusal attribution paragraph');
