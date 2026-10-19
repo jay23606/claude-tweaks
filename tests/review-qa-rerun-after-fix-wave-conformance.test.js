@@ -4,19 +4,22 @@
 // comment qualify QA as stale when that re-run cannot happen.
 const { test } = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
+const { readText } = require('./helpers/read-skill');
 const path = require('node:path');
 const { RAIL_BYTES } = require('../plugin/bin/lib/skill-audit/budgets');
 
 const REVIEW = path.join(__dirname, '..', 'plugin', 'skills', 'review');
-const steps = fs.readFileSync(path.join(REVIEW, 'code-mode-steps.md'), 'utf8');
+const steps = readText(path.join(REVIEW, 'code-mode-steps.md'));
 for (const heading of ['## Step 6.7:', '## Step 7:', '## Important Notes']) {
   assert.ok(steps.includes(heading), `anchor heading missing: ${heading}`);
 }
 const step67 = steps.slice(steps.indexOf('## Step 6.7:'), steps.indexOf('## Step 7:'));
 const step7 = steps.slice(steps.indexOf('## Step 7:'), steps.indexOf('## Important Notes'));
 
-const template = fs.readFileSync(path.join(REVIEW, 'review-summary-template.md'), 'utf8');
+const template = readText(path.join(REVIEW, 'review-summary-template.md'));
+for (const heading of ['### QA Validation (from /test)', '### Code Review Findings']) {
+  assert.ok(template.includes(heading), `anchor heading missing: ${heading}`);
+}
 const qa = template.slice(template.indexOf('### QA Validation (from /test)'), template.indexOf('### Code Review Findings'));
 
 test('AC1.1: Step 6.7 re-runs affected stories via test qa affected, gated on a fix touching story source_files', () => {
@@ -88,8 +91,8 @@ test('I-2: the subset re-run merges into pre-wave results and the status is reco
 });
 
 test('I-3: the test skill contract and the skill graph record the Step 6.7 qa affected edge', () => {
-  const testSkill = fs.readFileSync(path.join(__dirname, '..', 'plugin', 'skills', 'test', 'SKILL.md'), 'utf8');
-  const graph = fs.readFileSync(path.join(__dirname, '..', 'docs', 'skill-graph.md'), 'utf8');
+  const testSkill = readText(path.join(__dirname, '..', 'plugin', 'skills', 'test', 'SKILL.md'));
+  const graph = readText(path.join(__dirname, '..', 'docs', 'skill-graph.md'));
   assert.ok(testSkill.includes("except `/claude-tweaks:review` Step 6.7's post-fix-wave `qa affected` re-run (#3047)"));
   assert.ok(graph.includes('Step 6.7 also invokes `/test qa affected`'));
 });
