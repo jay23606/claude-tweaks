@@ -6,14 +6,16 @@
 // against the prose list. Additions the merge gate does not need:
 //   - `stale`: the rollup's headRefOid is not local HEAD (the newest commit
 //     is not pushed or not yet checked) — nothing is concluded from it.
-// Shared with the merge gate: StatusContext entries ({context, state, targetUrl})
-// carry no status/conclusion, so they are normalized into that shape first;
-// otherwise a literal reading of "status not COMPLETED → pending" would hold a
-// finished commit status pending forever. `headRuns` (#3405) — workflow runs for HEAD from
-// `gh run list --commit`, cross-checked alongside the rollup. A rollup that
-// lists only some workflows reads green while others are not yet registered;
-// a run that has not completed (or has a failing conclusion) is what catches
-// that.
+// Shared with the merge gate:
+//   - StatusContext entries ({context, state, targetUrl}) carry no
+//     status/conclusion, so they are normalized into that shape first;
+//     otherwise a literal reading of "status not COMPLETED → pending" would
+//     hold a finished commit status pending forever.
+//   - `headRuns` (#3405) — workflow runs for HEAD from
+//     `gh run list --commit`, cross-checked alongside the rollup. A rollup that
+//     lists only some workflows reads green while others are not yet registered;
+//     a run that has not completed (or has a failing conclusion) is what catches
+//     that.
 // Any failing check is red: statusCheckRollup does not mark which checks are
 // required, and the merge gate already treats every failing check as red.
 'use strict';
