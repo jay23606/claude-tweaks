@@ -34,6 +34,7 @@ files:
   - `(unknown)` placeholders when the blob carries the fields.
   - The check blocking or erroring instead of failing open when GitHub is unreachable.
   - A false "may already hold" for this session's own claim.
+  - A claim field breaking the one-line output: a newline or escape sequence from the blob starting a second line, or a non-string value printing as `[object Object]`. The blob is free text any pusher can write, so each field prints with control characters replaced by spaces and capped at 200 characters. A missing, empty or non-string field prints `(unknown)`, which is correct and not the placeholder defect above.
 
 ### 3. Resume an interrupted run without mistaking its own claim for a sibling (terminal)
 - **URL:** `plugin/skills/_shared/run-resume-freshness.md`, `locked` case
