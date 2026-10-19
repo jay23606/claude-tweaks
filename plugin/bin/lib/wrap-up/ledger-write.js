@@ -3,12 +3,14 @@
 // (open/total/byPhase counts for the nothing-left-behind gate); this module
 // resolves a single ledger file's path and flips one row's Status/Resolution
 // cells in place, text-level, preserving every other row and the surrounding
-// markdown verbatim. Used by wrap-up-engine.js's `finish-console` (#2546)
-// and bin/hooks.js's `delete-ledger` subcommand.
+// markdown verbatim. Rows are split and written through ./ledger-cells.js, so
+// a `|` inside a cell is escaped as `\|`. Used by wrap-up-engine.js's
+// `finish-console` (#2546) and bin/hooks.js's `delete-ledger` subcommand.
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const { splitLedgerRow, escapeLedgerCell } = require('./ledger-cells');
 
 const TERMINAL_STATUSES = ['fixed', 'deferred', 'accepted', 'acknowledged', 'observation'];
 
@@ -103,15 +105,17 @@ function flipLedgerRow(text, { item, status, resolution }) {
   const key = String(item);
   const row = table.rows.get(key);
   if (row === undefined) throw new Error(`no ledger row for item #${item}`);
-  const cells = row.split('|');
+  const cells = splitLedgerRow(row);
   // cells[0] is '' (text before the leading '|'); columns are 1-indexed from
   // there: [1]=#, [2]=Phase, [3]=Item, [4]=Status, [5]=Resolution, [6]=''
   // (text after the trailing '|'). A row with extra/fewer cells than this
   // fixed 7-slot shape is malformed — refuse rather than guess which cell is
-  // which.
-  if (cells.length !== 7) throw new Error(`ledger row for item #${item} does not have the expected 5-column shape`);
+  // which. A raw `|` inside a cell (a legacy, unescaped row) is one such case.
+  if (cells.length !== 7) {
+    throw new Error(`ledger row for item #${item} does not have the expected 5-column shape — a raw \`|\` inside a cell must be written \`\\|\` (_shared/ledger-format.md's Format section)`);
+  }
   cells[4] = ` ${status} `;
-  cells[5] = ` ${String(resolution || '').trim() || '—'} `;
+  cells[5] = ` ${escapeLedgerCell(String(resolution || '').trim()) || '—'} `;
   table.rows.set(key, cells.join('|'));
   return serializeLedgerTable(table);
 }
