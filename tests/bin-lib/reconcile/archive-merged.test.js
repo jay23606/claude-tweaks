@@ -2648,7 +2648,7 @@ test('AC3.1: archiveMerged: a MERGED PR reached via the by-number fallback with 
 // pr-first-merge-post-merge.md Step 4.2's reconcile call hits; the
 // staged-items exception must apply here too. `stagedFiles` seeds staged/
 // (absent when empty).
-function fixtureOrdinaryMergedNoConsole(branch, runId, stagedFiles = [], specStaged = {}) {
+function fixtureOrdinaryMergedNoConsole(branch, runId, stagedFiles = [], specStaged = {}, { backdateMs = 0 } = {}) {
   const { root, featureSha } = mergedFeatureBranchRepo(branch); // branch ref stays — fallbackBranch recovers it
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', runId);
   fs.mkdirSync(runDir, { recursive: true });
@@ -2671,6 +2671,10 @@ function fixtureOrdinaryMergedNoConsole(branch, runId, stagedFiles = [], specSta
     if (!Array.isArray(entries)) continue;
     fs.mkdirSync(path.join(runDir, spec, 'staged'), { recursive: true });
     for (const name of entries) fs.writeFileSync(path.join(runDir, spec, 'staged', name), 'x\n');
+  }
+  if (backdateMs) {
+    const backdated = new Date(Date.now() - backdateMs);
+    fs.utimesSync(runDir, backdated, backdated);
   }
   const wrapper = installGhWrapper([{
     number: 3249100, state: 'MERGED', mergedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z',
@@ -2700,12 +2704,22 @@ test('archiveMerged: ordinary path — a staged/ holding only dotfiles counts as
 // #657/#1130 protection on the ordinary path: a real pending staged item
 // still skips with 'console-never-rendered-staged-pending'.
 test('archiveMerged: ordinary path — a real pending staged/ item still skips console-never-rendered-staged-pending (#3249, #657 protection, #3297)', () => {
-  const { runDir, result } = fixtureOrdinaryMergedNoConsole('feat-3249-ordinary-pending', '2026-08-01T090000-record-3249-ordinary-pending', ['reflect-1.md']);
+  const { root, runDir, result } = fixtureOrdinaryMergedNoConsole('feat-3249-ordinary-pending', '2026-08-01T090000-record-3249-ordinary-pending', ['reflect-1.md'], {}, { backdateMs: STRUCTURALLY_STUCK_TTL_MS * 2 });
   assert.ok(!result.archived.includes(runDir), 'a run with a genuinely pending staged/ item must never be archived out of sight');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
   assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
+
+  // #3297: the ordinary path reports the skip through archiveMergedRun's onSkip
+  // hook, which must also start the structurally-stuck residue counter (the dir
+  // is backdated past STRUCTURALLY_STUCK_TTL_MS above) — the by-number fallback
+  // (AC3.1) tracks it through a different call site.
+  const failures = listResidueFailures(root);
+  assert.ok(
+    failures.some((f) => f.reason === 'structurally-stuck' && f.path === runDir),
+    `expected ${runDir} to start accumulating a structurally-stuck residue count, got ${JSON.stringify(failures)}`,
+  );
 });
 
 // Review finding (#3249): hasStagedItems used to catch every readdirSync
