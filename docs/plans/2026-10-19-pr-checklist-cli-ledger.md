@@ -18,3 +18,4 @@
 | 14 | build | $PR_CHECKLIST_BODY used without its eval session-tmp-resolve form | fixed | Replaced with a {body-file} placeholder (30202e23a) |
 | 15 | build | Pinned "A single-record run never reaches this branch" reads as if a skipped phase's row removal can't fail | deferred | Per-phase --remove re-run now covers it; sentence is test-pinned; final review: ok to defer |
 | 16 | build | Final-review Ruling: #7 (two PR writes per phase exit on an uncovered reversal) and #8 (no --repo on the gh calls) not fixed — plan-sanctioned / equivalent, wrong-repo read fails safe at exit 4 | observation | Ruling recorded after the final whole-branch review |
+| 17 | build/skill | gh-api-module-pattern extension: pr-checklist.js widens the injectable `gh(args, input)` seam with stdin input (`gh pr edit --body-file -`), so the CLI writes a PR body with no temp file — worth a line in that skill's runner-seam section | observation | Skill observation from Common Step 4.5 |
