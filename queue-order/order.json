@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-19T06:57:56.467Z",
-  "runId": "2026-10-19T065636-dispatch-standalone",
+  "computedAt": "2026-10-19T07:05:26.842Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -9,18 +9,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3522,
-        "updatedAt": "2026-10-19T03:54:01Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3518,
-        "updatedAt": "2026-10-18T19:46:19Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3517,
-        "updatedAt": "2026-10-19T05:01:10Z",
+        "updatedAt": "2026-10-19T07:00:48Z",
         "state": "OPEN"
       },
       {
@@ -165,7 +155,7 @@
       },
       {
         "number": 3463,
-        "updatedAt": "2026-10-18T06:43:29Z",
+        "updatedAt": "2026-10-19T07:01:01Z",
         "state": "OPEN"
       },
       {
@@ -430,7 +420,7 @@
       },
       {
         "number": 3191,
-        "updatedAt": "2026-10-18T19:45:34Z",
+        "updatedAt": "2026-10-19T07:00:53Z",
         "state": "OPEN"
       },
       {
@@ -520,7 +510,7 @@
       },
       {
         "number": 2933,
-        "updatedAt": "2026-10-15T16:21:12Z",
+        "updatedAt": "2026-10-19T07:00:44Z",
         "state": "OPEN"
       },
       {
@@ -536,11 +526,6 @@
       {
         "number": 2869,
         "updatedAt": "2026-10-19T06:14:33Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2857,
-        "updatedAt": "2026-10-19T05:29:25Z",
         "state": "OPEN"
       },
       {
@@ -7049,96 +7034,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n**Related:** #3393, #3429, #3440, #3505, #3506, #3507, #3509, #3517, #3523, #2767, #2713, #3024, #3187, #3396, #3500\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39104307191, on `windows-latest`) flagged two test files after PR #3421 merged #3393 (the chained claim reader) as `f6e30ca84`. The run's `verify-report` artifact (`baselineAdjudicated`, base `8356f387f`) breaks it down per test:\n\n- `tests/dispatch-per-record-groups-prose.test.js`: 10/10 pass at base; 11/13 at head. Both new failures are tests that #3393 added: `AC2.1: the neighbour-in-flight heredoc runs offline …` and `AC1.1: the neighbour-in-flight heredoc reports a failed claim read …`.\n- `tests/specify-near-duplicate-prose.test.js`: 10/11 at base; 10/13 at head. The test quoted in this record's excerpt, `the shaping-mode.md refusal fence runs and refuses nothing … (#3141)`, **already failed at base** with the same `refusal fence anchors must exist` error. The new failures are #3393's two tests: `AC1.1: the shaping-mode refusal fence reads claims through createClaimReader …` and `AC1.1: an unreadable claim is reported on the output …`.\n\nThere are two root causes, both test-side. Verified against `origin/main` at `7852fd8bf`; the only commits since `f6e30ca84` that touch these files (#3366, #3405) changed neither cause.\n\n1. **CRLF anchors (near-duplicate suite).** `tests/specify-near-duplicate-prose.test.js:18` reads skill markdown with a raw `fs.readFileSync`. On a `core.autocrlf=true` checkout, `plugin/skills/specify/shaping-mode.md` arrives with `\\r\\n` endings, so the fence anchor `'node -e \"\\n'` (line 96, and again in `refusalFenceBody` at line 147) never matches `node -e \"\\r\\n`. That fails the #3141 test at line 93 and both #3393 tests at lines 155 and 167. The dispatch suite does not have this problem: it already reads through `tests/helpers/read-skill.js`'s `readText`, which turns `\\r\\n` into `\\n`.\n2. **Native path spliced into JS source (both suites).** The tests run a skill's embedded node snippet by replacing `${CLAUDE_PLUGIN_ROOT}` with `path.join(ROOT, 'plugin')`: `tests/dispatch-per-record-groups-prose.test.js:134` (`neighbourHeredocCode`), and `tests/specify-near-duplicate-prose.test.js:101` and `:170`. The placeholder sits inside a single-quoted JS string (`require('${CLAUDE_PLUGIN_ROOT}/bin/lib/dispatch/in-flight-neighbours.js')`). A Windows path's backslashes therefore become JS escape sequences: `\\a` → `a`, `\\c` → `c`. The run shows `Cannot find module 'D:aclaude-tweaksclaude-tweaksplugin/bin/lib/dispatch/in-flight-neighbours.js'`. The near-duplicate tests at lines 93 and 167 have the same defect, currently masked because cause 1 stops them earlier.\n\nThe repo already has the fix for cause 2: `tests/auto-merge-short-circuit-verdict-backstop.test.js:28` builds `path.join(ROOT, 'plugin').split(path.sep).join('/')` before splicing it into source.\n\n## Deliverables\n\n1. `tests/specify-near-duplicate-prose.test.js`: route the `read` helper (line 18) through `readText` from `./helpers/read-skill`, so every skill read is LF-normalized.\n2. `tests/specify-near-duplicate-prose.test.js`: make the #3141 test at line 93 call `refusalFenceBody()` instead of its own inline copy of the anchor (lines 96-101). Give `refusalFenceBody` an optional text parameter, defaulting to `SHAPING_MODE`, and have it LF-normalize that text. Add one assertion that `refusalFenceBody(SHAPING_MODE.replace(/\\n/g, '\\r\\n'))` returns the same fence as the LF read. That is the CRLF extractor case `windows-checkout-test-parity` asks for, and it goes red on Linux if the normalization is removed.\n3. Both test files: splice a forward-slash plugin root into the snippet source instead of the native `path.join(ROOT, 'plugin')`. That means `tests/dispatch-per-record-groups-prose.test.js:134` and `tests/specify-near-duplicate-prose.test.js:101` and `:170`. Use one module-level constant per file, built the way `tests/auto-merge-short-circuit-verdict-backstop.test.js:28` builds its `PLUGIN_DIR`.\n4. Before opening the PR, grep the two files again for any other `${CLAUDE_PLUGIN_ROOT}` substitution or raw `fs.readFileSync` of a skill file, and fix any hit with the same move. Record the grep and its result in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/specify-near-duplicate-prose.test.js tests/dispatch-per-record-groups-prose.test.js` passes on macOS/Linux, with no test skipped, removed or weakened.\n- [ ] Both files pass on `windows-latest`, including the #3141 test that was already failing at base. Prove it before merge: run `gh workflow run windows-regression.yml --ref {branch}` and quote that run's result for the two files (a non-main ref never files an issue). If the dispatch cannot run, say so explicitly. A `path.win32` simulation is not a Windows run.\n- [ ] The new CRLF case fails on Linux when the normalization inside `refusalFenceBody` is removed. Prove it by reverting the normalization temporarily and restoring it in the same command.\n- [ ] No file under `plugin/` changes. The skill snippets and `plugin/bin/lib/dispatch/in-flight-neighbours.js` are correct; only the tests' extraction and substitution are platform-dependent.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed five dispatch and specify prose tests that failed only on Windows checkouts.\n\n## Technical Approach\n\nThe fix is test-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`. Two of its rules apply:\n\n- \"A test extracts regions from live skill markdown → a CRLF input proving the extractor still finds the region\" covers cause 1.\n- Its native-path rule covers cause 2. The value spliced into JS source is a module specifier, not a filesystem path a human pastes into a shell. Forward slashes resolve on every platform, which `tests/auto-merge-short-circuit-verdict-backstop.test.js:28` already relies on.\n\nFolding the #3141 test's inline anchor into `refusalFenceBody` leaves one extractor to keep correct instead of two copies. The CRLF case is the only discriminating check available on Linux CI. The separator fix can only be proven red on a real Windows runner, which is why the workflow dispatch is an acceptance criterion.\n\n### Key Files\n\n- `tests/specify-near-duplicate-prose.test.js` — `read` routed through `readText`; the line-93 test reuses `refusalFenceBody`, which takes text and LF-normalizes it; new CRLF extractor case; forward-slash plugin root at lines 101 and 170\n- `tests/dispatch-per-record-groups-prose.test.js` — forward-slash plugin root in `neighbourHeredocCode` (line 134)\n- `tests/helpers/read-skill.js` — read-only reference: the `readText` helper this record adopts\n- `tests/auto-merge-short-circuit-verdict-backstop.test.js` — read-only reference: the existing forward-slash `PLUGIN_DIR` precedent (line 28)\n- `plugin/skills/specify/shaping-mode.md` — read-only reference: the refusal fence the near-duplicate suite extracts (lines 115-146)\n- `plugin/skills/dispatch/queue-pull-script.md` — read-only reference: the neighbour-in-flight heredoc the dispatch suite extracts (lines 622-623)\n\n## Gotchas\n\n- Keep the scope to the five tests above. `tests/dispatch-neighbour-in-flight-mcp.test.js` is #3517's (a missing `NODE_EVAL_EOF` terminator). Other suites splice `path.join(ROOT, 'plugin')` into code the same way, for example `tests/tidy-release-note-repair-conformance.test.js:83` and `tests/verify-expectations-writer-conformance.test.js:65`; they belong to the Windows baseline or to their own records, not this one.\n- Both #3393 `AC1.1` tests depend on `gh` and `git` being unreachable (`env: { ...process.env, PATH: dir }`). On Windows the inherited variable is usually spelled `Path`, and Node's handling of a `Path`/`PATH` pair in a spawned env can leave the original search path in force. If the Windows run shows these tests reaching `gh` (a resolved slug, or a network read), override every case variant of the path variable in the spawned env rather than loosening the assertion.\n- Don't fix this in the skill prose. The snippets run under a shell that substitutes `${CLAUDE_PLUGIN_ROOT}` itself; this record changes only how the tests emulate that substitution.\n- Line numbers above are as of `origin/main` `7852fd8bf`. Re-anchor on content if the files move.\n\n## Original request\n\nWindows regression: 2 test file(s) newly failing after f6e30ca84\n\nThe post-merge Windows check failed on commit f6e30ca842199444560ae9a497b3ed97d49eb1e6 (compared against 8356f387f).\n\n**Merged PR:** #3421 (https://github.com/thn-inc/claude-tweaks/pull/3421)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39104307191\n\n### Newly failing test files\n- `tests/dispatch-per-record-groups-prose.test.js`\n- `tests/specify-near-duplicate-prose.test.js`\n\n### Failure excerpts\n\n#### `tests/dispatch-per-record-groups-prose.test.js`\n\n```\nnot ok 8478 - AC2.1: the neighbour-in-flight heredoc runs offline and excludes nothing when no in-flight record neighbours a candidate (\\#3393)\n  ---\n  duration_ms: 63.0919\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\dispatch-per-record-groups-prose.test.js:158:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    node:internal/modules/cjs/loader:1433\n      throw err;\n      ^\n    \n    Error: Cannot find module 'D:aclaude-tweaksclaude-tweaksplugin/bin/lib/dispatch/in-flight-neighbours.js'\n```\n\n#### `tests/specify-near-duplicate-prose.test.js`\n\n```\nnot ok 11619 - the shaping-mode.md refusal fence runs and refuses nothing when no hit is title-similar and ready (\\#3141)\n  ---\n  duration_ms: 1.0907\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\specify-near-duplicate-prose.test.js:93:1'\n  failureType: 'testCodeFailure'\n  error: 'refusal fence anchors must exist'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n\n",
-        "createdAt": "2026-10-18T06:43:59Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3518,
-        "state": "OPEN",
-        "title": "Windows regression: 2 test file(s) newly failing after f6e30ca84",
-        "updatedAt": "2026-10-18T19:46:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #3429, #3440, #3505, #3506, #3507, #3509, #3517, #3518, #2713, #2767, #3187, #3396, #3500\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39105151251, on `windows-latest`) found one test file newly failing after PR #3428 merged as `21ef3dc91`. That commit (#3400's change) added `tests/wrap-up-multispec-defer-still-live.test.js`; the file does not exist at the base `ac7ba9360`, so this failure is genuinely new rather than an inherited one. Exactly one test in it fails: `the defer paragraph is still found as one paragraph under CRLF line endings` (line 61), with `expected exactly one MULTISPEC_REVIEW_DEFER branch paragraph` / `0 !== 1`. Verified against `origin/main` at `7852fd8bf`, where the test file is unchanged since `21ef3dc91`.\n\nRoot cause, test-side only. The test's `live()` helper (line 23) reads `plugin/skills/wrap-up/execution-and-verification.md` with a raw `fs.readFileSync(FILE, 'utf8')`. The CRLF test (line 62) then builds its CRLF input with `live().replace(/\\n/g, '\\r\\n')`. On a Windows checkout with `core.autocrlf=true` the read already returns `\\r\\n` line endings (this repo's `.gitattributes` pins only `tools/upstream-drift/fixtures/**`), so the replace turns every `\\r\\n` into `\\r\\r\\n`. `deferParagraph`'s split regex `/\\r?\\n\\r?\\n/` cannot match a `\\r\\r\\n\\r\\r\\n` paragraph break, the file never splits into paragraphs, and no chunk starts with `**MULTISPEC_REVIEW_DEFER branch:**`. Reproduced in scratch against the `origin/main` copy of the skill file: the current transform finds 1 paragraph from an LF read and 0 from a CRLF read; LF-normalizing the read first finds 1 from both.\n\nThe other tests in the file pass on a CRLF checkout and are out of scope: `deferParagraph(live())` already splits on `\\r?\\n`, `SENTENCE` is a single line, and the engine-source pins (`checkBody`'s `'\\n});'` search and the one-line skip pin) hold under `\\r\\n`. A repo-wide grep of `tests/` for `.replace(/\\n/g, '\\r\\n')` on `origin/main` found no other site applying it to a live file read: every other hit converts an in-test string literal (`tests/bin-lib/flow/pr-body-premise-reversal.test.js`, `tests/comment-trust-conformance.test.js`, `tests/bin-lib/verify/extract.test.js` and others), which is the pattern the `windows-checkout-test-parity` project skill prescribes.\n\n## Deliverables\n\n1. `tests/wrap-up-multispec-defer-still-live.test.js`: LF-normalize the live read before any CRLF conversion, so the CRLF test builds its input from LF text on every checkout. Preferred move: route `live()` through `tests/helpers/read-skill.js`'s `readText()`, the shared EOL-normalizing read that prose-conformance suites already use (#2763), so every test in the file reads LF text and the CRLF test's `.replace(/\\n/g, '\\r\\n')` produces exactly one `\\r\\n` per line break. An inline `.replace(/\\r\\n/g, '\\n')` at the CRLF test's call site is the acceptable fallback if routing `live()` would change another test's behavior; state which was chosen in the PR body.\n2. Keep the CRLF test meaningful: it must still feed `deferParagraph` a genuinely CRLF string (assert or otherwise make sure the input contains `\\r\\n` and no `\\r\\r\\n`), so it keeps pinning that the extractor's split survives CRLF.\n3. Before opening the PR, re-run the grep for `.replace(/\\n/g, '\\r\\n')` (and `split('\\n\\n')` / `indexOf('\\n\\n'` on a raw live read) across `tests/` and fix any new hit that converts a raw live file read, with the same move. It was clean at shaping time against `origin/main` `7852fd8bf`; record the result in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/wrap-up-multispec-defer-still-live.test.js` passes on macOS/Linux with no test skipped or removed.\n- [ ] The same file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's result for this file. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat an in-process CRLF simulation as a Windows run.\n- [ ] On Linux, a CRLF-checkout simulation of the fixed test passes: run the CRLF test's logic against the skill file's text converted to `\\r\\n` first (for example, a scratch copy written with CRLF endings and read through the same helper), and it finds exactly one paragraph. Against the pre-fix transform, the same simulation finds zero.\n- [ ] The CRLF test still discriminates: temporarily rename the `**MULTISPEC_REVIEW_DEFER branch:**` lead-in in `plugin/skills/wrap-up/execution-and-verification.md` and the test goes red; restore the file in the same command.\n- [ ] No file under `plugin/` changes. The skill prose is correct; only the test's input construction is wrong.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a wrap-up conformance test that failed on Windows checkouts because it converted already-CRLF text to CRLF a second time.\n\n## Technical Approach\n\nTest-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`'s \"Build CRLF inputs from the LF text\" rule: a CRLF case must be built from the LF string with `.replace(/\\n/g, '\\r\\n')`. A raw read of a tracked file is not LF text on a Windows checkout, so the read has to be normalized first. `tests/helpers/read-skill.js`'s `readText()` (`fs.readFileSync(absPath, 'utf8').replace(/\\r\\n/g, '\\n')`) is the repo's single normalizing read for exactly this case. The skill's Anti-Patterns row for doctoring a go-red control on a raw read (`tests/wrap-up-record-resolution-conformance.test.js`, #3395) is the same move applied to the same class of defect. The engine-source reads (`engineSource()`) need no change.\n\n### Key Files\n\n- `tests/wrap-up-multispec-defer-still-live.test.js` — `live()` (line 23) routed through `readText()`, or the CRLF test (line 62) LF-normalizes before converting\n- `tests/helpers/read-skill.js` — read-only reference: the shared `readText()` EOL-normalizing read\n- `plugin/skills/wrap-up/execution-and-verification.md` — read-only reference: the `**MULTISPEC_REVIEW_DEFER branch:**` paragraph (line 9) the test extracts\n\n## Gotchas\n\n- Do not \"fix\" this by loosening `deferParagraph`'s split regex to tolerate `\\r\\r\\n`. That would hide a malformed fixture rather than build a correct one, and `\\r\\r\\n` never occurs in a real checkout.\n- Do not add a `.gitattributes` `eol=lf` rule for the skill file or `tests/` as the fix. The parity skill keeps `.gitattributes` scoped to the hashed upstream fixtures on purpose, and the CRLF test exists precisely to prove the extractor survives a CRLF checkout.\n- This is one of several open `Windows regression:` records (#3429, #3440, #3505, #3506, #3507, #3509, #3517, #3518), each for a different commit and different files. Keep this record to `tests/wrap-up-multispec-defer-still-live.test.js` and its sibling grep.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 21ef3dc91\n\nThe post-merge Windows check failed on commit 21ef3dc9182b700efd234db073a26ebc3bfdbd9c (compared against ac7ba9360).\n\n**Merged PR:** #3428 (https://github.com/thn-inc/claude-tweaks/pull/3428)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39105151251\n\n### Newly failing test files\n- `tests/wrap-up-multispec-defer-still-live.test.js`\n\n### Failure excerpts\n\n#### `tests/wrap-up-multispec-defer-still-live.test.js`\n\n```\nnot ok 12400 - the defer paragraph is still found as one paragraph under CRLF line endings\n  ---\n  duration_ms: 1.7158\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\wrap-up-multispec-defer-still-live.test.js:61:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    expected exactly one MULTISPEC_REVIEW_DEFER branch paragraph\n    \n    0 !== 1\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
         "createdAt": "2026-10-18T07:02:58Z",
         "labels": [
@@ -7769,254 +7664,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n## Current State\n\n#2741 added `plugin/bin/lib/skill-audit/harness-cost.js`. Its `measureAgentToolCost(repoRoot)` (lines 81-98) reads each `agents/{name}.md`'s `tools:` frontmatter and returns `[]` when no `agents/` directory exists. The function is exported (`:149`) and covered by `tests/bin-lib/skill-audit/harness-cost.test.js`, but nothing in production calls it. `grep -rln measureAgentToolCost plugin tests` returns only the module itself and its unit test.\n\n`estimateHarnessCost(repoRoot)` (`:120-133`) builds its `entries` from `measureSkillToolCost` alone and returns `{ entries, totalSkills, unscopedCount }`. That function is the one consumed by `plugin/bin/harness-cost-report.js` (header comment `:18-19`: `entries` is \"every skill's\" record) and by `/claude-tweaks:harness-health`'s Harness cost-efficiency check (`plugin/skills/harness-health/SKILL.md:96-101`, which runs that CLI every firing).\n\nThe documentation advertises more than is reported. `docs/plugin-structure.md:23` says harness-cost.js measures each shipped skill's `allowed-tools:` count \"(and each agent definition's `tools:`)\". In practice `plugin/agents/qa-agent.md` (`tools: Bash`) never appears in any report. #2741's own deliverables named subagents (\"so bloated skill or subagent definitions are visible\"), so this is unmet scope, not a deliberate omission. The v6.134.0 release review found it (lens 3e, reproduced by both agents).\n\n## Deliverables\n\n1. Make `estimateHarnessCost` include agent definitions via `measureAgentToolCost`, with each entry distinguishable from skill entries (for example a `kind: 'skill' | 'agent'` field). Agent entries carry `tools`, `toolCount` and `overageRatio`. Size the agent file's bytes the same way skills are sized; shared-citation depth can be `null` or omitted for agents if it does not apply. Add an agent count to the summary alongside `totalSkills`.\n2. Update `plugin/bin/harness-cost-report.js` so its output and `flagHighToolCount` handling cover agent entries. A high-tool-count agent can then be flagged the same way a skill is.\n3. Update `/claude-tweaks:harness-health`'s cost-efficiency check prose (`SKILL.md:96-101`) to say agents are reported alongside skills.\n4. Reconcile `docs/plugin-structure.md:23`, and the CLI line at `:128` if it describes output shape, with what is now reported.\n\n## Acceptance Criteria\n\n- `node plugin/bin/harness-cost-report.js --plugin-root plugin` output includes an entry for the `qa-agent` agent definition, marked as an agent rather than a skill.\n- A test in `tests/bin-lib/skill-audit/harness-cost.test.js` fails if `estimateHarnessCost` stops including agent entries. Prove it goes red by removing the agent wiring.\n- A fixture with no `agents/` directory still produces a valid report with zero agent entries and no error.\n- `npm test` passes in full.\n\n## Release Note\n\nThe harness cost report now includes subagent tool scopes alongside skills, as its documentation already claimed.\n\n## Technical Approach\n\nConcatenate `measureAgentToolCost(repoRoot)` results into `estimateHarnessCost`'s entries with a `kind` discriminator, then sort the combined list by bytes as today. Check every consumer of `entries` (the report CLI and any test fixtures pinning the JSON shape) before changing the shape. The change is additive, so existing skill-entry fields stay identical.\n\n### Key Files\n\n- `plugin/bin/lib/skill-audit/harness-cost.js` — `estimateHarnessCost`: include agent entries with a `kind` field and an agent summary count\n- `plugin/bin/harness-cost-report.js` — report and flag agent entries; update the output-shape header comment\n- `plugin/skills/harness-health/SKILL.md` — cost-efficiency check prose (96-101)\n- `docs/plugin-structure.md` — reconcile lines 23 and 128 with the reported shape\n- `tests/bin-lib/skill-audit/harness-cost.test.js` — agent-inclusion and no-agents-directory tests\n\n## Gotchas\n\n- `agents/` is a flat directory of `{name}.md` files, unlike `skills/{name}/SKILL.md`. Do not reuse `measuredBytes(path.join(dir, name, 'SKILL.md'))` for agents.\n- `totalSkills` keeps meaning skills only. Add a separate agent count rather than changing its meaning, since harness-health's prose and any downstream reader treat it as a skill tally.\n- `MINIMAL_BASELINE_TOOLS` was calibrated as a skill baseline. Note in the report or docs whether the same four-tool baseline is meaningful for agents (`qa-agent` declares `Bash` only) rather than implying an equivalence nobody validated.\n\n## Original request\n\nharness-cost: measureAgentToolCost is never wired into the report, though docs say agent tools: are measured\n\n## Current State\n\n`#2741` added `plugin/bin/lib/skill-audit/harness-cost.js`. `measureAgentToolCost` (line ~81) is implemented, exported and unit-tested, but has no production caller: `estimateHarnessCost` — the only function `bin/harness-cost-report.js` and harness-health's cost-efficiency check consume — maps over `measureSkillToolCost` alone. `docs/plugin-structure.md:23` says the module measures \"each agent definition's `tools:`\" and is called at runtime, so the agent half is advertised but never reported; `plugin/agents/qa-agent.md` (`tools: Bash`) is never measured. #2741's Deliverables name subagents (\"so bloated skill or subagent definitions are visible\"), so this is unmet scope, not a deliberate omission. Found by the v6.134.0 release review (lens 3e, reproduced by both agents, refutation not-refuted; ledger row 6).\n\n## Deliverables\n\n- [ ] `estimateHarnessCost` (or the report CLI) includes agent definitions' `tools:` cost via `measureAgentToolCost`, distinguishable from skill entries\n- [ ] harness-health's cost-efficiency check reports agent entries alongside skills\n- [ ] `docs/plugin-structure.md`'s description matches what is actually reported\n\n## Acceptance Criteria\n\n- [ ] `node plugin/bin/harness-cost-report.js --plugin-root plugin` output includes an entry for `plugin/agents/qa-agent.md`\n- [ ] A test fails if `estimateHarnessCost` stops including agent entries\n",
-        "createdAt": "2026-10-03T13:21:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2933,
-        "state": "OPEN",
-        "title": "harness-cost: measureAgentToolCost is never wired into the report, though docs say agent tools: are measured",
-        "updatedAt": "2026-10-15T16:21:12Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #3047\n\n## Current State\n\n`/claude-tweaks:capture`'s `github-issues` filing step (`plugin/skills/capture/SKILL.md`, Backend Selection, the **Recent-commit overlap check** paragraph immediately after the `gh issue create` calls) screens a just-filed record against recently-merged commits only, via `_shared/health-recent-commit-check.md` → `findRecentCommitOverlap` (`plugin/bin/lib/issues/recent-commit-check.js`, a pure `git log` subject grep over a 14-day window, minimum 2 shared key terms from `deriveKeyTerms(title)`). Nothing in capture's filing path looks at **open pull requests**, so work already in flight on an open PR is invisible at filing time until it merges.\n\nTwo other screens exist and do not cover this case:\n- `capture/routing.md`'s absorb-visibility search matches open *records* in the session snapshot, but its headless bar absorbs only on a literal path match plus a matching `type:{t}`, and absorb never targets a `bot:in-progress` carrier, so an agent-driven filing against an in-flight record files fresh.\n- `/specify`'s Near-duplicate candidate check (`shapingRefusal`, `plugin/bin/lib/issues/near-duplicate.js`, #3141) refuses a title-similar `ready` candidate with a live claim or open linked PR, but only at shaping time, after the duplicate is already filed.\n\nObserved cost (verified against GitHub): #3155 (`bin/verify.js baseline adjudication mangles failing-file paths in a space-containing checkout path`) had its fix open as PR #3172 from 2026-10-15T18:30Z until it merged 2026-10-16T04:55Z. During that window three more `by:capture` records described the same defect: #3178 (18:42Z), #3185 (19:13Z), #3189 (19:30Z), plus #3171 filed three minutes before the PR opened. #3185's closing comment reads \"Duplicate of #3155 (already has an open fix in flight, PR #3172) — I filed this before checking open PRs for overlap\". It was caught only because #3119's review ran an unrelated open-PR listing (its Cherry-Pick Provenance Check). Measured with the shipped `deriveKeyTerms`, each of the three PR-window titles shares at least 3 key terms with PR #3172's title (3, 5, and 4 respectively; `verify` in all three), well over the 2-term threshold, so the existing term-overlap heuristic, run against open PR titles, would have flagged every one.\n\n## Deliverables\n\n- [ ] A pure open-PR overlap function in `plugin/bin/lib/issues/recent-commit-check.js` (beside `findRecentCommitOverlap`, reusing `deriveKeyTerms` and `DEFAULT_MIN_TERM_MATCHES`). Input: a candidate title plus an already-fetched open-PR list (`[{ number, title, url }]`). Output: the strong matches, ranked by matched-term count with `matchedTerms` per entry, or `null` when nothing matches or the input is unusable. No network inside the function. The caller fetches.\n- [ ] `plugin/skills/capture/SKILL.md`'s `github-issues` filing step runs an **open-PR overlap check** before `gh issue create`: one `gh pr list --state open --json number,title,url --limit {N}` call, its output written to a temp file and handed to the new function. A non-null result is held, then posted as one triage comment on the new record right after `gh issue create` succeeds. The comment names up to 5 PRs (`#{number} {title}`) and says it is a heuristic screen, not a verdict. It sits beside the existing Recent-commit overlap check comment and is never a block, hold, or absorb.\n- [ ] Fail open everywhere: a `gh pr list` failure, a non-JSON response, or a thrown function means no comment, and filing proceeds exactly as today. A retry or replay of an already-screened payload does not post the comment a second time (the same once-per-payload rule the commit check states).\n- [ ] Unit tests in `tests/bin-lib/issues/recent-commit-check.test.js` for the new function. Fixtures are the real incident titles: PR #3172's title against #3178/#3185/#3189's titles (each must match), an unrelated open-PR title sharing at most one term (must not match), and empty, malformed, or non-array PR input (must return `null`).\n- [ ] Update `docs/skill-graph.md`'s `capture` section so its relationship rows describe the open-PR screen alongside the recent-commit screen.\n\n## Acceptance Criteria\n\n- [ ] `/claude-tweaks:capture` on the `github-issues` backend lists open PRs and screens the new record's title against them before calling `gh issue create`, not only recently-merged commits afterwards.\n- [ ] When an open PR's title shares at least `DEFAULT_MIN_TERM_MATCHES` key terms with the new record's title, the new record gets exactly one triage comment naming that PR, posted right after filing. Filing itself is never blocked, delayed, or converted into an absorb.\n- [ ] Replaying the #3185 incident (title of #3185 against an open-PR list containing PR #3172's title) through the new function returns a match naming PR #3172. An unrelated title returns `null`.\n- [ ] Any failure in the open-PR step (`gh` error, unparseable output, function exception) leaves filing behavior byte-identical to today's, with no comment and no error surfaced as a filing failure.\n- [ ] `npm test` passes, including the new cases in `tests/bin-lib/issues/recent-commit-check.test.js`.\n\n## Release Note\n\n/claude-tweaks:capture now also screens new backlog filings against open pull requests, not just recently-merged commits, so a duplicate of work already in flight gets flagged the moment it is filed.\n\n## Technical Approach\n\nKeep the matching logic in one module so the two screens cannot drift. Add the open-PR function to `recent-commit-check.js` next to `findRecentCommitOverlap`, with the same term derivation, stopword list, and 2-term threshold. The only differences are the data source (PR titles instead of `git log` subjects) and ordering by match strength (PRs have no single meaningful date). Keep it pure: the module header promises \"never the network, never `gh`\", so `gh pr list` runs in capture's skill prose, its JSON goes to a session-scoped temp file, and a `node -e` call reads the file and calls the function. The `node -e` call follows the commit check's own invocation shape, and the file handoff follows the near-duplicate check's never-inline-titles rule, since a PR title with an apostrophe breaks shell quoting.\n\nOrdering inside capture's filing step:\n1. Before `gh issue create`, run the open-PR screen and hold its result.\n2. Run `gh issue create` (each branch: native-type a/b/c, or labels) unchanged.\n3. Post the existing Recent-commit overlap comment, then the new open-PR comment if the held result is non-null. These are two separate comments, so each keeps its own provenance line.\n\nThe search runs before filing, and the comment posts after it, because only a filed record can carry a comment and the record says triage note, not block. Running the search first also lets a human-present capture show the match in its \"Added:\" presentation line without an extra prompt.\n\n### Key Files\n\n- `plugin/bin/lib/issues/recent-commit-check.js` — add the pure open-PR overlap function and export it; update the header comment to name both screens.\n- `tests/bin-lib/issues/recent-commit-check.test.js` — new cases for the open-PR function, using the real #3155-incident titles as fixtures.\n- `plugin/skills/capture/SKILL.md` — Backend Selection `github-issues` filing step: pre-create open-PR screen and post-create triage comment, fail-open.\n- `docs/skill-graph.md` — `capture` section rows describing the open-PR screen.\n\n## Gotchas\n\n- Scope is capture only. `_shared/health-recent-commit-check.md` is also cited by `/code-health`, `/docs-health`, `/harness-health`, `/journey-health`, and `/intake`. Do not add the open-PR step to that shared file, or it would silently widen to every health-sweep filing loop and change their per-finding `gh` call count. Extending the screen to the sweeps is a separate decision.\n- `--limit` sizing: `gh pr list` defaults to 30. Size `{N}` per `_shared/github-write-transport.md`'s \"Sizing the list-then-filter window\" so a busy queue does not truncate away the matching PR. Use a plain `gh pr list`, never `--search` (`dedup-lookup.js`'s header: the Search API is eventually consistent and the wrong tool for an existence check).\n- Noise: open PRs whose own title restates an issue title (`... (#3155)`) match on the same terms the issue would. That is the intended signal, but keep the threshold at the module default rather than lowering it. The test fixtures pin both directions.\n- `gh`-absent environments: capture's `github-issues` branch already falls back to the local driver when `gh` is unusable (its own Decision #1352), so the open-PR step simply does not run there. No MCP path is needed for this screen.\n- `deriveKeyTerms` does not split hyphenated tokens (`--baseline`, `space-containing` stay whole), which is why #3189 matched on 4 terms rather than more. The threshold still clears comfortably on the incident titles. Do not widen tokenization in this record, because it would also change the commit screen's behavior for all six of its citers.\n- Do not reuse `bot:in-progress` as the in-flight signal. #3141 already established it is a projection that outlives the build, and an open PR is the direct evidence.\n\n## Original request\n\n/claude-tweaks:capture should search open PRs for overlap before filing, not just recently-merged commits\n\nOrigin: reflect light from #3119\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:capture`'s Backend Selection (github-issues branch) runs a \"Recent-commit overlap check\" immediately after `gh issue create` succeeds — it screens the just-filed record against recently-merged commits only. There is no equivalent search against **open PRs** before filing. Record #3119's own review (Step 2's Cherry-Pick Provenance Check, an unconditional `gh pr list --state open`) incidentally caught a case where this gap bit: a tangential capture filed mid-review (bin/verify.js's space-path baseline-adjudication bug) duplicated already-open #3155, which already had a fix in flight at PR #3172 — caught only because an unrelated check happened to list open PRs and the title matched.\n\n## Deliverables\n\n- [ ] Add an open-PR title/topic overlap search to `/claude-tweaks:capture`'s filing procedure (Backend Selection), run before `gh issue create`, alongside or extending the existing post-filing \"Recent-commit overlap check\" (`_shared/health-recent-commit-check.md`).\n- [ ] On a strong match against an open PR, surface it the same way the existing commit-overlap check does (a triage note, not a hard block) rather than filing a fresh duplicate record silently.\n\n## Acceptance Criteria\n\n- [ ] `/claude-tweaks:capture` searches open PRs for title/topic overlap before filing a new record, not only recently-merged commits after filing.\n- [ ] A near-duplicate of an already-open, already-in-progress PR is flagged before or immediately after filing, not left for incidental discovery by an unrelated later check.\n\n## Release Note\n\n/claude-tweaks:capture now also screens new backlog filings against open PRs, not just recently-merged commits, catching duplicates of in-flight work earlier.\n\n_Filed by `reflect` via specShapedBody._\n\n",
-        "createdAt": "2026-10-15T19:31:26Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxTu0eA",
-            "name": "by:reflect",
-            "description": "Origin: filed via /reflect (wrap-up Phase 1)",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3191,
-        "state": "OPEN",
-        "title": "/claude-tweaks:capture should search open PRs for overlap before filing, not just recently-merged commits",
-        "updatedAt": "2026-10-18T19:45:34Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Origin: reflect full from #3311\nDefer-reason: tangential\n\n## Current State\n\n#3311's spec required the guard's self-test fixtures verbatim in AC3: `const FOO_CEILING_BYTES = 30 * 1024` and `read('plugin/skills/x.md') … 28 * 1024`. AC1's negative grep matches `CEILING_BYTES`, and AC2's grep matches `N * 1024` next to a skills path. So the spec could not satisfy all three ACs at once. The conflict surfaced only at Task 6 implementation and needed a ruling: exempt the file in the sweep pathspec, recorded as an As-built deviation.\n\n`plugin/skills/specify/red-team.md` checks each sentence on its own and never cross-checks one AC's literal strings against another AC's sweep pattern.\n\nEvidence: #3311 SDD ledger rulings (Task 6) and the spec's \"As-built deviations\" item 2. Cost this session: one ruling, one review finding to adjudicate, and the sweep amendments.\n\n## Deliverables\n\n- [ ] Add a cross-AC literal check to `red-team.md`. For every AC that carries a negative grep or sweep pattern, test the pattern against every literal string the other ACs require to exist, such as fixtures and quoted code. Flag a match as an `## Open Questions` row.\n\n## Acceptance Criteria\n\n1. `red-team.md` names the cross-AC literal check.\n2. A conformance test pins it, using a fixture spec whose AC requires a string that a sibling AC's grep matches.\n\n## Release Note\n\nNo user-visible change; `/specify`'s red-team pass flags an acceptance criterion whose mandated fixtures would trip a sibling criterion's sweep.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:42Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3463,
-        "state": "OPEN",
-        "title": "/specify red-team: flag an AC whose mandated fixtures trip a sibling AC's sweep",
-        "updatedAt": "2026-10-18T06:43:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: backend\n\n**Related:** #3049, #2955, #3001\n\n## Current State\n\n`/claude-tweaks:review` Step 3 has the orchestrator write two kinds of coordination input into `{ctx-dir}`, the scratch dir `build-review-context.js build` mints:\n\n- `plugin/skills/review/step3-lens-dispatch.md` (Reproduction dispatch, Mode 1): after both agents of a pair return, \"write each agent's `findings` array to `{ctx-dir}/lens-{LENS}-agentA.json` / `{ctx-dir}/lens-{LENS}-agentB.json`\", then `review-coordination.js categorise-reproduction` reads those two paths.\n- `plugin/skills/review/step3-debate-and-refutation.md` (step 1, Detect overlap): the `{lensName: [findings...]}` object is written to `{ctx-dir}/findings-by-lens.json` for `review-coordination.js detect-overlap`.\n\nUnder `--run \"$PIPELINE_RUN_DIR\"`, `{ctx-dir}` is `{run}/review-ctx`, inside the **main checkout** (the run dir is anchored there). A session isolated to a linked worktree (dispatch's two-call handoff, `worktree-always`) is refused both ways of writing there. The `Write` tool is refused by cross-checkout write pinning (\"Edit the worktree copy of this file instead\"), and a Bash heredoc redirect is refused by the Claude Code harness's worktree-isolation guard as \"too complex to verify\". Reported on 6.133.0: 3 refused tool calls in an unattended run. The working workaround was writing the JSON elsewhere and passing those paths, which works because both `review-coordination.js` subcommands already take arbitrary file paths (`plugin/bin/review-coordination.js:55-75`).\n\n## Deliverables\n\n1. **Decision (approved in brainstorming, 2026-10-15):** these coordination inputs are written to the session-scoped temp dir (`plugin/skills/_shared/session-tmp-root.md`), never into `{ctx-dir}`, under every session, not only isolated ones. That dir is outside every checkout, so the `Write` tool is never refused there. No sanctioned-writer CLI and no stdin input: stdin would need the JSON in a shell literal or heredoc, the shape the harness guard refuses.\n2. `step3-lens-dispatch.md` Reproduction dispatch: resolve each pair's two paths via `node \"${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js\"`. The names carry the review's own `{ctx-dir}` basename (`review-{ctx-id}-lens-{LENS}-agentA.json` / `…-agentB.json`), so concurrent reviews in one session (dispatched subagents share `CLAUDE_CODE_SESSION_ID`) never collide. Then `Write` the arrays there and pass those paths to `categorise-reproduction`.\n3. `step3-debate-and-refutation.md` step 1: same treatment for `findings-by-lens.json` (`review-{ctx-id}-findings-by-lens.json`) before `detect-overlap`. The existing \"never a fixed shared `/tmp` name\" rationale is kept and satisfied by the per-review name.\n4. `step3-lens-dispatch.md`'s Agent-scratch cleanup check: the `{ctx-dir}` exclusion list drops `lens-*.json` and `findings-by-lens.json`, which no longer live there, and keeps the pre/post-fan-out status snapshots. The `git status … > {ctx-dir}/pre-dispatch-status.txt` redirect stays (a plain redirect, not refused).\n5. A conformance assertion in `tests/bin-lib/review-context/prose.test.js`: neither step file directs writing `lens-*.json` or `findings-by-lens.json` into `{ctx-dir}`, and both name the session-scoped temp dir for them.\n\n## Acceptance Criteria\n\n- [ ] `step3-lens-dispatch.md` contains no instruction to write `lens-{LENS}-agent{A,B}.json` under `{ctx-dir}`. Its `categorise-reproduction` invocation takes session-scoped temp paths whose names include the `{ctx-dir}` basename.\n- [ ] `step3-debate-and-refutation.md` contains no instruction to write `findings-by-lens.json` under `{ctx-dir}`. Its `detect-overlap` invocation takes a session-scoped temp path including the `{ctx-dir}` basename.\n- [ ] The Agent-scratch cleanup check's `{ctx-dir}` exclusion list no longer names `lens-*.json` / `findings-by-lens.json`.\n- [ ] The new `prose.test.js` assertions fail against today's `origin/main` text and pass after the change (red first).\n- [ ] No change to `plugin/bin/review-coordination.js` or `plugin/bin/build-review-context.js`.\n- [ ] `npm test` passes.\n\n## Release Note\n\nCode review no longer stalls on refused file writes when it runs in an isolated worktree session.\n\n## Technical Approach\n\nProse-only change to two review step files plus one conformance test. The pattern is the one `plugin/skills/wrap-up/review-console.md` already uses for `set-verify-expectations.js --file`: write the JSON with the `Write` tool to the session scratchpad, outside both `$PIPELINE_RUN_DIR` and the worktree, then hand the path to a CLI. The difference here is that no copy back into the run dir is needed, because `categorise-reproduction`/`detect-overlap` consume the files directly and their results already land in `decisions.md` and the routing entries. Resolve paths with the existing `bin/session-tmp-resolve.js` (`NAME=filename` pairs → shell exports), in the same Bash call that uses them, since no shell variable survives across calls.\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — Reproduction dispatch write target, `categorise-reproduction` invocation, Agent-scratch cleanup exclusion list\n- `plugin/skills/review/step3-debate-and-refutation.md` — step 1 `findings-by-lens.json` write target and `detect-overlap` invocation\n- `tests/bin-lib/review-context/prose.test.js` — new conformance assertions\n\n## Gotchas\n\n- Dispatched subagents share one `CLAUDE_CODE_SESSION_ID`, so a bare `lens-3a-agentA.json` in the session temp dir *would* collide across two concurrent dispatched reviews. The `{ctx-dir}` basename in every name is what keeps them apart, so don't drop it.\n- `{ctx-dir}` itself is unchanged: the context bundle and status snapshots stay under `{run}/review-ctx`. Only the orchestrator-written coordination inputs move.\n- The refusal is the harness's own worktree-isolation guard plus the `Write` tool's cross-checkout pinning, not plugin code (same finding as #2548). The fix routes around both, and nothing upstream is filed from this record.\n- `tests/multi-agent-coordination.test.js` reads both step files. Re-run it after the edit in case it pins the old `{ctx-dir}/lens-…` wording.\n\n## Original request\n\nreview lens dispatch: a worktree-isolated session cannot write the {ctx-dir}/lens-*.json findings files\n\n**Summary:** Step 3 asks for each agent's findings to be written to `{ctx-dir}/lens-{LENS}-agent{A,B}.json`. When `{ctx-dir}` sits under the run directory anchored to the main checkout, a session isolated to a linked worktree is refused both the Write tool and a heredoc.\n\n**Kind:** Gap\n\n**Affected component:** claude-tweaks review, `skills/review/step3-lens-dispatch.md` (reproduction dispatch), together with `bin/build-review-context.js --run` and `bin/review-coordination.js categorise-reproduction`\n\n**Use case:** A `/claude-tweaks:flow` review step ran in a worktree-isolated session, as dispatch's two-call handoff does. `build-review-context.js build --run <run-dir>` placed `{ctx-dir}` under `<run-dir>/review-ctx`, inside the main checkout. Writing the `lens-*.json` files there failed two ways. The Write tool was refused by cross-checkout write pinning (\"Edit the worktree copy of this file instead\"). A Bash heredoc redirect to the same path was refused by the worktree-isolation guard as \"too complex to verify\". The workaround was to write the JSON to the system temp dir and pass those paths to `categorise-reproduction`. `stage-item.js` exists for `staged/`, but nothing equivalent exists for review-ctx scratch files. Cost: 3 refused tool calls, about 2 minutes, in an otherwise unattended run. Possible fixes: a sanctioned writer (a `review-coordination.js` subcommand that takes the findings on stdin and writes `{ctx-dir}/lens-*.json` itself), or `categorise-reproduction` accepting both findings arrays on stdin.\n\n**Definition:** Needed — the two possible fixes (a sanctioned writer, or stdin input to categorise-reproduction) are both viable and no choice has been made.\n\n**Plugin version:** 6.133.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-871d921f -->\n\n",
         "createdAt": "2026-10-04T09:58:43Z",
         "labels": [
@@ -8273,13 +7920,6 @@
       "records": [
         3507,
         3509
-      ]
-    },
-    {
-      "records": [
-        2933,
-        3191,
-        3463
       ]
     },
     {
