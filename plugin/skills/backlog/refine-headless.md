@@ -440,8 +440,10 @@ Post the audit comment (evidence snapshot — see the Audit format below), then 
 **Needs-decision rows** (`failedKey === 'grant-check'` only — gate 4 refused a candidate that
 already cleared gates 1-3): see `grant-lane-decision.md`'s Idempotence check and Write mechanics
 sections in this skill's directory — the identical `needs:decision` outcome `/backlog refine`'s
-Grant lane produces, keyed `{unit}` = `backlog-grant`. Log the same way any other write is logged
-here (Audit format, below), naming the `grant-check` `RATIONALE` as `{grant-check RATIONALE}`.
+Grant lane produces, keyed `{unit}` = `backlog-grant`. Its `resolved-refusal` check (#3597) applies on
+this path too: a refusal already resolved `keep` or `build it myself` and unchanged since is not
+re-asked, logged as `refusal resolved` (Audit format, below). Log the same way any other write is
+logged here (Audit format, below), naming the `grant-check` `RATIONALE` as `{grant-check RATIONALE}`.
 
 **Skip rows** (every other `failedKey`, at any phase): no label change, no comment on the record —
 a skip is silent to the record itself (a human-filed record, an out-of-cap record, or a
@@ -487,6 +489,7 @@ AUTO {time} — Backlog grant: ceiling gate not satisfied (ceiling={x}, opt-in={
 AUTO {time} — Backlog grant: granted auto:build{ + auto:merge-pending} to #{n} (class {classKey}, verdict clean). Rationale: {grant-check RATIONALE}.
 AUTO {time} — Backlog grant: re-authorized #{n} — stripped bot:blocked, granted auto:build only.
 AUTO {time} — Backlog grant: stamped needs:decision on #{n} — {grant-check RATIONALE}.
+AUTO {time} — Backlog grant: not re-asked #{n} — refusal resolved {choice} on {date}, unchanged since.
 AUTO {time} — Backlog grant: skipped #{n} — {failedKey}: {reason}.
 ```
 
