@@ -109,8 +109,7 @@ test('test/fix-mode.md re-verifies a fix through the stamping runner, never a fa
   // A failed-checks-only re-run is a partial set: it cannot stamp, so the fix
   // commit's HEAD would be left unstamped and the dispatched second call would
   // re-trigger /claude-tweaks:test.
-  const bare = f.match(/re-run the failed checks/gi) || [];
-  assert.strictEqual(bare.length, 0, 'no site may re-verify by re-running only the failed checks');
+  assert.doesNotMatch(f, /re-run the failed checks/i, 'no site may re-verify by re-running only the failed checks');
   // Auto-fix flow + the three Interactive fix bullets each point at the one statement.
   const pointers = f.split('re-verify per Re-verification above').length - 1;
   assert.ok(pointers >= 4, `expected >=4 pointers to the Re-verification paragraph, got ${pointers}`);
