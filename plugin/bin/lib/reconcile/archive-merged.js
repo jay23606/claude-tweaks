@@ -1209,11 +1209,12 @@ function archiveRunDir(root, runDir) {
   if (fs.existsSync(runDir)) {
     const lsFiles = runGit(['ls-files', runDir], root);
     if (lsFiles.failure) return refuseAfterMarker('ls-files-failed');
+    const workDir = path.join(runDir, 'work');
     const trackedOutsideWork = (lsFiles.stdout || '')
       .split('\n')
       .filter(Boolean)
       .map((p) => path.join(root, p))
-      .filter((abs) => path.relative(runDir, abs) !== '' && !isPathContained(abs, path.join(runDir, 'work'), { orEqual: true }));
+      .filter((abs) => path.relative(runDir, abs) !== '' && !isPathContained(abs, workDir, { orEqual: true }));
     if (trackedOutsideWork.length > 0) {
       return refuseAfterMarker('tracked-entry');
     }
