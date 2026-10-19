@@ -53,6 +53,26 @@ test('validateShaped: flags a missing ## Release Note section (the fourth requir
   assert.ok(result.gaps.some((g) => /missing section: ## Release Note/.test(g)));
 });
 
+test('validateShaped: a valid multi-value Design-intent line passes (#3018)', () => {
+  assert.deepEqual(validateShaped(`Surface: web\nDesign-intent: quiet, minimal\n\n${SHAPED}`), { ok: true, gaps: [] });
+});
+
+test('validateShaped: an unknown Design-intent value or none mixed with another is a gap naming it (#3018)', () => {
+  const unknown = validateShaped(`Surface: web\nDesign-intent: quiet, sparkly\n\n${SHAPED}`);
+  assert.equal(unknown.ok, false);
+  assert.ok(unknown.gaps.some((g) => /invalid Design-intent: line \("quiet, sparkly"\).*sparkly/.test(g)), unknown.gaps.join('\n'));
+  const mixed = validateShaped(`Surface: web\nDesign-intent: none, bold\n\n${SHAPED}`);
+  assert.equal(mixed.ok, false);
+  assert.ok(mixed.gaps.some((g) => /"none" cannot be combined/.test(g)), mixed.gaps.join('\n'));
+});
+
+test('validateShaped: an invalid Design-intent line is reported alongside a section gap (#3018)', () => {
+  const body = `Surface: web\nDesign-intent: sparkly\n\n${SHAPED.replace('## Acceptance Criteria\n\n1. The thing is done.', '')}`;
+  const { gaps } = validateShaped(body);
+  assert.ok(gaps.some((g) => /missing section: ## Acceptance Criteria/.test(g)));
+  assert.ok(gaps.some((g) => /invalid Design-intent/.test(g)));
+});
+
 test('validateShaped: flags an empty (whitespace-only) section', () => {
   const body = SHAPED.replace('- [ ] Do the thing.', '');
   const result = validateShaped(body);

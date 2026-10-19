@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 126,
+    "title": "Reconsider a grouping-by-blocker affordance in le…",
+    "action": "Close as not planned — parked 56d, stale, trigger not met",
+    "command": "gh issue close 126 --reason \"not planned\" --comment \"tidy: parked 56d, trigger unmet\""
+  }
+]

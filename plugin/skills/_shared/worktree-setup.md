@@ -57,7 +57,7 @@ through to **Not isolated** below, but via `ExitWorktree(action: "keep")` first 
 worktree on disk untouched — it may hold unrelated in-progress work from earlier in the same
 session) rather than `EnterWorktree(name=...)` alone, since the harness's own "must not already
 be in a worktree session" precondition for `name`-creation still applies until the session
-actually leaves. Empty (clean) → **adopt** the current worktree as this run's workspace: no
+actually leaves. Empty (clean), and the branch passes the merged-branch precondition below → **adopt** the current worktree as this run's workspace: no
 `EXPECTED_BASE` capture applies (there is no separate "branch this worktree starts from" distinct
 from what's already checked out), but the origin-relative half — `git fetch origin
 {integration-branch}` / `git merge origin/{integration-branch}` — still runs unconditionally
@@ -68,6 +68,8 @@ name for anything downstream that reports or acts on it — never assume its own
 (e.g. a call site that would otherwise mint `flow/spec-{N1}-{N2}...`) was applied; nothing renames
 the branch, since a rename could break an already-open PR on a worktree left over from unrelated
 prior work in the same session.
+
+**Merged-branch precondition (clean tree only).** A clean tree is not enough: the current branch may be one whose PR already merged. Check two things. `gh pr list --head "{current-branch}" --state merged --json number --jq length` printing a count above 0 (with exit 0) means merged; this is the only check that catches a squash merge. Pass the branch name as one quoted argument, never spliced into a command string, since git accepts `;` and `$(` in branch names. On a detached HEAD (`git branch --show-current` prints nothing), skip this lookup, because an empty `--head` matches every merged PR, and run the git check alone. The tip being an ancestor of `origin/{integration-branch}` (`git merge-base --is-ancestor HEAD origin/{integration-branch}`) but absent from its first-parent line (`git rev-list --first-parent origin/{integration-branch}` does not list the tip's sha) means merged by a merge commit. Run both after `git fetch origin {integration-branch}`, so a merge from minutes ago is visible. If that fetch fails, log it and let the checks read the last-fetched ref. A fresh branch cut at an integration-branch commit sits on that line and is not merged. Either check true → do not adopt: fall through to **Not isolated** via `ExitWorktree(action: "keep")` exactly as a dirty tree does. In #3536's run the session sat in a clean worktree whose PR #3526 had squash-merged minutes earlier. Adopting would have built on the merged branch, opened a second PR from it, and left the run in a reap-eligible worktree. When `gh` is absent or the lookup exits non-zero, the git check still runs and a squash-merged branch adopts as before (fail open); a git check that errors (exit other than 0 or 1) fails open the same way. Log which path ran to the run's `decisions.md` as `AUTO {time} — Adopt-or-create: {adopted | not adopted, merged ({check}) | {check} could not run ({reason}), adopted}. Reversibility: high.`, where `{check}` is `gh`, `git` or `fetch` (no run dir: `_shared/worktree-catchup-no-run-dir.md`).
 
 **Dependency freshness check (adopt path only).** Read `_shared/worktree-adopt-freshness.md`
 in full and follow it now, **after** Post-creation catch-up's fetch+merge above (its lockfile read
@@ -81,7 +83,7 @@ below, unchanged (`EnterWorktree(name=...)`).
 **Idempotent.** The adopt branch is a pure detection-plus-skip with no state mutation beyond
 recording the current branch name, so re-invoking this gate a second time within the same session
 (e.g. a later step in the same pipeline re-checking) produces the same outcome both times. That
-holds only while the tree stays clean: a step that writes a tracked-path file after this gate (the
+holds only while the tree stays clean and the branch stays unmerged: a step that writes a tracked-path file after this gate (the
 open-items ledger at `build/worktree-setup.md` Step 4.6, for one) commits it before any later
 re-check, or the clean-tree test above reads the worktree as dirty and abandons it (#3036).
 

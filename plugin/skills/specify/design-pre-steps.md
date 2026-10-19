@@ -155,6 +155,9 @@ The user can select multiple options (e.g., Bold + Delightful). Map the answers:
 | `5` | `onboarding` |
 | `6` (or no answer) | `none` |
 | `1,4` (multiple) | `bold, delightful` (comma-separated) |
+| `6` combined with any other selection | drop `none`; write only the other intents (`none` is valid only on its own) |
+
+A free-text "Other" answer is never written raw: map it to one of the enum values (`bold | quiet | minimal | delightful | onboarding | none`) or re-ask — `/flow`'s materialization stops on any value outside that set.
 
 Record the chosen value(s) — the calling mode's compose-then-write-once step (decomposition mode's Step 3 in `decomposition-mode-closeout.md`; Shaping mode's own Metadata block / Compose-then-write-once subsections in `shaping-mode-stamping.md`, #1346's split of `shaping-mode.md`) writes them into the record's body-metadata block.
 

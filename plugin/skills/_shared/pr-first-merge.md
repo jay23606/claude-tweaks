@@ -286,13 +286,14 @@ merge (capture (a)), so the confirmation itself carries the choice: wait for gre
 
 ## Step 3: Attempt auto-merge, degrading on specific failure signatures
 
-**Creation-time caller:** `tidy/SKILL.md`'s Step 7.5 `pr-first` branch invokes only this step's initial `gh pr merge --auto` call at PR-creation time, with the degrade chain below replaced by leave-unarmed + report — see that step's own text for the full routing.
+**Creation-time caller:** `tidy/SKILL.md`'s Step 7.5 `pr-first` branch invokes only this step's initial compose + `gh pr merge --auto` fences at PR-creation time, with the degrade chain below replaced by leave-unarmed + report — see that step's own text for the full routing.
 
 ```bash
-SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-eval "$SUBJECT_EXPORTS"
-gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash \
-  -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --out-dir "{subject-dir}"
+```
+
+```bash
+gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash -t {title-arg} --body-file "{subject-dir}/body.md"
 ```
 
 `{tag}` is `auto-merge` for the dispatch/headless path (`dispatch/settle-and-merge.md`'s Auto-merge
@@ -313,24 +314,43 @@ fire (GitHub only auto-closes from a merge commit's message, or a PR body merged
 *default* branch — an explicit merge commit message is what makes closing work on any
 integration branch). `--squash` keeps one conventional commit per PR.
 
+Run each fence as its own Bash call, never chained; if the composer exits non-zero, stop before any
+merge (its stderr names the reason). `{subject-dir}` is a literal path — resolve it once with
+`node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" SUBJECT_DIR=merge-subject-{key}`
+(`{key}` is `{pr-number}` at a pr-first fence, the subject `{issue}` at a local-merge fence; session-scoped,
+`_shared/session-tmp-root.md`) and paste the path inside the printed `SUBJECT_DIR="…"` quotes. `{title-arg}` is the
+composer's one stdout line pasted verbatim — already POSIX single-quoted, so a `$(…)`, backtick, or
+`'` in the title stays inert. Why: the worktree Bash guard refuses `eval` and a `gh` argument computed
+at runtime, and every pr-first merge runs from a worktree session (#3522).
+
 **This call always either arms or performs the merge — `--auto` never blocks or polls.** Classify
 the result:
 
 1. **Command failed with an auto-merge-not-enabled signature** — stderr contains the literal
    captured GitHub GraphQL wording `Auto merge is not allowed for this repository` (captured
    verbatim on this repo, PR #1401, 2026-08-24: `GraphQL: Auto merge is not allowed for this
-   repository (enablePullRequestAutoMerge)`), or the looser paraphrase — `auto-merge` and
+   repository (enablePullRequestAutoMerge)`), or the second literal
+   `Protected branch rules not configured for this branch` (captured verbatim on this repo,
+   PR #3450, 2026-10-18: `GraphQL: Pull request Protected branch rules not configured for this
+   branch (enablePullRequestAutoMerge)`), or the looser paraphrase — `auto-merge` and
    (`not allowed` or `not enabled`) — for a differently-worded GitHub response to the same
-   repository setting ("Allow auto-merge") being off:
+   repository setting ("Allow auto-merge") being off. `enablePullRequestAutoMerge` alone in the
+   error text also matches, unless item 3's or item 4's signature is also present: it is the arm
+   mutation's name, which GitHub appends to every arm-unavailable failure of an `--auto` call.
+   `allow_auto_merge: true` alone, without
+   branch protection or a ruleset on the base branch, still fails this way — the setting by
+   itself does not make `--auto` armable (the Step 2.5 "Why `--auto` alone is not a wait"
+   mechanism):
 
    - under `merge-verification: off` only — degrade to an immediate merge, no `--auto` (today's
      behavior):
 
      ```bash
-     SUBJECT_EXPORTS=$(node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --shell) || exit 1
-     eval "$SUBJECT_EXPORTS"
-     gh pr merge {pr-number} --repo {owner}/{repo} --squash \
-       -t "$SUBJECT_TITLE" -b "$SUBJECT_BODY"
+     node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --pr {pr-number} --out-dir "{subject-dir}"
+     ```
+
+     ```bash
+     gh pr merge {pr-number} --repo {owner}/{repo} --squash -t {title-arg} --body-file "{subject-dir}/body.md"
      ```
 
    - under `merge-when-green` or `wait` — do not merge immediately: degrade to Step 2.5's `wait`

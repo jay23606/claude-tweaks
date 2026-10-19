@@ -26,7 +26,7 @@
 // or one keyed to the main checkout that the worktree sits under).
 
 const path = require('path');
-const { selectEntry } = require('../installed-plugins');
+const { readInstalledPlugins, selectEntry } = require('../installed-plugins');
 
 // Frozen contract — sibling sub-issues of #2979 document and test against
 // these exact strings. Treat any rename or addition as a breaking change.
@@ -58,9 +58,10 @@ function defaultDeps() {
   return {
     readFile: (p) => fs.readFileSync(p, 'utf8'),
     exists: (p) => fs.existsSync(p),
-    realpath: (p) => fs.realpathSync(p),
+    realpath: fs.realpathSync.native,
     homedir: () => os.homedir(),
     cwd: () => process.cwd(),
+    env: process.env,
     // spawn(cmd, args, options) -> stdout string; throws on non-zero exit,
     // timeout (err.killed/err.signal), or launch failure (err.code).
     spawn: (cmd, args, options) => {
@@ -103,22 +104,6 @@ function launchSpec(launcher, args, platform, env = {}) {
     args: ['/d', '/s', '/c', `"${line}"`],
     options: { windowsVerbatimArguments: true },
   };
-}
-
-function readInstalledPlugins(deps) {
-  const file = path.join(deps.homedir(), '.claude', 'plugins', 'installed_plugins.json');
-  if (!deps.exists(file)) return { ok: false, detail: `not found: ${file}` };
-  let raw;
-  try {
-    raw = deps.readFile(file);
-  } catch (err) {
-    return { ok: false, detail: err.message };
-  }
-  try {
-    return { ok: true, data: JSON.parse(raw) };
-  } catch (err) {
-    return { ok: false, detail: `malformed JSON (${err.message})` };
-  }
 }
 
 function launcherPath(installPath) {
@@ -167,7 +152,7 @@ function probeFailure(err, launcher) {
 }
 
 // opts: { projectPath, timeoutMs }. deps: { readFile, exists, realpath,
-// homedir, cwd, spawn }.
+// homedir, env, cwd, spawn }.
 function resolve(opts = {}, deps = defaultDeps()) {
   const read = readInstalledPlugins(deps);
   if (!read.ok) {
@@ -175,7 +160,7 @@ function resolve(opts = {}, deps = defaultDeps()) {
   }
   const entries = (read.data && read.data.plugins && read.data.plugins['impeccable@impeccable']) || [];
   const projectPath = opts.projectPath || deps.cwd();
-  const entry = selectEntry(entries, projectPath, deps);
+  const entry = selectEntry(entries, projectPath, deps, { excludeHome: true });
   if (!entry) {
     return { ok: false, reason: 'not-installed', fix: NOT_INSTALLED_FIX };
   }

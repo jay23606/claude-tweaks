@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 794,
+    "title": "GitHub App installation identity for the fleet",
+    "action": "Close as not planned — parked 62d, stale, trigger not met",
+    "command": "gh issue close 794 --reason \"not planned\" --comment \"tidy: parked 62d, trigger unmet\""
+  }
+]

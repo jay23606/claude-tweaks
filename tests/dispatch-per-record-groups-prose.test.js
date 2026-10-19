@@ -78,6 +78,7 @@ test('oversized-group-report.md says a group over the guard needs a bundle cap a
 
 const SHARED = path.join(__dirname, '..', 'plugin', 'skills', '_shared');
 const ROOT = path.join(__dirname, '..');
+const PLUGIN_DIR = path.join(ROOT, 'plugin').split(path.sep).join('/');
 
 test('AC8.1: issue-claims Group claiming says groups are single records or fast-lane bundles and all-members claiming applies to bundles', () => {
   const claims = readText(path.join(SHARED, 'issue-claims.md'));
@@ -131,7 +132,7 @@ function neighbourHeredocCode() {
   const start = QUEUE_PULL.indexOf(open);
   const end = QUEUE_PULL.indexOf(close, start);
   assert.ok(start !== -1 && end !== -1, 'neighbour-in-flight heredoc anchors must exist');
-  return QUEUE_PULL.slice(start + open.length, end).split('${CLAUDE_PLUGIN_ROOT}').join(path.join(ROOT, 'plugin'));
+  return QUEUE_PULL.slice(start + open.length, end).split('${CLAUDE_PLUGIN_ROOT}').join(PLUGIN_DIR);
 }
 
 // Runs the heredoc with PATH pointing at an empty dir, so gh and git are unavailable and nothing
@@ -171,4 +172,26 @@ test('AC1.1: the neighbour-in-flight heredoc reports a failed claim read and wri
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stderr, /neighbour-in-flight claim read failed for #2/);
   assert.deepEqual(neighbourExclusions, []);
+});
+
+function poolFetchBlock() {
+  const close = '\nfi\n';
+  const start = QUEUE_PULL.indexOf('if ! gh issue list --label bot:in-progress');
+  const end = QUEUE_PULL.indexOf(close, start);
+  assert.ok(start !== -1 && end !== -1, 'neighbour-in-flight pool fetch anchors must exist');
+  return QUEUE_PULL.slice(start, end + close.length);
+}
+
+test('a failed neighbour-in-flight pool fetch writes an empty pool and says so, so nothing is excluded (#3278)', () => {
+  // PATH points at an empty dir, so gh is not found and the fetch fails.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'neighbour-pool-'));
+  const rawPath = path.join(dir, 'in-flight-raw.json');
+  try {
+    const result = spawnSync('/bin/sh', ['-c', poolFetchBlock()], { encoding: 'utf8', env: { PATH: dir, DISPATCH_IN_FLIGHT_RAW: rawPath } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(fs.readFileSync(rawPath, 'utf8')), []);
+    assert.match(result.stderr, /AUTO — dispatch: neighbour-in-flight pool fetch failed; no neighbour-in-flight exclusions this pull/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
