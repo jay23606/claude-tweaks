@@ -1,8 +1,13 @@
 {
-  "computedAt": "2026-10-19T18:56:42.707Z",
-  "runId": "2026-10-19T185446-dispatch-standalone",
+  "computedAt": "2026-10-19T19:06:28.205Z",
+  "runId": "2026-10-19T190438-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
+      {
+        "number": 3607,
+        "updatedAt": "2026-10-19T18:57:14Z",
+        "state": "OPEN"
+      },
       {
         "number": 3604,
         "updatedAt": "2026-10-19T18:56:29Z",
@@ -50,7 +55,7 @@
       },
       {
         "number": 3575,
-        "updatedAt": "2026-10-19T12:28:48Z",
+        "updatedAt": "2026-10-19T18:57:42Z",
         "state": "OPEN"
       },
       {
@@ -60,7 +65,7 @@
       },
       {
         "number": 3568,
-        "updatedAt": "2026-10-19T12:28:55Z",
+        "updatedAt": "2026-10-19T18:57:54Z",
         "state": "OPEN"
       },
       {
@@ -115,12 +120,12 @@
       },
       {
         "number": 3515,
-        "updatedAt": "2026-10-18T06:43:39Z",
+        "updatedAt": "2026-10-19T18:57:45Z",
         "state": "OPEN"
       },
       {
         "number": 3513,
-        "updatedAt": "2026-10-18T06:42:27Z",
+        "updatedAt": "2026-10-19T18:58:47Z",
         "state": "OPEN"
       },
       {
@@ -155,12 +160,12 @@
       },
       {
         "number": 3503,
-        "updatedAt": "2026-10-18T06:42:03Z",
+        "updatedAt": "2026-10-19T18:57:38Z",
         "state": "OPEN"
       },
       {
         "number": 3498,
-        "updatedAt": "2026-10-18T06:41:59Z",
+        "updatedAt": "2026-10-19T18:59:10Z",
         "state": "OPEN"
       },
       {
@@ -190,7 +195,7 @@
       },
       {
         "number": 3490,
-        "updatedAt": "2026-10-18T06:41:45Z",
+        "updatedAt": "2026-10-19T19:01:18Z",
         "state": "OPEN"
       },
       {
@@ -205,12 +210,12 @@
       },
       {
         "number": 3480,
-        "updatedAt": "2026-10-18T06:41:37Z",
+        "updatedAt": "2026-10-19T18:57:59Z",
         "state": "OPEN"
       },
       {
         "number": 3479,
-        "updatedAt": "2026-10-18T06:43:18Z",
+        "updatedAt": "2026-10-19T18:57:34Z",
         "state": "OPEN"
       },
       {
@@ -230,7 +235,7 @@
       },
       {
         "number": 3470,
-        "updatedAt": "2026-10-18T06:41:30Z",
+        "updatedAt": "2026-10-19T18:59:59Z",
         "state": "OPEN"
       },
       {
@@ -260,7 +265,7 @@
       },
       {
         "number": 3457,
-        "updatedAt": "2026-10-18T06:41:19Z",
+        "updatedAt": "2026-10-19T18:57:40Z",
         "state": "OPEN"
       },
       {
@@ -275,7 +280,7 @@
       },
       {
         "number": 3431,
-        "updatedAt": "2026-10-19T11:00:01Z",
+        "updatedAt": "2026-10-19T19:00:15Z",
         "state": "OPEN"
       },
       {
@@ -295,7 +300,7 @@
       },
       {
         "number": 3353,
-        "updatedAt": "2026-10-17T09:47:41Z",
+        "updatedAt": "2026-10-19T19:00:09Z",
         "state": "OPEN"
       },
       {
@@ -487,10 +492,87 @@
         "number": 2734,
         "updatedAt": "2026-10-18T19:44:14Z",
         "state": "OPEN"
+      },
+      {
+        "number": 2622,
+        "updatedAt": "2026-10-19T18:56:37Z",
+        "state": "OPEN"
       }
     ]
   },
   "groups": [
+    [
+      {
+        "body": "Origin: ledger resolve gate (#2986 wrap-up, item 12)\n\nDefer-reason: genuinely-larger\n\n**Related:** #3608\n\n## Current State\n\n`_shared/pr-first-merge.md` Step 2.5 reads `mergeStateStatus` but never routes `DIRTY` to its Conflict path. A PR whose branch conflicts with the integration branch gets no `pull_request` workflow runs, so its status-check rollup is empty and Step 2.5 reads it as pending: it watches for 15 minutes and parks the run as `checks-pending-timeout` instead of reaching the Conflict path. This is the #2986 symptom (a conflicting PR that looks like pending CI) at merge time. #2986's phase-exit check now catches the conflict early and catches the branch up in `auto`, but a run that reaches the merge decision with a conflicting PR (interactive/hybrid, an aborted catch-up, or a conflict that appeared after the last phase exit) still takes this path. Files: `plugin/skills/_shared/pr-first-merge.md` (Step 2.5 and the Conflict path), its conformance tests.\n\n## Deliverables\n\n- [ ] Step 2.5 reads `mergeStateStatus` before it classifies an empty rollup as pending, and routes `DIRTY` (or `mergeable: CONFLICTING`) to the Conflict path without the 15-minute watch.\n\n- [ ] A pin in the pr-first-merge conformance suite for that routing, proven red when the routing is removed.\n\n## Acceptance Criteria\n\n- [ ] A PR reporting `mergeStateStatus: DIRTY` with an empty rollup reaches the Conflict path at Step 2.5 and never parks as `checks-pending-timeout`.\n\n- [ ] A PR with an empty rollup and any other merge state keeps today's pending/watch behavior.\n\n- [ ] `npm test` passes.\n\n## Release Note\n\nA run whose draft PR conflicts with the base branch now reaches the conflict handling at the merge decision instead of waiting out a 15-minute CI watch.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "createdAt": "2026-10-19T16:02:29Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 3607,
+        "state": "OPEN",
+        "title": "pr-first-merge Step 2.5: route a DIRTY PR with an empty rollup to the Conflict path",
+        "updatedAt": "2026-10-19T18:57:14Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "Origin: reflect full from #3258\n\nDefer-reason: tangential\n\n## Current State\n\n/claude-tweaks:review confirms a lens finding only when both agents of that lens's reproduction pair report it (`step3-lens-dispatch.md`). Cross-lens agreement is used only at review-effort `high` and above, where Step 3.5's overlap detection runs. At `medium` (the default for risk:medium x size:medium records, e.g. record #3258) a defect that three different lens agents each reported independently (3a-B high, 3b-B low, 3c-A low: a superseded failed workflow run at the base sha marking a real PR failure inherited) stayed `unconfirmed` in every lens, because the partner agent of each lens missed it. It only reached a fix through the reviewing agent's manual Direct-verification override.\n\n## Deliverables\n\nAt `medium` tier, after the per-lens reproduction pairs return, run `review-coordination.js detect-overlap` (or an equivalent cross-lens match on path +-5 lines and substance similarity) over the `unconfirmed` findings only, and treat a finding reported by two or more different lenses as corroborated: emit it `confirmed` with a log line naming the lenses. Keep `high`+ behavior (Step 3.5 debate) unchanged. Pin the new rule in the review prose conformance tests.\n\n## Acceptance Criteria\n\nA review at `medium` effort where two different lenses each have one agent reporting the same path/line and substance routes that finding as `confirmed` (not `unconfirmed`), with a decisions.md line naming both lenses. A finding reported by one lens only stays `unconfirmed`. The `low` tier single-read rule is unchanged.\n\n## Release Note\n\nReview at medium effort now treats a defect reported independently by two different lenses as confirmed instead of leaving it as a low-confidence finding.\n\n_Filed by `reflect` via specShapedBody._\n",
@@ -1087,84 +1169,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (wrap-up of #3523, ledger item 2)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n- `tests/friction-main-checkout-denial-coverage.test.js`'s `#2543 control: a frictionless session (no denial) still reports [] from the later run dir — nothing is manufactured` fails locally, in the full suite and in isolation, on a dispatch worktree.\n- The test reads the real main checkout's `.claude-tweaks/pipelines/` run dirs (here `2026-10-19T045959-adhoc-standalone`, which held a sibling session's `wd-guard-refusal` event), so a leftover denial from any other session makes a test that asserts `[]` return one entry. It is a test-isolation leak, not a product defect.\n- It fails identically at the base commit, so `verify.js`'s baseline adjudication classifies it as a pre-existing baseline failure, not attributable to the branch. It was observed during #3523's build (full run at `4ab5068a8`: 13033 tests, 1 failing) and again in the review gate.\n- The failing assertion is at `tests/friction-main-checkout-denial-coverage.test.js:115` (`deepStrictEqual` against `[]`).\n\n## Deliverables\n\n- [ ] Point the control at an isolated temp run root (a fixture directory the test creates) instead of the real main checkout's `.claude-tweaks/pipelines/`, so the result no longer depends on what other sessions have written.\n- [ ] Keep the test discriminating: a control that does contain a denial must still be reported, and the `[]` control must still go red if the extractor starts manufacturing entries (revert the extractor to see red).\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/friction-main-checkout-denial-coverage.test.js` passes regardless of the contents of the real main checkout's run dirs (verify by leaving a `wd-guard-refusal` event in a real run dir, then restoring it).\n- [ ] No test or assertion in the file is removed or skipped.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-19T08:20:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3575,
-        "state": "OPEN",
-        "title": "friction-main-checkout-denial-coverage '#2543 control' reads the real main checkout's run dirs and fails when a sibling session left a denial",
-        "updatedAt": "2026-10-19T12:28:48Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (wrap-up of #3523, ledger item 1)\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3587, #3565, #3579\n\n## Current State\n\n- #3523 fixed `tests/wrap-up-multispec-defer-still-live.test.js`, whose CRLF test double-converted an already-CRLF raw read into `\\r\\r\\n` on a `core.autocrlf=true` Windows checkout.\n- While fixing it, a repo-wide grep of `tests/` found nine other test files that apply `split('\\n\\n')` or `indexOf('\\n\\n'` to a raw `fs.readFileSync` of a tracked markdown file. On a CRLF checkout the paragraph break reads `\\r\\n\\r\\n`, so the split finds no break and the index search returns -1. They are unchanged since the shaping base `7852fd8bf`, were out of #3523's scope, and are a latent Windows-only weakness (the `windows-checkout-test-parity` skill's Anti-Patterns table names the class).\n- Sites: `tests/review-vacuity-evidence-conformance.test.js:97`, `tests/working-approach-scope-discipline.test.js:88`, `tests/multi-agent-coordination.test.js:1316`, `tests/design-wrapper-review-surface-gate-prose.test.js:139`, `tests/ephemeral-server-handoff-conformance.test.js:53` and `:113`, `tests/flow-manifesto-ceremony-fallback-conformance.test.js:26`, `tests/try-it-contract-conformance.test.js:53`, `tests/skill-load-report-cli.test.js:217`, `tests/claim-mcp-projection-conformance.test.js:18`.\n- Not every site necessarily fails today: some may already read through `readText()` or normalize elsewhere in the file. Verify each against its own read before changing it.\n\n## Deliverables\n\n- [ ] For each site that reads a tracked file raw and then searches for `'\\n\\n'`, route the read through `tests/helpers/read-skill.js`'s `readText()` (preferred) or LF-normalize it once before the search. Leave the extractor logic unchanged.\n- [ ] For each changed test, keep (or add) a CRLF case built from the LF text, per the `windows-checkout-test-parity` skill's \"Build CRLF inputs from the LF text\" rule.\n- [ ] Dispatch `windows-regression.yml` on the branch and quote the result for the changed files.\n\n## Acceptance Criteria\n\n- [ ] No test under `tests/` searches a raw read of a tracked file for `'\\n\\n'` (re-run the sweep grep and record the result in the PR body).\n- [ ] Each changed test passes on macOS/Linux with no test skipped or removed.\n- [ ] The changed files pass on `windows-latest`, proven by a `windows-regression.yml` dispatch on the branch. An in-process CRLF simulation is not a Windows run.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-19T08:20:48Z",
         "labels": [
@@ -1228,78 +1232,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect light from #3518\n\nDefer-reason: tangential\n\n## Current State\n\n`.github/workflows/windows-regression.yml`'s \"Resolve the comparison base\" step uses `github.event.before` and falls back to `HEAD^1` when that is empty, which is always the case for `workflow_dispatch`. A dispatch on a feature branch therefore baselines against the branch's previous commit. When the fix under test already sits in that previous commit, the run reports `pass (baseline-adjudicated ...)` from comparing a tree against a tree that already contains the fix, so the adjudication line says nothing about whether the tests pass. Observed on run 39214305973 (record #3518, base `60a8ef7` already carrying the test fix): the green verdict was only meaningful because the per-test `ok` lines in the run's `tests.log` could be read directly.\n\n## Deliverables\n\n- [ ] Make a `workflow_dispatch` run resolve its comparison base to the merge-base with the integration branch (or accept an explicit `base` input defaulting to it), instead of `HEAD^1`\n- [ ] Log the resolved base and its source in the step output, as the step already does, so a reader can tell a merge-base run from a `HEAD^1` one\n\n## Acceptance Criteria\n\n- [ ] A `workflow_dispatch` run on a branch whose earlier commit already fixes a failing test is adjudicated against the integration-branch tip, not the previous branch commit, so the fixed test no longer reads as passing at base\n- [ ] A `push` run still baselines against `github.event.before`, unchanged\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-19T07:34:03Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3568,
-        "state": "OPEN",
-        "title": "windows-regression: baseline workflow_dispatch runs against the integration branch, not HEAD^1",
-        "updatedAt": "2026-10-19T12:28:55Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -1849,150 +1781,6 @@
     ],
     [
       {
-        "body": "# Ledger item #1 — record proposal\n\nOrigin: ledger Phase 2 narrowing on #3401 (row 1)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`bin/flow-preflight.js` classifies a run directory as case 3 (adopted, pre-existing) whenever its `events.jsonl` is non-empty. On run `2026-10-17T190411-spec-3401` the self-minted directory held two `gate-exempt-gitignored` events before `config.yml` existed — both attributed from a sibling session's worktree (`dispatch-record-3405`) by the hook's fallback run-dir resolver — so a fresh mint was classified as an adoption. `/flow` Step 3 recovered by hand (treated it as case 2, wrote `config.yml` from the precedence chain, appended `decisions.md`), but nothing mechanical distinguishes \"events this run produced\" from \"events a sibling misattributed here\".\n\nCross-run event attribution to an empty mint is the hazard `flow/claim-targets.md` already names. The fallback resolver in `bin/lib/hooks/run-dir-resolve.js` picks the most recent matching run dir when `PIPELINE_RUN_DIR` is unset in the hook's environment, which a sibling session's subagent shell routinely is. Refs #3401 (ledger row 1).\n\n## Deliverables\n\n`bin/flow-preflight.js` case classification treats `events.jsonl` as adoption evidence only when at least one event carries this run's own worktree or session (the `worktree`/`sessionId` fields `run-state.json` records), or when `config.yml` exists; an events file holding only foreign-attributed events classifies as case 2 and is reported as such in `preflight.json` (`eventsForeign: N`).\n\n`bin/lib/hooks/run-dir-resolve.js`'s fallback never selects a run dir whose `run-state.json` names a different `worktree` than the hook's own resolved toplevel; when no run dir matches, it drops the event with a `sweep:`-style diagnostic to stderr instead of attributing it to the newest mint.\n\n`tests/bin-lib/flow-preflight/*.test.js` and `tests/bin-lib/hooks/run-dir-resolve.test.js` each gain the foreign-events fixture: a freshly minted dir with two events from another worktree classifies case 2, and the resolver refuses the cross-worktree attribution.\n\n## Acceptance Criteria\n\n`node plugin/bin/flow-preflight.js --run {fresh-mint-with-foreign-events}` reports `case: 2` and `eventsForeign: 2`; with one own-worktree event it reports `case: 3`.\n\nThe hook resolver test fails when the worktree guard in the fallback is removed.\n\n`npm test` passes in full.\n\n## Release Note\n\nFlow: a freshly minted run directory is no longer mistaken for an adoption because a sibling session's hook events landed in it first.\n\n_Filed by `wrap-up` via specShapedBody._\n",
-        "createdAt": "2026-10-18T06:16:05Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3515,
-        "state": "OPEN",
-        "title": "flow-preflight classifies a self-minted run dir as case 3 when a sibling session's hook events land in it first",
-        "updatedAt": "2026-10-18T06:43:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: SDD controller final-review finding on #3401 (run 2026-10-17T190411-spec-3401)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3401 (run 2026-10-17T190411-spec-3401) made a load-bearing SDD `Ruling:` line a Pending-review row (`staged/sdd-ruling-{N}.md`, `open` ledger row) with ratify/reverse semantics defined for the single-spec chat console only: `plugin/skills/wrap-up/review-console-appendix.md`'s `sdd-ruling-*` bullet (ratify = `apply` → ledger `accepted`; `reverse` → born-ready reversal record + ledger `deferred`), `review-console-interactive.md`'s Override vocabulary (`ratify {#}` / `reverse {#}`, bare `skip` refused), and `review-console.md` step 1's pointer clause. Under `integration-model: pr-first` with a live PR — the default surface — `review-console-interactive.md` routes rendering to `_shared/console-on-pr.md` and never renders \"Present the console\"; on the PR, the legend (`console-on-pr.md` ~line 80) and `wrap-up/console-execution.md` (~line 47) treat an unticked item as **declined**, and the chat accelerator `resolve-console --approve {ids} --decline {ids}` (`console-execution.md` ~line 99) has no reverse slot. `flow/multispec-review-console.md` step 1 (~line 138, patches only) and its Override \"skip\" (~line 152) have the same gap for multi-spec runs, whose per-spec builds stage `spec-{N}/staged/sdd-ruling-*.md`. Result today: a human who unticks a ruling on the PR console to reverse it gets a logged decline, no reversal record, and the row stays `open` (caught later by the nothing-left-behind gate — loud, not silent — but the decision is lost). Found by #3401's whole-branch review (Important #1); #3401's Key Files scoped the record to the chat console, so this was deferred rather than folded into its one fix wave.\n\n## Deliverables\n\n`_shared/console-on-pr.md`: an `sdd-ruling-*` row's label carries its two dispositions, and the legend states what an unticked `sdd-ruling-*` item means at Resolve time (reverse — never a bare decline), citing `review-console-appendix.md`'s `sdd-ruling-*` bullet for the write-back.\n\n`wrap-up/console-execution.md`: `resolve-console --decline` on an `sdd-ruling-*` id routes to reverse (compose the reversal record per the appendix bullet, ledger row → `deferred`), never to a plain decline; state it beside the existing decline semantics.\n\n`flow/multispec-review-console.md`: step 1 and the Override vocabulary cite the appendix `sdd-ruling-*` bullet so a multi-spec run's `spec-{N}/staged/sdd-ruling-*.md` rows get ratify/reverse, and `skip` on one is refused the same way the single-spec console refuses it.\n\nAdd `reverse` to `review-console-interactive.md`'s Override option description (~line 52) and the Pending review heading's vocabulary so the human learns it before the refusal message; define `modify {#}`/`revert {#}` on a ruling row as refused the same way `skip` is.\n\nPin each prose addition in `tests/build-sdd-ledger-residue-carryforward.test.js` (or a sibling conformance suite) with go-red discrimination.\n\n## Acceptance Criteria\n\n`grep -c 'sdd-ruling' plugin/skills/_shared/console-on-pr.md plugin/skills/wrap-up/console-execution.md plugin/skills/flow/multispec-review-console.md` prints at least `1` for each file, and each hit's surrounding text names reverse (never a bare decline) for an unticked or declined ruling row.\n\n`grep -c 'reverse' plugin/skills/wrap-up/review-console-interactive.md` prints at least `2` (the existing paragraph plus the Override option description).\n\nThe new conformance pins pass, and each fails when its prose clause is removed (prove in a scratch worktree, never `git stash`).\n\n`npm test` passes in full.\n\n## Release Note\n\nRatify-or-reverse for a carried-forward SDD ruling now works on the PR-hosted Review Console and in multi-spec runs, not only in the single-spec chat console.\n\n_Filed by `SDD controller` via specShapedBody._",
-        "createdAt": "2026-10-18T06:15:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3513,
-        "state": "OPEN",
-        "title": "Extend sdd-ruling-* ratify/reverse to the PR-hosted and multi-spec Review Consoles",
-        "updatedAt": "2026-10-18T06:42:27Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: SDD controller final-review finding on #3401 (run 2026-10-17T190411-spec-3401)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nThe open-items ledger is a 5-column markdown table (`_shared/ledger-format.md`). `plugin/bin/lib/wrap-up/ledger-write.js`'s `flipLedgerRow` splits a row on `|` and throws \"expected 5-column shape\" when a cell's own text contains a pipe. `plugin/bin/wrap-up-engine.js finish-console` runs its ledger flips as step 3, after steps 1-2 (decision log + memory/upstream writes) have already completed, so a `|` inside an Item or Resolution cell fails the console's Approve-all mid-way and leaves a partially-flipped ledger for the operator to reconcile. Until #3401 no SDD-carried row was flipped mechanically; #3401 now appends `SDD ruling — {one-liner}` rows whose text is copied from `progress.md` `Ruling:` lines, which commonly quote regex alternations (`a|b|c`) and table fragments — so the first pipe-bearing ruling that reaches the console breaks finish-console step 3. Nothing escapes or rejects a `|` at append time today (`/claude-tweaks:ledger` Add Item, `review/step3-routing.md`'s row append, `build/dispatch.md`'s carry-forward). Found by #3401's whole-branch review (Minor, pre-existing hazard in the ledger code, surfaced by the new producer).\n\n## Deliverables\n\nPick one mechanism and apply it at every ledger-row writer: escape `|` as `\\|` on append (markdown-table-safe) and unescape on read in `bin/lib/wrap-up/pack.js`'s `parseLedger` and `ledger-write.js`'s `flipLedgerRow`, OR reject a pipe-bearing cell at append time with a stated substitution rule (e.g. `∣` U+2223). State the chosen rule once in `_shared/ledger-format.md`'s Format section.\n\n`flipLedgerRow` tolerates an escaped pipe inside a cell (no longer throws on a 5-column row whose cell text carries `\\|`).\n\n`build/dispatch.md`'s carry-forward and `review/step3-routing.md`'s append cite the rule rather than restating it.\n\nTests: `tests/bin-lib/wrap-up/ledger-write.test.js` (or the suite that owns `flipLedgerRow`) gains a case flipping a row whose Item text carries a pipe, plus a round-trip through `parseLedger`; a `finish-console` test with such a row in the payload completes all three steps.\n\n## Acceptance Criteria\n\nA ledger row whose Item cell contains `a|b` (written through the chosen rule) is flipped by `wrap-up-engine.js finish-console --approve-all` without a step-3 failure, and `parseLedger` reads it back as 5 columns with the original text.\n\n`node --test` on the owning suites passes, and the new pipe case fails against the pre-change `ledger-write.js` (prove via `git show HEAD:...` to a temp path, never `git stash`).\n\n`npm test` passes in full.\n\n## Release Note\n\nA ledger item whose text contains a vertical bar no longer breaks the wrap-up Review Console's Approve-all midway.\n\n_Filed by `SDD controller` via specShapedBody._",
         "createdAt": "2026-10-18T06:15:55Z",
         "labels": [
@@ -2268,156 +2056,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3412, #3416, #3249, #3311\n\nOrigin: dispatch close-out of PR #3439 (#3412), 2026-10-18\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n- A multi-record `/flow` run can have its PR merged while one of its records is still being built. On 2026-10-17, PR #3348 (run `2026-10-17T062549-spec-3307-3308-3306-3309-3310-3311`) was squash-merged at 18:33Z, on explicit human instruction, closing #3306-#3310 only; its body's `Fixes #3311` had been changed to `Refs #3311`. #3311 was still mid-build in the run's locked worktree `skill-size-limits-3230`.\n- About two minutes later (18:35:05Z) the reconciler closed and archived the whole run: its archived `run-state.json` reads `status: clean`, `worktree: null`, and the directory moved to `.claude-tweaks/pipelines/archive/`. The owning session's #3311 work (full build plus a review fix wave) was still unpushed at that point.\n- #3412 (merged as 5cf9073d3, PR #3439) fixed the claim half: `release-merged.js` now releases only claims whose issue the merged PR actually closes. It did not touch `plugin/bin/lib/reconcile/archive-merged.js`.\n- On main, every merged-PR archive path in `archive-merged.js` keys only on the PR being MERGED plus console/staged state: `decideArchiveCore` (archive once MERGED and the console is resolved, or `console: none` with nothing pending in `staged/`, #3249), and the by-number fallback in the main loop (the same rule via `resolvePrStateByNumber`). Neither checks whether the merged PR closed every record in the run's `manifest.yml`, so a partially-shipped run is treated as finished.\n- #3416 is a different trigger with the same symptom: a reused branch name resolves to an earlier merged PR, so a run whose own PR is still open gets archived.\n\n## Deliverables\n\n- Before archiving a run on merged-PR evidence, check that the merged PR closes every record the run claims: the manifest's spec ids for a multi-record run, or the single record for a singleton. Use the closing-issue data #3412 added to `pr-state.js` (`closingIssuesReferences`). When any record is not closed, skip archival with a distinct tracked reason (e.g. `merged-partial`) and leave `run-state.json` untouched (no `status: clean`, no `worktree: null`).\n- Apply the same check on every merged-PR archive path in `archive-merged.js`: the branch-joined path through `decideArchiveCore`, and the by-number fallback.\n- Keep #3249's behaviour for a merged run whose PR closes all of its records: it still archives with no manual step.\n\n### Technical Approach\n\nRead the run's record set from `manifest.yml` (`multispec.specs[].id`), falling back to the run's single record id for a singleton. Pass the merged PR's closing-issue numbers (from `pr-state.js`, extended by #3412) into the archive decision, and make it return `skip` with a `merged-partial` reason when the set difference is non-empty. Keep `decideArchiveCore` pure by having the caller supply both sets. Decide whether `merged-partial` belongs in `STRUCTURALLY_STUCK_REASONS` (escalate) or should wait for a later PR; it should not freeze silently.\n\n#### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — `decideArchiveCore` and the by-number fallback: add the all-records-closed check\n- `plugin/bin/lib/reconcile/pr-state.js` — reuse the closing-issue data #3412 added; extend the by-number read if it lacks it\n- `tests/bin-lib/reconcile/archive-merged.test.js` — partial-merge, full-merge and singleton cases\n\n### Gotchas\n\n- Coordinate with #3416, which changes how the run's PR is resolved in the same main loop. Land whichever goes second on top of the other's PR lookup.\n- A run legitimately split across two PRs will now wait for the second PR before it archives. That is intended, but the skip reason has to make it visible rather than looking stuck.\n\n## Acceptance Criteria\n\n- [ ] A run whose PR is MERGED but whose manifest lists a record the PR does not close is not archived. Its `run-state.json` keeps its status and worktree, and the skip reason names the unclosed record(s).\n- [ ] A run whose PR is MERGED and closes every manifest record still archives exactly as today, on both the branch-joined and by-number paths.\n- [ ] A singleton run (no multi-record manifest) behaves as today when its PR closes its record.\n- [ ] When closing-issue data cannot be read (gh failure), archival is skipped with a transport reason, never assumed complete.\n- [ ] A regression test reproduces the partial-merge archive and fails on the pre-fix code.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFix the reconciler archiving a pipeline run whose PR merged before all of its records were built.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-18T05:58:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3503,
-        "state": "OPEN",
-        "title": "Reconciler archives a run whose PR merged before all of its records were built",
-        "updatedAt": "2026-10-18T06:42:03Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3417\n\nDefer-reason: tangential\n\n## Current State\n\nTwo lexical containment primitives now coexist under `plugin/bin/`. `shared-primitives.js`'s `isPathContained(candidate, root, { orEqual })` is a bare `candidate.startsWith(root + path.sep)`; `plugin/bin/lib/path-guard`'s `isAncestorOrSelf(ancestor, candidate, { pathImpl })` (added by #3417) uses `path.relative`, admits equality, tests the `..` path segment (so a child named `..foo` is contained), and takes a `pathImpl` so win32 compares case-insensitively and across drives.\n\n`isPathContained` still has six production callers outside `shared-primitives.js`: `skill-load-report.js`, `load-delta.js`, `lib/init/release-bootstrap.js`, `lib/reconcile/reap-merged.js`, `lib/hooks/pre-tool-use.js` and `lib/hooks/worktree-reap.js`. #3417 migrated `timing/transcript.js` and `installed-plugins.js` to the path-guard form and left these alone because the spec scoped three call sites. `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` and `docs/donts.md` [IL-161] now point authors at different helpers for the same question.\n\n## Deliverables\n\n- Decide the single lexical containment primitive. Either `isPathContained` delegates to `path-guard`'s `isAncestorOrSelf` (keeping its `orEqual` option as a thin wrapper), or its callers migrate and it is removed.\n\n- Migrate the remaining `isPathContained` callers, each with its existing suite unmodified, and record any caller whose behavior intentionally changes (a `..foo` child, win32 case-insensitivity) the way #3417 recorded its two.\n\n- Update `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md`'s containment bullet and `docs/donts.md` [IL-161] to name the one surviving helper.\n\n## Acceptance Criteria\n\n- [ ] `grep -rn \"startsWith(.*path.sep)\" plugin/bin` shows no hand-rolled containment test, and `isPathContained` and `isAncestorOrSelf` no longer both exist as independent implementations.\n\n- [ ] Every migrated caller's existing test suite passes unmodified, and a characterization case pins each intended behavior change.\n\n- [ ] `docs/donts.md` [IL-161] and the `pre-tool-use-gate-exemptions` skill name the same helper.\n\n## Release Note\n\nInternal hardening: plugin path-containment checks share one implementation.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T23:19:49Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3498,
-        "state": "OPEN",
-        "title": "Consolidate isPathContained and path-guard isAncestorOrSelf into one lexical containment primitive",
-        "updatedAt": "2026-10-18T06:41:59Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -2839,78 +2477,6 @@
     ],
     [
       {
-        "body": "Origin: reflect light from #3192\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/wrap-up/cleanup-procedures-execution.md` Section C step 5 (the \"worktree this session does not occupy\" path) runs `node \"${CLAUDE_PLUGIN_ROOT}/bin/hooks.js\" teardown-run --run \"$RUN_DIR\" --merged` with no `--remote-ref-only`, and its prose says archival there is \"idempotent if Section B already archived this run\". `teardown-run` archives the run directory unless `--remote-ref-only` is passed (`plugin/bin/lib/hooks/teardown-run.js` Step 2).\n\n`wrap-up/cleanup-procedures.md`'s Ordering rule says run-directory archival (item 8) is always last, because items 4, 6 and 7 still read files under `$RUN_DIR` (ephemeral-server.txt for item 6, the materialized spec headers for item 7). Section C is item 4, so step 5's `teardown-run` archives the run directory before items 6 and 7 run — the same defect class #3088 fixed at step 5.5 and #3192 fixed at `flow/multispec-review-console.md` Shared teardown step 7, at the one remaining call site.\n\nAfter #3192 every documented skill-prose caller of `teardown-run` except this one passes `--remote-ref-only`, so the flag's polarity (archive by default, opt out) is what let the same omission recur three times.\n\n## Deliverables\n\n- [ ] Pass `--remote-ref-only` in Section C step 5's `teardown-run` call (or document precisely why archival at that point is safe for the foreign-worktree path), and reword the \"idempotent if Section B already archived\" sentence to match the Ordering rule.\n\n- [ ] Extend `tests/scratch-worktree-remote-branch-delete.test.js` (it already pins step 5.5) with an assertion for step 5.\n\n- [ ] Decide, in the same change, whether `teardown-run` should stop archiving by default now that no documented caller wants it (expand-contract: keep the flag accepted, record a removal condition).\n\n## Acceptance Criteria\n\n- Section C step 5's `teardown-run` call passes `--remote-ref-only`, or the file states why archival there cannot precede items 6 and 7.\n\n- A conformance test pins that choice and fails when the flag or the stated reason is removed.\n\n- `npm test` passes with no new attributable failures.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T22:15:43Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3490,
-        "state": "OPEN",
-        "title": "wrap-up Section C step 5 teardown-run still archives the run directory before ephemeral-server teardown and claim release",
-        "updatedAt": "2026-10-18T06:41:45Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (spec #3370 build, whole-branch review finding I5)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/stage-item.js` (#3370) warns on stderr when the id that landed matches no `SECTION_MAP` row in `plugin/bin/lib/console/resolve.js`. Four producers stage ids no row maps: `release-held`, `upstream-draft-{N}`, `shipped-close-*` (whose call is silenced by its own `2>/dev/null`) and `dispatch-target-missing-*`. Real staged output carries more unmapped names: `review-followup-*`, `build-followup-*`, `docs-*`, `skills-*`, `wrap-up-reflect-insights`, `wrap-up-cleanup-ordering` and `reconcile-live-run-archived`. The release and dispatch run directories never reach wrap-up's `console-resolve.js`, so for them the warning (\"if a wrap-up Review Console resolves this run, it routes this item to Pending review\") describes a console that never runs; for the producers whose runs do reach it, an unmapped name lands in Pending review and is never auto-resolved. Files: `plugin/bin/lib/console/resolve.js`, `plugin/bin/stage-item.js`, and the producer skills under `plugin/skills/`.\n\n## Deliverables\n\n- [ ] Enumerate every `stage-item.js --id` producer under `plugin/skills/` and `plugin/bin/` and record, per producer, whether its run directory reaches `console-resolve.js`.\n- [ ] For each producer whose run reaches the console: add a `SECTION_MAP` row (and the matching `CANONICAL_PREFIXES` entry) or rename the id to an already-mapped prefix.\n- [ ] For each producer whose run never reaches it: exempt it from the warning with the reason stated beside the exemption, and drop `shipped-close-*`'s `2>/dev/null` so a real staging failure is visible.\n- [ ] A test that fails when a producer's id matches neither a row nor the exemption list.\n\n## Acceptance Criteria\n\n1. `stage-item.js --id release-held` and `--id dispatch-target-missing-x` print no unmapped-prefix warning, and `--id review-13-record` still prints it.\n\n2. Every id named in Current State classifies through `classifyStagedItem` without `unmapped-prefix`, or is on the exemption list with its reason.\n\n3. `npm test` passes with no new failures relative to `main`.\n\n## Release Note\n\nThe staging-time warning for an unmapped Review Console prefix now prints only where it is true: every producer's id either maps to a console section or is exempt with a stated reason.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-17T22:07:23Z",
         "labels": [
@@ -3040,156 +2606,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (from #3204 wrap-up)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nAfter #3204, `unattributedFailureCount` (`plugin/bin/lib/verify/extract.js`) returns `null` for every output family other than spec/TAP, and `planRetry` (`plugin/bin/lib/verify/flaky.js`) refuses with `no-accounting-guard: {family}`. Runner-owned flaky retry therefore never fires for a jest, vitest or pytest suite; those failures route to the whole-suite re-run path in `plugin/skills/test/verification.md`.\n\n#3204 chose refusal over an accounting check because no single cross-check fits every summary dialect: jest prints `FAIL` lines per test file while its `Tests:` totals count individual tests, and pytest collection `ERROR`s and vitest `Unhandled Errors` sit outside any `FAIL`/`FAILED` line, so a count comparison could report a log as fully accounted while a failure is not.\n\n## Deliverables\n\n- [ ] Add per-dialect accounting for jest (the `FAIL` file lines against `Test Suites: N failed`) and for vitest (`Test Files N failed` plus a check for an `Errors` block), so `unattributedFailureCount` returns `0` or a positive count for them instead of `null`.\n\n- [ ] Keep pytest refusing with `no-accounting-guard: summary` unless a sound check exists: collection `ERROR`s sit outside every `FAILED` line.\n\n- [ ] Tests with a captured log per dialect, each with an all-attributed case and an unattributed-failure case.\n\n- [ ] Update `plugin/skills/test/verification.md` (Flake handling), `docs/journeys/run-a-deterministic-verification-check.md` Step 10, and `.claude/skills/node-test-output-evidence/SKILL.md` to match.\n\n## Acceptance Criteria\n\n- [ ] A jest log whose every failing file is allowlisted and fully attributed retries those files.\n\n- [ ] A jest or vitest log carrying a failure no named file accounts for refuses with `unattributed-failures: {N}`.\n\n- [ ] A pytest log still refuses with `no-accounting-guard: summary`.\n\n- [ ] The prose in the three documents above names the dialects that retry and the one that does not.\n\n## Release Note\n\nRunner-owned flaky retry works again for jest and vitest suites whose failure output the runner can fully account for; pytest suites still fall back to a whole-suite re-run.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T21:46:51Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3480,
-        "state": "OPEN",
-        "title": "Restore flaky retry for jest/vitest suites via per-dialect failure accounting",
-        "updatedAt": "2026-10-18T06:41:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up reflect (friction) from run 2026-10-17T200218-record-2977\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/wrap-up/pack.js` runs the residue probe (`bin/residue.js --scope blast-radius --no-suite --json`) under `EXEC_OPTS.timeout = 30000` (line 31). On 2026-10-17, in this repo with 68 registered worktrees (`git worktree list`), the probe reported `ok: false, error: \"Command failed: node .../residue.js ...\"` at `durationMs: 30032` during `wrap-up-pack.js` for run `2026-10-17T200218-record-2977`. Running the identical command by hand afterwards succeeded and took 29440 ms, so the probe has about 0.5 s of headroom and flips to a timeout under any extra machine load. A failed probe renders the residue sweep as `unknown`, and the operator re-runs `residue.js` by hand to get the findings.\n\n## Deliverables\n\n- [ ] Give the residue probe in `pack.js` a timeout with real headroom (or its own per-probe value), or make `residue.js --scope blast-radius` cheaper in a many-worktree checkout, so a normal run finishes well inside the limit.\n\n- [ ] Make the failure legible: when the probe times out, the pack error names the timeout instead of the generic `Command failed` text.\n\n## Acceptance Criteria\n\n- A pack run in a checkout with the same worktree count completes the residue probe with `ok: true` and a measured duration under half the timeout.\n\n- A forced timeout in `tests/` (injected `deps.execFile` that never resolves or rejects with a kill signal) produces an error whose text names the timeout.\n\n- `node --test` passes for the wrap-up pack suites.\n\n## Release Note\n\nFixed the wrap-up fact pack timing out on its residue probe in repositories with many worktrees.\n\n_Filed by `wrap-up reflect` via specShapedBody._",
-        "createdAt": "2026-10-17T21:44:14Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3479,
-        "state": "OPEN",
-        "title": "wrap-up-pack.js residue probe runs within 0.5s of its 30s timeout in a many-worktree checkout",
-        "updatedAt": "2026-10-18T06:43:18Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -3412,78 +2828,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3298\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/verify/changed-files.js` reads every git path list with `-z` and `--end-of-options` (lines 138, 179, 187) and documents why: without `-z`, `core.quotepath` C-quotes any non-ASCII path (`\"docs/caf\\303\\251.md\"`), so a newline-split reader sees a path that matches nothing; without `--end-of-options`, a dash-leading ref or range is parsed as a git option.\n\n#3298's composer repeated the newline-split pattern for `git diff --name-only` and review had to add both flags after the fact (`0e23a2f09`). Five sibling readers in the plugin still split git path output on newlines with neither flag:\n\n- `plugin/bin/lib/merge-size-probe.js:46` — `git diff --no-renames --name-only {integration}...{head}`\n- `plugin/bin/lib/wrap-up/facts.js:173` and `:176` — `git diff --name-only {base}...HEAD` and `git diff --diff-filter=RD --name-status {base}...HEAD`\n- `plugin/bin/lib/wrap-up/engine-verify.js:623` — `git diff-tree --no-commit-id --name-only -r {sha}`\n- `plugin/bin/lib/release-preflight/pack.js:233` — `git ls-tree --name-only {tipRef}`, `.split('\\n')`\n- `plugin/bin/lib/hooks/pre-tool-use.js:330` — `git diff --cached --name-status`\n\nNo `_shared` contract states the discipline, so each new reader re-derives it or misses it (`gh-api-module-pattern` covers `gh` calls, not git path reads).\n\n## Deliverables\n\n- [ ] Each of the five readers above passes `-z` and splits on NUL (`--name-status -z` readers parse the status/path records accordingly), and passes `--end-of-options` before any ref, range, or sha argument.\n- [ ] One contract paragraph — in the `_shared` file that owns git-invocation conventions, or a new short `_shared/git-path-read.md` cited from it — states the rule: a git path-list read uses `-z` + NUL split and `--end-of-options`; `changed-files.js` and `compose-subject.js` are the reference implementations.\n- [ ] A conformance test greps `plugin/bin/**/*.js` for `--name-only`/`--name-status` git argv arrays and fails on any that lacks `-z`.\n\n## Acceptance Criteria\n\n- A fixture repository with a path `docs/café.md` changed on the branch: `merge-size-probe.js`, `wrap-up/facts.js`'s blast-radius probe, and `pre-tool-use.js`'s staged-file read each report that path unquoted (`docs/café.md`), never `\"docs/caf\\303\\251.md\"`.\n- `grep -rn -- \"--name-only\\|--name-status\" plugin/bin --include='*.js'` lists no git argv array without `-z` on the same line, and the conformance test goes red when `-z` is removed from any one of them (revert to confirm).\n- `git grep -n -- \"-z\" plugin/skills/_shared/` finds the contract paragraph, and it names `changed-files.js` as the reference implementation.\n\n## Release Note\n\nEvery plugin git path-list reader now handles non-ASCII paths and dash-leading refs the same way — no silent mis-scope on a C-quoted path.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T21:27:25Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3470,
-        "state": "OPEN",
-        "title": "Sweep git path-list readers for -z and --end-of-options — five call sites split C-quoted output on newlines",
-        "updatedAt": "2026-10-18T06:41:30Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -3877,78 +3221,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (#3307 wrap-up, ledger row 20)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/bin/lib/skill-audit/load.js` `extractCitations` resolves backticked `.md` tokens by rules (a) citing-file-relative, (b) `_shared/`, (c) `${CLAUDE_PLUGIN_ROOT}/`, (d) \"in that skill's directory\" (#3307 AC1). It does not resolve plugin-root-relative tokens such as `skills/build/SKILL.md` (191 occurrences reachable from `flow`) or skills-dir-relative tokens such as `wrap-up/x.md`.\n\nOn `plugin:flow` that leaves 982 unique unresolved (citing file, token) pairs, so the closure undercounts what an invocation can load. Unresolved tokens are never counted as 0 bytes, but their bytes are missing from closure.\n\n## Deliverables\n\n- A rule (e) in `extractCitations`: a token starting `skills/` resolves against `{pluginRoot}/`, and a token `{skill}/{file}.md` whose first segment names an existing skill directory resolves against `{pluginRoot}/skills/`.\n- Rule order stays first-existing-wins; the new rule runs after (a)–(d).\n- `load.test.js` cases for both token shapes, plus a case showing a same-named relative sibling still wins via rule (a).\n\n## Acceptance Criteria\n\n- `extractCitations` resolves `skills/build/SKILL.md` and `wrap-up/cleanup-procedures.md` from a fixture SKILL.md to their real paths.\n- On this repo, `plugin:flow`'s unresolved-pair count drops from 982 to the count that genuinely names nothing (stated in the PR).\n- No previously resolved token changes its resolved path (diff of resolved sets before/after shows additions only).\n\n## Release Note\n\nSkill load closures now count files cited by plugin-root- or skills-directory-relative paths, so the worst-case load figure stops undercounting.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:15Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3457,
-        "state": "OPEN",
-        "title": "Extend the load model citation grammar with plugin-root- and skills-dir-relative tokens",
-        "updatedAt": "2026-10-18T06:41:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (#3307 wrap-up, ledger row 19)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/bin/load-delta.js` `renderText` prints one table row per changed skill entry point. In this corpus the closure is saturated: every `plugin` entry's closure is 1.19–2.11 MB and 88 files sit in every closure, so a one-row edit to any widely cited `_shared/*.md` file yields a 39-row table whose rows differ only in the Entry and absolute columns — ΔFloor 0 and the same ΔClosure on every row.\n\nObserved live during #3307's own review (step 3j on its branch): 38 of 39 rows read `ΔFloor 0 · ΔClosure +347` from one added row in `_shared/integration-branch.md`; only `plugin:review` differed. The review summary carries the whole table verbatim (`plugin/skills/review/step3-skill-load-delta.md`).\n\n## Deliverables\n\n- `renderText` collapses rows that share identical (ΔFloor, ΔClosure, new-unresolved) into one row naming the entry count and listing the entries (or the first few plus a count), keeping rows that differ as individual rows.\n- `--json` output is unchanged (consumers such as #3309/#3310 read per-entry rows).\n- `plugin/skills/review/step3-skill-load-delta.md` and its verbatim-quote test updated for the grouped row shape.\n\n## Acceptance Criteria\n\n- A fixture where one `_shared/*.md` edit moves N ≥ 3 entries by the same ΔClosure renders those N entries as one row; an entry with a different delta stays its own row.\n- `node plugin/bin/load-delta.js --json` output is byte-identical before and after the change on the same fixture.\n- `tests/load-delta-cli.test.js`'s outcome-line quote test passes against the updated step file.\n\n## Release Note\n\nThe review skill load delta collapses entries that moved by the same amount into one row, so a shared-file edit no longer produces a wall of identical rows.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-17T20:09:11Z",
         "labels": [
@@ -4099,78 +3371,6 @@
     ],
     [
       {
-        "body": "Verified-as-of: b548e8336d813d90c90bd91d9161eb5d89005766\n\nOrigin: reflect light from #3389\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/wrap-up-engine.js plan` gathers its repo facts (changed files, renamed/deleted paths, journey frontmatter overlap, CLAUDE.md budget) through `resolveRepoRoot()`, which runs `git rev-parse --git-common-dir` and takes its dirname. From a linked worktree that is the MAIN checkout, not the worktree the run is building in, so `git diff {base}...HEAD` runs against the main checkout's HEAD. Observed on run 2026-10-17T183731-record-3389 (worktree `dispatch-record-3389`, a 6-file diff touching `plugin/bin/lib/console/resolve.js`): `gatherFacts` with `cwd` = the worktree returns 6 changed files including `resolve.js`; with `cwd` = the common-dir root it returns 0, and `plan` printed the journeys row with `candidates: []` even though `docs/journeys/resolve-the-unattended-console-in-one-process-1932.md` lists `resolve.js` in its `files:` frontmatter.\n\nThe common-dir resolution is deliberate for telemetry (`resolveTelemetryPath` anchors `.claude-tweaks/wrap-up-outcomes.tsv` to the main checkout) and was reused for facts by #3017 to fix the subdirectory-cwd case. The facts read needs the worktree top-level instead. `runVerifyVerb` (around line 517) also calls `resolveRepoRoot`; its `--base` diff has the same exposure. Gates that fall out of the wrong diff (CLAUDE.md Commands renamed, renamed/deleted references, journey overlap) can silently close in worktree runs, which is every `/flow` run.\n\n## Deliverables\n\n- [ ] Resolve a second root for repo facts: `git rev-parse --show-toplevel` from the invocation cwd (the worktree top-level inside a linked worktree, the checkout root otherwise, the subdirectory case still handled). Keep `resolveRepoRoot` (common-dir) only for the telemetry path.\n\n- [ ] Use the top-level for `gatherFacts` and `buildJourneyFrontmatter` in `runPlan`, and audit `runVerifyVerb`'s use for the same exposure.\n\n- [ ] Add a regression test under `tests/` that builds a linked worktree fixture with a changed file named in a journey's `files:` frontmatter and asserts `plan`'s journeys row carries that journey as a candidate (it must fail against the common-dir resolution).\n\n## Acceptance Criteria\n\n- `wrap-up-engine.js plan` run from a linked worktree reports the worktree branch's own changed files, so a journey whose `files:` overlaps the diff appears in the journeys row's `scope.candidates`.\n\n- Telemetry still lands in the main checkout's `.claude-tweaks/wrap-up-outcomes.tsv`.\n\n- The new test goes red when `runPlan` is pointed back at the common-dir root.\n\n## Release Note\n\nWrap-up's curation plan now reads the branch diff from the worktree it runs in, so journey, reference and CLAUDE.md gates no longer close on an empty diff in worktree runs.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T19:07:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3431,
-        "state": "OPEN",
-        "title": "Fix wrap-up-engine plan reading repo facts from the main checkout inside a linked worktree",
-        "updatedAt": "2026-10-19T11:00:01Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: backend\n\n## Overview\n\nPart of the \"Build dispatch cost shape\" decomposition (origin #3229, a feedback report from a measured 10-task subagent-driven build). In that build, 3 of the 5 Important findings from the top-tier final review were spec or plan-level gaps — behaviour the spec left undecided, or two tasks disagreeing about a contract — found after all the code was written and fixed in an 18-minute fix wave plus a re-review. SDD's own pre-flight scan (\"Before dispatching Task 1, scan the plan once for conflicts\") runs on the controller and hunts contradictions between and within tasks; it does not look for spec gaps or undecided behaviour.\n\nThis record adds a new `/build` Common Step between plan audit (Common Step 1.5) and execution dispatch (Common Step 2), Spec Mode only: one dispatched reviewer on the Capable profile reads the materialized spec and the plan once and returns findings in three classes — spec gap (the spec does not decide something the plan must decide), undecided behaviour (an input class, failure mode or UI state no task covers) and cross-task contract (one task produces what another consumes and they disagree). It explicitly does not redo SDD's pre-flight conflict table. A spec gap resolvable from the spec's own intent amends the in-run materialized spec before Task 1; a spec gap that needs a human becomes a deliberate new HARD-GATE stop; the other two classes amend the plan.\n\n**Complexity:** Medium-High\n**Estimated tasks:** 6-8\n\n## Non-Goals\n\n- Redoing SDD's pre-flight conflict table (cross-task and within-task contradictions, written to the SDD ledger). The reviewer's brief tells it to skip that class.\n- Editing the live issue body at any point. An intent-resolvable spec amendment lives in the worktree's materialized spec and is posted once as a comment on the record; nothing is staged for the Review Console.\n- Running in design mode (no materialized spec, no record) — same skip as architecture alignment.\n- Changing SDD's per-task loop, or filing anything upstream with superpowers.\n- The per-task tier markers (a separate record, which adds one check to this record's reviewer once both exist).\n\n## Prerequisites\n\n| Record | Title | Status |\n|--------|-------|--------|\n| #3375 | Attribute agent cost to individual subagent dispatches in phase-timing and the /wrap-up run summary | must ship first, so the plan reviewer's own cost and the final-review finding classes it is meant to reduce are measurable |\n| #3376 | Re-pin superpowers to 7.0.0 and pin the upstream text the dispatch cost-shape changes lean on | must ship first, so the SDD pre-flight sentence this step is defined against is pinned |\n| #3310 | Cut every skill-size consumer over to the rail, load delta, and size outlier | ready, in progress — shares `plugin/skills/build/SKILL.md`, `plan-audit.md`, `plan-authoring-checks.md`, `plugin/bin/lib/plan-audit/checks.js`; build after it merges |\n\n## Current State\n\n- `plugin/skills/build/SKILL.md` — `### Common Step 1.5: Plan Audit`, then `### Common Step 1.7: Design Pre-Build (frontend specs + terminal)`, then `### Common Step 2: Execute the Plan`. The file is 45,995 bytes against the shared 51,200-byte ceiling, so the new step must be a short pointer to a new sub-file (measured 2026-10-17).\n- `plugin/skills/build/plan-audit.md` and `plugin/bin/plan-audit.js` — the mechanical plan audit (Checks A-E plus headroom) that Step 1.5 runs; Check E (warn-only) already compares the materialized spec's Acceptance Criteria clauses to the plan.\n- `plugin/skills/_shared/subagent-output-contract.md` — the dispatch contract (minimal input, trailing `STATUS:` line, inlined output template, model profile selection); Template A (a findings table) lives in `plugin/skills/_shared/subagent-dispatch-core.md`'s Template A section.\n- `plugin/bin/resolve-profile.js` — resolves `capable` to a model; dispatch sites call it and pass the model explicitly.\n- `plugin/skills/_shared/auto-decision-log.md` — the canonical entry schema for `.claude-tweaks/pipelines/{run-id}/decisions.md`.\n- `plugin/skills/_shared/auto-mode-contract.md` — the \"What `auto` never silences\" table; its HARD-GATE / BLOCKED / STOP row (around line 208) names `/build` Design Step 3 plan validation and Common Step 1.5 plan-audit hard-fails, and has no entry for a step between 1.5 and 2.\n- `plugin/skills/_shared/ceremony-profile.md` — the single roster of what each `ceremony-profile` skips, pinned by `tests/ceremony-profile-roster.test.js`.\n- `plugin/skills/flow/materialize.md` — the materialized spec (`work/{n}-spec.md`) lives in the worktree's copy in worktree mode, not under `$PIPELINE_RUN_DIR`, and reaches the main checkout only on merge.\n- `plugin/skills/dispatch/settle-and-merge.md` — how `/dispatch` blocks a record today: a `gh issue comment` attempt comment, then `bot:blocked` added (and every `auto:*` grant removed) with a `PushNotification`. `plugin/skills/_shared/headless-self-report.md` and `DISPATCH_HEADLESS=1` are the existing \"no human present\" signals.\n- `docs/skill-graph.md` — the `## build` section is where any new `/build` edge is stated, once.\n\n## Deliverables\n\n- [ ] A new sub-file in `plugin/skills/build/` (the builder names it; `plan-review.md` suggested) holding the full procedure: skip conditions, the dispatch prompt with the inlined output template, the three finding classes, and the per-class handling below.\n- [ ] A short new Common Step in `plugin/skills/build/SKILL.md` between 1.5 and 2 that states the Spec-Mode-only condition and points at the sub-file (pointer only; no procedure restated in `SKILL.md`).\n- [ ] The dispatch: one reviewer on Capable, model resolved through `node \"${CLAUDE_PLUGIN_ROOT}/bin/resolve-profile.js\" capable --run-dir \"$PIPELINE_RUN_DIR\"`, under the Subagent Contract. Input is the materialized spec path and plan path only (no conversation history); the reviewer may also read the repository read-only to check what the plan integrates with, because undecided-behaviour and cross-task findings depend on existing code; trailing `STATUS:` line; output template inlined verbatim in the prompt.\n- [ ] The output template carries, for each spec-gap finding, a `Resolution` field (`intent-resolvable` or `needs-human`) and the spec sentence that supports an `intent-resolvable` call. Burden of proof: when no spec sentence can be cited, the finding is `needs-human`. A gap is `needs-human` whenever it would alter or loosen an existing Acceptance Criterion or an observable contract, or has two defensible readings. An undecided-behaviour finding that is really a product decision is reclassified by the reviewer as a spec gap.\n- [ ] The class boundary against SDD's pre-flight scan is written into the brief: the pre-flight scan checks plan-internal contradictions (a task against the plan's Global Constraints, a step the plan mandates that the review rubric forbids); this reviewer checks producer/consumer agreement between tasks (names, shapes, ordering of what one task produces and another consumes) and each against the spec. The brief gives one example of each.\n- [ ] Handling for a spec gap marked `intent-resolvable`: amend the worktree's copy of `work/{n}-spec.md` before Task 1 with an additive clarification only (never editing or loosening an existing Acceptance Criterion), commit the amendment in the worktree together with any plan amendment, write the decision log entry per `_shared/auto-decision-log.md`, and post the amendment as one comment on the record (`gh issue comment`, or the MCP equivalent per `_shared/github-write-transport.md`) so the record's history carries it. The record body is never edited and nothing is staged for the Review Console: the amended in-run spec is the one `/test`, `/review` and `/wrap-up` judge against, so there is no staged item to apply, decline, or leave unreached.\n- [ ] Handling for undecided-behaviour and cross-task-contract findings: amend the plan file, log it, and proceed. After any spec or plan amendment, re-run `plan-audit.js` once on the amended plan (Checks A, C, D, headroom, and E against the amended spec); the plan review itself does not re-run, so the step cannot loop.\n- [ ] Standalone `/build` (no `$PIPELINE_RUN_DIR`, no `config.yml`): the step still runs and amends the spec; the decision-log write is skipped and the amendment is listed in the Step 7 handoff (the record comment is still posted) (the same standalone fallback `plan-audit.md` and `SKILL.md` use for their own run-directory-anchored parts).\n- [ ] A new HARD-GATE row in `plugin/skills/_shared/auto-mode-contract.md` for a spec gap marked `needs-human`: a real stop before Task 1 in every mode when someone is present; when nobody is (`DISPATCH_HEADLESS=1`, the existing headless marker `/dispatch` sets for a scheduled Routine drain), the record goes `bot:blocked` with the question posted on it, through the transport `/dispatch` already uses for blocked records (issue comment, `bot:blocked`, every `auto:*` grant removed). The row names the exit state: the claim is released, the worktree and draft PR are left in place, nothing is merged, and the run reports `BLOCKED` with the question to its caller; a human answers on the record, re-grants `auto:build` at `/claude-tweaks:backlog refine`, and the next dispatch re-materializes from the answered record.\n- [ ] The same HARD-GATE enumeration is updated at every consumer that restates it: `plugin/skills/_shared/auto-mode-card.md` (line 36 lists the same gate families) and any other file a repo-wide grep for the existing row's wording finds, with a conformance assertion that each named consumer cites the new gate.\n- [ ] The skip conditions: `ceremony-profile: fast-lane` (a new roster row with a new tag in `plugin/skills/_shared/ceremony-profile.md`), and a trivial plan (the builder picks and documents the threshold, reusing an existing triviality signal such as Step 1.5's fewer-than-3-file-references condition where it fits). A skip writes a `SKIP` entry per `_shared/auto-decision-log.md`'s degrade-trace rule.\n- [ ] The reviewer's brief tells it explicitly not to repeat SDD's pre-flight conflict table.\n- [ ] Any new `/build` edge added to `docs/skill-graph.md`'s `## build` section (for example to `/dispatch` for the blocked-record transport).\n- [ ] Tests: a conformance suite pinning the new step's placement and pointer, the roster row, and the HARD-GATE row; plus byte-ceiling checks for every grown file.\n\n## Acceptance Criteria\n\n1. `plugin/skills/build/SKILL.md` contains a Common Step positioned after `Common Step 1.5: Plan Audit` and before `Common Step 2: Execute the Plan` that names Spec Mode only and points at the new sub-file, and the file stays under 51,200 bytes (and under any tighter per-skill pin found by the Byte-pin check).\n2. The new sub-file states the three finding classes by name (spec gap, undecided behaviour, cross-task contract), states that SDD's pre-flight conflict table is not redone, and inlines the output template and a trailing `STATUS:` requirement verbatim in the dispatch prompt text.\n3. The sub-file's dispatch resolves the model with `resolve-profile.js capable` and passes the resolved model explicitly; no model name is hardcoded.\n4. For an `intent-resolvable` spec-gap finding the sub-file prescribes, in order: amend the worktree's `work/{n}-spec.md` additively (never editing or loosening an existing Acceptance Criterion), commit it, log the decision, post the amendment as one comment on the record, and re-run `plan-audit.js` once; and states that no `gh issue edit` runs against the live record and nothing is staged for the Review Console. The sub-file states the standalone-`/build` fallback (amendment listed in the Step 7 handoff, no decision-log write).\n5. `plugin/skills/_shared/auto-mode-contract.md`'s HARD-GATE row names this step's `needs-human` spec gap, and states the two behaviours (real stop when someone is present, in every mode; `bot:blocked` with the question posted when `DISPATCH_HEADLESS=1`), the exit state (claim released, worktree and draft PR left in place, `BLOCKED` reported to the caller) and the resume path. `plugin/skills/_shared/auto-mode-card.md` and every other file the repo-wide grep finds cite the new gate, pinned by a conformance assertion.\n6. `plugin/skills/_shared/ceremony-profile.md` gains one Skips-table row for this step with a new tag, and `tests/ceremony-profile-roster.test.js` passes with the tag present in the citing skill text.\n7. The step does not run in design mode and is skipped, with a `SKIP` decision-log entry, for a `fast-lane` run and for a plan under the documented triviality threshold.\n8. `docs/skill-graph.md` states each new edge once, and no `SKILL.md` restates an edge.\n9. `npm test` passes.\n\n## Release Note\n\nAdded a top-tier plan review before the first build task that catches spec gaps and undecided behaviour early, and stops the build for a human decision when the spec cannot answer.\n\n## Technical Approach\n\nThe reviewer reads two files and returns a findings table in Template A shape with an added `Class` column (spec gap / undecided behaviour / cross-task contract) so the controller routes mechanically rather than paraphrasing. The controller (the `/build` session) applies the per-class handling; the reviewer is read-only. Placement relative to Common Step 1.7 (Design Pre-Build) is the builder's call; running the plan review before 1.7 is recommended because plan amendments should land before design references are pre-loaded for implementers.\n\n### Data / API Surface\n\n- Output template (builder finalizes): `| Severity | Class | Resolution | Path:Line | Finding | Evidence | Suggested resolution |`, \"No findings.\" when clean, at most 7 rows with a \"+N more\" row, trailing `STATUS: {WORD}` line. `Resolution` is filled only for spec-gap rows and `Evidence` must cite a spec sentence for `intent-resolvable`. Routing keys on Class and Resolution, never on Severity; `low` and `info` findings are logged only and amend nothing.\n- Decision-log entries per `_shared/auto-decision-log.md`: `AUTO` for an amendment applied, `SKIP` for a skipped step. No `STAGED` entry: nothing is staged.\n- Human-needed gate in headless runs: a `gh issue comment` carrying the question, then `bot:blocked` (bootstrapped per `_shared/label-bootstrap.md`) and removal of `auto:*` grants, mirroring `dispatch/settle-and-merge.md` Settle steps 5-6 but without the retry-ceiling counter (this gate blocks directly).\n\n### Key Files\n\n- `plugin/skills/build/plan-review.md` — new file (name is the builder's call): the full procedure\n- `plugin/skills/build/SKILL.md` — new Common Step pointer between 1.5 and 2 (45,995 bytes now; 51,200 ceiling)\n- `plugin/skills/_shared/auto-mode-contract.md` — new HARD-GATE entry for the human-needed spec gap\n- `plugin/skills/_shared/auto-mode-card.md` — restates the HARD-GATE families (line 36); add the new gate\n- `plugin/skills/_shared/ceremony-profile.md` — new Skips-table row and tag\n- `plugin/skills/_shared/subagent-output-contract.md` — read-only: the contract the dispatch follows\n- `plugin/skills/_shared/auto-decision-log.md` — read-only: entry schema\n- `plugin/skills/dispatch/settle-and-merge.md` — read-only: the blocked-record transport to reuse\n- `plugin/bin/resolve-profile.js` — read-only: Capable resolution\n- `docs/skill-graph.md` — new edge(s) in the `## build` section\n- `tests/ceremony-profile-roster.test.js` — roster pin the new row must satisfy\n- `tests/build-dispatch-subfile-table-completeness.test.js` — checks `build/` sub-files are listed where required; the new file must satisfy it\n\n## Gotchas\n\n- Steering principle for the whole decomposition: claude-tweaks never files upstream with superpowers and never contradicts SDD's text. This step runs before SDD starts and adds a review SDD does not have; it must not instruct SDD to skip or alter its own pre-flight scan.\n- The materialized spec lives in the worktree's copy of `work/{n}-spec.md` in worktree mode, not under `$PIPELINE_RUN_DIR`, and reaches the main checkout only on merge (`plugin/skills/flow/materialize.md`). Amend that copy — amending a path under the run directory silently edits nothing the later phases read (`[IL-127]` shadow-copy hazard).\n- Anti-goal: a plan review that rules on spec gaps in the SDD ledger only, leaving the spec that `/test`, `/review` and `/wrap-up` judge against unchanged. The amendment must land in the materialized spec.\n- Anti-goal: any new mid-flow stop in `auto` mode that is not added to the auto-mode contract's HARD-GATE list deliberately. The human-needed spec gap is that deliberate addition; every other finding class resolves without a stop.\n- The Capable reviewer is a dispatch the Subagent Contract governs: `Frontier` is reserved for contract-enumerated singleton slots, so this stays Capable regardless of `profile=frontier`.\n- \"Someone is present\" means `DISPATCH_HEADLESS` is not `1`. `plugin/skills/dispatch/task-prompt.md` (First call section) has the dispatching session add `DISPATCH_HEADLESS=1` to the `/claude-tweaks:flow` invocation exactly when the firing came from a scheduled Routine drain with nobody present, and omit it when a human typed the command. Interactive `/flow` in `auto` where the user has since walked away is accepted as \"present\" (the stop waits for them); that is the stated cost of making this a real stop. ASSUMPTION — verify at build: a human-typed `/dispatch #N` runs the build in a Task subagent that cannot call `AskUserQuestion`, so the stop there must surface as a `BLOCKED` report that the dispatching session (where the human is) relays — via reading `dispatch/SKILL.md`'s Settle handling of a `BLOCKED` build call and `_shared/headless-self-report.md`; define that relay in this record rather than leaving a stop nobody can answer.\n- ASSUMPTION — verify at build: the retry-ceiling path in Settle is not the right mechanism for this gate (a human-needed spec gap should block on the first occurrence, not after three failed attempts) — via reading `dispatch/settle-and-merge.md` steps 5-6 and `_shared/issue-claims.md`'s rule that `bot:blocked` removes all `auto:*` labels.\n- The new HARD-GATE row is a contract change under the repo's expand-contract discipline: add the row, update every consumer that enumerates the HARD-GATE list, and never rename an existing gate. Known consumers at record-writing time (2026-10-17): `plugin/skills/_shared/auto-mode-contract.md` line 208 (the row itself) and `plugin/skills/_shared/auto-mode-card.md` line 36 (restates the gate families); grep the repo for \"plan-audit hard-fails\" and \"plan validation\" to find any others, including under `plugin/skills/flow/` and `plugin/skills/dispatch/`.\n- Amending the spec after the plan was written can trip `build/SKILL.md`'s plan-staleness rule on a resumed build (\"has the spec evolved since the plan was written?\"). Committing the spec amendment together with the plan amendment, in the same commit, is what keeps the pair consistent; say so in the sub-file.\n- Decided (2026-10-17): the live record body is never edited and nothing is staged. The record comment is the durable trace on the issue; the worktree's amended spec reaches `main` only on merge. Do not add a Review Console apply path or a new staged-item kind.\n- This record shares `plugin/skills/build/SKILL.md`, `plan-audit.md`, `plan-authoring-checks.md` and `plugin/bin/lib/plan-audit/checks.js` with #3310 (ready, in progress) — build after it merges and re-read the files. Other ready records touching `build/SKILL.md` (#3118, #3079, #3060, #3004) and `build/dispatch.md` (#3118, #3004, #2869) may land first; expect rebasing, and `docs/skill-graph.md` is shared with #3033.\n- Measure byte headroom before adding to `plugin/skills/build/SKILL.md`: 5,205 bytes remain. The pointer must be a few lines; everything else lives in the new sub-file.\n- Trivial-plan threshold: reuse Step 1.5's existing triviality language (\"fewer than 3 file references and no `Scope keywords:`\") unless the builder can justify a different measure; do not invent a second definition of \"trivial\" without citing why.\n\n\n<!-- work-fingerprint: build-dispatch-cost-shape:add-a-capable-plan-review-before-task-1-of-a-spec-mode-build -->\nwork-fingerprint: build-dispatch-cost-shape:add-a-capable-plan-review-before-task-1-of-a-spec-mode-build",
         "createdAt": "2026-10-17T10:05:59Z",
         "labels": [
@@ -4306,84 +3506,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 4\n\n**Category:** tangential\n\nOrigin: reflect light from #2927\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/wrap-up/pack.js` reads open-items ledger rows with `row.split('|')` (line 339), then takes `cells[3]` as the Status. GFM tables escape a literal pipe inside a cell as `\\|`, but the split does not honor the escape. An escaped pipe in the Item cell shifts every later cell, so the Status the pack reads is a fragment of the Item text.\n\nObserved on #2927's wrap-up, 2026-10-17: ledger row 12's Item quoted `Surface: web\\|mobile\\|desktop`. `wrap-up-pack.js` reported `unrecognized: 1` with value `mobile\\`. The row's real status was `open`.\n\nThe dangerous case is an **open** row with an escaped pipe. It counts as `unrecognized`, not `open`, so `pack.ledger.open` under-counts. The nothing-left-behind gate's open-item enforcement then misses it, and only #2080's non-blocking warning line shows anything is wrong.\n\n`plugin/bin/lib/wrap-up/ledger-write.js`'s `flipLedgerRow` (line 106) splits the same way. It refuses a row whose cell count is not 7, so it fails loudly: an escaped-pipe row cannot be resolved through it.\n\n## Deliverables\n\n1. One shared ledger-row cell splitter that treats `\\|` as a literal pipe inside a cell. It splits only on unescaped `|` and keeps the escape intact when serializing back.\n2. Use it in `pack.js`'s ledger count and in `ledger-write.js`'s `flipLedgerRow`. Check the repo's other ledger-table readers and point any that split rows the same way at it too.\n3. Tests: a row whose Item cell holds `a\\|b` counts under its real status in the pack, and `flipLedgerRow` resolves it without the shape refusal. The serialized row must keep the `\\|`.\n\n## Acceptance Criteria\n\n- An open ledger row whose Item contains `\\|` is counted as `open` by `wrap-up-pack.js`, not `unrecognized`.\n- `flipLedgerRow` resolves such a row, and the written row is byte-identical apart from the Status and Resolution cells.\n- `npm test` passes in full.\n\n## Release Note\n\nWrap-up no longer miscounts an open ledger item whose text contains an escaped pipe, so it can't slip past the nothing-left-behind check.\n\n_Filed by `reflect`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
-        "createdAt": "2026-10-17T07:20:01Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3353,
-        "state": "OPEN",
-        "title": "ledger row parsers ignore GFM's escaped pipe, so an open row can count as unrecognized",
-        "updatedAt": "2026-10-17T09:47:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -7250,6 +6372,84 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
+        }
+      }
+    ],
+    [
+      {
+        "body": "Surface: backend\n\n## Current State\n\n- The record asks for pre-scale hardening checks on AI-coded apps: \"N+1 queries, unindexed columns, unpaginated lists\", slow external work (AI calls, email, third-party APIs) running \"inline on the request path instead of as a background job\", and no \"load test, caching pass, connection-pool cap, or alerting baseline\" before launch.\n- `/code-health`'s `focus=<vertical>` mode is the shipped home for checklist-style verticals. The registry autoloads eight generators (`plugin/bin/lib/code-health/focus-generators.js:44-51`). `docs/getting-started.md:116` says \"eight verticals shipped\".\n- The scope is already reserved: `candidates-prelaunch.js:12-18`, `candidates-security-hardening.js:31`, `candidates-app-store-readiness.js:18`, `criteria.js:172` and three `criteria-*.md` Scope boundary lines name \"#2622's pre-scale hardening\" as out of their scope.\n- `candidates-prelaunch.js` is the closest model. It returns `{ candidates, scannedFiles, discoveryFailed, notApplicable, checklist }`, and `checklist` lists every item on every firing with `group: 'automated'|'manual'` and `status: pass|fail|manual` (`:80-98`, `:431-449`). Manual items are never machine-judged.\n- The rotating sweep already has overlapping criteria: `scalability` (`criteria.js:31-35`; `criteria-scalability.md` flags unbounded queries, N+1, missing indexes) and `observability` (`criteria.js:90-94`). Fingerprints hash `criterion + areaId + anchor` (`fingerprint.js:36-43`), and `dedup.js` matches on fingerprint only.\n\n## Deliverables\n\n1. Decision (approved in brainstorming, 2026-10-15): build this as a new `/code-health` focus-mode vertical, `focus=scale-readiness`, modelled on `candidates-prelaunch.js` and `candidates-security-hardening.js`. It runs static checks only. The k6 load test is a manual checklist item reported to the human, because code-health never runs anything against a live app. Rejected alternatives:\n   - A standalone `/scale-readiness` skill: it adds a new surface and diverges from how the sibling checklist records shipped. Those were #2624 `security-hardening`, #2693 `prelaunch` and #2628 `app-store-readiness`, each as a focus vertical.\n   - Closing the record: the scope is already reserved by four sibling verticals.\n\n   The record's \"step within `/review` or `/build`\" criterion is explicitly not carried. `/review` participation is a per-vertical choice that `prelaunch` also declined.\n2. Write a generator, `candidates-scale-readiness.js`, with automated candidate kinds for:\n   - queries: a query call inside a loop or `.map(async`, a list query with no limit or take, and a `where` field with no `@@index`/`@unique` in a Prisma schema\n   - inline slow work: an AI-SDK, email-send or third-party fetch call in a route/handler file with no queue or background-job signal\n   - caching: a repo-level \"no cache layer signal\" alongside DB-backed routes\n   - pooling: a DB client constructed per request, or a pool with no max\n   - monitoring: no error-tracking or APM dependency\n\n   The load test (k6 against signup, login and the main dashboard, recording p95 and error rate before and after) is a `group: 'manual'` checklist row. Every checklist row also carries a `phase: 'pre-launch'|'pre-scale'` field (queries, background jobs and load test are pre-launch; caching, pooling and monitoring are pre-scale). The generator sets `notApplicable: true` when the repo shows no server/data-access signal.\n3. Add the criterion `scale-readiness` in `criteria.js` and the fragment `plugin/skills/_shared/criteria-scale-readiness.md`. The fragment gets What to flag / What NOT to flag / Severity calibration / Scope boundary / Reporting sections, including the row-status reconciliation rule `criteria-prelaunch.md` uses. Its Scope boundary covers `scalability`/`observability` overlap and the sibling verticals.\n4. Add every `focus-mode.md` row the vertical needs: a Coverage pointer, a Criterion pinning row, and an F2 exact not-applicable line. Update the `docs/getting-started.md` count and list to nine.\n5. Repoint the sibling scope-boundary mentions of \"#2622\" to name `focus=scale-readiness`.\n\n## Acceptance Criteria\n\n- [ ] `node -e \"…FOCUS_GENERATORS…\"` lists `scale-readiness`. `tests/code-health-prelaunch-wiring.test.js`'s pinning-table/registry equality still passes with the new row.\n- [ ] `tests/bin-lib/code-health/candidates-scale-readiness.test.js` covers each automated kind. Every item needs one positive fixture in a real framework layout (Next.js App Router `app/api/**/route.ts`, Express `routes/`, a Prisma schema) and one negative fixture. A repo with no server signal returns `notApplicable: true` with no candidates.\n- [ ] Every firing's `checklist` contains the manual `load-test` row with `status: 'manual'`, and every row carries a `phase`.\n- [ ] New `tests/code-health-scale-readiness-wiring.test.js` asserts the criterion's fragment, the focus-mode.md Coverage pointer and F2 line, and \"nine verticals shipped\" (shape of `tests/code-health-agent-trust-scope-wiring.test.js:74-81`).\n- [ ] Each new test fails when the line under test is reverted.\n- [ ] `npm test` passes.\n\n## Release Note\n\nAdded `/code-health focus=scale-readiness`. It flags N+1 and unpaginated queries, slow work done inline on requests, missing caching, connection-pool, and monitoring setup, and lists a load test for you to run before launch.\n\n## Technical Approach\n\nFollow the `code-health-focus-vertical` project skill's registration set and its five pitfalls:\n- require `./focus-generators` before `./candidates-dead-code`\n- anchor repo-level items to a real file (for example `package.json#no-monitoring`), never a directory\n- use real-framework fixtures\n- add a row-status reconciliation rule\n- re-derive any path gate copied from `security-hardening`\n\nFile discovery reuses `listTrackedFiles` from `candidates-dead-code.js`. The route/handler path heuristic can start from `ROUTE_DIR_RE` (`candidates-security-hardening.js:148`), and the AI-call recognition can start from `AI_CALL_PATTERNS` (`:166`). Re-check both against App Router `route.ts` files before you reuse them. Write each limitation into the module header's Coverage block: text-window co-occurrence rather than AST, JS/TS only, presence-not-quality for repo-level signals, and an index check limited to a schema file the generator can parse.\n\n### Key Files\n- `plugin/bin/lib/code-health/candidates-scale-readiness.js`: new generator plus `registerGenerator('scale-readiness', …)`\n- `plugin/bin/lib/code-health/focus-generators.js`: one autoload require line\n- `plugin/bin/lib/code-health/criteria.js`: new `scale-readiness` entry with a scope comment; `:172` comment repointed\n- `plugin/skills/_shared/criteria-scale-readiness.md`: new judge fragment\n- `plugin/skills/code-health/focus-mode.md`: Coverage pointer, Criterion pinning row, F2 not-applicable line\n- `docs/getting-started.md`: vertical count and list (line 116)\n- `plugin/bin/lib/code-health/candidates-{prelaunch,security-hardening,app-store-readiness}.js` and `plugin/skills/_shared/criteria-{prelaunch,security-hardening,app-store-readiness}.md`: scope-boundary mentions repointed\n- `tests/bin-lib/code-health/candidates-scale-readiness.test.js`: new generator tests\n- `tests/code-health-scale-readiness-wiring.test.js`: new wiring test\n\n## Gotchas\n\n- **Cross-criterion double filing.** An N+1 site can be flagged by both the rotating `scalability` criterion and this vertical. Their fingerprints differ because the criterion is part of the hash, and `dedup.js` matches fingerprints only. The fragment's Scope boundary must tell the judge to treat an open `scalability` issue at the same anchor as covered.\n- Probe this repo's own shape before writing a \"not applicable\" premise. The generator must skip test, fixture, example and build-output directories, as `prelaunch` does.\n- The sibling-comment repoints (Deliverable 5) touch prose that is not test-pinned, so grep for `#2622` across `plugin/` after editing.\n- No open related records. #2624 and #2625 are closed.\n\n## Original request\n\nAdd a pre-scale hardening skill for AI-coded apps\n\nCurrent State:\n- AI-coded apps ship for a single tester and hit real limits at their first real traffic spike (N+1 queries, unindexed columns, unpaginated lists).\n- Slow or external work (AI model calls, email, third-party APIs) often still runs inline on the request path instead of as a background job.\n- No standard load test, caching pass, connection-pool cap, or alerting baseline runs before a launch or scaling event.\n\nDeliverables:\n- A new claude-tweaks skill (e.g. `/scale-readiness`) that walks a codebase through the query, background-job, caching, pooling, and monitoring checks in one pass.\n- A k6 load-test step simulating concurrent users on signup, login, and the main dashboard, reporting before/after p95 and error rates.\n- Policy rows for each check so `/code-health` or `/review` can flag violations without re-deriving the checklist.\n\nAcceptance Criteria:\n- Skill runs standalone and as a step within `/review` or `/build`.\n- Running it against a sample app reports pass/fail for each of the six checks.\n- Docs distinguish the pre-launch subset (queries, background jobs, load test) from the pre-scale subset (caching, pooling, monitoring).\n\nSource: https://www.instagram.com/reel/DdWMgvbKr5v/\n\n**Related:** #2624\n\n",
+        "createdAt": "2026-09-19T21:33:27Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 2622,
+        "state": "OPEN",
+        "title": "Add a pre-scale hardening skill for AI-coded apps",
+        "updatedAt": "2026-10-19T18:56:37Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
         }
       }
     ],
