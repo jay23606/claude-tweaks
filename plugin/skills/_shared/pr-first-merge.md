@@ -149,6 +149,8 @@ gh run list --repo {owner}/{repo} --commit {headRefOid} --limit 100 --json name,
 
 A failed or unparseable runs read is the `state-read-failed` report, same as the first bullet. An empty runs list adds nothing. The code twin is `bin/lib/pr-checks/classify.js`'s `classifyRollup` (with `headRuns`), which applies the same order.
 
+**`StatusContext` entries are normalized first.** A legacy commit-status entry (`StatusContext` — `context`/`state`/`targetUrl`, no `status` or `conclusion`) is read by its `state` before the rules below apply: `FAILURE` or `ERROR` → red, `PENDING` or `EXPECTED` → pending (as is any other unfinished state), `SUCCESS` → green — completed, never pending. The code twin is `bin/lib/pr-checks/classify.js`'s `normalizeEntry`.
+
 Classify from both reads, in this order:
 
 - The command failed, or its output is not parseable JSON with those four fields → report
@@ -395,7 +397,7 @@ the result:
    ```
 
    - `state: MERGED`: outcome `merged`. **Read `statusCheckRollup` before reporting it green
-     (#2705) — never infer "merged once CI passed" from `state` alone.** All entries
+     (#2705) — never infer "merged once CI passed" from `state` alone.** A `StatusContext` entry is read by its `state` first, as in Step 2.5 (`SUCCESS`, `FAILURE`, `ERROR` concluded; `PENDING`, `EXPECTED` not). All entries
      `COMPLETED`+`SUCCESS`/`NEUTRAL`/`SKIPPED` → report "merged, {names} concluded {conclusions}";
      any entry still non-`COMPLETED` → report "merged — {name} had not concluded at merge time;
      this repo has no required checks (see Signatures below), so `--auto` did not wait on it";
