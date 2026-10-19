@@ -28,6 +28,14 @@ test('Adopt-or-create names the merged-branch precondition', () => {
   const r = region();
   assert.ok(r.includes('**Merged-branch precondition (clean tree only).**'));
   assert.ok(r.includes('--state merged'));
+  assert.ok(r.includes('printing a count above 0 (with exit 0) means merged'));
+});
+
+test('the gh lookup quotes the branch and is skipped on a detached HEAD', () => {
+  const r = region();
+  assert.ok(r.includes('--head "{current-branch}"'));
+  assert.ok(r.includes('Pass the branch name as one quoted argument, never spliced into a command string'));
+  assert.ok(r.includes('an empty `--head` matches every merged PR'));
 });
 
 test('the git-only check is an ancestor not on the first-parent line', () => {
@@ -46,7 +54,9 @@ test('a merged branch falls through like a dirty tree', () => {
 test('the check fails open and logs its path', () => {
   const r = region();
   assert.ok(r.includes('a squash-merged branch adopts as before (fail open)'));
-  assert.ok(r.includes('Adopt-or-create: {adopted | not adopted, merged ({check}) | lookup failed, adopted}'));
+  assert.ok(r.includes('Adopt-or-create: {adopted | not adopted, merged ({check}) | {check} could not run ({reason}), adopted}'));
+  assert.ok(r.includes('where `{check}` is `gh`, `git` or `fetch`'));
+  assert.ok(r.includes('If that fetch fails, log it and let the checks read the last-fetched ref.'));
   assert.ok(r.includes('`_shared/worktree-catchup-no-run-dir.md`'));
 });
 

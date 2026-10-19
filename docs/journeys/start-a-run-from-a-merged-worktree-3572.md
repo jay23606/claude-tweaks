@@ -34,6 +34,7 @@ files:
   - A squash merge is invisible to git. Only the `gh` lookup catches it, and #3536's run met exactly that case (PR #3526).
   - A fresh branch cut at an integration-branch commit sits on the first-parent line, so it reads as not merged.
   - When `gh` is absent, the git check still runs, so only a squash-merged branch adopts as before. A check that errors fails open.
+  - The branch name goes in as one quoted argument. On a detached HEAD the `gh` lookup is skipped, because an empty `--head` matches every merged PR.
 - **Red flags:**
   - Treating "ancestor of the integration branch" alone as merged. That catches every fresh branch.
   - Skipping the fetch, so a merge from minutes ago is not visible.
