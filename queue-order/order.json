@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-19T10:02:23.138Z",
-  "runId": "2026-10-19T100110-dispatch-standalone",
+  "computedAt": "2026-10-19T11:04:14.054Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -30,22 +30,12 @@
       },
       {
         "number": 3509,
-        "updatedAt": "2026-10-18T19:46:12Z",
+        "updatedAt": "2026-10-19T10:04:35Z",
         "state": "OPEN"
       },
       {
         "number": 3507,
-        "updatedAt": "2026-10-18T19:46:08Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3506,
-        "updatedAt": "2026-10-19T08:25:33Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3505,
-        "updatedAt": "2026-10-19T08:25:25Z",
+        "updatedAt": "2026-10-19T10:04:27Z",
         "state": "OPEN"
       },
       {
@@ -184,13 +174,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3440,
-        "updatedAt": "2026-10-19T08:25:16Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3431,
-        "updatedAt": "2026-10-18T06:43:21Z",
+        "updatedAt": "2026-10-19T11:00:01Z",
         "state": "OPEN"
       },
       {
@@ -440,7 +425,7 @@
       },
       {
         "number": 3015,
-        "updatedAt": "2026-10-19T09:40:54Z",
+        "updatedAt": "2026-10-19T10:59:25Z",
         "state": "OPEN"
       },
       {
@@ -2801,7 +2786,7 @@
         "number": 3431,
         "state": "OPEN",
         "title": "Fix wrap-up-engine plan reading repo facts from the main checkout inside a linked worktree",
-        "updatedAt": "2026-10-18T06:43:21Z",
+        "updatedAt": "2026-10-19T11:00:01Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -6739,184 +6724,6 @@
           "shapedHeadless": true
         }
       }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe post-merge Windows check (`.github/workflows/windows-regression.yml`, run 39101724698) reports one test file newly failing after commit a62e27344 (PR #3452, which added the file): `tests/manifesto-overrides-ceiling-conformance.test.js`. It passes on ubuntu CI and on any LF checkout (verified: `node --test tests/manifesto-overrides-ceiling-conformance.test.js` → 11 pass, 0 fail on macOS).\n\nRoot cause, verified against the file at `origin/main`:\n\n- The test reads its three governed markdown inputs with raw `fs.readFileSync(..., 'utf8')` — `plugin/skills/flow/manifesto-overrides.md` and `plugin/skills/review/step3-routing.md` at lines 13-14, `plugin/skills/flow/manifesto.md` at line 95.\n- `routingColumns` (line 16) does `md.split('\\n')` and then ``lines.indexOf('| Severity | `none` | `low` | `medium` |')`` — an exact whole-line match. On a Windows checkout with `core.autocrlf=true` (no `.gitattributes` rule covers these files), every line keeps a trailing `\\r`, so the lookup returns -1 and line 19 throws `ceiling-keyed routing table header not found in step3-routing.md`.\n- The throw happens at module top level (line 67, `const cols = routingColumns(routing);`), so the whole file fails before any `test()` registers — one file-level failure, not a per-assertion one.\n- Simulated: the header is found at index 44 on the LF text, -1 on the same text with `\\n` replaced by `\\r\\n`, and 44 again after `\\r\\n` → `\\n` normalization.\n\nThe repo already has the fix for this class: `tests/helpers/read-skill.js` exports `readText(absPath)`, an EOL-normalizing read (#2763) that about 80 test files already use for prose-conformance reads. This file, added by PR #3452, does not use it.\n\n**Related:** #2713, #3187, #3396, #3429, #3440, #3505, #3506, #3509, #3512, #3517, #3518, #3523\n\n## Deliverables\n\n1. `tests/manifesto-overrides-ceiling-conformance.test.js` reads all three markdown inputs through `readText()` from `tests/helpers/read-skill.js` instead of raw `fs.readFileSync`.\n2. The file's line-splitting extractors (`routingColumns`, `ceilingRow`, and the lever-7 filter in the manifesto test) split on `/\\r?\\n/`, so the extractor itself tolerates CRLF input, not only the read.\n3. A new CRLF test case, built from the LF text with `.replace(/\\n/g, '\\r\\n')`, asserting `routingColumns` on the CRLF text deep-equals `routingColumns` on the LF text, and that `ceilingRow` returns the same cell for each ceiling value (`none`, `low`, `medium`) on both.\n\n## Acceptance Criteria\n\n1. `grep -n \"fs.readFileSync\" tests/manifesto-overrides-ceiling-conformance.test.js` returns no matches, and the file requires `readText` from `./helpers/read-skill`.\n2. `node --test tests/manifesto-overrides-ceiling-conformance.test.js` passes with 0 failures: the 11 existing tests plus the new CRLF case.\n3. Go-red check: temporarily changing `routingColumns`'s split back to `split('\\n')` makes the new CRLF case fail, and restoring it makes it pass again.\n4. CRLF checkout check: on a scratch clone made with `git clone --config core.autocrlf=true` where `git ls-files --eol plugin/skills/review/step3-routing.md` reports `w/crlf`, the file passes with `node --test`. If `w/crlf` cannot be produced on a POSIX host, record that and rely on AC 3.\n5. `npm test` passes with no new failures compared to `origin/main`.\n\n## Release Note\n\nFixed a test that failed on Windows checkouts because of line-ending differences.\n\n## Technical Approach\n\nThis is a test-only change to one file, using the repo's established CRLF pattern (`windows-checkout-test-parity` project skill: \"Build CRLF inputs from the LF text\" and the `readText()` decision row). Replace the three raw reads with `readText(path.join(...))`. Change the three `split('\\n')` sites to `split(/\\r?\\n/)`. Add one `test()` that builds the CRLF variant of the routing and overrides text and compares the extractor outputs. No shipped plugin file changes. The markdown inputs stay byte-identical.\n\nAlternative rejected: a `.gitattributes` `eol=lf` rule for `*.md`. It would change checkout behavior for every Windows user of the repo, and the only current `.gitattributes` rule is a narrow fixture-hash carve-out. `readText()` is the convention #2763 and #3113 settled on.\n\n### Key Files\n\n- `tests/manifesto-overrides-ceiling-conformance.test.js` — use `readText()` for the three reads, split on `/\\r?\\n/`, add the CRLF case\n- `tests/helpers/read-skill.js` — unchanged; existing `readText()` helper being consumed\n- `plugin/skills/review/step3-routing.md` — unchanged; read-only input (the ceiling-keyed routing table at line 45)\n- `plugin/skills/flow/manifesto-overrides.md` — unchanged; read-only input\n- `plugin/skills/flow/manifesto.md` — unchanged; read-only input\n\n## Gotchas\n\n- Scope is this one file. Sibling \"Windows regression: N test file(s) newly failing after …\" records each cover their own files. The project skill also asks for a grep of `tests/` for the same `split('\\n')` + exact-line-match shape. Any further instance found that no open Windows-regression record already names goes to `/claude-tweaks:capture`, not into this change.\n- ubuntu CI cannot see this class of failure. The CRLF case in Deliverable 3 is the Linux-runnable pin. Without it, a later edit could reintroduce the raw read and stay green on every PR.\n- The backtick-quoted cells in the header literal must stay byte-exact. Only the line terminator is the problem, so do not loosen the header match to a regex.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after a62e27344\n\nThe post-merge Windows check failed on commit a62e27344c4cc658950b6f52b283d2805dfb07fd (compared against 5cf9073d3).\n\n**Merged PR:** #3452 (https://github.com/thn-inc/claude-tweaks/pull/3452)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39101724698\n\n### Newly failing test files\n- `tests/manifesto-overrides-ceiling-conformance.test.js`\n\n### Failure excerpts\n\n#### `tests/manifesto-overrides-ceiling-conformance.test.js`\n\n```\n# D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\manifesto-overrides-ceiling-conformance.test.js:19\n#   if (start === -1) throw new Error('ceiling-keyed routing table header not found in step3-routing.md');\n#                     ^\n# Error: ceiling-keyed routing table header not found in step3-routing.md\n#     at routingColumns (D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\manifesto-overrides-ceiling-conformance.test.js:19:27)\n#     at Object.<anonymous> (D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\manifesto-overrides-ceiling-conformance.test.js:67:14)\n#     at Module._compile (node:internal/modules/cjs/loader:1781:14)\n#     at Object..js (node:internal/modules/cjs/loader:1913:10)\n#     at Module.load (node:internal/modules/cjs/loader:1505:32)\n#     at Function._load (node:internal/modules/cjs/loader:1309:12)\n#     at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n#     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T06:04:47Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3507,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after a62e27344",
-        "updatedAt": "2026-10-18T19:46:08Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3440, #3505, #2713, #3187, #3396, #3506, #3507, #3517, #3518, #3523, #2767\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39101919451, on `windows-latest`) found one test file newly failing after PR #3445 merged as `5fe0d5329`. PR #3445 shipped #3161, which made `plugin/skills/specify/record-creation-subissues.md`'s cross-reference fence set `$SPECIFY_DECOMP_MANIFEST` itself and added `tests/specify-crossref-manifest-resolve.test.js` to pin it. Verdict line: `Baseline: adjudicated against 7a649060e — 102 failing file(s): 101 also fail at base, 0 flaky (passed in isolation), 1 attributable`. The run's TAP log shows `ok 11371` (the string-pin test), `not ok 11372` (the standalone-run test), and `ok 11373` (the go-red control). Verified against `origin/main` at `7852fd8bf`, where neither the test file nor the skill file has changed since `5fe0d5329`.\n\nThe skill text is correct. The defect is in the test fixture:\n\n- `tests/specify-crossref-manifest-resolve.test.js:15` sets `PLUGIN_ROOT = path.join(REPO_ROOT, 'plugin')`, which is native, so on the runner it is `D:\\a\\claude-tweaks\\claude-tweaks\\plugin`. Line 51 passes it unchanged as `CLAUDE_PLUGIN_ROOT` in the env of each `bash -c` fence run.\n- Every fence the test runs (the init, accumulate, and cross-reference fences in `record-creation-subissues.md`, near lines 15, 171 and 190) interpolates `${CLAUDE_PLUGIN_ROOT}` into a JavaScript single-quoted literal inside `node -e \"...\"`: `require('${CLAUDE_PLUGIN_ROOT}/bin/lib/session-tmp.js')`. Bash keeps the backslashes inside double quotes, and JS then reads `\\a`, `\\c` and `\\p` as escapes and drops them. The result is `Cannot find module 'D:aclaude-tweaksclaude-tweaksplugin/bin/lib/session-tmp.js'`. Reproduced on macOS by running that fence shape with `CLAUDE_PLUGIN_ROOT='D:\\a\\claude-tweaks\\claude-tweaks\\plugin'`: it prints that exact mangled path.\n- The Windows stack trace puts the failure at line 54, the **init** fence's `expectOk`, not at the cross-reference fence. The `$(node -e ...)` substitution fails, `SPECIFY_DECOMP_MANIFEST` comes out empty, and the fence's `writeFileSync('')` exits 1 with `ENOENT`.\n- So the go-red control at lines 90-94 passes on Windows without testing anything. It strips the assignment from the cross-reference fence and expects `/fence exited 1: [\\s\\S]*ENOENT/`. On Windows the init fence already throws that, so the stripped fence never runs. On Linux the control does what it says.\n\nPrior art for exactly this class: PR #3076 fixed `tests/dispatch-not-spec-shaped-exclusion-fixture.test.js:69` the same way, passing `path.join(ROOT, 'plugin').split(path.sep).join('/')` because \"the snippet interpolates this into a JS string literal, where a win32 backslash path would be read as escapes\". `tests/adopted-branch-collision-snippet-fixture.test.js:23`, `tests/backlog-refine-foldin-no-truncation.test.js:26` and `tests/backlog-overview-foldin-no-truncation.test.js:25` define their `PLUGIN_ROOT` in that forward-slash form. #3076's PR body records that the harness substitutes a forward-slash plugin root at runtime, so the shipped fences are unaffected.\n\n## Deliverables\n\n1. `tests/specify-crossref-manifest-resolve.test.js`: pass `CLAUDE_PLUGIN_ROOT` to the fences with forward slashes. Either define `PLUGIN_ROOT` at line 15 as `path.join(REPO_ROOT, 'plugin').split(path.sep).join('/')`, as `tests/backlog-refine-foldin-no-truncation.test.js:26` does (the `fs.readFileSync` at line 19 accepts it on every OS), or keep line 15 native and normalize only the env value at line 51. Add a one-line comment naming the JS-string-literal reason, as `tests/dispatch-not-spec-shaped-exclusion-fixture.test.js:67-68` does.\n2. Same file: make the go-red control prove that the **cross-reference** fence failed. Today the regex `/fence exited 1: [\\s\\S]*ENOENT/` cannot tell which of the four fence runs threw. Name the failing step in the `expectOk` failure message inside `assertCrossrefFenceRunsStandalone` (for example `cross-reference fence exited 1: ...` versus `init fence exited 1: ...`), and anchor the go-red regex on the cross-reference step's name. Then a broken init or accumulate run can never satisfy the control.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/specify-crossref-manifest-resolve.test.js` passes on macOS/Linux. All three tests run, and none is skipped or removed.\n- [ ] The same file passes on `windows-latest`. Prove it before merge: run `gh workflow run windows-regression.yml --ref {branch}` and quote the run's result for this file. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. A `path.win32` simulation does not count as a Windows run.\n- [ ] The go-red control still discriminates, and for the right step. Temporarily run it with the init fence's assignment stripped instead of the cross-reference fence's. The control must go **red**, because the failure now names the init step. Restore it in the same command.\n- [ ] The standalone-run test still discriminates. Temporarily delete the `SPECIFY_DECOMP_MANIFEST=$(...)` assignment from the cross-reference fence in `plugin/skills/specify/record-creation-subissues.md`. Test 2 must go red on Linux. Restore the file in the same command.\n- [ ] No file under `plugin/` changes. The shipped fences already receive a forward-slash plugin root from the harness.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a /specify decomposition test that failed on Windows because it passed the plugin path with backslashes.\n\n## Technical Approach\n\nThe fix is test-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md` and #3076's precedent. The plugin root reaches the fences as an environment variable that is interpolated into a JS string literal, so the test must hand the fences the same forward-slash form the harness supplies at runtime. This is not a display ID versus native path question: the value is never opened natively by the fence's shell, it is source text for `node -e`. For the go-red tightening, the cheapest change is a step label threaded through the `run`/`expectOk` helpers in `assertCrossrefFenceRunsStandalone`. The test's own string-pin test (lines 69-84) stays as it is.\n\n### Key Files\n\n- `tests/specify-crossref-manifest-resolve.test.js`: `CLAUDE_PLUGIN_ROOT` passed with forward slashes (line 15 or 51), plus the go-red control (lines 90-94) anchored on the failing step's name\n- `plugin/skills/specify/record-creation-subissues.md`: read-only reference. The init, accumulate and cross-reference fences the test extracts and runs (near lines 15, 171 and 190)\n- `tests/dispatch-not-spec-shaped-exclusion-fixture.test.js`: read-only reference. #3076's forward-slash precedent (line 69)\n\n## Gotchas\n\n- Do not \"fix\" this by changing the skill fences to read `process.env.CLAUDE_PLUGIN_ROOT` or by normalizing in `plugin/`. The harness already substitutes a forward-slash root (#3076), so the shipped prose works. Only the test's fixture env differs from what the harness provides.\n- `tests/specify-ceremony-tally-prose.test.js` runs the same init and accumulate fences with the same unnormalized `PLUGIN_ROOT` (line 74 feeding line 104). It is not this record's failure: it already fails at base on Windows, earlier, at module load. Its `fenceAfter` reads the skill without CRLF normalization (`extraction pattern is out of sync: no bash fence after **Fresh manifest for this invocation.**`), so it was adjudicated as also failing at base. Fixing the CRLF read would expose this same plugin-root failure there. Keep it out of this PR. During the build, check whether a record already covers it (the #2767 umbrella baseline record is the likely home), and file one via `/claude-tweaks:capture` if none does.\n- On `windows-latest` the checkout is on `D:` and `os.tmpdir()` on `C:`. The fixture's scratch `root` lives under tmp while `PLUGIN_ROOT` is on the checkout drive. Mixing drives is fine here because nothing compares the two paths. Do not hard-code a drive or root in any expected value.\n- This is one of several open `Windows regression:` records (#3429, #3440, #3505, #3506, #3507, #3517, #3518, #3523), each for a different commit and different files. Keep this record to `tests/specify-crossref-manifest-resolve.test.js`.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 5fe0d5329\n\nThe post-merge Windows check failed on commit 5fe0d532902beecac9fc337a7a86820640d27840 (compared against 7a649060e).\n\n**Merged PR:** #3445 (https://github.com/thn-inc/claude-tweaks/pull/3445)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39101919451\n\n### Newly failing test files\n- `tests/specify-crossref-manifest-resolve.test.js`\n\n### Failure excerpts\n\n#### `tests/specify-crossref-manifest-resolve.test.js`\n\n```\nnot ok 11372 - crossReferenceKeyFiles fence runs as its own Bash call against a scratch manifest\n  ---\n  duration_ms: 172.505\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\specify-crossref-manifest-resolve.test.js:86:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    fence exited 1: node:internal/modules/cjs/loader:1433\n      throw err;\n      ^\n    \n    Error: Cannot find module 'D:aclaude-tweaksclaude-tweaksplugin/bin/lib/session-tmp.js'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T06:07:16Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3509,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 5fe0d5329",
-        "updatedAt": "2026-10-18T19:46:12Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
     ]
   ],
   "excluded": [
@@ -6928,12 +6735,5 @@
     }
   ],
   "grouping": "per-record",
-  "bundles": [
-    {
-      "records": [
-        3507,
-        3509
-      ]
-    }
-  ]
+  "bundles": []
 }
