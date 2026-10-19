@@ -204,7 +204,7 @@ function run(argv, overrides = {}) {
     } catch { logFailed = true; }
   }
 
-  // 12.
+  // 12. Report the write.
   return print({ action: 'written', ...envelope, ...(logFailed ? { logFailed: true } : {}) });
 }
 

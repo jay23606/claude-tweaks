@@ -47,17 +47,15 @@ function setPhaseRow({ body, phase, remove = false }) {
   let matched = 0;
   let edited = 0;
   lines.forEach((line, i) => {
-    const inSpan = i > span.start && i < span.end;
-    const trimmed = inSpan ? bare(line) : null;
-    const isUnchecked = trimmed === unchecked;
-    if (!isUnchecked && !checked.has(trimmed)) { out.push(line); return; }
-    matched++;
-    // A checked row is never a skipped phase's row: --remove leaves it in place.
-    if (isUnchecked) {
+    const trimmed = i > span.start && i < span.end ? bare(line) : null;
+    if (trimmed === unchecked) {
+      matched++;
       edited++;
       if (!remove) out.push(line.replace('- [ ]', '- [x]'));
       return;
     }
+    // A checked row is never a skipped phase's row: --remove leaves it in place.
+    if (checked.has(trimmed)) matched++;
     out.push(line);
   });
 
