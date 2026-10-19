@@ -86,8 +86,10 @@ summary, which sweeps every run dir in the main checkout and carries counts, not
 needs human action when `$PIPELINE_RUN_DIR/console.json` is absent AND `$PIPELINE_RUN_DIR/staged/`
 (or any `$PIPELINE_RUN_DIR/spec-*/staged/`) holds a non-dotfile entry — reconcile's
 `console-never-rendered-staged-pending` skip: it merged with no rendered console and pending
-`staged/` items, which a human must resolve or discard. Log, on one line:
-`AUTO {time} — pr-first-merge Step 4.2: this run skipped console-never-rendered-staged-pending — needs human action (pending staged/ items, no rendered console); not left for the next trigger point. Reversibility: n/a.`
+`staged/` items, which a human must resolve or discard. An unreadable `staged/` (or `spec-*/staged/`)
+counts as pending, matching reconcile's fail-closed read. Log, on one line — this holds whatever the
+reconcile call itself returned, since a later pass skips this run the same way:
+`AUTO {time} — pr-first-merge Step 4.2: this run is console-never-rendered-staged-pending — needs human action (pending staged/ items, no rendered console); not left for the next trigger point. Reversibility: n/a.`
 and carry "needs human action" into the closing report. When the summary names the reason but this
 run's own check is clean, the stuck dirs are other runs: log and report "{N} other run dir(s) need
 human action (console-never-rendered-staged-pending)" without attributing it to this run. Either way

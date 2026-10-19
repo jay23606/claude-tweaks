@@ -216,7 +216,7 @@ test('AC1.1: Step 4.2 reports a console-never-rendered-staged-pending skip as ne
 test('AC2.1: Step 4.2 still leaves a transient failure for the next trigger point (#3297)', () => {
   const step42 = MERGE_POST_MERGE.indexOf('### Step 4.2: Reconcile');
   const step5 = MERGE_POST_MERGE.indexOf('## Step 5: Delete the remote branch');
-  assert.match(MERGE_POST_MERGE.slice(step42, step5), /left for the next trigger point/);
+  assert.match(MERGE_POST_MERGE.slice(step42, step5), /is logged and left for the next trigger point/);
 });
 
 test('Deliverable 2: auto-merge-short-circuit records why it writes no console.json (#3297)', () => {

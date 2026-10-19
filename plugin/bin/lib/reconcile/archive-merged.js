@@ -1419,7 +1419,7 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // deliberately excluded — each already has its own clear resolution path
 // (a human answering a console, a local fetch catching up) that doesn't
 // need this generic staleness backstop. 'console-never-rendered-pr-closed'
-// (#2231) is the one exception carved out of that exclusion: it fires only
+// (#2231) is one exception carved out of that exclusion: it fires only
 // when the by-number fallback below confirms the run's PR is CLOSED
 // (never merged) — at that point nothing drives the run's pipeline to
 // wrap-up anymore, so no console will ever render, and the plain
