@@ -1737,8 +1737,8 @@ test('preExisting: --stamp-status reads the marker — preExistingAdjudicated:tr
 });
 
 // #3481: a preExisting run over `log` is refused with `reason` — no stamp, no effective pass.
-async function assertPreExistingRefused(log, reason) {
-  const r = preExistingRepo({ log });
+async function assertPreExistingRefused(log, reason, extraDecl = {}) {
+  const r = preExistingRepo({ log, extraDecl });
   const { code, stdout } = await runCli(r.args, { cwd: r.repo });
   assert.strictEqual(code, 1);
   assert.match(stdout, new RegExp(`Pre-existing: not adjudicated — ${reason}`));
@@ -1764,6 +1764,14 @@ test('AC1.2 preExisting: a TAP log whose named file is covered but which also ca
 test('AC2.1 preExisting: a summary-family log is never adjudicated through preExisting — no-accounting-guard: summary (#3481)', async () => {
   const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
   await assertPreExistingRefused(log, 'no-accounting-guard: summary');
+});
+
+test('AC1.3 preExisting: unattributed failures sum across failing checks — types and lint with one each refuse as unattributed-failures: 2 (#3481)', async () => {
+  const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');
+  await assertPreExistingRefused(log, 'unattributed-failures: 2', {
+    checks: { types: 'node fail.js', lint: 'node fail.js', tests: 'node fail.js' },
+  });
 });
 
 // #1928 AC1: the runner is the mechanical source of the verify event.
