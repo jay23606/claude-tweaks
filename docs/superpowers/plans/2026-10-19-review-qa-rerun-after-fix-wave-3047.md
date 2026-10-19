@@ -185,3 +185,13 @@ git commit -m "Add stale-QA qualifier to the review summary QA line — refs #30
 | AC3.1 | Task 2 `AC3.1` |
 | AC4.1 | Task 1 + Task 2 `AC4.1` |
 | AC5.1 | Task 1 `AC5.1` (rail, corrected premise); `npm test` runs at Common Step 5 |
+
+## As-built deviations (Common Step 4.5, Beneficial)
+
+1. **Wave file set diffs the working tree.** Item 4 uses `git diff --name-only {WAVE_BASE}`, not `{WAVE_BASE}..HEAD`. Interactive "Fix now" does not commit (`step3-routing.md:117`), so the committed range alone would miss Deliverable 3's Fix-now case. `WAVE_BASE` is captured in Step 6.7's intro, before item 1, rather than inside item 4. Source: SDD fix round 1 ruling, commit 15a0ebc88.
+2. **A failing re-run blocks the verdict.** Item 4 says a re-run reporting PARTIAL FAILURE or ALL FAILED makes the verdict BLOCKED. Step 1.5's gate ran before the wave, so otherwise PASS could sit beside a failing QA line. Source: final-review I-1, commit eb30676ff.
+3. **QA status is recomputed over all stories.** The re-run's per-story results merge into `/test`'s pre-wave results, and the status is recomputed over all stories. This replaces the plan's "in place of `/test`'s pre-wave status", which could turn a pre-wave failure into a false green. Source: final-review I-2, commit eb30676ff.
+4. **Edits outside Key Files.** `plugin/skills/test/SKILL.md`'s Component-Skill Contract now names the Step 6.7 `qa affected` exception. `docs/skill-graph.md`'s `## test` → `/review` row states the new edge. CLAUDE.md requires each edge once in the skill graph, and the old contract sentence contradicted Step 6.7. Source: final-review I-3, commit eb30676ff.
+5. **Qualifier count for uncommitted waves.** When uncommitted edits remain, the template renders `({N} commits since, plus uncommitted edits)`. Without this, a Fix-now-only wave reads "0 commits since". Source: final-review M-1, commit eb30676ff.
+
+Not Beneficial: the byte-ceiling premise in AC5 is "Update the spec" and is staged as `staged/build-deviation-1.md`.
