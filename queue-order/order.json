@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T22:28:24.653Z",
+  "computedAt": "2026-10-19T23:24:50.357Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -175,7 +175,7 @@
       },
       {
         "number": 3495,
-        "updatedAt": "2026-10-18T06:41:48Z",
+        "updatedAt": "2026-10-19T23:21:16Z",
         "state": "OPEN"
       },
       {
@@ -436,11 +436,6 @@
       {
         "number": 3079,
         "updatedAt": "2026-10-19T20:23:36Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3078,
-        "updatedAt": "2026-10-19T21:41:19Z",
         "state": "OPEN"
       },
       {
@@ -1824,84 +1819,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: build of #3417 (shared path-guard helper), conformance-lint audit and review\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`isPolicyFile` in `plugin/bin/lib/hooks/pre-tool-use.js` compares `realTarget(targetPath)` with `canonicalRepoPath(repoRoot, POLICY_FILE)` for exact equality. Both resolve with the JS `fs.realpathSync` (`safeReal`). #3417 routed `realTarget()` through `plugin/bin/lib/path-guard`'s `resolveLeaf()` but kept the JS form on purpose: switching only one side to `.native` would turn a mis-cased allow into a deny. The JS form echoes input casing on a case-insensitive volume (#3380). So a mis-cased tool-input path to `.claude-tweaks/policy.yml` resolves to a different string than the git-cased `repoRoot`, and the policy-file exemption is denied when it should apply. That direction fails safe, but it is wrong.\n\n## Deliverables\n\n- Resolve both sides of `isPolicyFile` with the case-canonical realpath: `realTarget()`'s `resolveLeaf` call drops its explicit `realpath: fs.realpathSync`, and `canonicalRepoPath`'s parent resolution uses path-guard's `canonicalRealpath`.\n\n- Add a regression test with a mis-cased policy.yml target on a case-insensitive model, using an injected `fsImpl`. The exemption applies after the change and is shown red before it.\n\n- Update the `lib/hooks/pre-tool-use.js` allowlist reason in `tests/path-guard-conformance.test.js` and the `safeReal` anti-pattern row in `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md`.\n\n## Acceptance Criteria\n\n- [ ] A mis-cased absolute path to the repo's `.claude-tweaks/policy.yml` is recognised by `isPolicyFile`.\n\n- [ ] A symlink swapped in for `policy.yml` is still denied, and `npm test` passes.\n\n## Release Note\n\nEditing the project policy file is no longer blocked when its path is typed with different letter casing.\n\n_Filed by `capture` via specShapedBody._\n\nhttps://claude.ai/code/session_01QGrWbAJ6KVbLkyCLrrphEx\n",
-        "createdAt": "2026-10-17T22:36:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3495,
-        "state": "OPEN",
-        "title": "Resolve both sides of pre-tool-use isPolicyFile with fs.realpathSync.native",
-        "updatedAt": "2026-10-18T06:41:48Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -4108,84 +4025,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: backend\n\n**Related:** #3015, #3049\n\n## Current State\n\nA `/claude-tweaks:review` running inside a `/claude-tweaks:dispatch` second call (`review,polish,wrap-up`) at `review-effort: medium` had no rule for its 3a/3b/3c/3f reproduction pairs, applied the low-tier carve-out by analogy, and judged all four lenses itself — \"the medium tier's two-reader correlated-misread protection was silently not provided.\"\n\nVerified on origin/main (0af440d76):\n\n- `plugin/skills/review/step3-lens-dispatch.md:50` (Low-tier single-read rule, `low` only) — \"When the reviewing agent is itself a Task-tool subagent … it cannot safely wait on this dispatch's own completion notification — see `dispatch/task-prompt.md`'s Async-wait discipline item. In that case, skip the Task-tool dispatch for this tier entirely\" and judge 3b/3c directly. `:48` and `:80` (reproduction pairs at `medium`+) carry no such clause.\n- `plugin/skills/dispatch/task-prompt.md:40-50` (Async-wait discipline, item 7) — \"Never end your turn to 'wait for' a background-task or nested-agent notification — it will never arrive\".\n- `plugin/skills/dispatch/task-prompt.md:91-96` and `:212-217` (both fenced templates' Foreground execution paragraph, #2533) — the stall risk \"does not cover an in-turn `Agent`-tool dispatch (a lens-dispatch fan-out, a reproduction pair) whose completion notification the harness is expected to deliver back into this same ongoing turn sequence\". `:182-185` grounds that carve-out in `_shared/dispatch-waiting.md`'s \"primary resume signal\", a top-level dispatcher convention.\n- `plugin/skills/_shared/subagent-dispatch-core.md:42-47` puts \"a child `Agent`/`Task` dispatch\" in the same class as backgrounded loops, and `:61-65` allows a dispatcher to wait \"within its own single turn\". It never separates a foreground (blocking) nested dispatch from a background one.\n- No other skill has a carve-out of its own; \"cannot safely wait\" appears only at `step3-lens-dispatch.md:50`.\n- Overlap: open #3015 (SubagentStop grades an intermediate yield while in-turn `Agent` completions are pending) assumes the #2533 permission that this record retires.\n\n## Deliverables\n\n1. Decision (approved in brainstorming, 2026-10-15): a FOREGROUND nested `Agent`/`Task` dispatch from a dispatched subagent is safe. Delete the step-3 carve-out and state the real hazard once in `_shared/subagent-dispatch-core.md`: foreground nested dispatch is safe; never end a turn waiting on a BACKGROUND one. Rejected: extending the carve-out to every tier — it drops the medium tier's second reader for no observed hazard.\n2. Live probe, run FIRST, before any contract text is written: dispatch a subagent whose prompt has it perform one foreground nested `Agent` dispatch of a trivial child, receive the child's result in the same turn, and end with a `STATUS:` line. Record the observed outcome — the nested tool result's shape (including whether it came back `isAsync`), whether the result arrived in-turn, and `claude --version` — as a comment on this record and quote it in the PR body. If the probe fails (the nested call only launches async, or its result does not arrive in-turn), stop: write no contract text and report BLOCKED with the raw observed output.\n3. `_shared/subagent-dispatch-core.md` Foreground Execution Discipline: rewrite `:42-47` and `:61-65` into one rule — a dispatched agent may make a foreground nested dispatch and read its result in the same turn; it never ends its turn with a background nested dispatch (or backgrounded command) pending.\n4. `review/step3-lens-dispatch.md:50`: delete the \"When the reviewing agent is itself a Task-tool subagent\" sentences, so single reads (`low`) and reproduction pairs (`medium`+) dispatch the same way whatever the reviewer's own depth. Extend the `:58` Foreground Execution Discipline note to cover the reviewer's own lens dispatches, citing the core section rather than restating it.\n5. `dispatch/task-prompt.md`: rewrite item 7 (`:40-50`), both templates' Foreground execution paragraphs (`:91-96`, `:212-217`), and the #2533 rationale paragraph (`:182-185`) to the Deliverable 3 rule. The templates are inlined verbatim into `Task()` calls, so they carry the rule text themselves; the rationale paragraph cites the core section.\n6. Comment on #3015 that this record replaces the premise it relies on — a dispatched agent no longer yields with async in-turn dispatches outstanding — so it can be re-shaped or closed.\n\n## Acceptance Criteria\n\n- [ ] The Deliverable 2 probe comment exists on this record, with raw output, and predates the first commit touching `_shared/subagent-dispatch-core.md`.\n- [ ] `tests/foreground-execution-instruction.test.js` asserts: `step3-lens-dispatch.md` contains no \"cannot safely wait\"; `subagent-dispatch-core.md` states both halves (foreground nested dispatch allowed; never end a turn on a background one); neither `task-prompt.md` template contains \"It does not cover an in-turn\".\n- [ ] Each new assertion has a doctored-text go-red proof in the same file, matching the existing discrimination-proof test there.\n- [ ] Both fenced templates still match the existing `REQUIRED` patterns in that test.\n- [ ] `tests/review-dispatch-composition.test.js` stays green (the composed review-dispatch bundle remains under `CEILING_BYTES`).\n- [ ] `npm test` passes.\n\n## Release Note\n\nLet a reviewer running inside a dispatched build keep its second reader: nested lens agents dispatched in the foreground are now allowed at every review-effort tier.\n\n## Technical Approach\n\n### Key Files\n- `plugin/skills/_shared/subagent-dispatch-core.md` — the single foreground-vs-background nested-dispatch rule\n- `plugin/skills/review/step3-lens-dispatch.md` — delete the `:50` carve-out; extend the `:58` note\n- `plugin/skills/dispatch/task-prompt.md` — item 7, both template paragraphs, the #2533 rationale paragraph\n- `tests/foreground-execution-instruction.test.js` — new assertions and go-red proofs\n- `tests/review-dispatch-composition.test.js` — must stay green; core is composed into the review-dispatch bundle\n\n## Gotchas\n\n- The probe is an empirical premise check. #3015's evidence shows a lens fan-out from a dispatched subagent launching `isAsync: true` dispatches, so a foreground form may not be what the harness provides by default. Do not write the rule from memory of the Agent tool's options.\n- `_shared/subagent-dispatch-core.md` is composed into the review-dispatch bundle, so net growth counts against `CEILING_BYTES` in `tests/review-dispatch-composition.test.js`. Rewrite rather than append.\n- Leave `plugin/bin/lib/hooks/subagent-stop.js` and `_shared/dispatch-waiting.md` unchanged. #3015 owns any hook change, and dispatch-waiting describes a top-level dispatcher, which is why citing it for a dispatched session was the error.\n\n## Original request\n\nreview/step3-lens-dispatch: medium+ lens dispatch has no rule for a reviewer running as a dispatched subagent, and the low-tier carve-out contradicts the dispatch prompt\n\n**Summary:** A reviewer running `/claude-tweaks:review` inside a `/claude-tweaks:dispatch` Task subagent gets contradictory guidance on whether it may dispatch reproduction-pair lens agents, and no guidance at all at `medium`+.\n\n**Kind:** Gap\n\n**Affected component:** skills/review/step3-lens-dispatch.md (Lens scope and dispatch), skills/dispatch task prompt (Foreground execution / Async-wait discipline)\n\n**Use case:**\nA `/claude-tweaks:dispatch` second call (`review,polish,wrap-up`) ran `/claude-tweaks:review` inside the dispatched Task subagent. The record's labels resolved `review-effort: medium`, so Step 3 called for 2-agent reproduction pairs for lenses 3b, 3c, 3a and 3f.\n\nTwo plugin texts give the dispatched reviewer opposite guidance:\n\n- `skills/review/step3-lens-dispatch.md`'s Low-tier single-read rule says a reviewing agent that is itself a Task-tool subagent \"cannot safely wait on this dispatch's own completion notification\" (citing `dispatch/task-prompt.md`'s Async-wait discipline item) and must skip the Task dispatch and apply the Direct-verification override instead. That rule is scoped to `low` only; the `medium`+ reproduction-pair text has no equivalent clause.\n- The dispatch task prompt itself says the stall risk \"does not cover an in-turn `Agent`-tool dispatch (a lens-dispatch fan-out, a reproduction pair) whose completion notification the harness is expected to deliver back into this same ongoing turn sequence\".\n\nThe reviewer had no tie-breaker. It applied the low-tier rule by analogy and judged all four lenses itself, so the medium tier's two-reader correlated-misread protection was silently not provided. The same choice recurs for wrap-up's curation-engine fan-out (3+ open rows → parallel Capable judges) and for feedback's Step 6 scrub singleton when they run inside a dispatched call.\n\nExpected: one consistent rule for a reviewer (or wrap-up controller) running as a dispatched subagent, stated at every tier that dispatches. Either nested in-turn dispatches are safe (then drop the low-tier carve-out's premise), or they are not (then extend the carve-out to `medium`+ and say what replaces the second reader, e.g. a logged downgrade to single-read with every finding entering as `unconfirmed`).\n\n**Definition:** Needed — two viable directions (nested in-turn dispatch is safe vs. extend the carve-out to every tier) and no stated preference.\n\n**Cost this session:** low — resolved in one step, but no second reader confirmed the medium-tier findings.\n\n**Plugin version:** 6.137.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-3e2de2b6 -->\n\n",
-        "createdAt": "2026-10-09T23:06:53Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-KA",
-            "name": "enhancement",
-            "description": "New feature or request",
-            "color": "a2eeef"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3078,
-        "state": "OPEN",
-        "title": "review/step3-lens-dispatch: medium+ lens dispatch has no rule for a reviewer running as a dispatched subagent, and the low-tier carve-out contradicts the dispatch prompt",
-        "updatedAt": "2026-10-19T21:41:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
