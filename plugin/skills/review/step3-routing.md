@@ -53,7 +53,7 @@ Critical never varies by ceiling — it always interrupts. `none` stages every n
 
 **What each action means:**
 
-- **AUTO** — Auto-apply the fix. Commit. Log: `AUTO {time} — Step 3 Routing: applied {severity}-severity {category} fix at {file:line}. Reversibility: high; commit: {hash}.`
+- **AUTO** — Auto-apply the fix. Commit. The wave's re-verify runs under Fix-wave server coordination below. Log: `AUTO {time} — Step 3 Routing: applied {severity}-severity {category} fix at {file:line}. Reversibility: high; commit: {hash}.`
 - **STAGED** — Stage as patch in `staged/review-{n}.patch`. Surface at Review Console. Log: `STAGED {time} — Step 3 Routing: {severity}-severity finding {category} at {file:line}. Stage path: staged/review-{n}.patch. Reversibility: high.`
 - **KEPT-PROMPT** — Stage as patch + `KEPT-PROMPT` — surface inline ALSO. Critical findings always interrupt. Log: `KEPT-PROMPT {time} — Step 3 Routing: critical finding {category} at {file:line}. Surfaced inline. Reversibility: high.`
 
@@ -114,15 +114,29 @@ If "Override specific items" is chosen, the follow-up is ordinary free-text chat
 
 A finding that fails fix-now with **no** valid reason stays `open` — in an interactive review it goes to the human drill; in `auto` it becomes an `open` ledger item for wrap-up's Phase 2 drill — it is never filed as a record; it resolves at the human drill (interactive) or wrap-up's ledger resolve gate (auto).
 
-If any findings are "Fix now", make the changes, re-verify per `_shared/deferral-gate.md`'s Re-verification rule (`/claude-tweaks:test`), and verify fixes didn't introduce new findings.
+If any findings are "Fix now", make the changes, re-verify per `_shared/deferral-gate.md`'s Re-verification rule (`/claude-tweaks:test`), and verify fixes didn't introduce new findings. In a pipeline run, wrap the wave in Fix-wave server coordination below — stop the run's ephemeral server before the re-verify, restart it once afterwards when a browser step is still ahead.
+
+## Fix-wave server coordination (pipeline runs)
+
+Every fix wave in this review — AUTO-applied fixes, interactive "Fix now", the parallel fix dispatch below, Step 4's reflect "Change now" re-run, and Step 6.7's late-findings routing (both in `code-mode-steps.md`) — re-verifies with `/claude-tweaks:test`, and a suite that builds the app (`next build` rewriting `.next`, say) swaps the build out from under the run's ephemeral server (`_shared/dev-url-detection.md`'s Ephemeral server start). Every later browser step is then served a replaced build, and nothing fails loudly (#3021). So, once per wave, never per finding:
+
+1. **Stop before the wave builds.** Before the wave's first fix-agent dispatch, or before its re-verify when the main thread applies the fixes itself, read `{run-dir}/ephemeral-server.txt`. With no run directory or no such file, skip this whole section — a standalone review behaves exactly as before. When the file's third field (worktree root) is not this checkout's `git rev-parse --show-toplevel`, leave it alone: that server belongs to another worktree. Otherwise stop it with `wrap-up/cleanup-procedures-execution.md` Section D's steps 2-4 — the platform-aware kill wrap-up already uses, an already-gone pid counted as stopped, the port confirmed free, the file deleted. Never hand-roll a kill.
+2. **Re-verify.** Run the wave's re-verify as usual.
+3. **Restart once, only if a browser step is still ahead.** When step 1 stopped a server and a later step of this review still drives a browser — Step 6's visual review not yet run in full mode, or Step 6.7 item 4's QA re-run — start a fresh one through `dev-url-detection.md`'s Ephemeral server start, detached per its Ownership rule. Its item 4 writes the new pid to `ephemeral-server.txt` with a plain Bash redirect into the main checkout's run dir — never a worktree-relative path, which would shadow it and leave Section D killing the old pid (`[IL-127]`) — so wrap-up's Section D stops the server current at end of run. When no later review step needs a browser, leave the server stopped: step 1 already deleted the stale line, so Section D has no dead pid to kill, and a later phase that needs a browser starts its own through `dev-url-detection.md`'s Step 3 (no usable server, dev command known), the path any first use takes.
 
 ## Parallel fix dispatch (3+ independent fixes)
 
 > **Working Directory Discipline:** Applies to every fix-agent `Task()` dispatch. Apply the Working Directory Discipline rule from the composed review-dispatch bundle (or, standalone, `_shared/subagent-dispatch-core.md`) before any git or path-sensitive command in the agent prompt. See also `_shared/git-discipline.md`.
 
-> **Parallel execution (conditional):** When there are 3+ "Fix now" findings across different files with no shared file dependencies, dispatch fixes as parallel agents using the `/superpowers:dispatching-parallel-agents` pattern — one agent per independent fix domain. Each agent gets: specific file scope, finding details, constraint to not modify other files. Returns summary of changes. After all agents complete, check for conflicts between agent changes, then re-run `/claude-tweaks:test`. When fixes overlap files or there are fewer than 3 findings, fix sequentially in the main thread.
+> **Parallel execution (conditional):** When there are 3+ "Fix now" findings across different files with no shared file dependencies, dispatch fixes as parallel agents using the `/superpowers:dispatching-parallel-agents` pattern — one agent per independent fix domain. Each agent gets: specific file scope, finding details, constraint to not modify other files, and the FIX AGENT line below. Returns summary of changes. After all agents complete, check for conflicts between agent changes, then re-run `/claude-tweaks:test` — the run's ephemeral server already stopped before the dispatch, per Fix-wave server coordination above. When fixes overlap files or there are fewer than 3 findings, fix sequentially in the main thread.
 >
 > **Model profile:** [Use: Standard] — fix agents make targeted code edits constrained to their assigned files. Upgrade to Capable only when the fix requires architectural redesign rather than localized correction. Resolve via `node "${CLAUDE_PLUGIN_ROOT}/bin/resolve-profile.js" standard` (contract § Model Selection).
+>
+> **No-build line (required):** Inline this line verbatim into every fix-agent prompt, outside the Output template block:
+>
+> `FIX AGENT: do not run the project's builds, test suites, dev servers, or e2e runners — make the edits and report them; the dispatcher re-verifies.`
+>
+> It is the fix-path counterpart of `_shared/subagent-dispatch-core.md`'s Read-only Reviewer Discipline (#3001), kept a separate rule: it binds the dispatched fix agents, never the dispatcher's own re-verify, which is what Fix-wave server coordination wraps.
 >
 > **Output template (each agent must follow exactly):**
 >
