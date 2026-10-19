@@ -160,16 +160,14 @@ function run(argv, overrides = {}) {
   const verdict = classifyRollup({ rollup: view && view.statusCheckRollup, headRefOid, localHead, hasPrCi, headRuns });
   // Only a red verdict reads the base tip (#3258): green/pending/stale never change on it.
   let final = verdict;
-  let baseBranch = null;
   if (verdict.state === 'red') {
     const base = readBase(deps, repoRoot, view && view.baseRefName);
-    baseBranch = base.branch;
-    final = applyBaseComparison(verdict, base);
+    final = { ...applyBaseComparison(verdict, base), baseBranch: base.branch };
   }
   // A failed runs read cannot conclude a pass-class verdict (green/pending/inherited-red): a failing run
   // absent from the rollup would be invisible. Only a verdict still red is conclusive on its own.
   if (runsFailure && final.state !== 'red') return report(deps, { state: 'read-failed', pr: n, localHead, reason: runsFailure });
-  return report(deps, { ...final, ...(verdict.state === 'red' ? { baseBranch } : {}), localHead, pr: n });
+  return report(deps, { ...final, localHead, pr: n });
 }
 
 module.exports = { run, parseArgs };
