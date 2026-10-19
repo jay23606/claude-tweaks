@@ -94,10 +94,9 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
   Compose-then-write-once — read, patch the checklist section in memory, write the whole body
   back in one call. Never a partial/streaming edit.
 
-**Best-effort, like the phase-exit push it follows.** A failed `gh pr edit` logs a warning to
-`decisions.md` and the phase continues — the next phase's own checklist update naturally
-re-flips every row still unchecked from prior phases, since it reads the live body fresh each
-time rather than tracking a local diff.
+**Best-effort, like the phase-exit push it follows.** A failed `gh pr edit` (the CLI's exit 5) logs a
+warning to `decisions.md` and the phase continues — its row stays unchecked until the pre-merge
+refresh below re-runs this procedure for that phase.
 
 **Multi-spec runs share one PR.** A dispatch bundle or a `/flow` multi-spec run has multiple
 records built on the same branch behind the same draft PR, so this procedure's checklist rows
@@ -130,14 +129,15 @@ were composed at run start (`_shared/pr-early-run-lifecycle.md`'s Step 3) and th
 reflects whichever phases had exited as of each best-effort `gh pr edit` (Phase-checklist update
 above), not necessarily every phase this run actually completed.
 
-1. Re-run the Phase-checklist update procedure above once more, unconditionally, its Spec-summary refresh included — idempotent
-   (a phase whose own update already landed re-flips the same rows to the same values); this is
-   the final catch-all for any phase whose own best-effort update silently failed. **Multi-spec
+1. Re-run the Phase-checklist update procedure above once more, unconditionally, its Spec-summary refresh included — once per
+   phase this run exited (`--remove` for a skipped one), each call re-flipping its own row and a
+   no-op when that row already landed; this is the final catch-all for any phase whose own
+   best-effort update failed. **Multi-spec
    deferred polish-row removal:** if the `polish` row is present and still unchecked
    (`- [ ] polish`) at this point, check every spec's outcome in the parent `manifest.yml`'s
    `specs[]`; when no spec in the run ever ran polish (every spec's `surface:` was non-frontend —
    `backend` or `infra` — or `no-polish`/`ceremony-profile: fast-lane` applied run-wide), remove
-   the row here — the deferred counterpart to `_shared/pr-early-run-lifecycle.md`'s multi-spec
+   the row here (`--phase polish --remove`) — the deferred counterpart to `_shared/pr-early-run-lifecycle.md`'s multi-spec
    skip-rule scoping (see `flow/multispec-pr-checklist.md`).
    A single-record run never reaches this branch — its row was already removed or checked at
    polish's own would-be exit.
