@@ -97,6 +97,20 @@ test('#2488: the missing-claim fallback is listed in auto-mode-contract.md\'s HA
   assert.match(row, /#2488/);
 });
 
+test('#2912 AC1.1/AC3.1: the first-call template requires verify-run-bookends.js on every transport before DONE', () => {
+  const t = read('plugin/skills/dispatch/task-prompt.md');
+  const start = t.indexOf('## First call');
+  const end = t.indexOf('## Second call');
+  assert.ok(start !== -1 && end > start, 'first-call section not found');
+  const firstCall = t.slice(start, end);
+  assert.match(firstCall, /verify-run-bookends\.js" --run "\{minted-run-dir\}" --targets \{comma-joined issue numbers\}/);
+  assert.match(firstCall, /every transport/);
+  assert.match(firstCall, /build-test-blocked/);
+  const c = read('plugin/skills/flow/claim-targets.md');
+  assert.match(c, /committed `work\/\{n\}-spec\.md`/);
+  assert.match(c, /canonical `Step 2\.8: claimed #\{n\}`/);
+});
+
 test('go-red control: a status line with extra trailing text, or the wrong last line, fails the pinned regex the same way a genuinely missing one would', () => {
   const RE = /^STATUS: (DONE|DONE_WITH_CONCERNS|NEEDS_CONTEXT|BLOCKED)$/;
   assert.ok(!RE.test('STATUS: DONE (backgrounded)'));
