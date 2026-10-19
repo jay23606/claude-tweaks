@@ -98,6 +98,9 @@ check (no phase-exit push), and a run with no `pr` in `run-state.json` reads `no
     continue: no new stop — the next phase starts as it would have.
   - **At wrap-up's exit** there is no next phase, so no catch-up runs there, in any mode — the
     merge path (`_shared/pr-first-merge.md`) owns a conflict from there, unchanged.
+    The one exception is a Review Console that resolved leave-open: the merge path never runs, so
+    `wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it (git's own
+    auto-merge only — a conflict is reported, never resolved).
 - **`no-conflict`**, **`not-open`**, **`no-pr`** — nothing to do, nothing to log. `not-open` is a
   closed or merged PR: whatever its mergeability says, it is no signal for the run.
 - **`unknown`**, **`read-failed`**, **`gh-absent`** (and exit 2/3) — fail open: the phase

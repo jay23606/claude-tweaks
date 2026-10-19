@@ -4,6 +4,7 @@ files:
   - plugin/bin/pr-merge-state.js
   - plugin/bin/lib/reconcile/pr-state.js
   - plugin/skills/_shared/pr-early-run-lifecycle.md
+  - plugin/skills/wrap-up/execution-and-verification.md
 ---
 
 # Notice a Run's PR Gone Conflicting at a Phase Exit
@@ -51,7 +52,7 @@ files:
   - A mid-flow question in `auto`.
   - The next phase starting with `MERGE_HEAD` set or with conflict markers in the tree.
   - A rebase or force push.
-  - A catch-up attempted at wrap-up's exit (the merge path owns that case).
+  - A catch-up attempted at wrap-up's exit when the merge path runs (it owns that case); only a leave-open run catches up there, per `wrap-up/execution-and-verification.md`.
 
 ### 3. Nothing to do, or nothing could be learned
 - **URL:** `plugin/skills/_shared/git-discipline.md` `no-conflict`/`not-open`/`no-pr` and `unknown`/`read-failed`/`gh-absent` bullets
