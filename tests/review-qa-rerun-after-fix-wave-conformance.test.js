@@ -16,8 +16,9 @@ const step7 = steps.slice(steps.indexOf('## Step 7:'), steps.indexOf('## Importa
 test('AC1.1: Step 6.7 re-runs affected stories via test qa affected, gated on a fix touching story source_files', () => {
   assert.ok(step67.includes('`/claude-tweaks:test qa affected`'));
   assert.ok(step67.includes('WAVE_BASE=$(git rev-parse HEAD)'));
-  assert.ok(step67.includes("`git diff --name-only {WAVE_BASE}..HEAD`"));
+  assert.ok(step67.includes("`git diff --name-only {WAVE_BASE}`"));
   assert.ok(step67.includes("every QA story's `source_files`"));
+  assert.ok(step67.indexOf('WAVE_BASE=$(git rev-parse HEAD)') < step67.indexOf('\n1. '), 'WAVE_BASE is captured before item 1');
 });
 
 test('Deliverable 3: the rule covers interactive Fix now as well as auto-applied fixes', () => {
