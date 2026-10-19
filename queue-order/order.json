@@ -1,11 +1,11 @@
 {
-  "computedAt": "2026-10-19T07:39:59.530Z",
+  "computedAt": "2026-10-19T08:46:14.131Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
         "number": 3523,
-        "updatedAt": "2026-10-18T19:46:42Z",
+        "updatedAt": "2026-10-19T07:40:57Z",
         "state": "OPEN"
       },
       {
@@ -45,12 +45,12 @@
       },
       {
         "number": 3506,
-        "updatedAt": "2026-10-18T19:46:05Z",
+        "updatedAt": "2026-10-19T08:25:33Z",
         "state": "OPEN"
       },
       {
         "number": 3505,
-        "updatedAt": "2026-10-18T19:46:01Z",
+        "updatedAt": "2026-10-19T08:25:25Z",
         "state": "OPEN"
       },
       {
@@ -195,7 +195,7 @@
       },
       {
         "number": 3440,
-        "updatedAt": "2026-10-18T19:45:54Z",
+        "updatedAt": "2026-10-19T08:25:16Z",
         "state": "OPEN"
       },
       {
@@ -250,7 +250,7 @@
       },
       {
         "number": 3350,
-        "updatedAt": "2026-10-17T09:04:31Z",
+        "updatedAt": "2026-10-19T07:52:30Z",
         "state": "OPEN"
       },
       {
@@ -454,11 +454,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3024,
-        "updatedAt": "2026-10-19T07:23:34Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3021,
         "updatedAt": "2026-10-17T06:10:56Z",
         "state": "OPEN"
@@ -510,7 +505,7 @@
       },
       {
         "number": 2912,
-        "updatedAt": "2026-10-17T19:24:00Z",
+        "updatedAt": "2026-10-19T08:41:45Z",
         "state": "OPEN"
       },
       {
@@ -3136,7 +3131,7 @@
         "number": 3350,
         "state": "OPEN",
         "title": "Run config never carries the integration-model pin — pr-first PR-bookend checks silently skip",
-        "updatedAt": "2026-10-17T09:04:31Z",
+        "updatedAt": "2026-10-19T07:52:30Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -6615,84 +6610,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n**Related:** #2914\n\n## Current State\n\n`/claude-tweaks:dispatch` Step 5 splits one record's pipeline into two `/flow` calls that share one run directory via `PIPELINE_RUN_DIR`: `/flow #N build,test`, then `/flow #N review,polish,wrap-up` (the \"Intentional two-call consumer\" contract, `plugin/skills/flow/steps-and-gates.md:54`). The second call is supposed to adopt a fully set-up run (adoption case 1 in `plugin/bin/lib/flow/preflight.js`).\n\nIn run `2026-10-02T182455-record-2765` (record #2765), call 2's adoption probe reported case 3 instead — \"Recovering inherited run directory ... missing config.yml; backfilled worktree registration, PR-early lifecycle, materialize commit before proceeding\" (`preflight.js:48`). Call 1 had committed and pushed its build fix (`99fa1f73b`, branch `worktree-flow-spec-2765` on origin), but:\n\n- never committed `work/2765-spec.md` (the `materialize.md` Resolution + Materialization step),\n- never ran `_shared/pr-early-run-lifecycle.md`'s push-and-open-draft-PR step (`run-state.json` had no `pr`),\n- logged its Step 2.8 claim as \"Step 2.8: claimed issue #2765\" instead of the canonical \"Step 2.8: claimed #2765\" that the `pre-tool-use.js` stamps gate matches, which later denied call 2's first push.\n\nCall 2 backfilled all three by hand. The root cause is not confirmed. Candidates:\n\n1. `/claude-tweaks:dispatch` Step 4's materialize-before-claim minting substituting for `/flow`'s own Step 1 materialize on the two-call path and skipping the commit/push/PR sequence.\n2. A build invoked directly by dispatch, bypassing `/flow` Step 4's materialize-commit.\n3. A stale reclaimed tombstone from the earlier run `2026-10-02T122146-record-2765` (its PR #2881 closed unmerged) confusing the bookkeeping for the fresh run that reused the record.\n\n## Deliverables\n\n1. Trace call 1's actual path for a record that previously held a reclaimed tombstone claim and identify which step skipped the materialize commit and the draft-PR open. Record the finding in the PR description, naming which of the three candidates (or another cause) it was.\n2. Fix that path so call 1 alone always leaves: a committed `work/{n}-spec.md` on the run's branch, `run-state.json.worktree`, and (under `integration-model: pr-first`) `run-state.json.pr` with a live draft PR.\n3. Make the Step 2.8 claim line on this path come from the canonical writer (`plugin/bin/claim-targets.js` or the documented `log-decision.js` text) so it always matches the stamps gate's regex; no free-hand claim-line phrasing.\n4. A regression test at the level the root cause lives (preflight adoption fixture, dispatch/flow CLI, or claim-line writer) that fails on the pre-fix behavior.\n\n## Acceptance Criteria\n\n1. A fresh two-call dispatch (`/flow #N build,test`, then `/flow #N review,polish,wrap-up`) against a record that previously held a stale, reclaimed tombstone claim produces, after call 1 alone: a committed `work/{n}-spec.md`, a recorded `run-state.json.worktree`, and under `pr-first` a recorded `run-state.json.pr` with a live draft PR.\n2. Call 2's adoption probe reports case 1, not case 3, in that scenario.\n3. The claim line written on this path matches `Step 2\\.8: claimed #{n}\\b`.\n4. The new regression test fails before the fix and passes after it; the affected suites pass.\n\n## Release Note\n\nTwo-call dispatch runs no longer leave the first call without its spec commit or draft PR.\n\n## Technical Approach\n\nStart from the run directory evidence (`decisions.md`, `run-state.json`, `events.jsonl`) for `2026-10-02T182455-record-2765` if it is still present, then read `dispatch/SKILL.md` Step 4–5, `dispatch/task-prompt.md`, and `flow/SKILL.md` Step 1 and Step 4 side by side to find where the two-call path diverges from the single-call path. Fix at the divergence point rather than adding a backfill in call 2: call 2's case-3 recovery should stay a recovery path, not the normal one.\n\n### Key Files\n\n- `plugin/skills/dispatch/SKILL.md` — Step 4 materialize-before-claim minting and Step 5 two-call split\n- `plugin/skills/dispatch/task-prompt.md` — what call 1 is told to run\n- `plugin/skills/flow/SKILL.md` — Step 1 materialize and Step 4 build-step materialize commit\n- `plugin/skills/flow/materialize.md` — \"When this runs\" contract\n- `plugin/skills/flow/steps-and-gates.md` — two-call consumer contract\n- `plugin/skills/_shared/pr-early-run-lifecycle.md` — draft-PR open procedure\n- `plugin/skills/build/worktree-setup.md` — Step 6 post-materialize push\n- `plugin/bin/lib/flow/preflight.js` — adoption case classification\n- `plugin/bin/claim-targets.js` — canonical claim-line writer\n- `plugin/bin/lib/hooks/pre-tool-use.js` — stamps gate regex the claim line must match\n\n## Gotchas\n\n- The root cause is unconfirmed; do not ship a fix for a guessed cause. If the trace cannot reproduce the gap, stop and report rather than patching call 2's recovery.\n- The tombstone-reclaim candidate interacts with `/claude-tweaks:dispatch`'s claim race window (mint to worktree entry); a fix there must not widen that window.\n- #2914 is related; check it for overlapping changes before editing the same dispatch prose.\n\n## Original request\n\nTwo-call /flow dispatch (build,test then review,polish,wrap-up) can leave the run with no materialize commit and no draft PR on the shared branch\n\n**Related:** #2914\n\n\nOrigin: wrap-up reflect (Near-misses, light mode) — run `2026-10-02T182455-record-2765` (record #2765)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nRecord #2765 was dispatched as the documented two-call `/flow` pattern (`flow/steps-and-gates.md`'s \"Intentional two-call consumer\" section): `/flow #2765 build,test` (call 1), then `/flow #2765 review,polish,wrap-up` (call 2, this run), both sharing `PIPELINE_RUN_DIR=.../2026-10-02T182455-record-2765`.\n\nWhen call 2 started, `flow-preflight.js`'s adoption probe reported **case 3** (\"Recovering inherited run directory... missing config.yml; backfilled worktree registration, PR-early lifecycle, materialize commit before proceeding\") — meaning call 1 had:\n- committed its build fix (`99fa1f73b`) and pushed the branch (`worktree-flow-spec-2765` existed on `origin` at that commit), but\n- **never run `materialize.md`'s Resolution + Materialization step** for this run directory (no `work/2765-spec.md` was committed on the branch), and\n- **never run `_shared/pr-early-run-lifecycle.md`'s push-and-open-draft-PR procedure** (no PR existed, `run-state.json` carried no `pr` field), and\n- logged its Step 2.8 claim line with non-canonical phrasing (\"Step 2.8: claimed issue #2765\" instead of the `pre-tool-use.js` gate's exact-match regex `Step 2\\.8: claimed #{n}\\b` — i.e. \"claimed #2765\"), which later denied call 2's first push attempt.\n\nCall 2 had to backfill all three gaps by hand (re-run `materialize.js --record-json` with a `--record-json`-only `--ceremony` resolution via `assess-agent-autonomy ceremony-check`, log a corrected Step 2.8 line, create the draft PR via MCP and `record-pr`) before `build/worktree-setup.md` Step 6 and `materialize.md`'s own \"When this runs\" contract were actually satisfied — contracts that should have been satisfied by call 1's own execution of `/claude-tweaks:flow #2765 build,test`, per `flow/SKILL.md` Step 4's \"For the build step in record mode: compose, write, and commit the materialized file now ... then invoke `/claude-tweaks:build`\" and `build/worktree-setup.md` Step 6's \"immediately after that step's materialize commit lands\".\n\nRoot cause is **not confirmed** — candidates include: `/claude-tweaks:dispatch`'s own materialize-before-claim minting (`dispatch/SKILL.md` Step 4) racing or substituting for flow's own Step 1 materialize in a way that skips the commit/push/PR-open sequence on the two-call path specifically; a build invoked directly by dispatch bypassing `/flow`'s Step 4.2 materialize-commit step entirely; or an earlier partial run (`decisions.md`'s line 1 mentions \"reclaimed stale tombstone from run `2026-10-02T122146-record-2765`, reason already-shipped\") whose own PR (`#2881`, closed unmerged) confused the bookkeeping for the fresh run that reused the issue.\n\n## Deliverables\n\nInvestigate why call 1 (`/flow #2765 build,test`) left this run's directory without a materialize commit, a recorded worktree assignment event consistent with `record-worktree`'s own idempotent restamp, or a PR — despite having a landed build commit and a pushed branch. Fix the gap so a two-call dispatch handoff always leaves call 2 able to adopt cleanly via `steps-and-gates.md` case 1 (full `config.yml` + PR already present), not case 3 (recovery).\n\n## Acceptance Criteria\n\nA fresh two-call `/flow #N build,test` then `/flow #N review,polish,wrap-up` dispatch against a record that previously held a stale, reclaimed tombstone claim produces, after call 1 alone: a committed `work/{n}-spec.md` on the run's branch, a recorded `run-state.json.worktree`, and (under `integration-model: pr-first`) a recorded `run-state.json.pr` with a live draft PR — verified by `flow-preflight.js`'s adoption probe reporting case 1, not case 3, when call 2 starts.\n\n## Release Note\n\nNo user-visible change — internal pipeline-bookkeeping investigation.\n\n",
-        "createdAt": "2026-10-02T20:08:33Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 2912,
-        "state": "OPEN",
-        "title": "Two-call /flow dispatch (build,test then review,polish,wrap-up) can leave the run with no materialize commit and no draft PR on the shared branch",
-        "updatedAt": "2026-10-17T19:24:00Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate\n\n## Current State\n\n`plugin/bin/lib/issues/record.js` is 898 lines with 28 top-level functions — the unified work-record taxonomy and payload assembly module (label vocabularies, `recordPayload`/`specShapedBody` composition, fingerprint extraction, dependency/blocker parsing, sub-issue queries, and, as of this same session, the newly-consolidated `extractSection`/`typeOf` helpers). A whole-branch review lens (3e, single-agent, unconfirmed) flagged it as module sprawl.\n\n## Deliverables\n\nA deliberate split into cohesive sub-modules (candidate boundaries: label/facet vocabulary and parsing, record-payload/specShapedBody composition, fingerprint handling, dependency/blocker/sub-issue query building) — done as a dedicated architecture pass, not a ledger-cleanup afterthought, since this file has high fan-in (compose-subject.js, decomposition-crossref.js, grouping.js, record-graph/encode.js, and more already import from it) and a careless split risks regressions across every consumer.\n\n## Acceptance Criteria\n\n- `record.js` itself shrinks to a size where its role is legible at a glance (no fixed line target — judged by the split's own boundaries, not a byte number)\n- Every existing consumer's imports still resolve (either from `record.js` re-exporting the split pieces, or updated to import from the new locations directly — the split's own call)\n- Full `npm test` passes with no regressions\n\n## Release Note\n\n`issues/record.js` split into cohesive sub-modules for maintainability; no behavior change.\n\n_Filed by `ledger resolve gate`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
         "createdAt": "2026-09-29T02:00:03Z",
         "labels": [
@@ -6924,362 +6841,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3440, #3505, #3506, #3507, #3509, #3517, #3518, #2713, #2767, #3187, #3396, #3500\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39105151251, on `windows-latest`) found one test file newly failing after PR #3428 merged as `21ef3dc91`. That commit (#3400's change) added `tests/wrap-up-multispec-defer-still-live.test.js`; the file does not exist at the base `ac7ba9360`, so this failure is genuinely new rather than an inherited one. Exactly one test in it fails: `the defer paragraph is still found as one paragraph under CRLF line endings` (line 61), with `expected exactly one MULTISPEC_REVIEW_DEFER branch paragraph` / `0 !== 1`. Verified against `origin/main` at `7852fd8bf`, where the test file is unchanged since `21ef3dc91`.\n\nRoot cause, test-side only. The test's `live()` helper (line 23) reads `plugin/skills/wrap-up/execution-and-verification.md` with a raw `fs.readFileSync(FILE, 'utf8')`. The CRLF test (line 62) then builds its CRLF input with `live().replace(/\\n/g, '\\r\\n')`. On a Windows checkout with `core.autocrlf=true` the read already returns `\\r\\n` line endings (this repo's `.gitattributes` pins only `tools/upstream-drift/fixtures/**`), so the replace turns every `\\r\\n` into `\\r\\r\\n`. `deferParagraph`'s split regex `/\\r?\\n\\r?\\n/` cannot match a `\\r\\r\\n\\r\\r\\n` paragraph break, the file never splits into paragraphs, and no chunk starts with `**MULTISPEC_REVIEW_DEFER branch:**`. Reproduced in scratch against the `origin/main` copy of the skill file: the current transform finds 1 paragraph from an LF read and 0 from a CRLF read; LF-normalizing the read first finds 1 from both.\n\nThe other tests in the file pass on a CRLF checkout and are out of scope: `deferParagraph(live())` already splits on `\\r?\\n`, `SENTENCE` is a single line, and the engine-source pins (`checkBody`'s `'\\n});'` search and the one-line skip pin) hold under `\\r\\n`. A repo-wide grep of `tests/` for `.replace(/\\n/g, '\\r\\n')` on `origin/main` found no other site applying it to a live file read: every other hit converts an in-test string literal (`tests/bin-lib/flow/pr-body-premise-reversal.test.js`, `tests/comment-trust-conformance.test.js`, `tests/bin-lib/verify/extract.test.js` and others), which is the pattern the `windows-checkout-test-parity` project skill prescribes.\n\n## Deliverables\n\n1. `tests/wrap-up-multispec-defer-still-live.test.js`: LF-normalize the live read before any CRLF conversion, so the CRLF test builds its input from LF text on every checkout. Preferred move: route `live()` through `tests/helpers/read-skill.js`'s `readText()`, the shared EOL-normalizing read that prose-conformance suites already use (#2763), so every test in the file reads LF text and the CRLF test's `.replace(/\\n/g, '\\r\\n')` produces exactly one `\\r\\n` per line break. An inline `.replace(/\\r\\n/g, '\\n')` at the CRLF test's call site is the acceptable fallback if routing `live()` would change another test's behavior; state which was chosen in the PR body.\n2. Keep the CRLF test meaningful: it must still feed `deferParagraph` a genuinely CRLF string (assert or otherwise make sure the input contains `\\r\\n` and no `\\r\\r\\n`), so it keeps pinning that the extractor's split survives CRLF.\n3. Before opening the PR, re-run the grep for `.replace(/\\n/g, '\\r\\n')` (and `split('\\n\\n')` / `indexOf('\\n\\n'` on a raw live read) across `tests/` and fix any new hit that converts a raw live file read, with the same move. It was clean at shaping time against `origin/main` `7852fd8bf`; record the result in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/wrap-up-multispec-defer-still-live.test.js` passes on macOS/Linux with no test skipped or removed.\n- [ ] The same file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's result for this file. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat an in-process CRLF simulation as a Windows run.\n- [ ] On Linux, a CRLF-checkout simulation of the fixed test passes: run the CRLF test's logic against the skill file's text converted to `\\r\\n` first (for example, a scratch copy written with CRLF endings and read through the same helper), and it finds exactly one paragraph. Against the pre-fix transform, the same simulation finds zero.\n- [ ] The CRLF test still discriminates: temporarily rename the `**MULTISPEC_REVIEW_DEFER branch:**` lead-in in `plugin/skills/wrap-up/execution-and-verification.md` and the test goes red; restore the file in the same command.\n- [ ] No file under `plugin/` changes. The skill prose is correct; only the test's input construction is wrong.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a wrap-up conformance test that failed on Windows checkouts because it converted already-CRLF text to CRLF a second time.\n\n## Technical Approach\n\nTest-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`'s \"Build CRLF inputs from the LF text\" rule: a CRLF case must be built from the LF string with `.replace(/\\n/g, '\\r\\n')`. A raw read of a tracked file is not LF text on a Windows checkout, so the read has to be normalized first. `tests/helpers/read-skill.js`'s `readText()` (`fs.readFileSync(absPath, 'utf8').replace(/\\r\\n/g, '\\n')`) is the repo's single normalizing read for exactly this case. The skill's Anti-Patterns row for doctoring a go-red control on a raw read (`tests/wrap-up-record-resolution-conformance.test.js`, #3395) is the same move applied to the same class of defect. The engine-source reads (`engineSource()`) need no change.\n\n### Key Files\n\n- `tests/wrap-up-multispec-defer-still-live.test.js` — `live()` (line 23) routed through `readText()`, or the CRLF test (line 62) LF-normalizes before converting\n- `tests/helpers/read-skill.js` — read-only reference: the shared `readText()` EOL-normalizing read\n- `plugin/skills/wrap-up/execution-and-verification.md` — read-only reference: the `**MULTISPEC_REVIEW_DEFER branch:**` paragraph (line 9) the test extracts\n\n## Gotchas\n\n- Do not \"fix\" this by loosening `deferParagraph`'s split regex to tolerate `\\r\\r\\n`. That would hide a malformed fixture rather than build a correct one, and `\\r\\r\\n` never occurs in a real checkout.\n- Do not add a `.gitattributes` `eol=lf` rule for the skill file or `tests/` as the fix. The parity skill keeps `.gitattributes` scoped to the hashed upstream fixtures on purpose, and the CRLF test exists precisely to prove the extractor survives a CRLF checkout.\n- This is one of several open `Windows regression:` records (#3429, #3440, #3505, #3506, #3507, #3509, #3517, #3518), each for a different commit and different files. Keep this record to `tests/wrap-up-multispec-defer-still-live.test.js` and its sibling grep.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 21ef3dc91\n\nThe post-merge Windows check failed on commit 21ef3dc9182b700efd234db073a26ebc3bfdbd9c (compared against ac7ba9360).\n\n**Merged PR:** #3428 (https://github.com/thn-inc/claude-tweaks/pull/3428)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39105151251\n\n### Newly failing test files\n- `tests/wrap-up-multispec-defer-still-live.test.js`\n\n### Failure excerpts\n\n#### `tests/wrap-up-multispec-defer-still-live.test.js`\n\n```\nnot ok 12400 - the defer paragraph is still found as one paragraph under CRLF line endings\n  ---\n  duration_ms: 1.7158\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\wrap-up-multispec-defer-still-live.test.js:61:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    expected exactly one MULTISPEC_REVIEW_DEFER branch paragraph\n    \n    0 !== 1\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T07:02:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3523,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 21ef3dc91",
-        "updatedAt": "2026-10-18T19:46:42Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2767, #3315, #3429, #3458, #3461, #3505, #3506, #3507, #3509, #3517, #3518, #3523\n\n## Current State\n\nThe post-merge `windows-regression` workflow flagged `tests/bin-lib/timing/cli.test.js` as newly failing after ffe20b982 (#3406, per-dispatch cost attribution for #3375), run https://github.com/thn-inc/claude-tweaks/actions/runs/39061373299. The run's own `verify-report` artifact shows the real picture. The issue body's excerpt does not.\n\n- **Base commit 6a25dc724 (baseline log):** 2 failing tests, `#1929 AC4: --auto-transcript locates…` (line 113) and `#1929 whole-branch review fix 2: … (mode 000)` (line 170). Both failures predate this merge.\n- **Head commit ffe20b982 (isolated log, and the isolated retry, which matches it exactly):** 7 failing tests, the same 2 plus 5 new ones from #3375: `#3375 AC3.1` (line 210), `#3375 AC3.2` (line 234), `#3375 AC4: a not-found dispatch…` (line 242), `#3375 AC4: an empty transcript…` (line 255), and `#3375: with several transcripts…` (line 313).\n\nThe issue's excerpt quotes the pre-existing `#1929 AC4` failure because `tools/windows-regression/file-issue.js`'s `excerptFor` takes the first `not ok` naming the file, not the first newly failing one.\n\nAll three causes are in the test file. The production code in `plugin/bin/phase-timing.js` and `plugin/bin/lib/timing/transcript.js` behaves correctly on Windows:\n\n1. **The fixture home is set through `HOME` alone.** The `#1929 AC4` test (lines 121 and 126) and the `subagentRun()` helper (line 203) point the CLI at a temporary home with `env: { ...process.env, HOME: home }`. `locateTranscripts` defaults `homeDir` to `os.homedir()` (`transcript.js:41`). On Windows, `os.homedir()` reads `USERPROFILE`, not `HOME`, so the CLI searches the runner's real profile. The CI output says `tokens: transcript not found (no sess-1.jsonl under the worktree slug directory)`. This breaks `#1929 AC4` (pre-existing), `#3375 AC3.1`, and both `#3375 AC4` tests. `tests/statusline.test.js:932` already records the same Windows behavior.\n2. **The golden files are read raw from a CRLF checkout.** `#3375 AC3.1` (line 214) and `#3375 AC3.2` (line 238) read `tests/fixtures/timing/subagents-golden-auto.md` and `subagents-golden-plain.md` with a bare `fs.readFileSync`. Under `core.autocrlf=true` those files carry `\\r\\n`, while the CLI writes `\\n`. The AC3.2 diff in the CI log differs only in line endings. `.gitattributes` exempts only `tools/upstream-drift/fixtures/**`.\n3. **A path is matched with a forward-slash regex.** The `#3375: with several transcripts…` test (lines 322 and 324) matches `/…sess-2\\/subagents$/`. `readDispatches` names the native `fs` path, which on Windows is `…\\sess-2\\subagents`. CI actual: `no subagents/ directory at D:\\a\\_temp\\ct-timing-home-EQjibG\\.claude\\projects\\-Users-x-Code-repo--claude-worktrees-wt\\sess-2\\subagents`.\n\nThe pre-existing `fix 2` failure (line 170) has a different cause. It makes a file unreadable with `fs.chmodSync(…, 0o000)`, which on Windows only toggles the read-only attribute, so the read succeeds. It is skipped only under root (`skipUnderRoot`), never on win32.\n\n## Deliverables\n\n1. Point every fixture-home child process in `tests/bin-lib/timing/cli.test.js` at the temporary home on both platforms. Set `USERPROFILE: home` beside `HOME: home` in the `#1929 AC4` test's two `spawnSync` env objects (lines 121 and 126) and in `subagentRun()`'s returned `env` (line 203). In the same objects, drop any inherited `CLAUDE_CONFIG_DIR`, for example `const { CLAUDE_CONFIG_DIR, ...base } = process.env`. That keeps the tests hermetic once #3458 makes `locateTranscripts` honor that variable.\n2. Read both golden files through `tests/helpers/read-skill.js`'s `readText` (it normalizes `\\r\\n` to `\\n`) instead of a raw `fs.readFileSync`, in `#3375 AC3.1` (line 214) and `#3375 AC3.2` (line 238).\n3. Build the expected path in `#3375: with several transcripts…` from the native separator: `path.join(s.slugDir, 'sess-2', 'subagents')`, compared exactly against `d.notFoundDirs[0]` and against the stdout line. Do not use `/`.\n4. Give `#1929 whole-branch review fix 2` (line 170) an explicit win32 skip with a stated reason alongside its existing root skip, so a Windows run reports it as skipped rather than failed. Do not end the test early with a silent `return`.\n\n## Acceptance Criteria\n\n- [ ] `tests/bin-lib/timing/cli.test.js` contains no child-process env that sets `HOME` without also setting `USERPROFILE` to the same value (grep `HOME: home` and confirm each hit sits beside `USERPROFILE: home`). None of those env objects carries `CLAUDE_CONFIG_DIR`.\n- [ ] Neither golden fixture is read with a bare `fs.readFileSync`; both go through `readText`.\n- [ ] The two `sess-2\\/subagents` regexes are gone, and both assertions compare against a `path.join`-built path.\n- [ ] Reversion proof for the CRLF fix, recorded in the PR: a CRLF copy of `subagents-golden-plain.md` (built from the LF text with `.replace(/\\n/g, '\\r\\n')`) read through `readText` still satisfies `#3375 AC3.2`’s equality, and the same copy read raw fails it. The `USERPROFILE` and native-path fixes cannot be made to fail on a POSIX host, where `os.homedir()` follows `HOME` and `path.join` uses `/`, so the Windows run below is their only proof. Say this in the PR rather than claiming a local reversion.\n- [ ] `node --test tests/bin-lib/timing/cli.test.js` passes on macOS/Linux with zero failures (raw summary lines quoted in the PR).\n- [ ] On the next `windows-regression` run after merge, `tests/bin-lib/timing/cli.test.js` is not in `baselineAdjudicated.attributable`. The isolated log shows 0 failures for the file, with `fix 2` reported as skipped on win32.\n\n## Release Note\n\nFix the phase-timing CLI tests so they pass on a Windows checkout.\n\n## Technical Approach\n\nTest-only change in one file. Each fix follows a pattern this repo already uses (`.claude/skills/windows-checkout-test-parity/SKILL.md`):\n\n- **Home override:** `os.homedir()` resolves `USERPROFILE` on win32 and `HOME` elsewhere, so setting both keys to the fixture home makes the override effective on every platform. No production change and no new `--home` flag is needed: `locateTranscripts` already takes an injectable `homeDir`, and the CLI's use of `os.homedir()` is correct behavior.\n- **CRLF goldens:** reuse `readText` from `tests/helpers/read-skill.js` (#2763's shared EOL-normalizing read). The CLI's own output is `\\n`, which is the contract. The golden file's working-copy line endings are a checkout artifact, so normalize at the read.\n- **Native path expectation:** the `notFound` text names an `fs` path, which is native by contract, not a display ID. So fix the expectation with `path.join`, per the skill's \"Display IDs and native paths are two contracts\" rule, and leave the producer alone.\n- **Mode-000 test:** combine the existing `skipUnderRoot(...)` result with a `process.platform === 'win32'` reason (for example, `{ skip: (IS_ROOT && 'root ignores file permissions') || (process.platform === 'win32' && 'win32: chmod 0o000 only sets the read-only attribute') }`), matching the explicit-skip convention in `tests/helpers/root.js`.\n\n### Key Files\n\n- `tests/bin-lib/timing/cli.test.js`: add `USERPROFILE` to the three fixture-home env objects, read the goldens via `readText`, use a `path.join` expectation in the several-transcripts test, and add a win32 skip on the mode-000 test.\n- `tests/helpers/read-skill.js`: reused as-is (`readText`), no change.\n- `tests/fixtures/timing/subagents-golden-auto.md`: unchanged; now read via `readText`.\n- `tests/fixtures/timing/subagents-golden-plain.md`: unchanged; now read via `readText`.\n\n## Gotchas\n\n- Do not \"fix\" this in `plugin/bin/lib/timing/transcript.js` or `plugin/bin/phase-timing.js`. Both behave correctly on Windows. A production `HOME` preference would diverge from where Claude Code itself writes transcripts on win32.\n- The issue body's excerpt shows a failure that also existed at the base commit. Judge the fix by the 7-vs-2 failing-test diff in the run's `verify-report` artifact, not by the excerpt (`docs/donts.md` `[IL-160]`).\n- The other root-cause fix in this file, adding a `.gitattributes` `eol=lf` rule for `tests/fixtures/timing/*.md`, was considered and rejected. It changes the checkout of every Windows clone for one suite, while `readText` is the repo's established per-read normalization.\n- Interaction with #3458, which is `ready` and makes `locateTranscripts` honor `CLAUDE_CONFIG_DIR`. These fixture-home spawns copy `process.env`, so once #3458 lands, a `CLAUDE_CONFIG_DIR` set on the developer machine or runner would override the fixture home on every platform. Whichever of the two lands second must also remove `CLAUDE_CONFIG_DIR` from these env objects. Deliverable 1 does this already. If #3458 lands first and adds its own handling, keep a single removal, not two.\n- `tools/windows-regression/file-issue.js`'s `excerptFor` picks the first `not ok` for an attributable file even when that test also failed at the base. This misleading excerpt is a separate defect in the filer and out of scope here.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after ffe20b982\n\nThe post-merge Windows check failed on commit ffe20b982feda6ee34d34a3865426207f46be036 (compared against 6a25dc724).\n\n**Merged PR:** #3406 (https://github.com/thn-inc/claude-tweaks/pull/3406)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39061373299\n\n### Newly failing test files\n- `tests/bin-lib/timing/cli.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/timing/cli.test.js`\n\n```\nnot ok 6319 - \\#1929 AC4: --auto-transcript locates the run session transcript from run-state.json under a fixture home\n  ---\n  duration_ms: 86.6174\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\timing\\\\cli.test.js:113:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    The input did not match the regular expression /^\\| review \\| 8 \\| — \\| 116\\/228 \\| 0\\.0 \\| 3 \\|$/m. Input:\n    \n    'tokens: transcript not found (no sess-9.jsonl under the worktree slug directory)\\n' +\n      '| Phase | Minutes | Verify | Tokens (in/out) | Proc. KB | Tool RTs |\\n' +\n      '|---|---|---|---|---|---|\\n' +\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-17T19:28:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3440,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after ffe20b982",
-        "updatedAt": "2026-10-18T19:45:54Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3440, #3506, #3507, #3509, #3517, #3518, #3523, #2713, #2767, #3187, #3315, #3396, #3442\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39101872855, on `windows-latest`) found three test files newly failing after PR #3434 merged as `2a0b7f65a`. PR #3434 shipped #3370's unattended-console residue feature. The production code is correct on Windows. Every failure is a test assertion that hard-codes `/` as the path separator, for a path that the code under test builds natively with `path.join` / `path.resolve`. On Windows that path comes out as `D:\\a\\...\\pipelines\\...`. Verified against `origin/main` at `7852fd8bf`, where none of the three files has changed since `2a0b7f65a`:\n\n- `tests/bin-lib/console/cli.test.js:382`: the `#3370` \"Needs a human\" test pins the trailing `paths move when the run is archived` line with ``new RegExp(`... node \"/.+/bin/console-residue\\\\.js\" --run \"/.+/${path.basename(fx.runDir)}\"$`)``. The producer is `plugin/bin/console-resolve.js:39`'s `needsAHumanBlock`, which prints `${pluginRoot}/bin/console-residue.js` (pluginRoot comes from `path.resolve`, so on Windows it is backslash-separated with a literal `/bin/...` tail) and `--run \"${runDir}\"` (native). The leading `\"/` and the `/` separators in the regex never match a `D:\\...` path.\n- `tests/bin-lib/console/residue-cli.test.js:160`: the `MOVED` regex expects `.*/pipelines/{run} has moved to .*/pipelines/archive/{run}`. `plugin/bin/console-residue.js`'s pre-archive fallback prints `o.run` (the test builds it with `path.join`) and `archiveDir` (`path.join`), both native. `MOVED` is asserted at lines 169 and 179. Line 169 failed. Line 179's test (`--ack given the pre-archive path ...`) asserts the same regex and must be fixed too.\n- `tests/bin-lib/console/residue.test.js:108`: `lines.includes(`    cat \"${dir}/staged/review-13-record.md\"`)`. `plugin/bin/lib/console/residue.js`'s `itemLines` builds that path with `path.join(consoleDir, 'staged', item.id)`. The same `${dir}/...` shape appears at lines 121, 129, 172 and 182 (the `spec-12/staged`, `… and 2 more — see`, `(no id)` and `see \"${dir}/decisions.md\"` tests). The run reported only the first failure in the file, so those lines are latent failures of the same class.\n\nThese are native filesystem paths printed as paste-ready commands, not display IDs. `windows-checkout-test-parity`'s \"Display IDs and native paths are two contracts\" rule therefore puts the fix on the test side: build the expected value with `path.join` / `path.resolve`, the same way the code under test does. The producers are not normalized to `/`.\n\n## Deliverables\n\n1. `tests/bin-lib/console/cli.test.js`: rewrite the line-382 assertion so it holds on any separator. It must still pin the whole line, anchored at both ends: the `paths move when the run is archived; current paths:` prefix, the `console-residue.js` command and the `--run` value ending in the fixture run's basename. Either build the exact expected string from the plugin root (`path.resolve(__dirname, '..', '..', '..', 'plugin')`) and `fx.runDir` (already `realpathSync`ed by `mainCheckoutWithRun`), or keep a regex with `[\\\\/]` separator classes in place of every literal `/` and an escaped basename.\n2. `tests/bin-lib/console/residue-cli.test.js`: rewrite `MOVED` (line 160) so both tests that assert it (lines 169 and 179) match a native-separator stderr line. Keep the `pipelines` → `pipelines/archive` distinction and the `\\n$` end anchor.\n3. `tests/bin-lib/console/residue.test.js`: build every expected path at lines 108, 121, 129, 172 and 182 with `path.join(dir, ...)`, keeping exact `lines.includes` / `deepStrictEqual` matching. The `\"/p/bin/console-residue.js\"` pins at lines 111 and 150 stay literal: `formatResidueLines` concatenates `pluginRoot` with `/bin/...` and never joins it, so they already pass on Windows.\n4. Before opening the PR, re-run the separator-shape grep (template paths like `${dir}/...`, and the regex fragments `\"/.+/` and `.*/`) over the other suites that cover this feature: `tests/bin-lib/hooks/session-residue.test.js`, `tests/console-resolve-conformance.test.js`, `tests/hooks-session-start.test.js` and `tests/hooks-dispatcher.test.js`. It was clean at shaping time against `origin/main` `7852fd8bf`. Fix any new hit with the same move, and record the result in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/bin-lib/console/cli.test.js tests/bin-lib/console/residue-cli.test.js tests/bin-lib/console/residue.test.js` passes on macOS/Linux with no test skipped or removed.\n- [ ] The same three files pass on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's result for those three files. A non-main ref never files an issue (the filer's own header comment). If the dispatch cannot run, say so explicitly. Do not treat a `path.win32` simulation as a Windows run.\n- [ ] Each rewritten assertion still discriminates. Temporarily change the producer's output: drop `archive` from `archiveDir` in `console-residue.js`, change `staged` to `stage` in `residue.js`'s `itemLines`, and drop the `--run` value from `console-resolve.js:39`. The matching test must go red on Linux in each case. Restore the producer in the same command.\n- [ ] No production file under `plugin/` changes. The producers already emit native paths, which is the correct contract.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed three console-residue tests that failed on Windows because they expected forward-slash paths.\n\n## Technical Approach\n\nTest-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`. \"Display IDs and native paths are two contracts\" says to build the expected value with `path.join`/`path.resolve` when the code under test joins the path. Its Anti-Patterns row says not to expect a POSIX absolute literal where the code resolves the path. Prefer exact strings built from fixture paths over loosened regexes wherever the fixture knows the real path, as `residue.test.js` and `residue-cli.test.js`'s `--ack --run \"${fs.realpathSync(f.runDir)}\"` pin already do. Where a regex stays necessary (a temp root or a `mainCheckoutRoot`-derived prefix the test cannot predict), replace each literal `/` separator with `[\\\\/]` and pass interpolated path fragments through a regex escape.\n\n### Key Files\n\n- `tests/bin-lib/console/cli.test.js` — line 382's `paths move when the run is archived` regex made separator-agnostic\n- `tests/bin-lib/console/residue-cli.test.js` — `MOVED` regex (line 160) made separator-agnostic for both tests that assert it\n- `tests/bin-lib/console/residue.test.js` — expected `cat`/`see` paths at lines 108, 121, 129, 172 and 182 built with `path.join`\n- `plugin/bin/console-resolve.js` — read-only reference: `needsAHumanBlock` (line 39) is the producer of the cli.test.js line\n- `plugin/bin/console-residue.js` — read-only reference: the pre-archive `has moved to` stderr producer\n- `plugin/bin/lib/console/residue.js` — read-only reference: `itemLines`/`formatResidueLines` path producers\n\n## Gotchas\n\n- Do not \"fix\" this by normalizing the producers to `/`. These are paths a human pastes into a shell, and native separators are correct there. `toPosix` is for display IDs only (the parity skill's Decision Framework row). The mixed `D:\\...\\plugin/bin/console-residue.js` that `${pluginRoot}/bin/...` produces on Windows is valid for `node` and is out of scope here.\n- On macOS, `os.tmpdir()` sits behind a `/var` → `/private/var` symlink. `cli.test.js`'s fixture already `realpathSync`s its root, but `residue-cli.test.js`'s second `MOVED` test derives `mainRoot` from cwd via `mainCheckoutRoot`, so an exact-string pin there must use the same resolved form or stay a separator-agnostic regex.\n- On `windows-latest`, the checkout is on `D:` and `os.tmpdir()` is on `C:` (the parity skill's real-runner section). Any expected prefix must come from the fixture's own paths, never from a hard-coded drive or root.\n- This is one of several open `Windows regression:` records (#3506, #3507, #3509, #3517, #3518, #3523, #3440, #3429), each for a different commit and different files. Keep this record to the three console-residue suites and their sibling greps.\n\n## Original request\n\nWindows regression: 3 test file(s) newly failing after 2a0b7f65a\n\nThe post-merge Windows check failed on commit 2a0b7f65af882264c89f61b66fe8337eb20c6394 (compared against 090359172).\n\n**Merged PR:** #3434 (https://github.com/thn-inc/claude-tweaks/pull/3434)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39101872855\n\n### Newly failing test files\n- `tests/bin-lib/console/cli.test.js`\n- `tests/bin-lib/console/residue-cli.test.js`\n- `tests/bin-lib/console/residue.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/console/cli.test.js`\n\n```\nnot ok 1201 - unattended: an unmapped-prefix item and a contested item print a Needs a human block naming both (\\#3370)\n  ---\n  duration_ms: 181.9307\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\console\\\\cli.test.js:372:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    The input did not match the regular expression /^  paths move when the run is archived; current paths: node \"\\/.+\\/bin\\/console-residue\\.js\" --run \"\\/.+\\/2026-09-06T000000-record-7\"$/. Input:\n    \n    '  paths move when the run is archived; current paths: node \"D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\plugin/bin/console-residue.js\" --run \"D:\\\\a\\\\_temp\\\\console-resolve-cli-deMYid\\\\.claude-tweaks\\\\pipelines\\\\2026-09-06T000000-record-7\"'\n    \n  code: 'ERR_ASSERTION'\n```\n\n#### `tests/bin-lib/console/residue-cli.test.js`\n\n```\nnot ok 1216 - --run given the pre-archive path prints the archived copy's residue with one stderr note\n  ---\n  duration_ms: 2.1589\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\console\\\\residue-cli.test.js:162:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    The input did not match the regular expression /^console-residue\\.js: .*\\/pipelines\\/2026-10-16T210949-spec-2821 has moved to .*\\/pipelines\\/archive\\/2026-10-16T210949-spec-2821 — using the archived copy\\n$/. Input:\n    \n    'console-residue.js: D:\\\\a\\\\_temp\\\\rescli-W0DNlt\\\\main\\\\.claude-tweaks\\\\pipelines\\\\2026-10-16T210949-spec-2821 has moved to D:\\\\a\\\\_temp\\\\rescli-W0DNlt\\\\main\\\\.claude-tweaks\\\\pipelines\\\\archive\\\\2026-10-16T210949-spec-2821 — using the archived copy\\n'\n    \n  code: 'ERR_ASSERTION'\n```\n\n#### `tests/bin-lib/console/residue.test.js`\n\n```\nnot ok 1232 - formatResidueLines names every item, cats only existing staged files, ends with the ack command\n  ---\n  duration_ms: 6.734\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\console\\\\residue.test.js:99:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    The expression evaluated to a falsy value:\n    \n      assert.ok(lines.includes(`    cat \"${dir}/staged/review-13-record.md\"`))\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T06:01:34Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3505,
-        "state": "OPEN",
-        "title": "Windows regression: 3 test file(s) newly failing after 2a0b7f65a",
-        "updatedAt": "2026-10-18T19:46:01Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`.github/workflows/windows-regression.yml` flagged `tests/bin-lib/reconcile/pr-state.test.js` and `tests/bin-lib/reconcile/release-merged.test.js` after 5cf9073d3 (PR #3439, which shipped #3412). The production code is not at fault. Every failure in both files comes from how the tests fake `gh`, and the fake does not work on a Windows checkout.\n\nThe issue's two excerpts are misleading. The run's `verify-report` artifact (run 39101659988) shows that both quoted tests also fail at the base commit f49277005. They are `pr-state.test.js:35` (\"merged PR wins over other PRs for the same branch\") and `release-merged.test.js:242` (\"Phase 1.5 resolves prState via the pool…\"). The excerpt quotes only the first failure in each file, and the filer flagged the files because #3412 added new tests that fail for the same reason. Per-file counts, run in isolation:\n\n| File | Base f49277005 | HEAD 5cf9073d3 | Newly failing (all added by #3412) |\n|---|---|---|---|\n| `pr-state.test.js` | 20 of 38 fail | 22 of 40 fail | lines 529 and 542 (`request closingIssuesReferences…`) |\n| `release-merged.test.js` | 7 of 25 fail | 17 of 50 fail | line 381 (by-number fallback keeps the claim…), lines 938, 952, 965, 978, 993, 1004, 1017 (the `run3348Scenario` tests), and lines 1113, 1129 (the `runTwoCandidateScenario` tests) |\n\n(Line numbers are from `origin/main` 7852fd8bf. Neither file has changed since 5cf9073d3.)\n\nThere are two causes, both Windows-only:\n\n1. **A `#!/bin/sh` file named `gh` on PATH is never spawned.** `pr-state.js` calls `execFileSync('gh', …)` and `execFile('gh', …)` with no injection point. The tests put a script named `gh` (no extension) first on PATH: `installGhWrapper` at `pr-state.test.js:17`, plus `installArgvSpy` and `installArgvLoggingGhWrapper`, and inline `wrapperPath = path.join(wrapperDir, 'gh')` blocks in `release-merged.test.js`, including the shared `run3348Scenario` (line 869) and `runTwoCandidateScenario` (line 1035). On win32, Node looks up an extensionless command by appending `.com` and `.exe`, so the stub is skipped. Even if it were found, Windows cannot run a shell script directly. The tests then get a transport classification (`'gh-absent'`/`'network-failure'`) instead of the stub's JSON. That matches every error in the logs: `undefined !== 2`, `Cannot read properties of undefined (reading '0')`, and `{\"reason\":\"network-failure\"}` skips in `release-merged`.\n2. **POSIX literal `'/tmp'` used as `repoRoot`/cwd.** `pr-state.test.js` passes `'/tmp'` 61 times. On a Windows checkout `/tmp` resolves to `{drive}:\\tmp`, which does not exist. The by-number resolvers' #3029 guard (`classifyByNumberError` in `plugin/bin/lib/reconcile/pr-state.js`, around line 137) then reports `'invalid-arguments'`. So the three stub-free \"gh absent -> gh-absent\" tests (lines 300, 381, 489) fail with `+ 'invalid-arguments' - 'gh-absent'`.\n\nPrecedent: `tests/console-execute.test.js` (#3358) uses the same PATH-stub technique, cites `pr-state.test.js` as its source, and already skips those tests on win32 (`{ skip: process.platform === 'win32' }`, line 443 onward).\n\n**Related:** #2767, #3412, #3416, #3429, #3440, #3491, #3505, #3507, #3509, #3517, #3518, #3523\n\n## Deliverables\n\n1. In `tests/bin-lib/reconcile/pr-state.test.js`, replace the POSIX literal `'/tmp'` passed as `repoRoot` with a real directory (`os.tmpdir()`, held in one module-level constant). Leave the deliberately nonexistent paths alone: `'/definitely/not/here'` and `'/tmp/definitely-not-a-repo-xyz'`.\n2. In both files, skip every test that depends on a `gh` stub on PATH when running on win32, with a stated reason. Use one per-file constant, for example `const PATH_STUB_SKIP = process.platform === 'win32' && 'win32: execFileSync(\"gh\") never spawns a #!/bin/sh stub named gh on PATH'`. This covers the tests that call `installGhWrapper` / `installArgvSpy` / `installArgvLoggingGhWrapper`, the inline wrapper blocks, and every test that runs through `run3348Scenario` or `runTwoCandidateScenario`. That includes the three `pr-state` guard tests that install a spy only to assert `gh` was never called (current lines 410, 421, 455). They pass on win32 today, but vacuously, because there the spy can never observe a call. Tests that install no stub keep running on win32: the pure `decideRelease` / `prClosesIssue` / `shouldSkipClaimRead` tests, the injected-runner `resolvePrStatesBulk` tests, the falsy-number short-circuit test, and the PATH-emptied gh-absent tests.\n\n## Acceptance Criteria\n\n1. `pr-state.test.js` contains no `'/tmp'` argument except inside `'/tmp/definitely-not-a-repo-xyz'`, and `grep -c \"os.tmpdir()\" tests/bin-lib/reconcile/pr-state.test.js` is at least its previous count plus one (the new constant).\n2. Every `test(` in either file whose body, or a helper it calls, writes a `gh` file into a PATH-prepended directory carries the per-file skip constant in its options. Every test that writes no stub does not carry it.\n3. On POSIX, `node --test tests/bin-lib/reconcile/pr-state.test.js tests/bin-lib/reconcile/release-merged.test.js` passes with zero skipped tests. Quote the raw `ℹ tests` / `ℹ pass` / `ℹ skipped` lines.\n4. On the next `windows-latest` run of `.github/workflows/windows-regression.yml` after merge, neither file appears in `baselineAdjudicated.failingFiles` of the run's `verify-report.json` artifact. Each file's log in `verify-logs/` shows `# fail 0`, the stub-dependent tests are reported as skipped with the stated reason, and the three gh-absent by-number tests (current lines 300, 381, 489) pass rather than skip.\n5. `npm test` passes on the ubuntu CI gate.\n\n## Release Note\n\nFixed two reconciler test suites that failed only on Windows checkouts, with no change to plugin behavior.\n\n## Technical Approach\n\n- **Skip, not a production seam.** Rejected alternative: add an injectable runner to `pr-state.js`'s `resolvePrState*` functions (the `gh-api-module-pattern` seam), so the tests can stop faking `gh` through PATH. That would change a production module that `release-merged.js`, `archive-merged.js`, `reap-merged.js` and others depend on, purely for a test platform. The resolver logic is platform-neutral, and the POSIX run covers it. This matches #3429's ruling and the `windows-checkout-test-parity` skill: behavior only one platform can produce gets a `skip` with a stated reason. `tests/console-execute.test.js` already applies exactly this skip to the same stub technique.\n- **`'/tmp'` -> `os.tmpdir()`.** This is the parity skill's \"POSIX absolute literal\" anti-pattern. A real directory lets the gh-absent tests reach their real ENOENT-for-gh branch on win32 instead of the #3029 nonexistent-directory branch. It also keeps the by-number stub tests honest on POSIX.\n- Apply the skip per test (`test(name, { skip: PATH_STUB_SKIP }, fn)`), not by skipping the whole file. Each file has stub-free tests that should keep running on Windows.\n\n### Key Files\n\n- `tests/bin-lib/reconcile/pr-state.test.js`: add `os.tmpdir()` repoRoot constant replacing `'/tmp'`, and `PATH_STUB_SKIP` on the 22 stub-installing tests\n- `tests/bin-lib/reconcile/release-merged.test.js`: add `PATH_STUB_SKIP` on the 17 stub-installing tests (lines 242–713 inline wrappers, 381, the `run3348Scenario` and `runTwoCandidateScenario` callers)\n- `plugin/bin/lib/reconcile/pr-state.js`: read-only reference (`execFileSync('gh')` call sites, `byNumberArgsValid`, `classifyByNumberError`). No change\n- `tests/console-execute.test.js`: read-only reference (existing win32 skip on the same stub technique)\n\n## Gotchas\n\n- The base `windows-latest` run of these two files also fails at f49277005. The run quotes pre-existing failures as its excerpts, so \"did my change fix the new tests\" cannot be read from the excerpt alone. Diff the per-test `not ok` set in the run's `verify-logs/` instead.\n- The counts come from a scripted pass over each `test(` body checked against the HEAD logs. In `pr-state`, 22 tests install a stub: 19 fail on win32 and 3 pass vacuously. The other 3 failures there are the stub-free `'/tmp'` tests. In `release-merged`, 17 tests install a stub and all 17 fail. Re-derive the set from the file at build time. #3416 or another merge may have added tests since.\n- At least 13 other files under `tests/` use the same `#!/bin/sh` `gh`/`git` PATH-stub technique. Those that fail on Windows are part of #2767's baseline set and out of scope here. Do not widen this into a shared helper without a separate record.\n- #3416 (and #3491's convention sweep) also touch `release-merged.test.js`. Any new PATH-stub test either of them adds must use the same skip constant. Whichever lands second rebases onto the other.\n- Never stub `process.platform` to exercise the skip. It is process-global (`windows-checkout-test-parity` Anti-Patterns).\n\n## Original request\n\nWindows regression: 2 test file(s) newly failing after 5cf9073d3\n\nThe post-merge Windows check failed on commit 5cf9073d3b43cab7a222a3d11e8f7b1adf55b4b0 (compared against f49277005).\n\n**Merged PR:** #3439 (https://github.com/thn-inc/claude-tweaks/pull/3439)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39101659988\n\n### Newly failing test files\n- `tests/bin-lib/reconcile/pr-state.test.js`\n- `tests/bin-lib/reconcile/release-merged.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/reconcile/pr-state.test.js`\n\n```\nnot ok 4875 - resolvePrState/resolvePrStateAsync: merged PR wins over other PRs for the same branch\n  ---\n  duration_ms: 8.9022\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\reconcile\\\\pr-state.test.js:35:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    undefined !== 2\n    \n  code: 'ERR_ASSERTION'\n```\n\n#### `tests/bin-lib/reconcile/release-merged.test.js`\n\n```\nnot ok 5028 - releaseMerged: Phase 1.5 resolves prState via the pool and reaches a merged-PR release decision\n  ---\n  duration_ms: 1761.2012\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\reconcile\\\\release-merged.test.js:242:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    the merged-PR evidence must reach decideRelease and release the claim\n    \n    0 !== 1\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-18T06:01:57Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3506,
-        "state": "OPEN",
-        "title": "Windows regression: 2 test file(s) newly failing after 5cf9073d3",
-        "updatedAt": "2026-10-18T19:46:05Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -7718,13 +7279,6 @@
   ],
   "grouping": "per-record",
   "bundles": [
-    {
-      "records": [
-        3440,
-        3505,
-        3506
-      ]
-    },
     {
       "records": [
         3507,
