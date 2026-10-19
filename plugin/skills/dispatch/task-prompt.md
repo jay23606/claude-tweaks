@@ -186,7 +186,9 @@ Bookends (every transport, #2912): before reporting `DONE`/`build-test-ok`, also
 Exit 0 is required. On exit 1, run each `missing` entry's `remedy` (substituting its `<...>` and
 `{...}` placeholders) -- committed spec, worktree stamp, draft PR under pr-first, canonical
 `Step 2.8: claimed #{n}` line, live claim -- then re-run it; if it still exits 1, report
-`OUTCOME: build-test-blocked` / `STATUS: BLOCKED`, never `DONE`.
+`OUTCOME: build-test-blocked` / `STATUS: BLOCKED`, never `DONE`. Exit 2 is a malformed invocation,
+not a missing bookend: correct the `--run`/`--targets` arguments and re-run, never report `DONE`
+on it.
 
 OUTPUT FORMAT (required) -- return ONLY these lines, no preamble:
 
