@@ -10,7 +10,7 @@
 
 **Spec:** `.claude-tweaks/pipelines/2026-10-19T200655-record-3350/work/3350-spec.md` (record #3350)
 
-Scope keywords: integration-model, MANIFESTO_LEVERS, isManifestoAutoBatch, readConfigIntegrationModel, resolveIntegrationModel
+Scope keywords: MANIFESTO_LEVERS, isManifestoAutoBatch, readConfigIntegrationModel, resolveIntegrationModel
 
 ## Global Constraints
 
@@ -54,7 +54,7 @@ In `cli.test.js` (reuse `fixture()`/`fakeDeps()` and `FULL_MANIFESTO_BATCH_AUTO`
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `node --test tests/bin-lib/set-config/write.test.js tests/bin-lib/set-config/cli.test.js`
-Expected: FAIL — `RUN_PINS` undefined; `integration-model` rejected as unknown-key.
+Expected: FAIL after Step 1 — `RUN_PINS` undefined; `integration-model` rejected as unknown-key.
 
 - [ ] **Step 3: Implement**
 
@@ -137,7 +137,7 @@ git commit -m "Write the integration-model pin from the Manifesto batch — refs
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `node --test tests/verify-run-bookends.test.js`
-Expected: FAIL — the two AC3.1 tests (no stderr line).
+Expected: FAIL after Step 1 — the two AC3.1 tests (no stderr line).
 
 - [ ] **Step 3: Implement** — in `run()`, after resolving `integrationModel`, when it is not `pr-first`/`local-merge` call `deps.stderr` once with `verify-run-bookends: degraded — {runDir}/config.yml carries no valid integration-model pin ({value|absent}); PR bookend not checked (_shared/integration-model.md's Run-scoped stability)\n`. Update the header comment's "Reads:" paragraph.
 
@@ -173,7 +173,7 @@ git commit -m "Print a degrade line when verify-run-bookends finds no integratio
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `node --test tests/bin-lib/dispatch/first-call-artifact-check.test.js`
-Expected: FAIL — the AC3.1 tests (`warn` never called).
+Expected: FAIL after Step 1 — the AC3.1 tests (`warn` never called).
 
 - [ ] **Step 3: Implement** — add `warn = (line) => process.stderr.write(line)` to the deps destructure; after `resolveIntegrationModel(configRaw)`, when the result is `null` call `warn('first-call-artifact-check: degraded — {configPath} carries no valid integration-model pin; PR-bookend check not run (_shared/integration-model.md\'s Run-scoped stability)\n')`. Update the `resolveIntegrationModel` comment ("skipped" → "skipped with a degrade line"). Add the two-call-gate.md sentence.
 
