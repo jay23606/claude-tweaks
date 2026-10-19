@@ -16,6 +16,15 @@ check" registration procedure, in the same spirit as `docs/hooks.md` for `plugin
   `index.js` before reordering anything.
 - **`ALL_CHECKS` is the requested-subset default, not the iteration order.** `index.js`'s own
   `DISPATCH_ORDER` constant is what's actually walked; `ALL_CHECKS` only lists membership.
+- **An explicit `--checks` subset runs without the wall-clock budget (#3026).** `budget.js`'s 18 s
+  ceiling bounds the SessionStart, background, and unscoped passes. The `hooks.js reconcile` CLI
+  passes `budgetMs: Infinity` into `reconcile()` whenever `--checks` names a subset, so a named
+  check such as `reap`, dispatched last, is never skipped as `budget-exceeded`. Runtime is then
+  bounded only by each check's own timeouts, so every scripted `--checks` caller (dispatch's
+  drain-termination call, `_shared/pr-first-merge-post-merge.md` Step 4.2) keeps an explicit
+  150000ms+ Bash timeout. A subset that names `archive` should name `mirror` too: without
+  `mirror`'s fetch no `origin/{integration}` refresh runs, and `archive` skips a PR GitHub merged
+  asynchronously as `local-behind-merge`.
 - **The fast/background split (#820 D8).** `bin/lib/hooks/session-start.js`'s `FAST_CHECKS`
   (`mirror`, `red-tip`, `console` — cheap read/detect, run inline on every SessionStart) and
   `bin/hooks.js`'s `BACKGROUND_CHECKS` (`release`, `archive`, `archive-branches`, `remote-prune`,
