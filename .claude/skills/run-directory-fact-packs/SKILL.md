@@ -76,6 +76,14 @@ Read them before writing a fourth.
   section). Treating the proposal as the number to verify and to book cost two fix waves on one
   confusion; this is the freshness question of the next section asked one level up — not "is the
   value stale?" but "whose value is it?".
+- **A list of ids a probe aggregates across several files is file-qualified at the aggregation.**
+  Row numbers, line numbers and item ids restart in each file, so a bare `["2","3","4","5"]` from
+  one file cannot be told from another file's rows with the same numbers. `wrap-up/pack.js`'s
+  `ledgerProbe` (#3327) merges every candidate ledger's `deferredUnstagedItems` and emits
+  `{file}#{id}`; the first version emitted bare ids, and the whole-branch review read a live pack
+  whose ids belonged to an unrelated ledger while a second counted file also had rows 2-5. Qualify
+  where the files are merged, keep the per-file parser returning bare ids, and pin it with a
+  two-file fixture whose ids collide.
 
 ## Every field owes a location, a freshness, and a phase — traced before it is written
 

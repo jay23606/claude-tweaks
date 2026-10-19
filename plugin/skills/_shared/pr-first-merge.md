@@ -24,6 +24,10 @@ file's own local-merge fallback section.
 `integration-model` resolves `pr-first` for this run. Absent either — fall to the citing file's
 local-merge section instead of this procedure.
 
+## Never rewrite the integration branch
+
+Never force-push to, `git reset`, `commit-tree`-and-push, or otherwise rewrite the published `{integration-branch}` on `origin`, on any outcome and for any reason, including repairing a botched merge message. The PR's recorded `mergeCommit`, merged-PR landed-proofs and release tooling key on the commit GitHub created, so a rewrite orphans them and re-authors that commit (#3325 → `9c9f5e722`, #3347). On a malformed merge message (stray text, duplicated body, missing `Fixes` line), leave the commit as landed, log per `_shared/auto-decision-log.md` `AUTO {HH:MM:SS} — Step 3: merge commit {sha} message malformed ({defect}); left as landed, integration branch not rewritten. Reversibility: n/a.` to `decisions.md`, and report `DONE_WITH_CONCERNS` naming the sha and defect for a human. This covers the published branch only: `local-merge`'s undo of an unpushed local merge, and a local ref realigned *to* origin (`_shared/git-discipline.md`), are not rewrites of it.
+
 ## Step 1: Acceptance labeling — before the merge, unconditionally
 
 Run `wrap-up/verification-brief.md` starting from its **Routing** section, exactly as the
