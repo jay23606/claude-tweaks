@@ -63,6 +63,13 @@ Three conventions follow from how this repo works, and all are visible below:
 * wrap-up-pack.js's ledger probe can match an unrelated… ([#2887](https://github.com/thn-inc/claude-tweaks/issues/2887)) ([6f46409](https://github.com/thn-inc/claude-tweaks/commit/6f46409012c4843a73f56ab6702dce383f74c122))
 * wrap-up: the ledger bulk-resolve fast path accepts… ([#3327](https://github.com/thn-inc/claude-tweaks/issues/3327)) ([eb2276d](https://github.com/thn-inc/claude-tweaks/commit/eb2276d1fb7e92830b303ab2739d25e80ebe53a4))
 
+### Highlights
+* Two-call dispatch runs no longer leave the first call without its spec commit or draft PR.
+* Pipeline merges can no longer rewrite the main branch, and a merge commit message can no longer be garbled by shell quoting.
+* Fixed wrap-up counting open items from other runs' ledger files as if they belonged to the current run.
+* Wrap-up no longer lets a "deferred" ledger item close without a staged follow-up.
+* Fixed two test suites that failed only on Windows checkouts, with no change to plugin behavior.
+
 ## [6.147.0](https://github.com/thn-inc/claude-tweaks/compare/v6.146.0...v6.147.0) (2026-10-19)
 
 
