@@ -18,12 +18,12 @@
 // in between; `lastEditedAt` alone would drift forward on a later re-edit of the
 // comment and hide them the same way, so neither is used by itself. A same-day change
 // before the resolution re-asks once (start of day is earlier than the real instant).
-// Change evidence is the issue `lastEditedAt` (body edits) and
-// LABELED/UNLABELED timeline events; `needs:decision` events are the resolver's own
-// bookkeeping and are not changes. A timeline event whose `createdAt` does not parse
-// is missing evidence, so the evaluator fails closed on it. `gh issue view --json` exposes neither field, hence GraphQL, and the
-// fetcher has no MCP path (`backlog/mcp-transport.md` covers no needs-decision read):
-// a gh-absent caller takes its fail-closed "Query failed" bullet.
+// Change evidence is the issue `lastEditedAt` (body edits) and LABELED/UNLABELED
+// timeline events; `needs:decision` events are the resolver's own bookkeeping and are
+// not changes. A timeline event whose `createdAt` does not parse is missing evidence,
+// so the evaluator fails closed on it. `gh issue view --json` exposes neither field,
+// hence GraphQL, and the fetcher has no MCP path (`backlog/mcp-transport.md` covers no
+// needs-decision read): a gh-absent caller takes its fail-closed "Query failed" bullet.
 
 const { execFileSync } = require('child_process');
 const { isTrustedComment, untrustedSkipNote } = require('./comment-trust');
@@ -53,6 +53,17 @@ function timeOf(iso) {
 function isRealDate(date) {
   const ms = timeOf(`${date}T00:00:00Z`);
   return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === date;
+}
+
+// Evidence the change comparison needs: both timestamps usable and the Resolved date a
+// real calendar date. bodyLastEditedAt is string | null (never edited) | undefined (missing).
+function isEvidenceUsable({ bodyLastEditedAt, labelEvents, date }) {
+  if (bodyLastEditedAt === undefined || !Array.isArray(labelEvents)) return false;
+  if (bodyLastEditedAt !== null && (typeof bodyLastEditedAt !== 'string' || Number.isNaN(timeOf(bodyLastEditedAt)))) {
+    return false;
+  }
+  if (labelEvents.some((event) => Number.isNaN(timeOf(event.createdAt)))) return false;
+  return isRealDate(date);
 }
 
 // comments: `gh`/GraphQL-shaped comment nodes; labelEvents: {action, label, createdAt}.
@@ -94,10 +105,7 @@ function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEven
   if (!SUPPRESSING_CHOICES.includes(resolved.choice)) {
     return { ...base, reason: 'choice-not-suppressing' };
   }
-  if (bodyLastEditedAt === undefined || !Array.isArray(labelEvents)
-    || (bodyLastEditedAt !== null && (typeof bodyLastEditedAt !== 'string' || Number.isNaN(timeOf(bodyLastEditedAt))))
-    || labelEvents.some((event) => Number.isNaN(timeOf(event.createdAt)))
-    || !isRealDate(resolved.date)) {
+  if (!isEvidenceUsable({ bodyLastEditedAt, labelEvents, date: resolved.date })) {
     return { ...base, reason: 'evidence-unavailable' };
   }
 

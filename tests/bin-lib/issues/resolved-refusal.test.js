@@ -26,6 +26,12 @@ function fixture(overrides = {}) {
   };
 }
 
+// fixture() with the decision comment's fields overridden (and optional top-level overrides).
+function fixtureWithComment(commentOverrides, overrides = {}) {
+  const base = fixture();
+  return { ...base, comments: [{ ...base.comments[0], ...commentOverrides }], ...overrides };
+}
+
 test('AC1.1: resolved keep + unchanged body renders the annotation and suppresses', () => {
   const result = evaluateResolvedRefusal(fixture());
   assert.strictEqual(result.suppress, true);
@@ -72,7 +78,7 @@ test('needs:decision churn after the resolution is not a change', () => {
 
 test('build it myself also suppresses', () => {
   const body = '**Resolved:** build it myself — 2026-10-19\n\n<!-- needs-decision: backlog-refine -->';
-  const result = evaluateResolvedRefusal(fixture({ comments: [{ ...fixture().comments[0], body }] }));
+  const result = evaluateResolvedRefusal(fixtureWithComment({ body }));
   assert.strictEqual(result.suppress, true);
   assert.strictEqual(result.reason, 'unchanged');
   assert.strictEqual(result.choice, 'build it myself');
@@ -80,7 +86,7 @@ test('build it myself also suppresses', () => {
 
 test('grant anyway does not suppress (choice-not-suppressing)', () => {
   const body = '**Resolved:** grant anyway — 2026-10-19\n\n<!-- needs-decision: backlog-refine -->';
-  const result = evaluateResolvedRefusal(fixture({ comments: [{ ...fixture().comments[0], body }] }));
+  const result = evaluateResolvedRefusal(fixtureWithComment({ body }));
   assert.strictEqual(result.suppress, false);
   assert.strictEqual(result.reason, 'choice-not-suppressing');
   assert.strictEqual(result.annotation, null);
@@ -88,7 +94,7 @@ test('grant anyway does not suppress (choice-not-suppressing)', () => {
 
 test('backlog-grant unit comment counts the same as backlog-refine', () => {
   const body = '**Resolved:** keep — 2026-10-19\n\n<!-- needs-decision: backlog-grant -->';
-  const result = evaluateResolvedRefusal(fixture({ comments: [{ ...fixture().comments[0], body }] }));
+  const result = evaluateResolvedRefusal(fixtureWithComment({ body }));
   assert.strictEqual(result.suppress, true);
   assert.strictEqual(result.reason, 'unchanged');
 });
@@ -133,11 +139,10 @@ test('same-day body edit before the resolution re-opens (start-of-day resolvedAt
 });
 
 test('a body edit between the Resolved date and a later comment re-edit re-opens', () => {
-  const comment = { ...fixture().comments[0], lastEditedAt: '2026-10-25T08:00:00Z' };
-  const result = evaluateResolvedRefusal(fixture({
-    comments: [comment],
-    bodyLastEditedAt: '2026-10-21T09:00:00Z',
-  }));
+  const result = evaluateResolvedRefusal(fixtureWithComment(
+    { lastEditedAt: '2026-10-25T08:00:00Z' },
+    { bodyLastEditedAt: '2026-10-21T09:00:00Z' },
+  ));
   assert.strictEqual(result.resolvedAt, '2026-10-19T00:00:00Z');
   assert.strictEqual(result.suppress, false);
   assert.strictEqual(result.reason, 'changed-since-resolution');
@@ -147,11 +152,10 @@ test('a body edit between the Resolved date and a later comment re-edit re-opens
 test('east of UTC: a Resolved date past the real resolution instant does not hide a later label change', () => {
   // Resolved 22:30Z = 00:30 CEST, so the line is dated 2026-10-20; the comment's lastEditedAt
   // is the real resolution instant and the min picks it over start-of-day.
-  const comment = { ...fixture().comments[0], body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-10-20'), lastEditedAt: '2026-10-19T22:30:00Z' };
-  const result = evaluateResolvedRefusal(fixture({
-    comments: [comment],
-    labelEvents: [{ action: 'labeled', label: 'risk:high', createdAt: '2026-10-19T23:00:00Z' }],
-  }));
+  const result = evaluateResolvedRefusal(fixtureWithComment(
+    { body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-10-20'), lastEditedAt: '2026-10-19T22:30:00Z' },
+    { labelEvents: [{ action: 'labeled', label: 'risk:high', createdAt: '2026-10-19T23:00:00Z' }] },
+  ));
   assert.strictEqual(result.resolvedAt, '2026-10-19T22:30:00Z');
   assert.strictEqual(result.suppress, false);
   assert.strictEqual(result.reason, 'changed-since-resolution');
@@ -159,11 +163,10 @@ test('east of UTC: a Resolved date past the real resolution instant does not hid
 });
 
 test('a future-dated Resolved typo does not hide a later body edit', () => {
-  const comment = { ...fixture().comments[0], body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-12-19'), lastEditedAt: '2026-10-19T03:38:54Z' };
-  const result = evaluateResolvedRefusal(fixture({
-    comments: [comment],
-    bodyLastEditedAt: '2026-11-05T09:00:00Z',
-  }));
+  const result = evaluateResolvedRefusal(fixtureWithComment(
+    { body: RESOLVED_KEEP_BODY.replace('2026-10-19', '2026-12-19'), lastEditedAt: '2026-10-19T03:38:54Z' },
+    { bodyLastEditedAt: '2026-11-05T09:00:00Z' },
+  ));
   assert.strictEqual(result.resolvedAt, '2026-10-19T03:38:54Z');
   assert.strictEqual(result.suppress, false);
   assert.strictEqual(result.reason, 'changed-since-resolution');
@@ -177,7 +180,7 @@ test('a Resolved marker line that does not parse is resolved-unparseable, not la
     '**Resolved:** keep — 2026-10-19T03:38:54Z\n\n<!-- needs-decision: backlog-refine -->',
   ];
   for (const body of bodies) {
-    const result = evaluateResolvedRefusal(fixture({ comments: [{ ...fixture().comments[0], body }] }));
+    const result = evaluateResolvedRefusal(fixtureWithComment({ body }));
     assert.strictEqual(result.suppress, false, body);
     assert.strictEqual(result.reason, 'resolved-unparseable', body);
     assert.strictEqual(result.annotation, null, body);
@@ -187,8 +190,7 @@ test('a Resolved marker line that does not parse is resolved-unparseable, not la
 test('a non-round-tripping Resolved date is evidence-unavailable, not suppressed', () => {
   for (const date of ['2026-13-45', '2026-02-30']) {
     const body = `**Resolved:** keep — ${date}\n\n<!-- needs-decision: backlog-refine -->`;
-    const result = evaluateResolvedRefusal(fixture({
-      comments: [{ ...fixture().comments[0], body }],
+    const result = evaluateResolvedRefusal(fixtureWithComment({ body }, {
       bodyLastEditedAt: '2026-10-25T00:00:00Z',
       labelEvents: [{ action: 'labeled', label: 'risk:high', createdAt: '2026-10-26T00:00:00Z' }],
     }));
@@ -215,11 +217,10 @@ test('a label event with an unparseable createdAt is evidence-unavailable, not n
 });
 
 test('no comment lastEditedAt and an earlier body edit still suppresses', () => {
-  const comment = { ...fixture().comments[0], lastEditedAt: undefined };
-  const result = evaluateResolvedRefusal(fixture({
-    comments: [comment],
-    bodyLastEditedAt: '2026-10-18T09:00:00Z',
-  }));
+  const result = evaluateResolvedRefusal(fixtureWithComment(
+    { lastEditedAt: undefined },
+    { bodyLastEditedAt: '2026-10-18T09:00:00Z' },
+  ));
   assert.strictEqual(result.suppress, true);
   assert.strictEqual(result.reason, 'unchanged');
 });
