@@ -33,7 +33,7 @@ files:
 - **URL:** `/claude-tweaks:wrap-up` Section D (in the run's `review,polish,wrap-up` call)
 - **Action:** let wrap-up tear down the ephemeral server.
 - **Should feel:** clean. One server is stopped, and the port is free afterwards.
-- **Should understand:** Section D reads whatever `ephemeral-server.txt` currently names: the server started after the last rebuild, or nothing at all when no later step needed a browser. The record was deleted at the stop, so there is never a dead pid to kill. If a stop ever fails for real (for example, access denied), the review logs a `SKIP` line naming it rather than blocking the wave.
+- **Should understand:** Section D reads whatever `ephemeral-server.txt` currently names: the server started after the last rebuild, or nothing at all when no later step needed a browser. The record was deleted at the stop, so there is never a dead pid to kill. If a stop ever fails for real (for example, access denied), or the port is still held after the kill, the record is kept so Section D still sees the server, and the review logs a `SKIP` line naming the condition and notes that later browser results may reflect the replaced build, rather than blocking the wave. A record that cannot be parsed (fewer than four fields, a pid or port that is not a positive integer, no trailing `detached:` token) is left alone the same way: a `SKIP` line, no process signalled.
 - **Red flags:** a `next start` from before the fix wave is still listening after wrap-up. `decisions.md` shows a failed stop with no `SKIP` line.
 
 ## Origin
