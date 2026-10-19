@@ -96,8 +96,8 @@ acceptance-labeling check in `bin/lib/wrap-up/engine-verify.js` and `/claude-twe
 run-comment lookup in `demo/entry-paths.md` read `<!-- run-comment: brief:{n} -->` for the record
 `n` being read first, then fall back to the plain `<!-- run-comment: brief -->`. The fallback keeps
 single-spec runs, which still post the plain marker, and briefs posted before the qualified marker
-existed resolving as before. A sibling spec's `brief:{m}` never satisfies record `n`, so a shared PR
-cannot give one record another record's confirmation.
+existed resolving as before. A sibling spec's `brief:{m}` never satisfies record `n`; only the plain
+fallback, which a multi-spec run never writes, can be shared.
 
 ## Trusted authors
 

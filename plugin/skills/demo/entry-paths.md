@@ -217,8 +217,9 @@ has no PR and skips it.
    matching comment, and the skipped marker comment is named in its skip notice, one line above the
    verdict, the shape step 3 uses for a failed lookup):
    - **Try it** — `<!-- run-comment: try-it:{n} -->` (a multi-spec run), else
-     `<!-- run-comment: try-it -->`, else the `### Try it` section of the brief comment the Brief
-     bullet's read order finds.
+     `<!-- run-comment: try-it -->`, else the `### Try it` section of the
+     `<!-- run-comment: brief:{n} -->` comment (a multi-spec run, this record's own), else of the
+     `<!-- run-comment: brief -->` comment.
    - **Brief** (pointer case only) — `<!-- run-comment: brief:{n} -->` (a multi-spec run, this
      record's own), else `<!-- run-comment: brief -->` (single-spec, or a brief posted before
      #3333), that also carries `### Confirmed` — `engine-verify.js`'s own read order and test; a

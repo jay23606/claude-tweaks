@@ -325,7 +325,9 @@ test("AC2.1: demo's PR lookup reads the record's own brief:{n} before the plain 
   const plain = brief.indexOf('<!-- run-comment: brief -->');
   assert.ok(q >= 0 && plain > q, 'Brief bullet names brief:{n} first, plain brief second');
   const tryIt = DEMO_LOOKUP.slice(DEMO_LOOKUP.indexOf('- **Try it**'), DEMO_LOOKUP.indexOf('- **Brief**'));
-  assert.match(tryIt, /brief/, "Try it's brief fallback uses the same read order");
+  const tq = tryIt.indexOf('<!-- run-comment: brief:{n} -->');
+  const tp = tryIt.indexOf('<!-- run-comment: brief -->');
+  assert.ok(tq >= 0 && tp > tq, 'Try it bullet itself names brief:{n} before the plain brief marker');
   assert.doesNotMatch(tryIt, /else the `<!-- run-comment: brief -->` comment's/, 'Try it no longer names only the bare brief marker');
 });
 

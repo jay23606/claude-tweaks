@@ -950,7 +950,7 @@ registerCheck('acceptance-labeling', ({ runDir, repoRoot, deps, cwd, expectation
           if (ignored.length) passedNotes.push({ target, ignored });
           continue;
         }
-        fail(`#${target}: pointer to PR #${prNumber} found but no confirmed Verification Brief on PR #${prNumber}`);
+        fail(`#${target}: pointer to PR #${prNumber} found but no confirmed Verification Brief on PR #${prNumber} (looked for brief:${target}, then brief)`);
         continue;
       }
     }

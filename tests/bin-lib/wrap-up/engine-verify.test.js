@@ -2040,6 +2040,7 @@ test("AC1.1: a sibling spec's brief:{m} does not satisfy #n", () => {
     prComments: [901, 9000].map((m) => ({ body: QUALIFIED_BRIEF(m), url: `https://x/pr${m}`, author: { login: 'bot' }, authorAssociation: 'MEMBER' })) });
   assert.strictEqual(row.result, 'fail');
   assert.match(row.detail, /pointer to PR #1199 found but no confirmed Verification Brief on PR #1199/);
+  assert.match(row.detail, /looked for brief:900, then brief/);
 });
 
 test('AC3.1: acceptance-labeling falls back to the plain brief marker (single-spec / pre-change brief)', () => {
