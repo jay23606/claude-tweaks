@@ -46,4 +46,4 @@ files:
 
 ## Origin
 
-Record #3316 — post-merge Windows regression guard (PR #3390). Record #3404 — excerpts now read TAP structure from verify's shared `tapLines` classifier (`plugin/bin/lib/verify/extract.js`) instead of the filer's own boundary rules.
+Record #3316 — post-merge Windows regression guard (PR #3390). Record #3404 — excerpts now read TAP structure from verify's shared `tapLines` classifier (`plugin/bin/lib/verify/extract.js`) instead of the filer's own boundary rules. Record #3568 — the base step names its third source, the merge-base with `origin/main` for a `workflow_dispatch` run (the branch-side flow is `prove-a-windows-fix-on-a-branch-before-merge.md`).
