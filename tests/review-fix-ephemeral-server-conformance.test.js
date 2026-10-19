@@ -64,10 +64,17 @@ function assertRouting(text) {
     "Step 6.7's routing wave",
     'Re-read the file at every point: a server stopped earlier stays stopped',
     "is stopped again before Step 6.7's wave",
+    // an unparseable record is unprovable: leave it alone, never kill on a malformed pid/port
+    'a pid or port that is not a positive integer',
+    'is unprovable: log `SKIP`',
+    'leave the file and every process alone',
     // stop failure degrades, never blocks
     'log `SKIP` via `log-decision.js`',
     "`_shared/auto-decision-log.md`'s degrade-trace rule",
     'a degrade, never a block',
+    'finds the port still held after the kill',
+    "keep the record, so wrap-up's Section D still sees it",
+    'later browser results may reflect the replaced build',
     // lazy restart: the coordination itself starts nothing; the next browser step's detection does
     'Do not start a server in this coordination',
     'resolves its URL through `dev-url-detection.md`',
@@ -139,7 +146,7 @@ test('AC1.1: code-mode-steps.md applies the coordination stop before Step 4 refl
   assert.ok(simplifyLine.includes('step 1 of `step3-routing.md`\'s Fix-wave server coordination'), 'Step 5 must apply coordination step 1 before simplify');
   // Each sentence sits in its own step's section (Step 4 before Step 5 before Step 6.7).
   assert.ok(cms.indexOf(reflectLine) > cms.indexOf('## Step 4:') && cms.indexOf(reflectLine) < cms.indexOf('## Step 5:'));
-  assert.ok(cms.indexOf(simplifyLine) > cms.indexOf('## Step 5:'));
+  assert.ok(cms.indexOf(simplifyLine) > cms.indexOf('## Step 5:') && cms.indexOf(simplifyLine) < cms.indexOf('## Step 6:'));
   const s67 = section(cms, '## Step 6.7');
   const s67Line = s67.split('\n').find((l) => l.includes('Fix-wave server coordination'));
   assert.ok(s67Line, 'Step 6.7 must cite the coordination');
@@ -153,9 +160,10 @@ test('AC1.2: dev-url-detection.md Cleanup names the rebuild exception and points
   assert.ok(cleanup.includes('rebuilds the served app'));
   assert.ok(cleanup.includes('review/step3-routing.md'));
   assert.ok(cleanup.includes('the next browser step restarts it through this procedure'));
+  // The review -> dev-url-detection edge is stated once in docs/skill-graph.md (checked below); the
+  // header and consumer list keep their original transitive-only wording, which is still true.
   const header = dud.slice(0, dud.indexOf('## When This Runs'));
-  assert.ok(header.includes('does not call this procedure directly, but its Fix-wave server coordination'), 'the header must no longer claim review never touches this procedure');
-  assert.ok(!dud.includes('it does not call this procedure directly.)'));
+  assert.ok(!header.includes('Fix-wave server coordination'), 'the header must not restate the graph edge');
 });
 
 test('docs/skill-graph.md ## review records the coordination edges', () => {
@@ -184,7 +192,7 @@ test('go-red: removing the coordination section fails the routing assertions', (
   const start = text.indexOf('## Fix-wave server coordination');
   const end = text.indexOf('## Parallel fix dispatch');
   assert.ok(start > -1 && end > start);
-  assert.throws(() => assertRouting(text.slice(0, start) + text.slice(end)));
+  assert.throws(() => assertRouting(text.slice(0, start) + text.slice(end)), assert.AssertionError);
 });
 
 test('go-red: swapping the stop and restart labels fails the routing assertions', () => {
@@ -194,7 +202,7 @@ test('go-red: swapping the stop and restart labels fails the routing assertions'
     .replace(RESTART, STOP)
     .replace('@@PLACEHOLDER@@', RESTART);
   assert.notEqual(swapped, text);
-  assert.throws(() => assertRouting(swapped));
+  assert.throws(() => assertRouting(swapped), assert.AssertionError);
 });
 
 test('go-red: removing the FIX AGENT line fails the routing assertions', () => {
@@ -204,7 +212,7 @@ test('go-red: removing the FIX AGENT line fails the routing assertions', () => {
     .filter((l) => !l.includes('FIX AGENT:'))
     .join('\n');
   assert.notEqual(mutated, text);
-  assert.throws(() => assertRouting(mutated));
+  assert.throws(() => assertRouting(mutated), assert.AssertionError);
 });
 
 test('go-red: reverting to a third-field worktree-root parse fails the routing assertions', () => {
@@ -214,12 +222,27 @@ test('go-red: reverting to a third-field worktree-root parse fails the routing a
     'third field (worktree root)',
   );
   assert.notEqual(mutated, text);
-  assert.throws(() => assertRouting(mutated));
+  assert.throws(() => assertRouting(mutated), assert.AssertionError);
+});
+
+test('go-red: dropping the unparseable-record guard fails the routing assertions', () => {
+  const text = routing();
+  const mutated = text.replace(' is unprovable: log `SKIP`', ' is fine: log `SKIP`');
+  assert.notEqual(mutated, text);
+  assert.throws(() => assertRouting(mutated), assert.AssertionError);
+});
+
+test('go-red: an eager start added beside the lazy-restart sentence trips the negative guard', () => {
+  const text = routing();
+  const sentence = 'Do not start a server in this coordination';
+  const mutated = text.replace(sentence, `${sentence}. Then start a fresh one through dev-url-detection.md`);
+  assert.notEqual(mutated, text);
+  assert.throws(() => assertRouting(mutated), /must not itself start a server/);
 });
 
 test('go-red: making the coordination start a server itself fails the routing assertions', () => {
   const text = routing();
   const mutated = text.replace('Do not start a server in this coordination', 'Start a fresh one through dev-url-detection.md');
   assert.notEqual(mutated, text);
-  assert.throws(() => assertRouting(mutated));
+  assert.throws(() => assertRouting(mutated), assert.AssertionError);
 });
