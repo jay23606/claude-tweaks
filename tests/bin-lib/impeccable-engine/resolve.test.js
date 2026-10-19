@@ -114,11 +114,102 @@ test('AC4b: malformed installed_plugins.json -> not-installed with the /plugin i
   assert.ok(out.detail && out.detail.includes('malformed'));
 });
 
-test('installed_plugins.json missing entirely -> not-installed (exists() false for that one path)', () => {
-  const deps = fakeDeps({ exists: () => false });
+test('installed_plugins.json missing entirely -> not-installed, detail names the missing file', () => {
+  const deps = fakeDeps({
+    exists: () => true,
+    readFile: () => { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); },
+  });
   const out = resolve({ projectPath: '/repo' }, deps);
   assert.strictEqual(out.ok, false);
   assert.strictEqual(out.reason, 'not-installed');
+  assert.ok(out.detail.startsWith('not found: '));
+});
+
+// Real temp dirs are realpathed first: on macOS os.tmpdir() sits under the
+// /var -> /private/var symlink, and the resolver compares canonical paths.
+const realTmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'impeccable-resolve-')));
+const readReal = (p) => fs.readFileSync(p, 'utf8');
+const pluginsJson = (entries) => JSON.stringify({ version: 2, plugins: { 'impeccable@impeccable': entries } });
+
+test('AC1.1/AC1.2: deps.env.CLAUDE_CONFIG_DIR points at a config dir holding an impeccable user entry; homedir() has no plugins file -> resolve() selects it', () => {
+  const cfg = realTmp();
+  const emptyHome = realTmp();
+  try {
+    fs.mkdirSync(path.join(cfg, 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(cfg, 'plugins', 'installed_plugins.json'),
+      pluginsJson([{ scope: 'user', installPath: '/fake/cfg/install', version: '4.4.0' }]));
+    const deps = {
+      ...fakeDeps(),
+      readFile: readReal,
+      homedir: () => emptyHome,
+      env: { CLAUDE_CONFIG_DIR: cfg },
+    };
+    const out = resolve({}, deps);
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.pluginRoot, '/fake/cfg/install');
+  } finally {
+    fs.rmSync(cfg, { recursive: true, force: true });
+    fs.rmSync(emptyHome, { recursive: true, force: true });
+  }
+});
+
+test('AC2.1/AC2.2: deps.env omitted and homedir() holds the plugins file -> resolve() finds the entry, even with CLAUDE_CONFIG_DIR set in process.env', () => {
+  const home = realTmp();
+  const priorConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    fs.mkdirSync(path.join(home, '.claude', 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude', 'plugins', 'installed_plugins.json'),
+      pluginsJson([{ scope: 'user', installPath: '/fake/home/install', version: '4.4.0' }]));
+    process.env.CLAUDE_CONFIG_DIR = path.join(home, 'no-such-config-dir');
+    const deps = { ...fakeDeps(), readFile: readReal, homedir: () => home };
+    assert.ok(!('env' in deps));
+    const out = resolve({}, deps);
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.pluginRoot, '/fake/home/install');
+  } finally {
+    if (priorConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = priorConfigDir;
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('AC3.1/AC3.2: a mis-cased projectPath resolves the project-scope entry through defaultDeps().realpath', (t) => {
+  const root = realTmp();
+  try {
+    const proj = path.join(root, 'proj');
+    fs.mkdirSync(proj);
+    const misCased = proj.toUpperCase();
+    if (misCased === proj || !fs.existsSync(misCased)) {
+      t.skip('volume is case-sensitive: mis-cased path does not exist');
+      return;
+    }
+    const entries = [
+      { scope: 'project', projectPath: proj, installPath: '/p', version: '4.5.0' },
+      { scope: 'user', installPath: '/u', version: '4.4.0' },
+    ];
+    const deps = { ...fakeDeps({ entries }), realpath: defaultDeps().realpath };
+    const out = resolve({ projectPath: misCased }, deps);
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.pluginRoot, '/p');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('AC6.1: a home-directory project entry is skipped (excludeHome) -> the user entry wins', () => {
+  const entries = [
+    { scope: 'project', projectPath: '/fake-home', installPath: '/path/home', version: '4.5.0' },
+    { scope: 'user', installPath: '/path/user', version: '4.4.0' },
+  ];
+  const out = resolve({ projectPath: '/fake-home/work' }, fakeDeps({ entries }));
+  assert.strictEqual(out.ok, true);
+  assert.strictEqual(out.pluginRoot, '/path/user');
+});
+
+test('defaultDeps() injects the native realpath and process.env', () => {
+  const deps = defaultDeps();
+  assert.strictEqual(deps.realpath, fs.realpathSync.native);
+  assert.strictEqual(deps.env, process.env);
 });
 
 test('every spawn resolve() makes carries IMPECCABLE_LAUNCHER_PROBE=1 in its environment', () => {
