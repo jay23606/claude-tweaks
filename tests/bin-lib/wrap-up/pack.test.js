@@ -861,7 +861,7 @@ test('AC2.1 AC2.2: parseLedger reports exactly the build rows lacking a valid De
 test('#3004 review focus: blocked reason ok, bad/duplicate reason flagged, other phases and staged rulings exempt', () => {
   const text = [
     '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
-    '| 1 | build | blocked on API | open | Defer-reason: blocked-dependency — unblocks when #12 ships |',
+    '| 1 | build | blocked on API | open | Defer-reason: blocked-dependency — unblocks when the API ships |',
     '| 2 | build | d | deferred | Defer-reason: minor |',
     '| 3 | build | e | Deferred | Defer-reason: tangential; Defer-reason: genuinely-larger |',
     '| 4 | build | SDD ruling — x: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |',
