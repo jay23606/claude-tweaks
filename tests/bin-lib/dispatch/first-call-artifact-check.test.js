@@ -233,6 +233,11 @@ function missingConfigRun(runState, deps, issueNumbers = [2806]) {
   return checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug: REPO_SLUG }, { now: NOW, ...deps });
 }
 
+function assertMissingConfig(result, repairable) {
+  assert.equal(result.reason, 'missing-config');
+  assert.equal(result.repairable, repairable);
+}
+
 test('AC1.1: missing-config + live matching claim + pr-first PR recorded and pushed -> repairable: true', () => {
   const root = repoRootWithPolicy('integration-model: pr-first\n');
   const result = missingConfigRun(PR_RECORDED, {
@@ -253,8 +258,7 @@ test('AC2.1: missing-config + claim absent, stale, or held under another runId -
       ghApi: fakeGhApi({ 2806: claim }),
       gitRunner: fakeRepoGit(root, ['worktree-2806']),
     });
-    assert.equal(r.reason, 'missing-config');
-    assert.equal(r.repairable, false);
+    assertMissingConfig(r, false);
   }
 });
 
@@ -270,8 +274,7 @@ test('AC3.1: missing-config under pr-first with PR unrecorded, branch unrecorded
       ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
       gitRunner: fakeRepoGit(root, pushed),
     });
-    assert.equal(r.reason, 'missing-config');
-    assert.equal(r.repairable, false);
+    assertMissingConfig(r, false);
   }
 });
 
@@ -279,13 +282,11 @@ test('AC4.1: integration-model read fails (invalid value, policy.yml absent, rea
   const ghApi = fakeGhApi({ 2806: liveClaimContent(RUN_ID) });
   const bogusRoot = repoRootWithPolicy('integration-model: bogus\n');
   const invalid = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(bogusRoot, ['worktree-2806']) });
-  assert.equal(invalid.reason, 'missing-config');
-  assert.equal(invalid.repairable, false);
+  assertMissingConfig(invalid, false);
 
   const noPolicyRoot = repoRootWithPolicy(null);
   const absent = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(noPolicyRoot, ['worktree-2806']) });
-  assert.equal(absent.reason, 'missing-config');
-  assert.equal(absent.repairable, false);
+  assertMissingConfig(absent, false);
 
   const okRoot = repoRootWithPolicy('integration-model: pr-first\n');
   const throwingRead = (p) => {
@@ -295,8 +296,7 @@ test('AC4.1: integration-model read fails (invalid value, policy.yml absent, rea
   const thrown = missingConfigRun(PR_RECORDED, {
     ghApi, gitRunner: fakeRepoGit(okRoot, ['worktree-2806']), readFile: throwingRead,
   });
-  assert.equal(thrown.reason, 'missing-config');
-  assert.equal(thrown.repairable, false);
+  assertMissingConfig(thrown, false);
 });
 
 test('AC5.1: missing-config under local-merge with a live matching claim -> repairable: true from the claim checks alone', () => {
@@ -306,8 +306,7 @@ test('AC5.1: missing-config under local-merge with a live matching claim -> repa
     ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
     gitRunner: fakeRepoGit(root, [], calls),
   });
-  assert.equal(result.reason, 'missing-config');
-  assert.equal(result.repairable, true);
+  assertMissingConfig(result, true);
   assert.equal(calls.some((a) => a[0] === 'ls-remote'), false);
 });
 
@@ -316,16 +315,13 @@ test('Review focus: policy.yml without an integration-model key requires pr-firs
   const ghApi = fakeGhApi({ 2806: liveClaimContent(RUN_ID) });
 
   const recordedAndPushed = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(root, ['worktree-2806']) });
-  assert.equal(recordedAndPushed.reason, 'missing-config');
-  assert.equal(recordedAndPushed.repairable, true);
+  assertMissingConfig(recordedAndPushed, true);
 
   const noPr = missingConfigRun({}, { ghApi, gitRunner: fakeRepoGit(root, ['worktree-2806']) });
-  assert.equal(noPr.reason, 'missing-config');
-  assert.equal(noPr.repairable, false);
+  assertMissingConfig(noPr, false);
 
   const unpushed = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(root, []) });
-  assert.equal(unpushed.reason, 'missing-config');
-  assert.equal(unpushed.repairable, false);
+  assertMissingConfig(unpushed, false);
 });
 
 test('Review focus: one member live, another absent -> repairable: false', () => {
@@ -334,8 +330,7 @@ test('Review focus: one member live, another absent -> repairable: false', () =>
     ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID), 2807: null }),
     gitRunner: fakeRepoGit(root, []),
   }, [2806, 2807]);
-  assert.equal(result.reason, 'missing-config');
-  assert.equal(result.repairable, false);
+  assertMissingConfig(result, false);
 });
 
 test('AC6.2: every reason other than missing-config, and ok: true, carries no repairable key', () => {
