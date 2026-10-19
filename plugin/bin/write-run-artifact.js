@@ -6,7 +6,8 @@
 // bin/set-config.js (config.yml), bin/set-verify-expectations.js
 // (verify-expectations.json), this (the names in
 // bin/lib/run-artifact/write.js's ARTIFACT_NAMES — today
-// sdd-dispatch-sample.txt, /build's AC-forwarding sample).
+// sdd-dispatch-sample.txt, /build's AC-forwarding sample, and
+// sdd-final-review.md, the SDD final review).
 //   node bin/write-run-artifact.js --run <run-dir> --name <artifact> (--file <src> | --delete) [--help]
 // --file reads the source file as UTF-8 text (the allowlisted artifact is
 // prompt text) and writes it to <run-dir>/<artifact> (create or
