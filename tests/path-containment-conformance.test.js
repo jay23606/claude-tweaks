@@ -61,6 +61,15 @@ test('AC1.1: no plugin/bin JS file hand-rolls a startsWith(... path.sep) contain
   assert.deepEqual(hits, []);
 });
 
-test('the scan root resolves to the repo own plugin/bin, independent of cwd', () => {
+test('shared-primitives.js still defines isPathContained', () => {
   assert.ok(read('plugin/bin/lib/shared-primitives.js').includes('function isPathContained('));
+});
+
+test('AC3.1: docs/donts.md [IL-161] and the pre-tool-use-gate-exemptions skill name the same containment helper', () => {
+  const il161 = read('docs/donts.md').split('\n').filter((l) => l.includes('[IL-161]'));
+  const bullet = read('.claude/skills/pre-tool-use-gate-exemptions/SKILL.md').split('\n').find((l) => l.startsWith('- **A containment check'));
+  assert.ok(il161.length > 0, 'no [IL-161] line found in docs/donts.md');
+  assert.ok(bullet, 'no "- **A containment check" bullet found in the skill');
+  for (const text of [il161.join('\n'), bullet]) assert.match(text, /isAncestorOrSelf/);
+  assert.doesNotMatch(bullet, /`isPathContained` stays the lexical primitive/);
 });
