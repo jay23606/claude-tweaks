@@ -9,12 +9,14 @@
 // Both grant-decision units count — `backlog-refine` (human-present) and
 // `backlog-grant` (headless) post the identical question and resolve through the
 // same resolver, so the headless path would otherwise re-stamp every incident
-// record. Resolution time is the decision comment's `lastEditedAt` (the edit that
-// prepended `**Resolved:**`); when that is null, it falls back to the start of the
-// `**Resolved:**` date, so a same-day change counts as "after" (conservative: re-ask).
-// Change evidence is the issue `lastEditedAt` (body edits) and LABELED/UNLABELED
-// timeline events; `needs:decision` events are the resolver's own bookkeeping and are
-// not changes. `gh issue view --json` exposes neither field, hence GraphQL, and the
+// record. Resolution time is always the start of the `**Resolved:**` line's date
+// (`{date}T00:00:00Z`), never the decision comment's `lastEditedAt`: a later re-edit
+// of the comment would move that forward and mask changes made in between. The
+// start-of-day choice is conservative — a same-day change before the resolution
+// re-asks once. Change evidence is the issue `lastEditedAt` (body edits) and
+// LABELED/UNLABELED timeline events; `needs:decision` events are the resolver's own
+// bookkeeping and are not changes. A timeline event whose `createdAt` does not parse
+// is missing evidence, so the evaluator fails closed on it. `gh issue view --json` exposes neither field, hence GraphQL, and the
 // fetcher has no MCP path (`backlog/mcp-transport.md` covers no needs-decision read):
 // a gh-absent caller takes its fail-closed "Query failed" bullet.
 
@@ -74,13 +76,12 @@ function evaluateResolvedRefusal({ number, comments, bodyLastEditedAt, labelEven
   if (!SUPPRESSING_CHOICES.includes(resolved.choice)) {
     return { ...base, reason: 'choice-not-suppressing' };
   }
-  if (bodyLastEditedAt === undefined || !Array.isArray(labelEvents)) {
+  if (bodyLastEditedAt === undefined || !Array.isArray(labelEvents)
+    || labelEvents.some((event) => Number.isNaN(timeOf(event.createdAt)))) {
     return { ...base, reason: 'evidence-unavailable' };
   }
 
-  const resolvedAt = typeof latest.lastEditedAt === 'string' && latest.lastEditedAt !== ''
-    ? latest.lastEditedAt
-    : `${resolved.date}T00:00:00Z`;
+  const resolvedAt = `${resolved.date}T00:00:00Z`;
   const resolvedMs = timeOf(resolvedAt);
   base.resolvedAt = resolvedAt;
 

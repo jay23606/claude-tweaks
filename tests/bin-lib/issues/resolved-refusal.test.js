@@ -32,7 +32,7 @@ test('AC1.1: resolved keep + unchanged body renders the annotation and suppresse
   assert.strictEqual(result.reason, 'unchanged');
   assert.strictEqual(result.choice, 'keep');
   assert.strictEqual(result.date, '2026-10-19');
-  assert.strictEqual(result.resolvedAt, '2026-10-19T03:38:54Z');
+  assert.strictEqual(result.resolvedAt, '2026-10-19T00:00:00Z');
   assert.deepStrictEqual(result.changes, []);
   assert.strictEqual(result.annotation, '#3214 — refusal resolved keep on 2026-10-19; not re-asked');
 });
@@ -124,15 +124,33 @@ test('newer untrusted resolved marker is ignored and named in skipped', () => {
   assert.ok(result.skipped[0].includes('(NONE)'), result.skipped[0]);
 });
 
-test('same-day body edit with no comment lastEditedAt re-opens (start-of-day fallback)', () => {
-  const comment = { ...fixture().comments[0], lastEditedAt: null };
+test('same-day body edit before the resolution re-opens (start-of-day resolvedAt)', () => {
+  const result = evaluateResolvedRefusal(fixture({ bodyLastEditedAt: '2026-10-19T01:00:00Z' }));
+  assert.strictEqual(result.resolvedAt, '2026-10-19T00:00:00Z');
+  assert.strictEqual(result.suppress, false);
+  assert.strictEqual(result.reason, 'changed-since-resolution');
+  assert.deepStrictEqual(result.changes, [{ kind: 'body', at: '2026-10-19T01:00:00Z' }]);
+});
+
+test('a body edit between the Resolved date and a later comment re-edit re-opens', () => {
+  const comment = { ...fixture().comments[0], lastEditedAt: '2026-10-25T08:00:00Z' };
   const result = evaluateResolvedRefusal(fixture({
     comments: [comment],
-    bodyLastEditedAt: '2026-10-19T09:00:00Z',
+    bodyLastEditedAt: '2026-10-21T09:00:00Z',
   }));
   assert.strictEqual(result.resolvedAt, '2026-10-19T00:00:00Z');
   assert.strictEqual(result.suppress, false);
   assert.strictEqual(result.reason, 'changed-since-resolution');
+  assert.deepStrictEqual(result.changes, [{ kind: 'body', at: '2026-10-21T09:00:00Z' }]);
+});
+
+test('a label event with an unparseable createdAt is evidence-unavailable, not no-change', () => {
+  const result = evaluateResolvedRefusal(fixture({
+    labelEvents: [{ action: 'labeled', label: 'risk:medium', createdAt: undefined }],
+  }));
+  assert.strictEqual(result.suppress, false);
+  assert.strictEqual(result.reason, 'evidence-unavailable');
+  assert.strictEqual(result.annotation, null);
 });
 
 test('no comment lastEditedAt and an earlier body edit still suppresses', () => {
@@ -143,14 +161,6 @@ test('no comment lastEditedAt and an earlier body edit still suppresses', () => 
   }));
   assert.strictEqual(result.suppress, true);
   assert.strictEqual(result.reason, 'unchanged');
-});
-
-test('comment re-edited later than the Resolved date still suppresses when unchanged', () => {
-  const comment = { ...fixture().comments[0], lastEditedAt: '2026-10-20T08:00:00Z' };
-  const result = evaluateResolvedRefusal(fixture({ comments: [comment] }));
-  assert.strictEqual(result.suppress, true);
-  assert.strictEqual(result.reason, 'unchanged');
-  assert.strictEqual(result.resolvedAt, '2026-10-20T08:00:00Z');
 });
 
 test('no decision comment → no-decision-comment', () => {
