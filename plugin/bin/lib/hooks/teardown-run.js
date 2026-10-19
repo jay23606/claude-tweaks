@@ -1,9 +1,10 @@
 // bin/lib/hooks/teardown-run.js — `bin/hooks.js teardown-run --run <dir> [--merged|--abandoned]`
-// (#594). Composes five existing, separately-tested mechanics behind one subcommand instead of
+// (#594). Composes four existing, separately-tested mechanics behind one subcommand instead of
 // the 4-5 hand-assembled commands a finished /flow run needed before this: (1) close-run's
-// terminal-state flip (close-run-state.js), (2) archive-merged.js's git-mv-and-commit archival,
-// (3) worktree-reap.js's lock/eligibility predicate for worktree removal, (4) a local branch
-// delete, (5) the remote ref delete `pr-first-merge-post-merge.md` Step 5 already specifies.
+// terminal-state flip (close-run-state.js), (2) worktree-reap.js's lock/eligibility predicate for
+// worktree removal, (3) a local branch delete, (4) the remote ref delete `pr-first-merge-post-merge.md`
+// Step 5 already specifies. Archival left this verb in #3490: `archive-run` (console-gated, #1130)
+// is the only path that moves a run directory, and it runs as the caller's own last cleanup step.
 //
 // Cardinal invariant (bin/hooks.js's own header comment): it never sets a non-zero exit and
 // never throws past its own boundary — every step is try/skip/report — unlike close-run's
@@ -12,9 +13,7 @@
 // locked worktree doesn't block branch/ref cleanup that doesn't depend on it.
 'use strict';
 const fs = require('fs');
-const path = require('path');
 const { closeRunState } = require('./close-run-state');
-const { archiveRunDir } = require('../reconcile/archive-merged');
 const { runGit } = require('./git-exec');
 const { parseWorktreeList, isWorktreeLocked, resolveIntegrationBranch, bareIntegrationName } = require('./worktree-reap');
 const { mainCheckoutRoot } = require('./worktree-detect');
@@ -128,9 +127,8 @@ function teardownRun(runDir, opts = {}) {
   const lines = [];
 
   // Read the worktree/branch this run recorded BEFORE Step 1 flips run-state.json to
-  // `{status:'clean', worktree:null}` and BEFORE Step 2 archives it out from under `runDir`
-  // entirely (archiveRunDir moves it to archive/{run-id}/run-state.json) — both destroy the very
-  // fields this needs, so this must run first regardless of read-order convenience.
+  // `{status:'clean', worktree:null}` — that flip destroys the very fields this needs, so this
+  // must run first regardless of read-order convenience.
   const ctxLib = require('./context');
   const prevState = ctxLib.readRunState(runDir) || {};
   const worktreePath = typeof prevState.worktree === 'string' && prevState.worktree ? prevState.worktree : null;
@@ -189,9 +187,9 @@ function teardownRun(runDir, opts = {}) {
   // the WHOLE teardown (no archive, no worktree removal, no branch/ref delete) rather than
   // partially acting — tearing down another session's live run out from under it is the hazard.
   // `state.notYetArchived` (closeRunState's #1103 advisory field, surfaced as a warning by
-  // hooks.js's standalone close-run verb) is deliberately left unread here — Step 2 immediately
-  // below calls archiveRunDir itself, so by the time a caller could see this value the content
-  // it describes is already being archived. Do not wire up the same warning here too.
+  // hooks.js's standalone close-run verb) is deliberately left unread here — teardown-run never
+  // archives (#3490), and Step 2's own line names `archive-run` as the archival step, so the
+  // warning belongs to that verb's caller, not this one. Do not wire up the same warning here too.
   //
   // `checkLiveWorktree: false` — the #1502 "worktree still exists on disk" heuristic assumes
   // an implicit fallback resolution ("newest non-terminal run", no specific target named).
@@ -222,7 +220,7 @@ function teardownRun(runDir, opts = {}) {
   // `root === null` means mainCheckoutRoot couldn't find a `.git` walking up from `runDir` (or hit
   // an unreadable/unparseable gitdir) — every remaining step needs a real root to run git against,
   // so skip them all individually here (same try/skip/report posture as every other step) rather
-  // than letting a null root reach runGit/archiveRunDir and produce a confusing downstream failure.
+  // than letting a null root reach runGit and produce a confusing downstream failure.
   if (!root) {
     lines.push('archive: skipped — could not determine main checkout root from run dir');
     lines.push('worktree: skipped — could not determine main checkout root from run dir');
@@ -231,23 +229,11 @@ function teardownRun(runDir, opts = {}) {
     return { lines };
   }
 
-  // Step 2 (archive) — reuse archive-merged.js's git-mv-and-commit sequence verbatim rather than
-  // a second, divergent archival path. #3088: skipped entirely under --remote-ref-only — that
-  // mode is for Section C step 5.5's own-worktree remote-ref cleanup and multispec-review-console.md
-  // Shared teardown step 7 (#3192), both of which run BEFORE the caller's own archival
-  // (cleanup-procedures.md's item 8, always last) — archiving here would move the run
-  // directory out from under the later cleanup items (ephemeral dev server teardown, issue claim
-  // release) that still need $RUN_DIR to resolve.
-  if (opts.remoteRefOnly) {
-    lines.push("archive: skipped — --remote-ref-only (archival is the caller's own last cleanup step)");
-  } else {
-    const archived = archiveRunDir(root, runDir);
-    if (archived.ok) {
-      lines.push(`archive: moved to archive/${path.basename(runDir)}/`);
-    } else {
-      lines.push(`archive: skipped — ${archived.reason}`);
-    }
-  }
+  // Step 2 (archive) — teardown-run never archives (#3490). Archival is archive-run's job, gated by
+  // the console (#1130), and runs as the caller's own last cleanup step after the later items
+  // (ephemeral dev server teardown, issue claim release) that still need $RUN_DIR to resolve. This
+  // line stays so the output names where archival lives.
+  lines.push("archive: skipped — teardown-run does not archive (archival is the caller's own last cleanup step: hooks.js archive-run)");
 
   // Step 3 (worktree removal) — never forced; a locked worktree means either a live session
   // (including this session's own ground, per [IL-58] — that removal path is ExitWorktree only)
