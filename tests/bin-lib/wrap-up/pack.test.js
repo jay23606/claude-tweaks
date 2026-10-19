@@ -89,12 +89,25 @@ function okDeps(overrides = {}) {
 // Ledger ownership fake (#2887): `owned` are the docs/plans/ paths this
 // branch's diff against the merge base touches; `untracked` are docs/plans/
 // paths present only in the worktree. Every other git call answers like okDeps.
+// The diff and ls-files argv are pinned: a call missing the merge-base, the
+// flags or the pathspec throws, so a regression in pack.js fails loudly here
+// instead of answering from the subcommand name alone.
 function ownedGit(owned = [], untracked = []) {
   return (args) => {
     if (args[0] === 'merge-base') return 'abc123\n';
     if (args[0] === 'rev-parse') return 'refs/remotes/origin/main\n';
-    if (args[0] === 'diff') return owned.join('\0');
-    if (args[0] === 'ls-files') return untracked.join('\0');
+    if (args[0] === 'diff') {
+      if (!['abc123', '--relative', '-z', '--name-only', 'docs/plans/'].every((a) => args.includes(a))) {
+        throw new Error('unexpected git argv: ' + args.join(' '));
+      }
+      return owned.join('\0');
+    }
+    if (args[0] === 'ls-files') {
+      if (!['--others', '--exclude-standard', '-z', 'docs/plans/'].every((a) => args.includes(a))) {
+        throw new Error('unexpected git argv: ' + args.join(' '));
+      }
+      return untracked.join('\0');
+    }
     return '';
   };
 }

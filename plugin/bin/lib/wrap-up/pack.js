@@ -418,6 +418,11 @@ function ledgerProbe(inputs, deps) {
   // #2563 fallback that counted every candidate when none named the record:
   // that fallback traded hiding this run's items behind a stray ledger for
   // over-counting strangers' ledgers, and ownership removes that dilemma.
+  // If wrap-up runs after the branch already merged into the integration
+  // branch, the merge base equals HEAD and the run's committed ledger reads as
+  // unattributed. Base equal to HEAD is not treated as an error, because a
+  // current-branch run legitimately has it (its uncommitted ledger is still
+  // owned).
   if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
   const PLANS = 'docs/plans/';
   const ownedNames = (out) => out.split('\0')
@@ -433,6 +438,8 @@ function ledgerProbe(inputs, deps) {
   // names one (#1930 review M5).
   const named = ownedCandidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
   const files = ownedCandidates.length > 1 && named.length > 0 ? named : ownedCandidates;
+  // An owned ledger displaced by the namesRecord tie-break above is also listed
+  // here under unattributedFiles; it is not counted.
   const unattributedFiles = candidates.filter((f) => !files.includes(f));
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
