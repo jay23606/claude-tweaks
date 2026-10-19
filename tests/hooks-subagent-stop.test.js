@@ -331,11 +331,14 @@ function launchAck(agentId, toolUseId, min) {
     toolUseResult: { isAsync: true, status: 'async_launched', agentId, description: `Lens ${toolUseId}`, canContinueAgent: true },
   };
 }
+function notificationBody(agentId, toolUseId, status) {
+  return `<task-notification>\n<task-id>${agentId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>/tmp/x/tasks/${agentId}.output</output-file>\n<status>${status}</status>\n<summary>Agent "Lens" finished</summary>\n</task-notification>`;
+}
 function notification(agentId, toolUseId, min, status = 'completed') {
   return {
     type: 'user',
     timestamp: at(min),
-    message: { role: 'user', content: `<task-notification>\n<task-id>${agentId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>/tmp/x/tasks/${agentId}.output</output-file>\n<status>${status}</status>\n<summary>Agent "Lens" finished</summary>\n</task-notification>` },
+    message: { role: 'user', content: notificationBody(agentId, toolUseId, status) },
     origin: { kind: 'task-notification', producer: 'session-task', runId: 'r1' },
   };
 }
@@ -382,7 +385,7 @@ const launches3 = () => [
 function queuedNotification(agentId, toolUseId, min, status = 'completed') {
   return {
     isSidechain: true,
-    attachment: { type: 'queued_command', prompt: `<task-notification>\n<task-id>${agentId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>/tmp/x/tasks/${agentId}.output</output-file>\n<status>${status}</status>\n<summary>Agent "Lens" finished</summary>\n</task-notification>`, source_uuid: 's1', commandMode: 'task-notification', timestamp: at(min) },
+    attachment: { type: 'queued_command', prompt: notificationBody(agentId, toolUseId, status), source_uuid: 's1', commandMode: 'task-notification', timestamp: at(min) },
     type: 'attachment',
     timestamp: at(min),
   };
