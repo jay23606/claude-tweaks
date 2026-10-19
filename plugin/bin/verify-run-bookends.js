@@ -40,6 +40,7 @@ const { execFileSync } = require('child_process');
 const { GIT_TIMEOUT_MS } = require('./lib/shared-primitives');
 const { RUN_ID_RE } = require('./lib/hooks/context');
 const { hasCanonicalClaimLogFor } = require('./lib/log-decision/claim-log');
+const { lstatType } = require('./lib/path-guard');
 
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 const SPEC_RUN_DIR_RE = /^spec-\d+$/;
@@ -136,7 +137,9 @@ function gitProbe(worktree, args, exec) {
 function isSpecCommitted({
   runDir, worktree, issue, multiTarget,
 }, exec = execFileSync) {
-  if (typeof worktree !== 'string' || !worktree || !fs.existsSync(worktree)) return null;
+  if (typeof worktree !== 'string' || !worktree) return null;
+  const worktreeType = lstatType(worktree).type;
+  if (worktreeType !== 'directory' && worktreeType !== 'symlink') return null;
   let undetermined = false;
   for (const rel of specCandidatePaths(runDir, issue, multiTarget)) {
     const found = gitProbe(worktree, ['cat-file', '-e', `HEAD:${rel}`], exec);
