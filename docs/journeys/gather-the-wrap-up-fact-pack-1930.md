@@ -2,6 +2,7 @@
 files:
   - plugin/bin/lib/wrap-up/pack.js
   - plugin/bin/wrap-up-pack.js
+  - plugin/bin/pr-checks.js
   - plugin/skills/wrap-up/SKILL.md
   - plugin/skills/wrap-up/residue-sweep.md
   - plugin/skills/wrap-up/unblocked-records.md
@@ -38,7 +39,7 @@ files:
 - **URL:** `plugin/skills/wrap-up/residue-sweep.md`, `unblocked-records.md`, `cleanup-procedures.md`, `review-console.md`, `auto-merge-short-circuit.md`, `summary-template.md`, `review-console-interactive.md`
 - **Action:** Follow each file's one pack sentence: read `pack.{field}` from `wrap-up-pack.json`; run the file's own command only when the pack file is absent.
 - **Should feel:** The gathering happened once; the sub-steps are now pure reads plus the judgment they always carried.
-- **Should understand:** Three rules, stated once in SKILL.md and applied everywhere: an `ok: false` field takes that sub-step's existing failure path (the residue sweep's `unknown`, the unblocked check's "skip this run" warning, merge-check's `could-not-gather` → `needs-human`); a key missing from a present file counts as `ok: false`; only an absent file lets a sub-step gather for itself. Two fields are informational by design — `pack.recordLabels` is the console's audit snapshot, while the authorization grant read stays a live `gh issue view` fetch, because a Phase 3 snapshot must never authorize a merge; and `pack.state.value.rendered` is pasted verbatim, because `summary-template.md` forbids composing the State block from JSON fields.
+- **Should understand:** Three rules, stated once in SKILL.md and applied everywhere: an `ok: false` field takes that sub-step's existing failure path (the residue sweep's `unknown`, the unblocked check's "skip this run" warning, merge-check's `could-not-gather` → `needs-human`); a key missing from a present file counts as `ok: false`; only an absent file lets a sub-step gather for itself. Two fields are informational by design — `pack.recordLabels` is the console's audit snapshot, while the authorization grant read stays a live `gh issue view` fetch, because a Phase 3 snapshot must never authorize a merge; and `pack.state.value.rendered` is pasted verbatim, because `summary-template.md` forbids composing the State block from JSON fields. `pack.pr.value.ci` is the `bin/pr-checks.js --pr` verdict for the run's PR head (#3469): the Review Console recommends merging only on `green`/`no-ci`/`pending`/`stale`, and a missing `ci` key or a `read-failed` verdict is a failed read, never green. The rollup alone is never the source, because it reads a partial CI run as green.
 - **Red flags:** A sub-step that reads `ok: false` and reports a clean result. Any prose that names a `pack.*` field the code does not produce — `tests/wrap-up-pack-conformance.test.js` pins the call count, its Phase 3 position, the eight names, and each sub-file's `wrap-up-pack.json` + absent-file sentence, so a drift here should fail that test before it reaches a run.
 
 ### 4. Hand merge-check the blast radius instead of letting it re-probe
