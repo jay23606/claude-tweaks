@@ -81,6 +81,45 @@ test('FAILING_CONCLUSIONS equals the merge gate prose list (code twin)', () => {
   assert.deepEqual(prose, [...FAILING_CONCLUSIONS]);
 });
 
+const PR_CHECKS = read('plugin/bin/pr-checks.js');
+
+test('AC1.1: inherited-red passes with a caveat and an AUTO line naming the base sha and checks', () => {
+  const b = section(GATE, /\*\*`inherited-red`\*\*/, /\n- \*\*/);
+  assert.match(b, /caveat/i);
+  assert.match(b, /--status AUTO/);
+  assert.ok(b.includes('{baseSha short}'), 'AUTO text names the base sha');
+  assert.ok(b.includes('({names})'), 'AUTO text names the inherited checks');
+  assert.match(b, /`TEST_PASSED` is set/);
+});
+
+test('AC2.1: red names only checks not flagged inherited as the cause', () => {
+  const red = section(GATE, /\*\*`red`\*\*/, /\n- \*\*/);
+  assert.match(red, /`inherited`/);
+  assert.match(red, /attributable/i);
+  assert.match(red, /those alone\s+are the cause/, 'only the attributable checks are named as the cause');
+  assert.ok(!red.includes('separate follow-up record'), 'stale deferral note removed');
+});
+
+test('AC3.1: the gate states an unreadable base stays red, never green', () => {
+  const red = section(GATE, /\*\*`red`\*\*/, /\n- \*\*/);
+  assert.match(red, /`baseReason`/);
+  assert.match(GATE, /the state stays `red` with `baseReason`/);
+});
+
+test('every state pr-checks.js can print is routed by a bullet in the gate (code twin)', () => {
+  const m = PR_CHECKS.match(/'  state: ([^'\\]+)\\n'/);
+  assert.ok(m, 'USAGE state line found');
+  const states = m[1].split('|').map((s) => s.trim()).filter(Boolean);
+  assert.ok(states.includes('inherited-red'));
+  const routing = section(GATE, /## Routing by `state`/, /\n## /);
+  for (const s of states) assert.ok(routing.includes(`\`${s}\``), `gate routes ${s}`);
+});
+
+test('/test names inherited-red in its PR-check gate bullet', () => {
+  const pb = section(TEST_SKILL, /\*\*Pipeline behavior:\*\*/, /\n## /);
+  assert.ok(pb.includes('`inherited-red`'), 'test/SKILL.md Pipeline behavior names inherited-red');
+});
+
 // #3257: Step 2.5 normalizes StatusContext entries before the red/pending
 // rules, and its state → verdict prose must agree with classifyRollup.
 function statusContextBlock(text) {
