@@ -2,7 +2,7 @@
 // rule: plugin/skills/build/plan-authoring-checks.md tells plan authors that a
 // task verifying an acceptance criterion only with a scratch (uncommitted)
 // check names that check's run-dir evidence destination (an AC evidence entry
-// in decisions.md, plus an evidence/ log when the output is long), never a
+// in decisions.md, plus an always-written evidence/ log), never a
 // conversational build handoff. Reads the live skill file. The paragraph is
 // located by its bold label and every assertion runs on that paragraph alone.
 // Both negative controls run the same assertion function the positive test
@@ -23,7 +23,7 @@ const TEXT = fs.readFileSync(
 const LABEL = '**AC-evidence persistence check:**';
 const KEY_PHRASE = "governs whether a check's *code* is committed, not whether its *result* is recorded";
 const COMMAND =
-  '`node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO --step "AC evidence"`';
+  '`node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --section "/build" --status AUTO --step "AC evidence"`';
 
 function assertAcEvidenceCheck(text) {
   const hits = text.split(/\r?\n\r?\n/).filter((p) => p.startsWith(LABEL));
@@ -38,6 +38,8 @@ function assertAcEvidenceCheck(text) {
   assert.ok(p.includes('$PIPELINE_RUN_DIR/evidence/'), 'names the evidence/ log path');
   assert.ok(p.includes('cites that path in the same entry'), 'cites the evidence path in the same entry');
   assert.ok(p.includes('plain Bash redirect'), 'writes the log with a plain Bash redirect');
+  assert.ok(p.includes('mkdir -p'), 'creates the evidence directory first');
+  assert.ok(p.includes('single-quoted'), 'passes --text single-quoted');
   assert.ok(p.includes(KEY_PHRASE), 'separates the check code from its recorded result');
   assert.ok(p.includes('no run directory'), 'names the no-run-directory design-mode fallback');
   assert.ok(p.includes('review/code-mode-steps.md'), 'names the review consumer');

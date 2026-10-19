@@ -45,18 +45,36 @@ function assertAcEvidenceCitation(line) {
   );
 }
 
-const LIVE_LINE = TEXT.split(/\r?\n/).find((l) => l.startsWith(LINE_PREFIX));
+const HITS = TEXT.split(/\r?\n/).filter((l) => l.startsWith(LINE_PREFIX));
+const LIVE_LINE = HITS[0];
 
 test('AC2.1 (#3079): check 2 reads decisions.md for an AC evidence entry and cites it rather than re-running', () => {
-  assert.ok(LIVE_LINE, 'expected exactly one check-2 Acceptance Criteria line');
+  assert.strictEqual(HITS.length, 1, 'expected exactly one check-2 Acceptance Criteria line');
   assertAcEvidenceCitation(LIVE_LINE);
 });
 
 test('AC2.2 (#3079): check 2 names the unset-$PIPELINE_RUN_DIR standalone case as unchanged', () => {
-  assert.ok(LIVE_LINE, 'expected exactly one check-2 Acceptance Criteria line');
+  assert.strictEqual(HITS.length, 1, 'expected exactly one check-2 Acceptance Criteria line');
   assert.ok(LIVE_LINE.includes(UNSET_PHRASE), 'names the standalone unset case as unchanged');
 });
 
 test('AC2.1 (#3079): negative control — the pre-change line fails the pin', () => {
   assert.throws(() => assertAcEvidenceCitation(PRE_CHANGE_LINE));
+});
+
+test('AC2.1 (#3079): negative control — rewording "evidence, not proof" fails the pin', () => {
+  const mutated = LIVE_LINE.replace('evidence, not proof', 'proof');
+  assert.notStrictEqual(mutated, LIVE_LINE, 'control must actually reword the clause');
+  assert.throws(() => assertAcEvidenceCitation(mutated));
+});
+
+test('AC2.1 (#3079): the second-call dispatch template checks AC evidence entries against their evidence/ log', () => {
+  const lines = fs
+    .readFileSync(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'task-prompt.md'), 'utf8')
+    .split(/\r?\n/);
+  const stampIdx = lines.findIndex((l) => l.includes('verify.js --stamp-status'));
+  const hitIdx = lines.findIndex((l) => l.includes('`AC evidence` entry') && l.includes('evidence/ log it cites'));
+  assert.ok(stampIdx >= 0, 'stamp-status line present');
+  assert.ok(hitIdx >= 0, 'AC evidence entry line present');
+  assert.ok(hitIdx > stampIdx, 'AC evidence line sits after the verify.js --stamp-status line');
 });
