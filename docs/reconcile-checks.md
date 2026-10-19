@@ -19,7 +19,9 @@ check" registration procedure, in the same spirit as `docs/hooks.md` for `plugin
 - **An explicit `--checks` subset runs without the wall-clock budget (#3026).** `budget.js`'s 18 s
   ceiling bounds the SessionStart, background, and unscoped passes. The `hooks.js reconcile` CLI
   passes `budgetMs: Infinity` into `reconcile()` whenever `--checks` names a subset, so a named
-  check such as `reap`, dispatched last, is never skipped as `budget-exceeded`. Runtime is then
+  check such as `reap`, dispatched last, is never skipped as `budget-exceeded`; it also passes
+  `skipCacheStamp`, so a subset never marks the SessionStart freshness cache as fresh (the #644
+  `reconcile-summary` opt-out). Runtime is then
   bounded only by each check's own timeouts, so every scripted `--checks` caller (dispatch's
   drain-termination call, `_shared/pr-first-merge-post-merge.md` Step 4.2) keeps an explicit
   150000ms+ Bash timeout. A subset that names `archive` should name `mirror` too: without

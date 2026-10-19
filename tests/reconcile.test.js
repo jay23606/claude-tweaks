@@ -1714,6 +1714,9 @@ test('AC3.1/AC3.2: hooks.js reconcile: an explicit --checks subset runs unbounde
   assert.deepEqual(calls[0].checks, ['reap']);
   assert.equal(calls[1].budgetMs, undefined);
   assert.equal(calls[1].checks, undefined);
+  // An explicit subset never stamps the shared freshness key; an unscoped pass still does.
+  assert.equal(calls[0].skipCacheStamp, true);
+  assert.equal(calls[1].skipCacheStamp, undefined);
 });
 
 test('AC4.1: SessionStart and background reconcile call sites pass no budgetMs (default budget)', () => {
