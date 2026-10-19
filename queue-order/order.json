@@ -1,8 +1,18 @@
 {
-  "computedAt": "2026-10-19T18:54:33.411Z",
-  "runId": null,
+  "computedAt": "2026-10-19T18:56:35.904Z",
+  "runId": "2026-10-19T185513-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
+      {
+        "number": 3598,
+        "updatedAt": "2026-10-19T18:56:25Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 3597,
+        "updatedAt": "2026-10-19T18:56:21Z",
+        "state": "OPEN"
+      },
       {
         "number": 3592,
         "updatedAt": "2026-10-19T12:28:22Z",
@@ -476,6 +486,156 @@
     ]
   },
   "groups": [
+    [
+      {
+        "body": "Origin: ledger resolve gate (#3047 build ledger rows 5, 7, 8, 9, 10)\n\nDefer-reason: tangential\n\n## Current State\n\n#3047 made `/claude-tweaks:review` Step 6.7 re-run the QA stories an applied fix wave touched and render a stale-QA qualifier on the QA Validation line when that re-run cannot run (`plugin/skills/review/code-mode-steps.md` Step 6.7 item 4, `plugin/skills/review/review-summary-template.md`). The build and review closed it and left five known gaps, each deferred with its origin recorded in the #3047 build ledger (`docs/plans/2026-10-19-review-qa-rerun-after-fix-wave-3047-ledger.md`, rows 5, 7, 8, 9, 10):\n\n1. Step 3 Routing fixes land before Step 6.7, so they also make QA stale, and the qualifier wording (\"the review's fix wave\") reads broader than what is covered (spec Gotcha, out of scope there).\n2. `git diff --name-only {WAVE_BASE}` ignores untracked new files from an uncommitted Fix-now edit.\n3. A tree already dirty before the wave makes the gate count pre-wave edits as wave edits (a false re-run or staleness claim, never false freshness); suggested `WAVE_BASE=$(git stash create || git rev-parse HEAD)`.\n4. The qualifier can attach to a pre-wave `Skipped`/`Not run` status, which reads self-contradictory, and item 4 does not say what to merge into when there are no pre-wave per-story results (also review single-agent finding 3, `staged/review-unconfirmed-1.md`).\n5. `qa affected` selects by `verify.js --changed-files`, wider than the wave, so the re-run can include stories the wave did not touch (cost only).\n\n## Deliverables\n\n1. Decide and document whether Step 3 Routing fix waves re-run affected QA stories too, or narrow the qualifier wording to Step 6.7 only.\n2. When there are no pre-wave per-story results, say what the QA line renders instead of a qualifier on a never-run status.\n3. Close or explicitly accept gaps 2, 3 and 5 above (untracked files, dirty-before-wave base, wider-than-wave selection), each with a pinned wording in `tests/review-qa-rerun-after-fix-wave-conformance.test.js`.\n\n## Acceptance Criteria\n\n- `plugin/skills/review/code-mode-steps.md` states, for a Step 3 Routing fix wave, whether the affected-story re-run applies.\n- `plugin/skills/review/review-summary-template.md` states what the QA line reads when the pre-wave status was Skipped or Not run.\n- Each of gaps 2, 3 and 5 is either fixed or stated as accepted in the same two files, and `node --test tests/review-qa-rerun-after-fix-wave-conformance.test.js` pins the new wording.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._",
+        "createdAt": "2026-10-19T12:35:00Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 3598,
+        "state": "OPEN",
+        "title": "Close the #3047 QA-staleness follow-ups: Step 3 Routing waves, untracked files, dirty base, never-run status, wider-than-wave selection",
+        "updatedAt": "2026-10-19T18:56:25Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #1887, #1488\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/backlog/grant-lane-decision.md`'s Idempotence check only suppresses a fresh `needs:decision` when an *unresolved* `<!-- needs-decision: backlog-refine -->` comment exists. Once a human resolves the refusal through `/claude-tweaks:backlog refine #N` (keep, or build it myself), the next human-present `refine` run's grant-check refuses the same record for the same reason and stamps a fresh `needs:decision` and comment.\n\nObserved 2026-10-19 (run `2026-10-19T122748-backlog-standalone`): 15 ready records already carried a human-resolved backlog-refine refusal. #3214, #3215, #3216, #3217, #3256, #3295, #3396, #3193 and #3067 were each resolved twice (2026-10-15/17 \"build it myself\", 2026-10-19 \"keep\"), so every refine run reopens a question the human already answered. That session skipped them by hand and logged a SKIP line.\n\n## Deliverables\n\n1. Extend the Idempotence check so a record whose latest backlog-refine decision comment is resolved (`keep` or `build it myself`), and whose body and labels have not changed since that resolution, is not re-refused. Render it as one annotation line under the Needs-decision lane (e.g. `#N — refusal resolved {choice} on {date}; not re-asked`) and write nothing.\n2. A body or label change after the resolution (a re-shape, a new `risk:*`/`size:*`) re-opens the record for grant-check, as today.\n3. Apply the same rule on `refine-headless.md`'s gate-4 refusal path, which reaches the identical `needs:decision` outcome.\n\n## Acceptance Criteria\n\n- A fixture with a resolved `keep` backlog-refine comment and an unchanged body renders the annotation and produces no `needs:decision` action.\n- The same fixture with a body edit after the resolution goes through grant-check and can be stamped again.\n- `npm test` passes.\n\n## Release Note\n\nBacklog refine no longer re-asks a grant decision you already resolved, unless the record has changed since.\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-19T12:30:50Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 3597,
+        "state": "OPEN",
+        "title": "backlog refine re-refuses records a human already resolved",
+        "updatedAt": "2026-10-19T18:56:21Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "Origin: reflect light from #3572\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/plan-authoring-checks.md`'s **Derived-value probe check** has an author run a pinned command with the value the code's resolver actually returns on this machine. Nothing asks for a probe with that resolver's degenerate output: an empty string, a missing value, a detached-HEAD branch name.\n\n#3572's plan probed `gh pr list --head {current-branch} --state merged` on three real branches (a squash-merged one returned 1, open ones 0) and its git check on five refs. None of them was empty. On a detached HEAD `{current-branch}` is empty, and `gh pr list --head \"\" --state merged --json number --jq length` prints `30` with exit 0: an empty `--head` drops the filter, so a clean detached worktree read as merged. The SDD task review missed it too. Only review lens 3c caught it, and it was fixed in a review round (373ae7a00).\n\n## Deliverables\n\n- Add an \"Empty-value probe check (extends the Derived-value probe check)\" paragraph to `plugin/skills/build/plan-authoring-checks.md`: one bold lead, the rule, one clause of why, and #3572 as the incident. When a plan has an agent substitute a runtime-resolved value into a command (a branch name, a ref, a path, an id), run that command once with the value the resolver returns in its degenerate case — empty or unset — and record what it does; a filter that silently drops on an empty value widens the query instead of failing.\n\n- Pin the paragraph with a small prose test that follows `tests/absence-grep-control-check-prose.test.js`, read through `readText`.\n\n## Acceptance Criteria\n\n- `grep -nF \"Empty-value probe check\" plugin/skills/build/plan-authoring-checks.md` prints exactly one line, and that paragraph names #3572.\n\n- The new pin fails against the pre-change file and passes after.\n\n- `npm test` passes in full.\n\n## Release Note\n\nPlan authoring now asks for one probe of each substituted command with an empty value, so a filter that drops on an empty input is caught before build.\n\n_Filed by `reflect` via specShapedBody._\n",
