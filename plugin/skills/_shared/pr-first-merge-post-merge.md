@@ -79,8 +79,11 @@ never a reason to report anything other than `merged`. (#3249: `release` and `ar
 back past a torn-down worktree or deleted branch — `fallbackBranch`, then the run's stamped PR
 number — so a run whose worktree is already gone can converge in this same pass. One exception is
 by design: a run that never rendered a console (the fast-lane auto-merge short-circuit writes no
-`console.json`) archives only when its `staged/` holds nothing pending; real staged items keep
-it in place until a human resolves them, and no later pass converges it on its own.)
+`console.json`) archives only when its `staged/` holds nothing pending. When the reconcile
+summary's skip line names `console-never-rendered-staged-pending`, the run is not converging: it
+merged with no rendered console and pending `staged/` items, and a human must resolve or discard
+them. Log, on one line: `AUTO {time} — pr-first-merge Step 4.2: {N} run dir(s) skipped console-never-rendered-staged-pending — needs human action (pending staged/ items, no rendered console); not left for the next trigger point. Reversibility: n/a.` Carry "needs human action" into the closing report. Reconcile also escalates it through the consolidated `structurally-stuck`
+record once the dir sits untouched past the 7-day TTL. The outcome is still `merged`.)
 **No `git merge`, `git commit`, or `git push` runs in the main checkout anywhere in this procedure**
 — the reconciler's own `mirrorFastForward` is a strict `--ff-only`, never a merge that could
 conflict, so it needs no worktree, no branch guard, and no close-run relief.
