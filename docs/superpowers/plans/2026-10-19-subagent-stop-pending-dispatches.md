@@ -159,3 +159,9 @@ Expected: PASS, 0 failures.
 git add plugin/skills/_shared/subagent-output-contract.md docs/hooks.md
 git commit -m "Document the SubagentStop pending-dispatch exemption — refs #3015"
 ```
+
+## As-built deviations (Common Step 4.5)
+
+- **Beneficial: more completion carriers, plus fork handling.** The spec and this plan named only the `origin.kind: task-notification` completion carrier. The whole-branch review found real subagent transcripts (Claude Code 2.1.283/2.1.302) mostly deliver completions as `attachment.type: queued_command` prompts, and 2.1.302 adds `api-request-blob` echoes. Fork transcripts also replay the parent history. As built, `countPendingDispatches` reads all three carriers. It treats a `queued_command` as a carrier only when its prompt contains `<task-notification>`. It fails closed (null) on any unrecognized carrier of `<task-notification>` and on a drifted origin carrier, and it resets at the last fork boundary. Commits 5ffb3e1c1, 0c60ec662. The authoring-time shape survey sampled only one transcript root, which is how this was missed.
+- **Beneficial: consumer cross-references.** Task 2 Step 2b added one-clause cross-references in `docs/journeys/read-where-a-pipeline-run-spent-its-minutes-1928.md` and `plugin/skills/reflect/full-mode.md`, whose text said an unmarked interim turn is always graded.
+- **Update the spec (staged as build-deviation-1):** the tests live in `tests/hooks-subagent-stop.test.js`, not the spec Key Files entry `tests/bin-lib/hooks/contract-retries.test.js`.
