@@ -66,7 +66,11 @@ test('F5: step3-lens-dispatch.md names the per-file cap as the build.js constant
 
 // #2956: the orchestrator-written coordination inputs live in the session-scoped temp dir, not {ctx-dir}.
 test('2956: neither step file directs writing the coordination inputs into {ctx-dir}', () => {
-  for (const [name, text] of [['step3-lens-dispatch.md', LENS_DISPATCH], ['step3-debate-and-refutation.md', DEBATE_AND_REFUTATION]]) {
+  const stepFiles = [
+    ['step3-lens-dispatch.md', LENS_DISPATCH],
+    ['step3-debate-and-refutation.md', DEBATE_AND_REFUTATION],
+  ];
+  for (const [name, text] of stepFiles) {
     assert.ok(!text.includes('{ctx-dir}/lens-'), `${name} must not write {ctx-dir}/lens-*.json`);
     assert.ok(!text.includes('{ctx-dir}/findings-by-lens.json'), `${name} must not write {ctx-dir}/findings-by-lens.json`);
   }
