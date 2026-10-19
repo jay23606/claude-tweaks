@@ -322,6 +322,10 @@ function notificationCarrierBody(entry, line) {
   return undefined;
 }
 
+function nonEmptyString(value) {
+  return typeof value === 'string' && value ? value : null;
+}
+
 // #3015: how many of this transcript's async `Agent` launches (before the
 // reply at `replyIndex`) have no completion notification yet? `lines` is the
 // raw transcript split on '\n'. -> number, or `null` when the shape is
@@ -343,8 +347,8 @@ function countPendingDispatches(lines, replyIndex) {
     if (entry.toolUseResult && entry.toolUseResult.isAsync === true) {
       const content = entry.message && entry.message.content;
       const first = Array.isArray(content) ? content[0] : null;
-      const agentId = typeof entry.toolUseResult.agentId === 'string' && entry.toolUseResult.agentId ? entry.toolUseResult.agentId : null;
-      const toolUseId = first && typeof first.tool_use_id === 'string' && first.tool_use_id ? first.tool_use_id : null;
+      const agentId = nonEmptyString(entry.toolUseResult.agentId);
+      const toolUseId = nonEmptyString(first && first.tool_use_id);
       if (!agentId && !toolUseId) return null;
       launches.push({ agentId, toolUseId, ts: Date.parse(entry.timestamp) });
       continue;
