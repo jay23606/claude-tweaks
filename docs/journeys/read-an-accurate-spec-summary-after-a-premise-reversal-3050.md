@@ -4,6 +4,8 @@ files:
   - plugin/skills/_shared/pr-early-run-lifecycle.md
   - plugin/skills/build/SKILL.md
   - plugin/bin/revise-pr-summary.js
+  - plugin/bin/pr-checklist.js
+  - plugin/bin/lib/flow/pr-checklist.js
   - plugin/bin/lib/flow/pr-body.js
 ---
 
@@ -25,10 +27,10 @@ files:
 
 ### 2. The phase exit re-composes the summary before pushing the body
 - **URL:** `plugin/skills/_shared/pr-checklist-refresh.md` Phase-checklist update, "Refresh the Spec summary after a premise reversal (#3050)"
-- **Action:** After the checklist-flipped body is written to its temp file, and before the run-id re-read and `gh pr edit`, the update runs `bin/revise-pr-summary.js --run-dir … --body-file …`. A non-empty `uncovered` makes the agent write a one-paragraph summary of this run's diff. Then it re-runs with `--summary-file … --out …`, which rewrites the span from the `### Spec summary` heading to the next heading.
-- **Should feel:** Like the checklist flip — part of the same edit, with the PR body changing once rather than twice.
-- **Should understand:** The span is found by its heading, which survives both a `gh` and an MCP read, so the same step works on either transport. In a bundle, the run dir passed is the parent holding `manifest.yml`. New entries are `; `-joined onto an existing note, so another spec's entry is never dropped.
-- **Red flags:** The unrevised body pushed while the revision sits unused in the temp file. A summary that describes behavior the diff does not show. A sibling spec's `Revised during build:` entry disappearing after this spec's phase exit.
+- **Action:** With `gh` present, the phase exit's single `bin/pr-checklist.js --run … --phase …` call runs the reversal check itself and reports it under `summary` in its JSON line. A non-empty `summary.uncovered` makes the agent write a one-paragraph summary of this run's diff and re-run the same call with `--summary-file …`; the row is already checked, so only the span from the `### Spec summary` heading to the next heading changes. With `gh` absent (MCP), the checklist-flipped body is written to a session temp file and `bin/revise-pr-summary.js --run-dir … --body-file …` runs before the run-id re-read and the MCP write, re-running with `--summary-file … --out …` on a non-empty `uncovered`.
+- **Should feel:** Like the checklist flip — part of the same phase-exit step. On the `gh` path a reversal costs one extra call (two body writes); with no reversal the body changes once.
+- **Should understand:** The span is found by its heading, which survives both a `gh` and an MCP read, so the same check works on either transport. In a bundle, the run dir passed is the parent holding `manifest.yml`. New entries are `; `-joined onto an existing note, so another spec's entry is never dropped.
+- **Red flags:** A non-empty `summary.uncovered` left unanswered, so the unrevised summary ships. A summary that describes behavior the diff does not show. A sibling spec's `Revised during build:` entry disappearing after this spec's phase exit.
 
 ### 3. Later phase exits and the pre-merge refresh leave it alone
 - **URL:** `plugin/skills/_shared/pr-checklist-refresh.md` Pre-merge refresh step 1; `plugin/skills/_shared/pr-early-run-lifecycle.md` Step 3 template note; `plugin/bin/lib/flow/pr-body.js` `reviseSpecSummary`
@@ -38,12 +40,13 @@ files:
 - **Red flags:** The note growing a duplicate entry on every phase exit. A run with no reversal changing the Spec summary at all. A distinct reversal missing from the note because an existing entry's claim contained a `; `.
 
 ### 4. A failed refresh is a warning, not a stop
-- **URL:** `plugin/skills/_shared/pr-checklist-refresh.md` Refresh paragraph, "Best-effort" sentence; `plugin/bin/revise-pr-summary.js` exit codes
-- **Action:** A non-zero exit (for example exit 2 for a `--run-dir` that is not a directory, or that is a worktree-local shadow of the run dir), or `changed: false` with a non-empty `uncovered` and a `reason` other than `summary-required` (the first call's normal ask for a summary, Step 2) — for example `no-spec-summary-heading` or `summary-not-one-paragraph` — logs a warning to `decisions.md`. The update then pushes the checklist-only body.
+- **URL:** `plugin/skills/_shared/pr-checklist-refresh.md` Refresh paragraph, "Best-effort" sentence; `plugin/bin/pr-checklist.js` `summary` envelope; `plugin/bin/revise-pr-summary.js` exit codes (MCP path)
+- **Action:** A re-run whose `summary.changed` is `false` with a non-empty `uncovered` and a `reason` other than `summary-required` (the first call's normal ask for a summary, Step 2) — for example `no-spec-summary-heading` or `summary-not-one-paragraph` — logs a warning to `decisions.md`; the row is still written. On the MCP path, a non-zero `revise-pr-summary.js` exit (for example exit 2 for a `--run-dir` that is not a directory, or that is a worktree-local shadow of the run dir) warns the same way and the checklist-only body is written.
 - **Should feel:** Recoverable — the PR still advances, and the stale summary is named in the audit trail for the Review Console to surface.
 - **Should understand:** A missing `decisions.md` inside an existing run dir reads as zero reversals (fail-open). A run dir that does not exist at all is an error, so a wrong path is never mistaken for "nothing to revise".
 - **Red flags:** A phase exit or merge blocked by this step. A failed refresh with no `decisions.md` warning.
 
 ## Origin
 - Created during `/claude-tweaks:build` of record #3050 (2026-10-17): build logs a canonical `premise reversed:` decision line, and `pr-checklist-refresh.md`'s Phase-checklist update re-composes the PR's `### Spec summary` through `bin/revise-pr-summary.js`.
-- Related: `docs/journeys/stop-a-run-on-its-own-red-pr-check-3013.md` (another pr-first PR-body/merge-gate journey)
+- Steps 2 and 4 revised during `/claude-tweaks:build` of record #3263 (2026-10-19): on the `gh` path the reversal check now runs inside `bin/pr-checklist.js`'s single phase-exit call (`--summary-file` applies it); `bin/revise-pr-summary.js` remains the MCP path's step.
+- Related: `docs/journeys/flip-a-pr-checklist-row-at-a-phase-exit-3263.md` (the one-call phase-exit update this summary refresh now rides in); `docs/journeys/stop-a-run-on-its-own-red-pr-check-3013.md` (another pr-first PR-body/merge-gate journey)

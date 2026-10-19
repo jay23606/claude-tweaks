@@ -25,8 +25,8 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const { parsePremiseReversals, reviseSpecSummary } = require('./lib/flow/pr-body');
+const { reviseSpecSummary } = require('./lib/flow/pr-body');
+const { readRunReversals } = require('./lib/flow/pr-checklist');
 const { readManifest } = require('./lib/flow/manifest');
 const { writeFileAtomic } = require('./lib/atomic-write');
 const { anchoredOrOutsideMessage } = require('./lib/run-dir-guard');
@@ -60,21 +60,6 @@ const realDeps = {
   stderr: (s) => process.stderr.write(s),
 };
 
-// A missing decisions.md contributes nothing — the same fail-open posture as
-// manifest.js's readDeferredClosures.
-function readReversals(runDir, deps) {
-  const manifest = deps.readManifest(runDir);
-  const specs = manifest && manifest.multispec && Array.isArray(manifest.multispec.specs) ? manifest.multispec.specs : null;
-  const files = specs
-    ? specs.map((s) => path.join(runDir, `spec-${s.id}`, 'decisions.md'))
-    : [path.join(runDir, 'decisions.md')];
-  let text = '';
-  for (const f of files) {
-    try { text += `${deps.readFile(f)}\n`; } catch { /* no decisions.md for this spec */ }
-  }
-  return parsePremiseReversals(text);
-}
-
 function run(argv, deps = realDeps) {
   const o = parseArgs(argv);
   const usageError = (message) => { deps.stderr(`revise-pr-summary.js: ${message}\n${USAGE}`); return 2; };
@@ -102,7 +87,7 @@ function run(argv, deps = realDeps) {
     }
   }
 
-  const reversals = readReversals(o.runDir, deps);
+  const reversals = readRunReversals(o.runDir, deps);
   const result = reviseSpecSummary({ body, reversals, summary });
   const report = { reversals: reversals.length, uncovered: result.uncovered, changed: result.changed, reason: result.reason };
   if (result.changed) {
