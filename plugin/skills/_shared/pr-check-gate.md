@@ -19,7 +19,8 @@ rule, with no such normalization, would hold that same entry `pending` forever (
 authority; this gate never replaces it. The reader also lists the workflow runs for the PR head
 (`gh run list --commit {headRefOid}`) and classifies them by the head-run cross-check in
 `_shared/pr-first-merge.md`'s Step 2.5 (a run not yet completed is pending, a failing one red), and a
-failed runs read is `read-failed` unless the rollup is already red (#3405).
+failed runs read is `read-failed` unless the verdict is still `red` after the base comparison below
+(#3405) — a partial read never concludes `inherited-red`.
 
 On a `red` read the reader also reads the tip of the branch the PR merges into (its own
 `baseRefName`; the integration branch from `_shared/integration-branch.md`'s shared resolver only
