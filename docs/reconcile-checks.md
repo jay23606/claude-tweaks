@@ -156,7 +156,9 @@ Three skip reasons come out of this check:
   TTL instead of freezing.
 - **`closing-issues-unknown`**: the PR object carries no `closingIssuesReferences` array. This
   reason is transport-class and untracked.
-- **`no-repo-slug`**: there is no resolvable `origin` slug. This reason is tracked.
+- **`no-repo-slug`**: there is no resolvable `origin` slug. This reason is tracked, so it shows in
+  the residue summary's stuck count. With no slug there is no repo to file the escalation issue in,
+  so it never escalates.
 
 Run-state is never written on any of these skips. The `status: clean` sweep is exempt from this
 check: wrap-up already closed that run.
