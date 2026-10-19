@@ -204,3 +204,161 @@ test('a header whose record: line names a different number does not count (#2775
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'materialized-header-missing');
 });
+
+// ---- #3226: `repairable` classification of a missing-config first call ----
+
+function repoRootWithPolicy(policyText) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-first-call-repo-'));
+  if (policyText !== null) {
+    fs.mkdirSync(path.join(root, '.claude-tweaks'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude-tweaks', 'policy.yml'), policyText);
+  }
+  return root;
+}
+
+function fakeRepoGit(root, pushedBranches, calls = []) {
+  const lsRemote = fakeGitRunner(pushedBranches);
+  return (args) => {
+    calls.push(args);
+    if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') return `${root}\n`;
+    return lsRemote(args);
+  };
+}
+
+const PR_RECORDED = { pr: { number: 42, url: 'https://github.com/acme/widgets/pull/42', branch: 'worktree-2806' } };
+
+function missingConfigRun(runState, deps, issueNumbers = [2806]) {
+  const runDir = mkRunDir();
+  writeRunDir(runDir, { runState });
+  return checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug: REPO_SLUG }, { now: NOW, ...deps });
+}
+
+test('AC1.1: missing-config + live matching claim + pr-first PR recorded and pushed -> repairable: true', () => {
+  const root = repoRootWithPolicy('integration-model: pr-first\n');
+  const result = missingConfigRun(PR_RECORDED, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+    gitRunner: fakeRepoGit(root, ['worktree-2806']),
+  });
+  assert.deepEqual(result, { ok: false, reason: 'missing-config', message: result.message, repairable: true });
+});
+
+test('AC2.1: missing-config + claim absent, stale, or held under another runId -> repairable: false', () => {
+  const root = repoRootWithPolicy('integration-model: pr-first\n');
+  const stale = JSON.stringify({
+    runId: RUN_ID, sessionId: 's1', claimedAt: new Date(NOW - 100 * 3600 * 1000).toISOString(), ttlHours: 72, host: 'h',
+  });
+  const claims = [null, stale, liveClaimContent('other-run')];
+  for (const claim of claims) {
+    const r = missingConfigRun(PR_RECORDED, {
+      ghApi: fakeGhApi({ 2806: claim }),
+      gitRunner: fakeRepoGit(root, ['worktree-2806']),
+    });
+    assert.equal(r.reason, 'missing-config');
+    assert.equal(r.repairable, false);
+  }
+});
+
+test('AC3.1: missing-config under pr-first with PR unrecorded, branch unrecorded, or branch unpushed -> repairable: false', () => {
+  const root = repoRootWithPolicy('integration-model: pr-first\n');
+  const cases = [
+    [{}, ['worktree-2806']],
+    [{ pr: { number: 42 } }, ['worktree-2806']],
+    [PR_RECORDED, []],
+  ];
+  for (const [runState, pushed] of cases) {
+    const r = missingConfigRun(runState, {
+      ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+      gitRunner: fakeRepoGit(root, pushed),
+    });
+    assert.equal(r.reason, 'missing-config');
+    assert.equal(r.repairable, false);
+  }
+});
+
+test('AC4.1: integration-model read fails (invalid value, policy.yml absent, readFile throws) -> repairable: false', () => {
+  const ghApi = fakeGhApi({ 2806: liveClaimContent(RUN_ID) });
+  const bogusRoot = repoRootWithPolicy('integration-model: bogus\n');
+  const invalid = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(bogusRoot, ['worktree-2806']) });
+  assert.equal(invalid.reason, 'missing-config');
+  assert.equal(invalid.repairable, false);
+
+  const noPolicyRoot = repoRootWithPolicy(null);
+  const absent = missingConfigRun(PR_RECORDED, { ghApi, gitRunner: fakeRepoGit(noPolicyRoot, ['worktree-2806']) });
+  assert.equal(absent.reason, 'missing-config');
+  assert.equal(absent.repairable, false);
+
+  const okRoot = repoRootWithPolicy('integration-model: pr-first\n');
+  const throwingRead = (p) => {
+    if (p.endsWith('policy.yml')) throw new Error('EACCES: policy.yml unreadable');
+    return fs.readFileSync(p, 'utf8');
+  };
+  const thrown = missingConfigRun(PR_RECORDED, {
+    ghApi, gitRunner: fakeRepoGit(okRoot, ['worktree-2806']), readFile: throwingRead,
+  });
+  assert.equal(thrown.reason, 'missing-config');
+  assert.equal(thrown.repairable, false);
+});
+
+test('AC5.1: missing-config under local-merge with a live matching claim -> repairable: true from the claim checks alone', () => {
+  const root = repoRootWithPolicy('integration-model: local-merge\n');
+  const calls = [];
+  const result = missingConfigRun({}, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+    gitRunner: fakeRepoGit(root, [], calls),
+  });
+  assert.equal(result.reason, 'missing-config');
+  assert.equal(result.repairable, true);
+  assert.equal(calls.some((a) => a[0] === 'ls-remote'), false);
+});
+
+test('Review focus: policy.yml without an integration-model key resolves unresolved -> repairable: false', () => {
+  const root = repoRootWithPolicy('autonomy: trusted\n');
+  const result = missingConfigRun(PR_RECORDED, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+    gitRunner: fakeRepoGit(root, ['worktree-2806']),
+  });
+  assert.equal(result.reason, 'missing-config');
+  assert.equal(result.repairable, false);
+});
+
+test('Review focus: one member live, another absent -> repairable: false', () => {
+  const root = repoRootWithPolicy('integration-model: local-merge\n');
+  const result = missingConfigRun({}, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID), 2807: null }),
+    gitRunner: fakeRepoGit(root, []),
+  }, [2806, 2807]);
+  assert.equal(result.reason, 'missing-config');
+  assert.equal(result.repairable, false);
+});
+
+test('AC6.2: every reason other than missing-config, and ok: true, carries no repairable key', () => {
+  const has = (r) => Object.prototype.hasOwnProperty.call(r, 'repairable');
+
+  const absentRun = mkRunDir();
+  writeRunDir(absentRun, { runState: {}, config: 'integration-model: local-merge\n' });
+  const absent = checkFirstCallArtifacts({ runDir: absentRun, issueNumbers: [2806], repoSlug: REPO_SLUG }, {
+    ghApi: fakeGhApi({ 2806: null }),
+  });
+  assert.equal(absent.reason, 'claim-absent');
+  assert.equal(has(absent), false);
+
+  const unpushedRun = mkRunDir();
+  writeRunDir(unpushedRun, { runState: PR_RECORDED, config: 'integration-model: pr-first\n' });
+  const unpushed = checkFirstCallArtifacts({ runDir: unpushedRun, issueNumbers: [2806], repoSlug: REPO_SLUG }, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+    gitRunner: fakeGitRunner([]),
+    now: NOW,
+  });
+  assert.equal(unpushed.reason, 'pr-branch-unpushed');
+  assert.equal(has(unpushed), false);
+
+  const passRun = mkRunDir();
+  writeRunDir(passRun, { runState: PR_RECORDED, config: 'integration-model: pr-first\n' });
+  writeHeader(passRun, 'work', 2806);
+  const pass = checkFirstCallArtifacts({ runDir: passRun, issueNumbers: [2806], repoSlug: REPO_SLUG }, {
+    ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }),
+    gitRunner: fakeGitRunner(['worktree-2806']),
+    now: NOW,
+  });
+  assert.deepEqual(pass, { ok: true });
+});

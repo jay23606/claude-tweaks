@@ -20,7 +20,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { readClaimBlob, defaultGhApi } = require('../issues/claim-store');
 const { classifyClaimBlob } = require('../issues/claims');
-const { resolvePolicyKeys } = require('../policy-schema');
+const { resolvePolicyKeys, resolvePolicyConfig } = require('../policy-schema');
 const { GH_TIMEOUT_MS } = require('../shared-primitives');
 const { worktreeMirror } = require('../wrap-up/pack');
 
@@ -49,9 +49,13 @@ function resolveIntegrationModel(configRaw) {
   return resolved['integration-model'].value;
 }
 
-// checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps?) -> { ok: true } | { ok: false, reason, message }
+// checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps?)
+//   -> { ok: true } | { ok: false, reason, message } | { ok: false, reason: 'missing-config', message, repairable }
 //
-// Checks, in order (first failure wins -- never aggregates):
+// Checks, in order (first failure wins -- never aggregates; the one exception is
+// `missing-config`, which also carries `repairable: boolean` -- the claim and PR checks
+// below run for it too, as classification, and the first-failure reason stays
+// `missing-config`):
 //   1. `{runDir}/run-state.json` exists.
 //   2. `{runDir}/config.yml` exists.
 //   3. Every member of `issueNumbers` has a `claims/issue-{n}.json` blob on the
@@ -68,6 +72,15 @@ function resolveIntegrationModel(configRaw) {
 //      `pack.js`'s resolveRecords ladder only ever reads ONE of the two shapes per
 //      rung (its first, flat-`work/`, rung wins outright whenever it finds anything) --
 //      no current producer writes that mixed layout.
+//
+// `repairable` (#3226): a `missing-config` first call is repairable when a re-dispatch of
+// call 2 would land in a recoverable /flow adoption case -- claim liveness/`runId` (check 3)
+// and, under pr-first, PR recorded and pushed (check 4) are exactly the facts
+// `plugin/bin/lib/flow/preflight.js`'s `computeAdoption` keys on to land call 2 in case 3
+// (a recorded `pr` with `dispatched: true` and no `config.yml` is case 3; without `pr`,
+// under local-merge, case 2 initializes in place -- #3242). No superset, no subset: the
+// integration model is read from policy.yml (config.yml is the thing missing), and any
+// failure to read it, or any throw while classifying, means `repairable: false`.
 
 // The run dir plus its worktree mirror (pack.js's worktreeMirror), deduplicated.
 function headerBases(runDir, runState) {
@@ -89,34 +102,10 @@ function hasMaterializedHeader(readFile, bases, n) {
   return false;
 }
 
-function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) {
-  const {
-    readFile = defaultReadFile,
-    gitRunner = defaultGitRunner,
-    ghApi = defaultGhApi,
-    now = Date.now(),
-  } = deps;
-
-  const runStatePath = path.join(runDir, 'run-state.json');
-  let runStateRaw;
-  try {
-    runStateRaw = readFile(runStatePath);
-  } catch {
-    return fail('missing-run-state', `run-state.json not found at ${runStatePath}`);
-  }
-
-  let parsedRunState = null;
-  try { parsedRunState = JSON.parse(runStateRaw); } catch { parsedRunState = null; }
-
-  const configPath = path.join(runDir, 'config.yml');
-  let configRaw;
-  try {
-    configRaw = readFile(configPath);
-  } catch {
-    return fail('missing-config', `config.yml not found at ${configPath}`);
-  }
-
-  const runId = path.basename(runDir);
+// claimFailure({ ghApi, repoSlug, issueNumbers, runId, now }) -> null | failObject
+// Check 3: every member's claim is live and held under this run's id. Shared by the
+// main path and `assessRepairable` so the two cannot drift.
+function claimFailure({ ghApi, repoSlug, issueNumbers, runId, now }) {
   for (const issueNumber of issueNumbers) {
     // Contents-API only (no `gitRunner` passed here): this check reads the claim, it never
     // writes one, so it has no need for git-CAS's fetch + scratch-ref dance -- `ghApi` alone
@@ -144,26 +133,91 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
       return fail('claim-run-id-mismatch', `claim for issue #${issueNumber} is held under runId ${heldBy}, not ${runId}`);
     }
   }
+  return null;
+}
+
+// prFailure(parsedRunState, gitRunner) -> null | failObject
+// Check 4's body (the caller gates on `integration-model: pr-first`): a PR is recorded in
+// run-state.json and its head branch exists on `origin`.
+function prFailure(parsedRunState, gitRunner) {
+  const pr = parsedRunState && parsedRunState.pr;
+  if (!pr || !pr.number) {
+    return fail('pr-missing', 'no recorded PR in run-state.json under integration-model: pr-first');
+  }
+  if (!pr.branch) {
+    return fail('pr-branch-unrecorded', `PR #${pr.number} recorded but no head branch name in run-state.json`);
+  }
+  let branchExists = false;
+  try {
+    const out = gitRunner(['ls-remote', '--heads', 'origin', pr.branch]);
+    branchExists = typeof out === 'string' && out.trim().length > 0;
+  } catch {
+    branchExists = false; // transport failure -- fail closed, cannot confirm the branch is pushed
+  }
+  if (!branchExists) {
+    return fail('pr-branch-unpushed', `PR #${pr.number}'s head branch "${pr.branch}" does not exist on origin`);
+  }
+  return null;
+}
+
+// assessRepairable(...) -> boolean
+// For a `missing-config` first call: would the claim and PR evidence let a re-dispatch of
+// call 2 recover? Claims first, then the integration model from policy.yml (the run's
+// config.yml is what is missing). Fails closed -- any throw (claim read, policy.yml read,
+// git) means not repairable.
+function assessRepairable({ runDir, issueNumbers, repoSlug, parsedRunState, readFile, gitRunner, ghApi, now }) {
+  try {
+    if (claimFailure({ ghApi, repoSlug, issueNumbers, runId: path.basename(runDir), now })) return false;
+    const { result } = resolvePolicyConfig({ git: gitRunner, readFile, keys: ['integration-model'] });
+    const entry = result['integration-model'];
+    if (!entry || entry.invalid || entry.error || entry.value == null) return false;
+    if (entry.value === 'pr-first') return prFailure(parsedRunState, gitRunner) === null;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) {
+  const {
+    readFile = defaultReadFile,
+    gitRunner = defaultGitRunner,
+    ghApi = defaultGhApi,
+    now = Date.now(),
+  } = deps;
+
+  const runStatePath = path.join(runDir, 'run-state.json');
+  let runStateRaw;
+  try {
+    runStateRaw = readFile(runStatePath);
+  } catch {
+    return fail('missing-run-state', `run-state.json not found at ${runStatePath}`);
+  }
+
+  let parsedRunState = null;
+  try { parsedRunState = JSON.parse(runStateRaw); } catch { parsedRunState = null; }
+
+  const configPath = path.join(runDir, 'config.yml');
+  let configRaw;
+  try {
+    configRaw = readFile(configPath);
+  } catch {
+    return {
+      ...fail('missing-config', `config.yml not found at ${configPath}`),
+      repairable: assessRepairable({
+        runDir, issueNumbers, repoSlug, parsedRunState, readFile, gitRunner, ghApi, now,
+      }),
+    };
+  }
+
+  const runId = path.basename(runDir);
+  const claimFail = claimFailure({ ghApi, repoSlug, issueNumbers, runId, now });
+  if (claimFail) return claimFail;
 
   const integrationModel = resolveIntegrationModel(configRaw);
   if (integrationModel === 'pr-first') {
-    const pr = parsedRunState && parsedRunState.pr;
-    if (!pr || !pr.number) {
-      return fail('pr-missing', 'no recorded PR in run-state.json under integration-model: pr-first');
-    }
-    if (!pr.branch) {
-      return fail('pr-branch-unrecorded', `PR #${pr.number} recorded but no head branch name in run-state.json`);
-    }
-    let branchExists = false;
-    try {
-      const out = gitRunner(['ls-remote', '--heads', 'origin', pr.branch]);
-      branchExists = typeof out === 'string' && out.trim().length > 0;
-    } catch {
-      branchExists = false; // transport failure -- fail closed, cannot confirm the branch is pushed
-    }
-    if (!branchExists) {
-      return fail('pr-branch-unpushed', `PR #${pr.number}'s head branch "${pr.branch}" does not exist on origin`);
-    }
+    const prFail = prFailure(parsedRunState, gitRunner);
+    if (prFail) return prFail;
   }
 
   const bases = headerBases(runDir, parsedRunState);
