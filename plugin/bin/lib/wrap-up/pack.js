@@ -390,6 +390,15 @@ function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
 }
 
+const PLANS_PREFIX = 'docs/plans/';
+
+// The names of the files directly under docs/plans/ in a `-z` git path list.
+function plansFileNames(nulSeparatedPaths) {
+  return nulSeparatedPaths.split('\0')
+    .filter((p) => p.startsWith(PLANS_PREFIX) && !p.slice(PLANS_PREFIX.length).includes('/'))
+    .map((p) => p.slice(PLANS_PREFIX.length));
+}
+
 function ledgerProbe(inputs, deps) {
   // _shared/ledger-format.md's Location section: a gated no-worktree run
   // (worktree-always and a run that will never have a worktree —
@@ -424,13 +433,10 @@ function ledgerProbe(inputs, deps) {
   // current-branch run legitimately has it (its uncommitted ledger is still
   // owned).
   if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
-  const PLANS = 'docs/plans/';
-  const ownedNames = (out) => out.split('\0')
-    .filter((p) => p.startsWith(PLANS) && !p.slice(PLANS.length).includes('/'))
-    .map((p) => p.slice(PLANS.length));
+  const gitOptions = { cwd: inputs.worktree };
   const owned = new Set([
-    ...ownedNames(deps.git(['diff', '--name-only', '-z', '--relative', inputs.base, '--', PLANS], { cwd: inputs.worktree })),
-    ...ownedNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS], { cwd: inputs.worktree })),
+    ...plansFileNames(deps.git(['diff', '--name-only', '-z', '--relative', inputs.base, '--', PLANS_PREFIX], gitOptions)),
+    ...plansFileNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS_PREFIX], gitOptions)),
   ]);
   const ownedCandidates = candidates.filter((f) => owned.has(f));
   // Two or more owned ledgers (a branch that carries an earlier run's ledger

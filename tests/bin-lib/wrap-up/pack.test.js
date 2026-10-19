@@ -93,24 +93,26 @@ function okDeps(overrides = {}) {
 // flags or the pathspec throws, so a regression in pack.js fails loudly here
 // instead of answering from the subcommand name alone.
 function ownedGit(owned = [], untracked = []) {
+  function requireArgs(args, expected) {
+    if (!expected.every((a) => args.includes(a))) throw new Error('unexpected git argv: ' + args.join(' '));
+  }
   return (args) => {
     if (args[0] === 'merge-base') return 'abc123\n';
     if (args[0] === 'rev-parse') return 'refs/remotes/origin/main\n';
     if (args[0] === 'diff') {
-      if (!['abc123', '--relative', '-z', '--name-only', 'docs/plans/'].every((a) => args.includes(a))) {
-        throw new Error('unexpected git argv: ' + args.join(' '));
-      }
+      requireArgs(args, ['abc123', '--relative', '-z', '--name-only', 'docs/plans/']);
       return owned.join('\0');
     }
     if (args[0] === 'ls-files') {
-      if (!['--others', '--exclude-standard', '-z', 'docs/plans/'].every((a) => args.includes(a))) {
-        throw new Error('unexpected git argv: ' + args.join(' '));
-      }
+      requireArgs(args, ['--others', '--exclude-standard', '-z', 'docs/plans/']);
       return untracked.join('\0');
     }
     return '';
   };
 }
+
+const LEDGER_HEAD = '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n';
+const OPEN_REVIEW_LEDGER = `${LEDGER_HEAD}| 1 | review | a | open | — |`;
 
 // A worktree whose docs/plans/ holds the given {name: text} ledgers, plus a
 // run dir whose run-state.json points at that worktree.
@@ -786,7 +788,7 @@ test('AC2.1: one ledger added on the branch plus inherited ledgers counts only t
 
 test('AC1.1: a worktree holding one ledger inherited from the merge base reports open 0, total 0 and lists it as unattributed', async () => {
   const name = '2026-10-03-record-2853-ledger.md';
-  const { runDir, tree } = treeWithLedgers({ [name]: '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | review | a | open | — |' });
+  const { runDir, tree } = treeWithLedgers({ [name]: OPEN_REVIEW_LEDGER });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([]) }) });
   assert.strictEqual(pack.ledger.value.open, 0);
   assert.strictEqual(pack.ledger.value.total, 0);
@@ -798,7 +800,7 @@ test('AC1.1: a worktree holding one ledger inherited from the merge base reports
 test('AC1.1: several inherited ledgers with none owned report zero and list every one as unattributed', async () => {
   const a = '2026-10-03-record-2853-ledger.md';
   const b = '2026-10-04-topic-slug-ledger.md';
-  const open = '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | build | a | open | — |';
+  const open = `${LEDGER_HEAD}| 1 | build | a | open | — |`;
   const { runDir, tree } = treeWithLedgers({ [a]: open, [b]: open });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([]) }) });
   assert.strictEqual(pack.ledger.value.open, 0);
@@ -809,7 +811,7 @@ test('AC1.1: several inherited ledgers with none owned report zero and list ever
 
 test('an untracked ledger in the worktree counts as owned', async () => {
   const name = 'x-ledger.md';
-  const { runDir, tree } = treeWithLedgers({ [name]: '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | review | a | open | — |' });
+  const { runDir, tree } = treeWithLedgers({ [name]: OPEN_REVIEW_LEDGER });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([], [`docs/plans/${name}`]) }) });
   assert.strictEqual(pack.ledger.value.open, 1);
   assert.deepStrictEqual(pack.ledger.value.files, [`docs/plans/${name}`]);
@@ -820,8 +822,8 @@ test('two owned ledgers tie-break on namesRecord', async () => {
   const named = '2025-01-02-spec-26-ledger.md';
   const stray = '2026-09-05-spec-99-ledger.md';
   const { runDir, tree } = treeWithLedgers({
-    [named]: '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | build | b | fixed | x |',
-    [stray]: '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | review | a | open | — |',
+    [named]: `${LEDGER_HEAD}| 1 | build | b | fixed | x |`,
+    [stray]: OPEN_REVIEW_LEDGER,
   }, { records: [26] });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps: okDeps({ git: ownedGit([`docs/plans/${named}`, `docs/plans/${stray}`]) }) });
   assert.deepStrictEqual(pack.ledger.value.files, [`docs/plans/${named}`]);
@@ -830,7 +832,7 @@ test('two owned ledgers tie-break on namesRecord', async () => {
 });
 
 test('ownership unknowable without a merge base fails the probe', async () => {
-  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | review | a | open | — |' });
+  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': OPEN_REVIEW_LEDGER });
   const base = ownedGit([]);
   const deps = okDeps({ git: (args, opts) => { if (args[0] === 'merge-base') throw new Error('fatal: no merge base'); return base(args, opts); } });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
@@ -839,7 +841,7 @@ test('ownership unknowable without a merge base fails the probe', async () => {
 });
 
 test('a failing ownership git call fails the probe', async () => {
-  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': '| # | Phase | Item | Status | Resolution |\n|---|---|---|---|---|\n| 1 | review | a | open | — |' });
+  const { runDir, tree } = treeWithLedgers({ 'x-ledger.md': OPEN_REVIEW_LEDGER });
   const base = ownedGit([]);
   const deps = okDeps({ git: (args, opts) => { if (args[0] === 'diff') throw new Error('git down'); return base(args, opts); } });
   const pack = await gatherPack({ runDir, cwd: tree, only: ['ledger'], deps });
