@@ -1,13 +1,8 @@
 {
-  "computedAt": "2026-10-19T09:39:20.261Z",
-  "runId": null,
+  "computedAt": "2026-10-19T10:02:23.138Z",
+  "runId": "2026-10-19T100110-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
-      {
-        "number": 3523,
-        "updatedAt": "2026-10-19T07:40:57Z",
-        "state": "OPEN"
-      },
       {
         "number": 3515,
         "updatedAt": "2026-10-18T06:43:39Z",
@@ -445,7 +440,7 @@
       },
       {
         "number": 3015,
-        "updatedAt": "2026-10-17T06:10:37Z",
+        "updatedAt": "2026-10-19T09:40:54Z",
         "state": "OPEN"
       },
       {
@@ -6064,90 +6059,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe SubagentStop hook (`plugin/bin/lib/hooks/subagent-stop.js`) grades a dispatched subagent's reply against the Subagent Contract: the last non-empty line must read `STATUS: {DONE|DONE_WITH_CONCERNS|NEEDS_CONTEXT|BLOCKED}` (`CANONICAL_RE`), and a non-compliant reply is blocked and retried in-run.\n\nA subagent running `/claude-tweaks:review` Step 3's lens fan-out launched 8 in-turn `Agent` dispatches and yielded with a one-line progress note while 5 were still pending — the pattern the dispatch prompt sanctions, since the harness delivers the completions back into the same turn sequence. The hook graded that progress note as the final reply and blocked, forcing the subagent to emit a `STATUS:` line mid-run, before its review, polish, and wrap-up work had run. A dispatcher reading that first `STATUS:` line would treat an unfinished run as complete. Reported on plugin 6.136.0.\n\nTwo partial mitigations already exist and did not cover this case:\n\n- #2041's `asyncWaitCheckpoint`: skips grading only when the reply immediately follows an async signal in the transcript (`isAsyncWaitSignal`: an `isAsync: true` Agent launch result, or a `task-notification`). A yield composed after other tool calls has no such signal right before it.\n- #2714's `INTERIM_STATUS:` marker (`isInterimProgressReply`): an opt-in trailing line that exempts a reply. It works only when the dispatch prompt tells the subagent to use it; only `_shared/subagent-output-contract.md` and `reflect/full-mode.md` mention it, and review's lens fan-out does not.\n\nNeither knows whether the subagent still has dispatches outstanding.\n\n## Deliverables\n\n1. The hook counts the subagent's own in-turn `Agent` dispatches that are still pending at the time of the reply — async launches seen in its transcript minus completions delivered as task notifications — and skips grading (or logs it as advisory only) while that count is above zero.\n2. A reply with nothing pending is graded exactly as today, including the existing #2041 and #2714 exemptions.\n3. Transcript parsing stays defensive: an unparseable or unexpected shape falls back to today's grading, never to a blanket exemption.\n\n## Acceptance Criteria\n\n1. A transcript fixture where a subagent launched async `Agent` dispatches and yields before all completions arrive is not blocked and is not forced to emit a `STATUS:` line.\n2. A transcript fixture where every launched dispatch has completed, ending in a non-compliant reply, is still blocked.\n3. A reply ending in `INTERIM_STATUS:` and a reply right after an async signal behave as today.\n4. The fixtures are taken from a real transcript's line shapes, not invented; the hook's existing tests pass.\n\n## Release Note\n\nSubagents that pause while their own background agents are still running are no longer forced to report a final status early.\n\n## Technical Approach\n\nExtend the transcript scan `subagent-stop.js` already performs (`lastAssistantText`, `isAsyncWaitSignal`) to collect launched async dispatch ids (from the Agent tool result) and completed ids (from task-notification entries), then exempt the reply while any launched id lacks a completion. Correlate by id rather than by count where the transcript carries one.\n\n### Key Files\n\n- `plugin/bin/lib/hooks/subagent-stop.js` — pending-dispatch count and exemption\n- `plugin/skills/_shared/subagent-output-contract.md` — note that pending in-turn dispatches exempt a yield, beside the `INTERIM_STATUS:` rule\n- `tests/bin-lib/hooks/contract-retries.test.js` — existing SubagentStop coverage; add the new fixtures\n- `docs/hooks.md` — SubagentStop behavior description\n\n## Gotchas\n\n- Confirm the transcript field shapes (async launch result id, task-notification payload) against a live transcript before writing the parser; #2041's own comment notes its shapes were verified that way.\n- A dispatch that never completes would exempt the subagent forever; bound the exemption (for example, only while the launch is newer than the reply, or a ceiling on the number of exempted stops) so a hung child cannot hide a real contract violation.\n- Adding the `INTERIM_STATUS:` instruction to review's lens fan-out prompt would also fix the reported run, but leaves every other nested dispatcher exposed; the mechanical count is the general fix, and the prompt instruction can be a follow-up.\n\n## Original request\n\nSubagentStop contract check fires on an intermediate yield while in-turn Agent completions are still pending\n\n**Kind:** Defect\n\n**Affected component:** bin/hooks.js subagent-stop (Subagent Contract STATUS-line check)\n\n## Current State\n\nA dispatched subagent ran review Step 3's lens fan-out: 8 in-turn `Agent` reproduction-pair dispatches. It yielded briefly with a one-line progress note while 5 completions were still pending. That yield is the pattern the dispatch prompt explicitly sanctions: the harness delivers the completion notifications back into the same turn sequence. The `subagent-stop` hook treated the progress note as the subagent's final reply. It then blocked with \"your reply's last non-empty line must read exactly STATUS: ...\". To get past it, the subagent had to emit a `STATUS:` line mid-run, before the review, polish and wrap-up phases had run. A dispatcher that reads the first stop's STATUS line would take an unfinished run as complete.\n\n## Deliverables\n\n- Make the subagent-stop check aware of outstanding in-turn Agent dispatches, e.g. by tracking launched vs completed task notifications for the session. Skip the contract check, or downgrade it to advisory, while any are pending.\n\n## Acceptance Criteria\n\n- A subagent that yields while its own in-turn Agent dispatches are still running is not forced to emit a STATUS line.\n- A subagent that yields with nothing pending is still held to the contract, as today.\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-41ac3c74 -->\n\n",
-        "createdAt": "2026-10-07T04:18:07Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3015,
-        "state": "OPEN",
-        "title": "SubagentStop contract check fires on an intermediate yield while in-turn Agent completions are still pending",
-        "updatedAt": "2026-10-17T06:10:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
         }
       }
     ],
