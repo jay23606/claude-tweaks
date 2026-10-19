@@ -2,3 +2,6 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | SDD ruling — #3028 pair pinned confirmed with no severityContested flag (low and medium share one severity bucket), replacing the plan's severityContested===true: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 2 | build | #3326 test loops over three pairs in one test, so a regression reports only the first failing pair (one subtest per pair would show all three) | deferred | SDD task review Minor — diagnostic nicety, not correctness |
+| 3 | build | #3028 assertion pins severityContested === undefined (absence) — breaks if production later sets the flag to false | deferred | SDD task review Minor — matches the existing same-bucket test's pattern |
