@@ -145,3 +145,29 @@ calls it with `online: true`.
 **Recurrence.** #3497's review: the re-entry step first proceeded on an `eligible` verdict whose
 online PR check had degraded, with the degrade visible only in `detail`. The fix made an
 unconfirmable PR state a stop.
+
+## When "landed" picks the cautious action
+
+The rules above assume the risky action follows a *landed* verdict. Some checks run the other
+way: "landed" picks the cautious, non-destructive action, and "not landed" keeps the behavior
+that existed before the check. `_shared/worktree-setup.md`'s merged-branch precondition (#3572)
+is one. A merged branch makes the session leave its worktree with `ExitWorktree(action: "keep")`
+and create a fresh one. An unmerged branch adopts the current worktree, as every clean worktree
+did before the check existed. Before you choose a fail direction, name which verdict acts and
+what each wrong answer costs.
+
+- **Fail open toward the old behavior, and log the path.** When the check cannot run, fall through
+  to what happened before it existed, with a logged `could not run ({reason})` line, not a stop.
+  The degraded-online-check rule above guards prose that would act on "not landed" where acting
+  is risky. Here acting on "not landed" is the old behavior, so there is nothing to stop for.
+  When `gh` is absent, the PR read degrades on its own, as `_shared/github-write-transport.md`
+  documents for PR list and view reads.
+- **A weaker proof is acceptable only while a false "landed" costs nothing.**
+  `gh pr list --head "{branch}" --state merged` proves that a PR from that branch name merged, not
+  that HEAD's content landed. A reused branch name, or commits added after the merge, both read as
+  merged. Here that only makes a fresh worktree and keeps the old one. Never reuse such a lookup
+  to gate a delete or a discard. Use the squash row's content proof for those.
+- **The PR lookup is the only signal that sees a squash. Pair it with a git check for merge
+  commits.** A tip that is an ancestor of `origin/{integration-branch}` but absent from
+  `git rev-list --first-parent origin/{integration-branch}` was merged by a merge commit. A fresh
+  branch cut at an integration-branch commit sits on the first-parent line and is not merged.
