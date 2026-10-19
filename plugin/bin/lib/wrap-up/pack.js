@@ -19,6 +19,7 @@ const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
+const { isTimeoutError } = require('../shared-primitives');
 
 const PROBE_NAMES = ['residue', 'state', 'blastRadius', 'pr', 'recordLabels', 'claim', 'ledger', 'unblocked'];
 const BIN = path.join(__dirname, '..', '..');
@@ -31,14 +32,15 @@ const BIN = path.join(__dirname, '..', '..');
 const EXEC_OPTS = { maxBuffer: 32 * 1024 * 1024, timeout: 30000 };
 
 // Node reports a timeout kill as the generic `Command failed: …`, which reads
-// as a crash and hid #3479's 0.5 s of headroom — so a `killed` rejection is
-// rethrown naming the timeout. Every other rejection (ENOENT for gh-absent,
-// a maxBuffer overflow) passes through unchanged.
+// as a crash and hid #3479's 0.5 s of headroom — so a timeout kill (the
+// shared isTimeoutError check) is rethrown naming the timeout. Every other
+// rejection (ENOENT for gh-absent, a maxBuffer overflow) passes through
+// unchanged.
 async function execBounded(deps, cmd, args, cwd) {
   try {
     return await deps.execFile(cmd, args, { cwd, ...EXEC_OPTS });
   } catch (err) {
-    if (err && err.killed === true) {
+    if (isTimeoutError(err)) {
       const target = cmd === 'node' ? path.basename(args[0]) : args[0];
       throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${target} (killed by ${err.signal || 'timeout'})`, { cause: err });
     }
