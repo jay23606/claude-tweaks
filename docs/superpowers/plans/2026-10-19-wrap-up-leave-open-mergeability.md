@@ -298,3 +298,10 @@ git commit -m "Name the leave-open mergeability outcome in the Verdict and resum
 | AC1.2 | Task 2 test `AC1.2` |
 | AC2.1 | Task 1 test (decisions line) + Task 2 test (Verdict) |
 | AC3.1 | Task 1 test |
+
+## As-built deviations (Common Step 4.5 — all Beneficial)
+
+1. Read source: the re-check reuses git-discipline.md's post-push `pr-merge-state.js --phase wrap-up` read and, when that read printed `unknown` or exited 3 (cleanup item 8 archived the run dir before wrap-up's push), takes one read of its own as the last call before Verify execution against the live or archive run-dir path — instead of the spec's `pack.pr` shape (a stale Phase 3 snapshot). Final-review finding, fix 6b5095932.
+2. The Verdict line and the flow resume-to-merge row name only a `DIRTY …` outcome; CLEAN/BLOCKED/UNKNOWN/failed reads stay in decisions.md only — spec AC3 over the plan's "name the same outcome" (SDD ruling, staged/sdd-ruling-1.md; fix 022f7e117).
+3. The re-check runs git's own auto-merge in every mode (spec silent); git-discipline.md's interactive/hybrid sentence and the #2986 journey name the exception (6b5095932).
+4. git-discipline.md's "no catch-up at wrap-up's exit" and "`unknown` never re-read" bullets name the leave-open exception, and the journey's red flag was reworded, so no skill file contradicts the new paragraph.
