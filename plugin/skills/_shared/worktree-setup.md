@@ -57,7 +57,7 @@ through to **Not isolated** below, but via `ExitWorktree(action: "keep")` first 
 worktree on disk untouched — it may hold unrelated in-progress work from earlier in the same
 session) rather than `EnterWorktree(name=...)` alone, since the harness's own "must not already
 be in a worktree session" precondition for `name`-creation still applies until the session
-actually leaves. Empty (clean) → **adopt** the current worktree as this run's workspace: no
+actually leaves. Empty (clean), and the branch passes the merged-branch precondition below → **adopt** the current worktree as this run's workspace: no
 `EXPECTED_BASE` capture applies (there is no separate "branch this worktree starts from" distinct
 from what's already checked out), but the origin-relative half — `git fetch origin
 {integration-branch}` / `git merge origin/{integration-branch}` — still runs unconditionally
@@ -68,6 +68,8 @@ name for anything downstream that reports or acts on it — never assume its own
 (e.g. a call site that would otherwise mint `flow/spec-{N1}-{N2}...`) was applied; nothing renames
 the branch, since a rename could break an already-open PR on a worktree left over from unrelated
 prior work in the same session.
+
+**Merged-branch precondition (clean tree only).** A clean tree is not enough: the current branch may be one whose PR already merged. Check two things. `gh pr list --head {current-branch} --state merged --json number --jq length` returning non-zero means merged; this is the only check that catches a squash merge. The tip being an ancestor of `origin/{integration-branch}` (`git merge-base --is-ancestor HEAD origin/{integration-branch}`) but absent from its first-parent line (`git rev-list --first-parent origin/{integration-branch}`) means merged by a merge commit. A fresh branch cut at an integration-branch commit sits on that line and is not merged. Either check true → do not adopt: fall through to **Not isolated** via `ExitWorktree(action: "keep")` exactly as a dirty tree does. In #3536's run the session sat in a clean worktree whose PR #3526 had squash-merged minutes earlier. Adopting would have built on the merged branch, opened a second PR from it, and left the run in a reap-eligible worktree. When `gh` is absent or the lookup errors, the git check still runs and a squash-merged branch adopts as before (fail open). The caller logs which path ran: adopted, merged (naming the check), or lookup failed.
 
 **Dependency freshness check (adopt path only).** Read `_shared/worktree-adopt-freshness.md`
 in full and follow it now, **after** Post-creation catch-up's fetch+merge above (its lockfile read
