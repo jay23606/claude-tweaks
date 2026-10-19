@@ -82,9 +82,11 @@ test('the adoption section surfaces a CONFLICTING run PR and routes it to the gi
   assert.match(section, /HARD-GATE/);
   assert.match(section, /`MERGEABLE`/);
   assert.match(section, /`UNKNOWN`/);
+  assert.match(section, /print nothing and log nothing/, 'the MERGEABLE/UNKNOWN no-op (no line, no decision entry) is stated, not just the tokens named');
   // ordering: after the BLOCKED freshness stop, before case 1
   const conflict = section.indexOf("pr.value.mergeable === 'CONFLICTING'");
-  assert.ok(section.indexOf("freshness.value.verdict === 'BLOCKED'") < conflict);
+  const blocked = section.indexOf("freshness.value.verdict === 'BLOCKED'");
+  assert.ok(blocked !== -1 && blocked < conflict, 'the BLOCKED freshness stop is present and precedes the conflict paragraph');
   assert.ok(conflict < section.indexOf('1. **Set, the directory it names exists'));
   // the abort-and-stop path logs its own decision entry before the stop
   assert.match(section, /--reversibility high/, 'the aborted-merge entry is logged with reversibility high');
