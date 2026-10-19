@@ -1736,43 +1736,34 @@ test('preExisting: --stamp-status reads the marker — preExistingAdjudicated:tr
   assert.strictEqual(parsed.verifiedHead, true);
 });
 
-test('AC1.1 preExisting: a spec log whose named files are all covered but which also carries an unattributed failure is refused — unattributed-failures: 1 (#3481)', async () => {
-  const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
-    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');
+// #3481: a preExisting run over `log` is refused with `reason` — no stamp, no effective pass.
+async function assertPreExistingRefused(log, reason) {
   const r = preExistingRepo({ log });
   const { code, stdout } = await runCli(r.args, { cwd: r.repo });
   assert.strictEqual(code, 1);
-  assert.match(stdout, /Pre-existing: not adjudicated — unattributed-failures: 1/);
+  assert.match(stdout, new RegExp(`Pre-existing: not adjudicated — ${reason}`));
   assert.ok(!fs.existsSync(path.join(r.gitDir, 'claude-tweaks-verify-pass.json')));
   const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
-  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], eligible: false, reason: 'unattributed-failures: 1' });
+  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], eligible: false, reason });
   assert.strictEqual(report.effectivePass, false);
+}
+
+test('AC1.1 preExisting: a spec log whose named files are all covered but which also carries an unattributed failure is refused — unattributed-failures: 1 (#3481)', async () => {
+  const log = ['ℹ tests 3', 'ℹ pass 1', 'ℹ fail 2', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'test at tests/helper.js:2:1', '✖ y (1ms)'].join('\n');
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
 });
 
 test('AC1.2 preExisting: a TAP log whose named file is covered but which also carries an unattributed failure is refused — unattributed-failures: 1 (#3481)', async () => {
   const log = ['not ok 1 - a known pre-existing failure', '  ---', '  stack: |-', '    at TestContext.<anonymous> (tests/known-shallow.test.js:12:5)', '  ...',
     'not ok 2 - an unattributed one', '  ---', '  stack: |-', '    some non-frame diagnostic text', '  ...',
     '# tests 2', '# pass 0', '# fail 2'].join('\n');
-  const r = preExistingRepo({ log });
-  const { code, stdout } = await runCli(r.args, { cwd: r.repo });
-  assert.strictEqual(code, 1);
-  assert.match(stdout, /Pre-existing: not adjudicated — unattributed-failures: 1/);
-  assert.ok(!fs.existsSync(path.join(r.gitDir, 'claude-tweaks-verify-pass.json')));
-  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
-  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], eligible: false, reason: 'unattributed-failures: 1' });
-  assert.strictEqual(report.effectivePass, false);
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
 });
 
 test('AC2.1 preExisting: a summary-family log is never adjudicated through preExisting — no-accounting-guard: summary (#3481)', async () => {
   const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
-  const r = preExistingRepo({ log });
-  const { code, stdout } = await runCli(r.args, { cwd: r.repo });
-  assert.strictEqual(code, 1);
-  assert.match(stdout, /Pre-existing: not adjudicated — no-accounting-guard: summary/);
-  assert.ok(!fs.existsSync(path.join(r.gitDir, 'claude-tweaks-verify-pass.json')));
-  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
-  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], eligible: false, reason: 'no-accounting-guard: summary' });
-  assert.strictEqual(report.effectivePass, false);
+  await assertPreExistingRefused(log, 'no-accounting-guard: summary');
 });
 
 // #1928 AC1: the runner is the mechanical source of the verify event.
