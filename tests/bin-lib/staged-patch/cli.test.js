@@ -207,6 +207,33 @@ test('a --patch that does not apply at its position nor alone exits 2', (t) => {
   assert.match(err.join(''), /staged\/review-3\.patch/);
 });
 
+test('M5: a --patch the staged/ walk never visits (a dotfile) exits 2 with a stderr line, never 0', (t) => {
+  const fx = fixture(t);
+  stage(fx.staged, 'review-1.patch', captureDiff(t, BASE, editLine('l1', 'l1-edit')));
+  const hidden = stage(fx.staged, '.hidden.patch', captureDiff(t, BASE, editLine('a3', 'a3-edit')));
+  const { deps, out, err } = fakeDeps(fx.main);
+  assert.equal(run(['--worktree', fx.worktree, '--patch', hidden], deps), 2);
+  assert.equal(out.join(''), '');
+  assert.match(err.join(''), /\.hidden\.patch/);
+  assert.match(err.join(''), /not among staged\/'s walked/);
+});
+
+test('T3: --rederive-out resolving inside the run\'s staged/ dir exits 2 and writes nothing', (t) => {
+  const fx = fixture(t, NINE);
+  stage(fx.staged, 'review-1.patch', captureDiff(t, NINE, editLine('l2', 'L2')));
+  const r2 = stage(fx.staged, 'review-2.patch', captureDiff(t, NINE, editLine('l5', 'L5')));
+  const inside = path.join(fx.staged, 'review-2-rederived.patch');
+  const { deps, out, err } = fakeDeps(fx.main);
+  assert.equal(run(['--worktree', fx.worktree, '--patch', r2, '--rederive-out', inside], deps), 2);
+  assert.equal(out.join(''), '');
+  assert.match(err.join(''), /--rederive-out must not resolve inside/);
+  assert.equal(fs.existsSync(inside), false);
+  // A relative path that climbs out of staged/ is outside, and still allowed.
+  const outside = path.join(fx.runDir, 'review-2-rederived.patch');
+  assert.equal(run(['--worktree', fx.worktree, '--patch', r2, '--rederive-out', path.relative(fx.main, outside)], fakeDeps(fx.main).deps), 1);
+  assert.ok(fs.existsSync(outside));
+});
+
 test('a check that cannot run (git did not complete) maps to exit 4 with the error on stderr', (t) => {
   const fx = fixture(t);
   const r1 = stage(fx.staged, 'review-1.patch', captureDiff(t, BASE, editLine('l1', 'l1-edit')));

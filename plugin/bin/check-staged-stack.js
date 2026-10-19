@@ -7,8 +7,9 @@
 // Exit 0 no conflict involves --patch — one JSON line on stdout, nothing on stderr; 1 a conflict
 // involves --patch — the JSON on stdout, one stderr line naming both staged/ paths; 2 a malformed
 // invocation (missing/valueless flags, --patch not a .patch directly under a staged/ dir, a
-// missing --patch file, --worktree not a directory), or --patch does not apply at its position nor
-// alone — the JSON still prints on this path; 3 the run dir (the parent of staged/) is missing or
+// missing --patch file, --worktree not a directory, --rederive-out resolving inside staged/, --patch
+// not among staged/'s walked .patch entries — a dotfile, say), or --patch does not apply at its
+// position nor alone — the JSON still prints on that last path; 3 the run dir (the parent of staged/) is missing or
 // not anchored under the main checkout (a worktree-local shadow — _shared/pipeline-run-dir.md's
 // Anchoring section, [IL-127]); 4 the check could not run — any throw from checkStack (scratch or
 // git failure, or an invariant guard), error on stderr.
@@ -81,6 +82,13 @@ function run(argv, deps = realDeps) {
   if (!isFile(patch)) return usageError(`--patch does not exist as a file: ${o.patch}`);
   const worktree = path.resolve(cwd, o.worktree);
   if (!isDirectory(worktree)) return usageError(`--worktree must be an existing directory: ${o.worktree}`);
+  if (o.rederiveOut !== null) {
+    // A re-derived file written into staged/ would become a staged proposal of its own.
+    const rel = path.relative(stagedDir, path.resolve(cwd, o.rederiveOut));
+    if (!(rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel))) {
+      return usageError(`--rederive-out must not resolve inside the run's staged/ dir: ${o.rederiveOut}`);
+    }
+  }
 
   const runDir = path.dirname(stagedDir);
   let anchored;
@@ -98,7 +106,13 @@ function run(argv, deps = realDeps) {
   let result;
   let patches;
   try {
-    patches = stagedApplyOrder(fs.readdirSync(stagedDir)).map((n) => path.join(stagedDir, n));
+    const names = stagedApplyOrder(fs.readdirSync(stagedDir));
+    // A --patch the walk would never visit (a dotfile, or a name the listing spells differently)
+    // must not read as a clean check.
+    if (!names.includes(targetName)) {
+      return usageError(`--patch is not among staged/'s walked .patch entries: ${targetName}`);
+    }
+    patches = names.map((n) => path.join(stagedDir, n));
     result = checkStack({ worktree, patches, target: patch, git: deps.git });
   } catch (err) {
     deps.stderr(`check-staged-stack.js: could not run the stacked check (${err && err.message})\n`);
