@@ -19,6 +19,10 @@
 - Why nothing caught it: `checkBookkeepingStampsGate` and `checkPrBookkeepingPrecondition` both return early on `!hasMaterializeCommit`; `verify-run-bookends.js` on this very run prints `{"ok":true,"confirmed":{"worktree":true,"pr":"n/a",...}}` although the project is `pr-first` — its PR check never fires.
 - Already landed since, not redone here: #3224 (Capable first call), #3225 (`checkDispatchConfigGate` denies commits until `config.yml` exists), #3242 (case-2 adoption), #3012 (paraphrase tolerance in the stamps gate).
 
+## Execution ruling (2026-10-19, during execution)
+
+The integration-model half of this plan (Task 1's `readIntegrationModel` change and its AC1.3 test, and all of Task 2) is **dropped**: open record #3350 (`ready`, `auto:build`) already owns exactly that gap — "Run config never carries the integration-model pin — pr-first PR-bookend checks silently skip" — with a different design (write the pin through the Manifesto; readers print a degrade line when it is absent). Fixing the readers here would duplicate and contradict it. Until #3350 lands, `verify-run-bookends.js` keeps printing `"pr":"n/a"` on real runs; #2912's AC1 PR clause depends on #3350. Task 4's capture is replaced by a comment on #3350.
+
 ## Global Constraints
 
 - Claim-line canonical form is exactly `Step 2.8: claimed #{n}` followed by a word boundary (spec AC3: `Step 2\.8: claimed #{n}\b`).
@@ -128,7 +132,7 @@ stamp, draft PR under pr-first, canonical `Step 2.8: claimed #{n}` line, live cl
 it; if it still exits 1, report `OUTCOME: build-test-blocked` / `STATUS: BLOCKED`, never `DONE`.
 ```
 
-In `claim-targets.md` replace "confirming this run's `worktree`/`pr` stamps and a live claim per target" with "confirming this run's `worktree` stamp, its `pr` stamp under `pr-first` (resolved from the run pin, else `policy.yml`, else detection), a committed `work/{n}-spec.md`, a canonical `Step 2.8: claimed #{n}` line and a live claim per target", and add after that sentence: "Dispatch's first-call template requires the same check on every transport (#2912)." In `docs/plugin-structure.md:184` name the two new bookends.
+In `claim-targets.md` replace "confirming this run's `worktree`/`pr` stamps and a live claim per target" with "confirming this run's `worktree` stamp, its `pr` stamp under `pr-first`, a committed `work/{n}-spec.md`, a canonical `Step 2.8: claimed #{n}` line and a live claim per target", and add after that sentence: "Dispatch's first-call template requires the same check on every transport (#2912)." In `docs/plugin-structure.md:184` name the two new bookends.
 - [ ] **Step 4: Run** `node --test tests/dispatch-mechanical-enforcement.test.js` plus every suite reading `task-prompt.md` or `claim-targets.md` (`git grep -l -e task-prompt.md -e claim-targets.md -- tests`) — Expected: PASS.
 - [ ] **Step 5: Commit** — `Require the call-1 bookend check on every dispatch transport — refs #2912`.
 
