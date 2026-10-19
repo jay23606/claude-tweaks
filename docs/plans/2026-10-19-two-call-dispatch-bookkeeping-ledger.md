@@ -2,3 +2,13 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | Ruling: integration-model resolution in verify-run-bookends.js / first-call-artifact-check.js dropped — open record #3350 owns it with a different design; until it ships the PR bookend reports n/a on real runs | observation | SDD ruling; cross-ref comment posted on #3350 |
+| 2 | build | Ruling: no new capture filed for the integration-model pin — #3350 already is that record | observation | SDD ruling |
+| 3 | build | gitSucceeds collapsed a cat-file timeout into not-committed rather than undetermined | deferred | resolved in final fix wave b5aba89fc (gitProbe returns null) |
+| 4 | build | remedy strings carry literal placeholders (<worktree>, {git\|contents-api\|mcp}) | deferred | resolved by Task 3 ruling (first-call insert says to substitute placeholders) |
+| 5 | build | Ruling: first-call insert gains "(substituting its <...> and {...} placeholders)" | observation | SDD ruling |
+| 6 | build | docs/plugin-structure.md documented missing[] without remedy | deferred | resolved in final fix wave b5aba89fc |
+| 7 | build | Ruling: AC2.1 preflight test is a pin (passes before and after), not regression coverage — accepted per plan | observation | SDD ruling |
+| 8 | build | Fixes #2912 in PR body while AC1's run-state.json.pr verification clause depends on #3350 — decide Fixes vs deferred-closure (Refs) before merge | open | |
+| 9 | build | claim-targets.md:221 and the first-call insert state exit-1 handling only; exit 2 (malformed invocation) has no stated handling | deferred | |
+| 10 | build | claimRemedy passes --run-id basename(runDir), which is spec-{N} for a per-spec run dir (pre-existing shape) | deferred | |
