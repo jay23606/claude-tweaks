@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 986,
+    "title": "Live-verify 488's chunked Instructions-fill proc…",
+    "action": "Close as not planned — parked 59d, stale, trigger not met",
+    "command": "gh issue close 986 --reason \"not planned\" --comment \"tidy: parked 59d, trigger unmet\""
+  }
+]

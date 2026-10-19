@@ -26,7 +26,7 @@ that needs no resolution, only inclusion:
 
    | CLI | Canonical shape |
    |---|---|
-   | `log-decision.js` | `node "{plugin-root}/bin/log-decision.js" --run "{minted-run-dir}" --status AUTO\|STAGED\|KEPT-PROMPT\|SCANNED\|REFUSED\|SKIP --text "..." [--reversibility high\|med\|low\|n/a]` |
+   | `log-decision.js` | `node "{plugin-root}/bin/log-decision.js" --run "{minted-run-dir}" --status AUTO\|STAGED\|KEPT-PROMPT\|SCANNED\|REFUSED\|SKIP --text "..." [--reversibility high\|med\|low\|n/a[" (qualifier)"]]` |
    | `claim-targets.js` | `node "{plugin-root}/bin/claim-targets.js" --run-id "{run-id}" --targets {n}[,{m}...] [--keep-going] [--run "{minted-run-dir}"]` |
    | `materialize.js` | `node "{plugin-root}/bin/materialize.js" <n> --run-dir "{minted-run-dir}" [--multi-record-slug <n>]` |
    | claims-registry read | `{minted-run-dir}/context/claims.md`'s "Reading claim state" git-trees path (`claims/issue-{n}.json` on the `claims-registry` branch) — never `gh api ...?ref=` query-string quoting, never `-f ref=` on a GET (if that bundle is absent, read `_shared/issue-claims.md` directly) |
@@ -53,7 +53,9 @@ that needs no resolution, only inclusion:
    clause carve-out (#2533) — make that reply's last non-empty line
    `INTERIM_STATUS: {one-line progress note}`, never `STATUS: {WORD}`, which is reserved for your
    genuine final reply. An unmarked interim reply is graded by the `SubagentStop` hook as a final
-   reply missing its status line and logged as a false-positive `contract-violation`. Forward
+   reply missing its status line and logged as a false-positive `contract-violation`, unless your
+   own async `Agent` launches are still pending in your transcript (#3015) — the marker stays
+   required, since that exemption covers only pending launches. Forward
    this marker rule, with the rest of this item, to any nested dispatch that itself dispatches.
 8. **Selected at** (#3131) — one literal line, `Selected at: {ISO}`: the modification time of
    this firing's session-scoped `dispatch-groups.json` (`queue-pull-script.md`'s output, resolved

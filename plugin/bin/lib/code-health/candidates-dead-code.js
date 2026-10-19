@@ -107,7 +107,6 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { registerGenerator } = require('./focus-generators');
 const { escapeRegExp } = require('../shared-primitives');
 
 const SOURCE_EXTS = new Set(['.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs']);
@@ -552,11 +551,6 @@ function candidatesDeadCode(rootDir, opts) {
   return scanDeadCode(rootDir, opts).candidates;
 }
 
-// Registers this vertical's generator into the shared framework registry —
-// see `./focus-generators.js` for why that registry lives in its own
-// neutral module rather than here (review finding, ledger item #6).
-registerGenerator('dead-code', scanDeadCode);
-
 module.exports = {
   detectEntrypoints,
   extractPathLikeStrings,
@@ -572,3 +566,12 @@ module.exports = {
   scanDeadCode,
   candidatesDeadCode,
 };
+
+// Registers this vertical's generator into the shared framework registry —
+// see `./focus-generators.js` for why that registry lives in its own
+// neutral module rather than here (review finding, ledger item #6). This
+// module is the registry's first autoload, and requiring the registry
+// triggers its cascade of sibling verticals, which destructure this module's
+// helpers at require time. So the require sits below `module.exports`: the
+// siblings then see the real exports instead of an empty object (#2869).
+require('./focus-generators').registerGenerator('dead-code', scanDeadCode);

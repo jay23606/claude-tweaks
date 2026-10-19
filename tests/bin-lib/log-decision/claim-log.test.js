@@ -75,6 +75,12 @@ test('isClaimLogEntry: single and batch forms, with or without a spec prefix; un
   ]) assert.strictEqual(isClaimLogEntry(no), false, JSON.stringify(no));
 });
 
+test('isClaimLogEntry accepts a claim line whose Reversibility carries a qualifier (#2869)', () => {
+  const line = formatEntry({ status: 'AUTO', now: NOW, step: CLAIM_LOG_STEP, text: claimLogText(2869, 'git'), reversibility: 'high (claim can be released)' });
+  assert.match(line, /Reversibility: high \(claim can be released\)\.$/);
+  assert.strictEqual(isClaimLogEntry(line), true, line);
+});
+
 test('classifyDecisions: absent, empty, claim-log-only, content — and nothing unparseable ever reads as claim-log-only (#2861)', () => {
   assert.strictEqual(classifyDecisions(null), 'absent');
   assert.strictEqual(classifyDecisions(''), 'empty');

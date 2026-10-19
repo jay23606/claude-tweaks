@@ -70,7 +70,7 @@ Six conditions, all returned as `{ok: false, reason, fix?, detail?}` by `plugin/
 
 | `reason` | Meaning | User-facing skip wording | Fix |
 |---|---|---|---|
-| `not-installed` | No `impeccable@impeccable` entry in `installed_plugins.json` at all | `Impeccable plugin not installed` | `/plugin install impeccable@impeccable (Impeccable 4.2.2 or later)` (the module's own `fix` string) |
+| `not-installed` | No `impeccable@impeccable` entry in `installed_plugins.json` that applies to this session | `Impeccable plugin not installed` | `/plugin install impeccable@impeccable (Impeccable 4.2.2 or later)` (the module's own `fix` string) |
 | `upgrade-required` | An install exists, but its launcher script (`skills/impeccable/scripts/impeccable[.cmd]`) is missing — an install older than 4.2.2 | `Impeccable plugin is older than 4.2.2 (no engine launcher)` | `/plugin update impeccable@impeccable to 4.2.2 or later` (the module's `fix` string also names the missing launcher path) |
 | `engine-not-installed` | The launcher exists and `engine-probe` ran, but answered "no engine" (exit 127) — the design-engine binary isn't cached yet | `Impeccable design engine not cached` | Run the launcher's own `engine-probe` subcommand (the module's `fix` string is the exact command for this machine) |
 | `shape-mismatch` | The verb ran and returned JSON, but it didn't match the expected `signals`/`doctor`/… shape | `Impeccable {verb} output did not match the expected shape` | `detail` names the first field that failed validation — usually an engine/plugin version skew; re-run `engine-probe` or update the plugin |

@@ -6,7 +6,11 @@
 // header format has exactly one implementation instead of a copy per caller.
 'use strict';
 
+const { POLICY_KEYS } = require('../policy-schema');
+
 const REQUIRED_SECTIONS = ['## Current State', '## Deliverables', '## Acceptance Criteria', '## Release Note'];
+// The Design-intent enum, read once from the policy schema (never restated here).
+const DESIGN_INTENT_VALUES = Object.freeze([...POLICY_KEYS.find((k) => k.key === 'design-intent').values]);
 // One entry per placeholder marker; the gate's combined regex is their union, so
 // compose.js can name which marker matched without a second implementation (#2827).
 const PLACEHOLDER_PATTERNS = [
@@ -111,15 +115,45 @@ function shapeGate(body) {
   return missing.length ? { ok: false, missing } : { ok: true, missing: [] };
 }
 
-// body -> { surface?, designIntent?, uiStack?, designSeed? } — read from the leading
-// metadata block (every line before the first blank line). Legacy `Surface:
+// raw string -> { ok: true, values } | { ok: false, invalid, reason }. Splits a
+// comma-separated Design-intent list: each value trimmed, empties dropped,
+// duplicates removed in first-seen order. Any value outside the enum makes the
+// list invalid ('unknown', naming every bad value). Only with no unknown
+// values, `none` combined with another intent is invalid ('none-mixed').
+function normalizeDesignIntent(raw) {
+  const values = [];
+  for (const part of String(raw).split(',')) {
+    const value = part.trim();
+    if (value && !values.includes(value)) values.push(value);
+  }
+  const invalid = values.filter((v) => !DESIGN_INTENT_VALUES.includes(v));
+  if (invalid.length) return { ok: false, invalid, reason: 'unknown' };
+  if (values.includes('none') && values.length > 1) return { ok: false, invalid: ['none'], reason: 'none-mixed' };
+  return { ok: true, values };
+}
+
+// designIntentError (liftMetadata's) -> the reason clause every gate that rejects the
+// line names — materialization (bin/materialize.js) and write time (compose-record).
+function describeDesignIntentError(err) {
+  return err.reason === 'none-mixed'
+    ? '"none" cannot be combined with other intents'
+    : `unknown value(s) ${err.invalid.join(', ')} (allowed: ${DESIGN_INTENT_VALUES.join(', ')})`;
+}
+
+// body -> { surface?, designIntent?, designIntentError?, uiStack?, designSeed? } — read from
+// the leading metadata block (every line before the first blank line). Legacy `Surface:
 // frontend` reads as `web`; `Surface: mixed` is retired and passed through
 // unchanged (materialize.md: a record still declaring it needs re-shaping,
-// not a value this module silently rewrites).
+// not a value this module silently rewrites). A Design-intent list that
+// normalizes to values sets designIntent (joined ', '); one that fails
+// normalizeDesignIntent sets designIntentError instead, naming the raw line value.
 function liftMetadata(body) {
   const text = typeof body === 'string' ? body : '';
-  const blankAt = text.indexOf('\n\n');
-  const block = blankAt === -1 ? text : text.slice(0, blankAt);
+  // \r?\n\r?\n: a CRLF body (GitHub web-UI edits) ends its metadata block at
+  // '\r\n\r\n', which a bare '\n\n' search never finds — the whole body would
+  // then be scanned for metadata lines.
+  const blankMatch = /\r?\n\r?\n/.exec(text);
+  const block = blankMatch ? text.slice(0, blankMatch.index) : text;
   const out = {};
   // [ \t]* (not \s*) before every capture group deliberately: \s matches
   // \n, so a greedy \s* on a bare "Field:" line (no value) would consume
@@ -128,8 +162,12 @@ function liftMetadata(body) {
   // a bare line a no-match, never a misread of the next field (refs #357).
   const surfaceMatch = /^Surface:[ \t]*(\S+)/m.exec(block);
   if (surfaceMatch) out.surface = surfaceMatch[1] === 'frontend' ? 'web' : surfaceMatch[1];
-  const intentMatch = /^Design-intent:[ \t]*(\S+)/m.exec(block);
-  if (intentMatch) out.designIntent = intentMatch[1];
+  const intentMatch = /^Design-intent:[ \t]*(.+)$/m.exec(block);
+  if (intentMatch) {
+    const intent = normalizeDesignIntent(intentMatch[1]);
+    if (!intent.ok) out.designIntentError = { raw: intentMatch[1].trim(), invalid: intent.invalid, reason: intent.reason };
+    else if (intent.values.length) out.designIntent = intent.values.join(', ');
+  }
   const uiStackMatch = /^Ui-stack:[ \t]*(.+)$/m.exec(block);
   if (uiStackMatch) out.uiStack = uiStackMatch[1].trim();
   const seedMatch = /^Design-seed:[ \t]*(\S+)/m.exec(block);
@@ -180,5 +218,5 @@ function composeFile({ header, n, title, body }) {
 }
 
 module.exports = {
-  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, sectionText, shapeGate, liftMetadata, composeHeader, composeFile, stripCodeSpans,
+  REQUIRED_SECTIONS, PLACEHOLDER_PATTERNS, ORIGINAL_REQUEST_RE, DESIGN_INTENT_VALUES, sectionText, shapeGate, normalizeDesignIntent, describeDesignIntentError, liftMetadata, composeHeader, composeFile, stripCodeSpans,
 };
