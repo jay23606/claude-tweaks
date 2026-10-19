@@ -8,4 +8,4 @@
 | 4 | build | SDD ruling — lazy restart at the next browser step, and stop before Steps 4 and 5 too: ratify or reverse at the Review Console (staged/sdd-ruling-4.md) | open | |
 | 5 | build | SDD ruling — multi-spec record location is pre-existing; filed as #3656, not folded in: ratify or reverse at the Review Console (staged/sdd-ruling-5.md) | open | |
 | 6 | build | SDD ruling — final-review minors fixed; Section D detached-field parse filed as #3657: ratify or reverse at the Review Console (staged/sdd-ruling-6.md) | open | |
-| 7 | build | step3-routing.md step 1's "stays stopped across the later points" can read as skipping Step 6.7's stop after Step 6 restarted a server (parked, wording-only; no second SDD fix wave) | observation | |
+| 7 | build | step3-routing.md step 1's "stays stopped across the later points" can read as skipping Step 6.7's stop after Step 6 restarted a server (parked, wording-only; no second SDD fix wave) | fixed | review Step 3 (direct review, medium-severity convention/error-handling): reworded to "Re-read the file at every point … stopped again before Step 6.7's wave"; conformance needles updated |

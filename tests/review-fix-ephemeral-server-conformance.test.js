@@ -62,7 +62,8 @@ function assertRouting(text) {
     'Step 4 (before invoking `/claude-tweaks:reflect`',
     'Step 5 (before invoking `/claude-tweaks:simplify`',
     "Step 6.7's routing wave",
-    'the server stays stopped across the later points in the same review',
+    'Re-read the file at every point: a server stopped earlier stays stopped',
+    "is stopped again before Step 6.7's wave",
     // stop failure degrades, never blocks
     'log `SKIP` via `log-decision.js`',
     "`_shared/auto-decision-log.md`'s degrade-trace rule",
