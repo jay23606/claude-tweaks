@@ -1431,7 +1431,7 @@ test('#3399: parkedAtShaping is true for a record when any of its header files c
   assert.deepStrictEqual(res.parkedAtShaping, { 5: true });
 });
 
-test('pr probe attaches the pr-checks.js --run verdict as ci (#3469)', async () => {
+test('pr probe attaches the pr-checks.js --pr verdict as ci (#3469)', async () => {
   const runDir = fixtureRunDir();
   const seen = [];
   const deps = okDeps({
@@ -1446,7 +1446,7 @@ test('pr probe attaches the pr-checks.js --run verdict as ci (#3469)', async () 
   const pack = await gatherPack({ runDir, cwd: '/w/tree', only: ['pr'], deps });
   assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
   assert.strictEqual(seen.length, 1);
-  assert.deepStrictEqual(seen[0], [path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'pr-checks.js'), '--run', runDir]);
+  assert.deepStrictEqual(seen[0], [path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'pr-checks.js'), '--pr', '1901']);
   assert.strictEqual(pack.pr.value.ci.state, 'pending');
   assert.strictEqual(pack.pr.value.state, 'OPEN');
 });

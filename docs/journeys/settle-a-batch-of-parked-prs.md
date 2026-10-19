@@ -22,7 +22,7 @@ files:
 - **Red flags:** The agent silently ignores a combined ref/`--budget` instead of reporting the conflict; the agent runs this form from a scheduled Routine context.
 
 ### 2. Read the batch table
-- **URL:** no page — a markdown table rendered per `plugin/skills/dispatch/settle-parked.md` Step 3, one row per eligible `bot:parked` PR (Target, PR #, park reason, CI status, files changed), preceded by a fetch of every open `bot:parked` PR and a per-PR freshness probe (`check-resume-freshness`) plus a fresh `gh pr view` CI/mergeability read.
+- **URL:** no page — a markdown table rendered per `plugin/skills/dispatch/settle-parked.md` Step 3, one row per eligible `bot:parked` PR (Target, PR #, park reason, CI status, files changed), preceded by a fetch of every open `bot:parked` PR and a per-PR freshness probe (`check-resume-freshness`) plus a fresh `pr-checks.js --pr` CI read (head-sha runs included, so a partial rollup reads pending).
 - **Action:** The user reviews each row's park reason and current CI status before deciding which PRs to resume.
 - **Should feel:** Grounded in fresh evidence — the same live-sourcing discipline `resume-confirmation.md`'s single-PR confirm already uses, just batched.
 - **Should understand:** A PR whose freshness probe comes back `BLOCKED` (its worktree is still live, or it was committed to recently) never appears as a selectable row — it's named on its own `excluded — still live` line instead, so nothing is silently dropped from view.

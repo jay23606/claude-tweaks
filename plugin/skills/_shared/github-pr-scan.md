@@ -121,13 +121,14 @@ Full sweep of open PRs, `by:code-health`-labelled issues, `by:harness-health`-la
      fs.writeFileSync('$PR_SCAN_UNARMED_CANDIDATES', JSON.stringify(candidates));
    "
 
-   node -e "
+   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}" node -e "
      // The rollup lists only registered checks; pr-checks.js adds the head-sha runs (Step 2.5, #3469).
      const fs = require('fs');
      const { execFileSync } = require('child_process');
+     const PR_CHECKS = require('path').join(process.env.PLUGIN_ROOT, 'bin', 'pr-checks.js');
      const kept = require('$PR_SCAN_UNARMED_CANDIDATES').filter((pr) => {
        let state;
-       try { state = JSON.parse(execFileSync('node', ['${CLAUDE_PLUGIN_ROOT}/bin/pr-checks.js', '--pr', String(pr.number)], { encoding: 'utf8' })).state; } catch (e) { state = 'read-failed'; }
+       try { state = JSON.parse(execFileSync('node', [PR_CHECKS, '--pr', String(pr.number)], { encoding: 'utf8' })).state; } catch (e) { state = 'read-failed'; }
        if (state === 'green' || state === 'no-ci') return true;
        console.error('[pr-unarmed] PR #' + pr.number + ' not offered: CI ' + state);
        return false;

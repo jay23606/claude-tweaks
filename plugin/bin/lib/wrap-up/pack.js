@@ -634,9 +634,12 @@ function buildProbes(inputs, deps) {
       const view = JSON.parse(stdout);
       // #3469: the rollup alone reads a partial run green — pr-checks.js adds
       // the head-run read and classifies, so the console never re-derives it.
+      // `--pr`, not `--run`: --run reads `stale` whenever local HEAD differs
+      // from the PR head, which would lose the PR head's own verdict; the
+      // console shows the PR head's own verdict.
       let ci;
       try {
-        const { stdout: out } = await deps.execFile('node', [path.join(BIN, 'pr-checks.js'), '--run', String(inputs.runDir)], { cwd: inputs.worktree || undefined, ...EXEC_OPTS });
+        const { stdout: out } = await deps.execFile('node', [path.join(BIN, 'pr-checks.js'), '--pr', String(inputs.pr)], { cwd: inputs.worktree || undefined, ...EXEC_OPTS });
         const lines = String(out).split('\n').map((l) => l.trim()).filter(Boolean);
         ci = JSON.parse(lines[lines.length - 1]);
         if (ci === null || typeof ci !== 'object') throw new Error('pr-checks.js output is not a JSON object');

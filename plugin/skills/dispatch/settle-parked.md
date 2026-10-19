@@ -30,7 +30,7 @@ HTML-comment form on a `gh`-present read, the plain-text companion form on a
 
 ## Step 2: Freshness probe + fresh CI read, per PR
 
-For each PR resolved in Step 1, run two checks — reusing
+For each PR resolved in Step 1, run two checks — the freshness probe reuses
 `resume-confirmation.md`'s existing mechanics rather than reimplementing them:
 
 1. **Freshness probe:** `node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" check-resume-freshness --run "{run-dir}"` — same call `resume-confirmation.md` makes before its own per-PR resume.

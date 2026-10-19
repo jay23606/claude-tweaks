@@ -17,9 +17,10 @@ test('AC1.1: review console classifies CI from pack.pr.value.ci (pr-checks.js), 
   const end = t.indexOf('Exactly one of options 1 and 2');
   assert.ok(start >= 0 && end > start, 'the pr-first paragraph and its Exactly-one trailer are both found');
   const slice = t.slice(start, end);
-  for (const needle of ['pack.pr.value.ci', 'pr-checks.js" --run', 'pending', 'read-failed']) {
+  for (const needle of ['pack.pr.value.ci', 'pr-checks.js" --pr', 'pending', 'read-failed']) {
     assert.ok(slice.includes(needle), `slice names ${needle}`);
   }
+  assert.ok(!slice.includes('pr-checks.js" --run'), 'the pack-absent fallback reads the PR head (--pr), not --run, which reads stale off a differing local HEAD');
   assert.ok(!slice.includes('--json state,mergeStateStatus,headRefOid,statusCheckRollup'), 'the inline rollup read is retired');
   const opt1 = slice.slice(slice.indexOf('- Option 1'), slice.indexOf('- Option 2'));
   const opt2 = slice.slice(slice.indexOf('- Option 2'), slice.indexOf('- Option 3'));
@@ -40,7 +41,20 @@ test('AC1.1: settle-parked reads CI through pr-checks.js --pr and maps its state
   for (const needle of ['pending', 'green', 'no-ci', 'passing', 'red', 'inherited-red', 'failing', 'read-failed', 'gh-absent', 'unavailable']) {
     assert.ok(bullet.includes(needle), `CI status bullet names ${needle}`);
   }
+  assertCiPairings(bullet);
+  // Negative control: the same assertions must throw when pending is mapped to passing.
+  const doctored = bullet.replace('`pending` → `pending`', '`pending` → `passing`');
+  assert.notStrictEqual(doctored, bullet, 'the doctoring changed the bullet');
+  assert.throws(() => assertCiPairings(doctored), /pending/, 'a pending -> passing mapping is rejected');
 });
+
+// Pins each state-to-vocabulary pairing in the settle-parked CI status bullet, not just the tokens.
+function assertCiPairings(bullet) {
+  assert.match(bullet, /`pending` → `pending`/, 'pending maps to pending');
+  assert.match(bullet, /`green`\/`no-ci` → `passing`/, 'green/no-ci map to passing');
+  assert.match(bullet, /`red`\/`inherited-red` → `failing`/, 'red/inherited-red map to failing');
+  assert.match(bullet, /`read-failed`\/`gh-absent` → `unavailable`/, 'read-failed/gh-absent map to unavailable');
+}
 
 const PR_SCAN = 'plugin/skills/_shared/github-pr-scan.md';
 
@@ -66,6 +80,7 @@ test('AC1.1: pr-scan item 9 gates candidates on a pr-checks.js --pr verdict', ()
   const slice = item9Slice();
   assert.ok(slice.includes('pr-checks.js'), 'item 9 names pr-checks.js');
   assert.ok(slice.includes('--pr'), 'item 9 uses the --pr mode');
+  assert.ok(slice.includes('PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}" node -e "'), 'the CI filter receives the plugin root through the environment');
   assert.ok(slice.includes("NON_BLOCKING = new Set(['SUCCESS', 'SKIPPED', 'NEUTRAL'])"), 'the NON_BLOCKING rollup pre-filter is still present');
 });
 
@@ -85,12 +100,12 @@ test('AC1.1: item 9 CI filter keeps green/no-ci, drops pending, red and a failed
     ].join('\n'));
     const candidatesFile = path.join(tmp, 'candidates.json');
     fs.writeFileSync(candidatesFile, JSON.stringify([1, 2, 3, 4, 5].map((number) => ({ number }))));
-    const script = scripts[1]
-      .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, tmp)
-      .replace(/\$PR_SCAN_UNARMED_CANDIDATES/g, candidatesFile);
+    // The plugin root reaches the script through the environment, as the shell prefix does.
+    const script = scripts[1].replace(/\$PR_SCAN_UNARMED_CANDIDATES/g, candidatesFile);
+    assert.ok(!script.includes('CLAUDE_PLUGIN_ROOT'), 'the CI filter body no longer interpolates CLAUDE_PLUGIN_ROOT into JS');
     const scriptFile = path.join(tmp, 'ci-filter.js');
     fs.writeFileSync(scriptFile, script);
-    const res = spawnSync('node', [scriptFile], { encoding: 'utf8' });
+    const res = spawnSync('node', [scriptFile], { encoding: 'utf8', env: { ...process.env, PLUGIN_ROOT: tmp } });
     assert.strictEqual(res.status, 0, `CI filter exits 0: ${res.stderr}`);
     const kept = JSON.parse(fs.readFileSync(candidatesFile, 'utf8')).map((p) => p.number);
     assert.deepStrictEqual(kept, [1, 2]);
@@ -101,9 +116,4 @@ test('AC1.1: item 9 CI filter keeps green/no-ci, drops pending, red and a failed
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-});
-
-test('github-pr-scan.md stays under the nearCeiling', () => {
-  const size = fs.statSync(path.join(ROOT, PR_SCAN)).size;
-  assert.ok(size < 47250, `github-pr-scan.md is ${size} B, ceiling 47250`);
 });

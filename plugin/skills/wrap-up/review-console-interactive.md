@@ -40,8 +40,9 @@ Immediately after presenting the console tables above (and the qualifying-rows l
 below: read `pack.pr.value.ci` from `{run-dir}/wrap-up-pack.json` first (#1930) — the `bin/pr-checks.js`
 verdict (`_shared/pr-first-merge.md`'s Step 2.5 state read plus its head-run read, classified by
 `classifyRollup`; cite that classification rather than restating it) — and run
-`node "${CLAUDE_PLUGIN_ROOT}/bin/pr-checks.js" --run "$PIPELINE_RUN_DIR"` itself only when the pack
-file is absent (#3469). `green`, `no-ci`, `pending` or `stale` → option 1 carries Recommended;
+`node "${CLAUDE_PLUGIN_ROOT}/bin/pr-checks.js" --pr {pr-number}` itself only when the pack
+file is absent (#3469; `{pr-number}` is the run's `run-state.json` `pr.number`). A `pack.pr` value with
+no `ci` key (an older pack) counts as a failed read, never green. `green`, `no-ci`, `pending` or `stale` → option 1 carries Recommended;
 `red` or `inherited-red` → option 2 does. `read-failed`, `gh-absent`, `no-pr`, or a `pack.pr` with
 `ok: false` is the state read having failed, Step 2.5's own first classification (`state-read-failed`:
 report `pending-review` and stop; a read failure is not "no CI"), never green — option 2 carries
