@@ -34,7 +34,7 @@ test('#2430: the drain loop closes a minted run dir at termination, skips (and r
 test('#2430/AC5.1/AC5.2: drain termination re-runs a scoped reconcile a second time so merged-PR worktrees from this firing are reaped, not left for a future SessionStart; Step 2\'s own call stays unscoped', () => {
   const t = read('plugin/skills/dispatch/SKILL.md');
   const section = t.slice(t.indexOf('At loop termination'), t.indexOf('**`next` (deprecated alias'));
-  assert.match(section, /run `node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/hooks\.js" reconcile --checks release,archive,reap` a second time/);
+  assert.match(section, /run `node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/hooks\.js" reconcile --checks mirror,release,archive,reap` a second time/);
   assert.match(section, /same generous timeout as Step 2's call/);
   assert.match(section, /reaped now rather than left for a future session's SessionStart hook to discover/);
   // AC5.2: the pre-queue-pull reconcile call lives in Step 2 (Step 1 is run-id resolution) and
