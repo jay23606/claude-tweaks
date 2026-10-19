@@ -17,6 +17,10 @@
 // that.
 // Any failing check is red: statusCheckRollup does not mark which checks are
 // required, and the merge gate already treats every failing check as red.
+// The base comparison (#3258) is an addition the merge gate does not have: it
+// can only demote `red` to `inherited-red` (every failing check also fails on
+// the integration-branch tip), and a failed base read leaves `red` — a
+// corroborating read's failure only touches verdicts it could change.
 'use strict';
 
 const FAILING_CONCLUSIONS = Object.freeze(['FAILURE', 'TIMED_OUT', 'ERROR', 'STARTUP_FAILURE']);
@@ -73,4 +77,27 @@ function classifyRollup({ rollup, headRefOid, localHead, hasPrCi, headRuns } = {
   return result('green', headRefOid);
 }
 
-module.exports = { FAILING_CONCLUSIONS, normalizeEntry, normalizeHeadRun, classifyRollup };
+// Names failing at the integration-branch tip, from the three REST reads the
+// CLI makes there (check-runs, commit statuses, workflow runs). First-seen
+// order, de-duplicated; an unnamed row is never a name to match against.
+function failingNamesAt({ checkRuns, statuses, runs } = {}) {
+  for (const [field, value] of [['checkRuns', checkRuns], ['statuses', statuses], ['runs', runs]]) {
+    if (!Array.isArray(value)) throw new Error(`malformed base read: ${field}`);
+  }
+  const rows = [...checkRuns.map(normalizeHeadRun), ...statuses.map(normalizeEntry), ...runs.map(normalizeHeadRun)];
+  return [...new Set(rows.filter((e) => e.name != null && FAILING_CONCLUSIONS.includes(e.conclusion)).map((e) => e.name))];
+}
+
+// `base` is { sha, failing } on a successful read, { sha, reason } on a failed
+// one. Only a `red` verdict can change: a failed read leaves it plain red.
+function applyBaseComparison(verdict, base) {
+  if (verdict.state !== 'red') return verdict;
+  if (!base || base.reason) {
+    return { ...verdict, state: 'red', baseSha: base?.sha ?? null, baseReason: base?.reason || 'base not read' };
+  }
+  const failing = verdict.failing.map((f) => ({ ...f, inherited: f.name != null && base.failing.includes(f.name) }));
+  const state = failing.length > 0 && failing.every((f) => f.inherited) ? 'inherited-red' : 'red';
+  return { ...verdict, state, failing, baseSha: base.sha };
+}
+
+module.exports = { FAILING_CONCLUSIONS, normalizeEntry, normalizeHeadRun, classifyRollup, failingNamesAt, applyBaseComparison };
