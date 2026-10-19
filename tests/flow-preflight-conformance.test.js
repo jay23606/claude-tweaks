@@ -89,6 +89,11 @@ test('the adoption section surfaces a CONFLICTING run PR and routes it to the gi
   // the abort-and-stop path logs its own decision entry before the stop
   assert.match(section, /--reversibility high/, 'the aborted-merge entry is logged with reversibility high');
   assert.ok(section.indexOf('--reversibility high') < section.indexOf('stop as a HARD-GATE failure'), 'the abort entry is logged before the stop');
+  // final-review fixes: open-only guard, spelled-out abort text, recovery form, no second `test` run
+  assert.match(section, /pr\.value\.state === 'OPEN'/, 'only an open PR triggers the stop (pr-merge-state.js excludes non-OPEN)');
+  assert.match(section, /merge aborted — HARD-GATE stop before \{next phase\}/, 'the abort entry spells out its --text');
+  assert.match(section, /PIPELINE_RUN_DIR="\{run-dir\}" \/claude-tweaks:flow "\{target\}" \{step\}/, 'the stop names its resume form');
+  assert.match(section, /\*\*Auto-insert `test`:\*\* rule/, 'the stamp re-verification cites the auto-insert rule instead of restating a test run');
 });
 
 test('auto-mode-contract registers the adopted-run PR-conflict stop in its HARD-GATE row (#3014)', () => {

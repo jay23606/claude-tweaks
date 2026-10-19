@@ -299,11 +299,13 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
       const mergeable = typeof view.mergeable === 'string' ? view.mergeable : null;
       const mergeStateStatus = typeof view.mergeStateStatus === 'string' ? view.mergeStateStatus : null;
       let conflictNote = null;
-      if (mergeable === 'CONFLICTING') {
+      // OPEN only, as pr-merge-state.js: a stale CONFLICTING on a closed or merged PR is no signal for the run.
+      if (view.state === 'OPEN' && mergeable === 'CONFLICTING') {
         // A policy-resolution failure must not cost the PR fact: fall back to main.
         let branch;
         try { branch = integrationBranch(); } catch { branch = 'main'; }
-        conflictNote = PR_CONFLICT_NOTE.replace('{n}', String(state.pr.number)).replace('{integration branch}', branch);
+        // Function replacers: a `$&` / `$'` in a branch name must render literally.
+        conflictNote = PR_CONFLICT_NOTE.replace('{n}', () => String(state.pr.number)).replace('{integration branch}', () => branch);
       }
       return { number: state.pr.number, url: state.pr.url || null, branch: state.pr.branch || null, state: view.state, isDraft: view.isDraft, checklist: parseChecklist(view.body), mergeable, mergeStateStatus, conflictNote };
     },

@@ -545,12 +545,16 @@ test('pr probe: a gh response omitting both fields yields nulls and ok: true (#3
   assert.strictEqual(pack.pr.value.conflictNote, null);
 });
 
-test('pr probe: MERGEABLE, UNKNOWN, a non-string mergeable, and DIRTY-with-MERGEABLE all produce no conflict note (#3014)', async () => {
+test('pr probe: MERGEABLE, UNKNOWN, a non-string mergeable, DIRTY-with-MERGEABLE, and a non-OPEN PR still reading CONFLICTING all produce no conflict note (#3014)', async () => {
   for (const extra of [
     { mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN' },
     { mergeable: 'UNKNOWN', mergeStateStatus: 'UNKNOWN' },
     { mergeable: 7, mergeStateStatus: null },
     { mergeable: 'MERGEABLE', mergeStateStatus: 'DIRTY' },
+    // pr-merge-state.js excludes non-OPEN PRs: a stale CONFLICTING/DIRTY on a
+    // closed or merged PR is no signal for the run.
+    { state: 'CLOSED', mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' },
+    { state: 'MERGED', mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' },
   ]) {
     const fx = mainRoot();
     seedCase1(fx);
@@ -573,4 +577,15 @@ test('pr probe: the conflict note names the resolved integration branch, falling
   const throwing = await prPack(fx, conflicting, { resolvePolicy: () => { throw new Error('policy exploded'); } });
   assert.strictEqual(throwing.pr.ok, true, 'a policy failure must not cost the PR fact');
   assert.match(throwing.pr.value.conflictNote, /with main —/);
+});
+
+test('pr probe: a branch name carrying String.replace patterns renders literally in the conflict note (#3014)', async () => {
+  const conflicting = ghView({ mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY' });
+  const fx = mainRoot();
+  seedCase1(fx);
+  for (const branch of ['rel/$&-x', "rel/$'-x", 'rel/$`-x', 'rel/$1-x']) {
+    const resolvePolicy = (keys) => Object.fromEntries(keys.map((k) => [k, k === 'integration-branch' ? { value: branch, source: 'policy' } : { value: 'x', source: 'default' }]));
+    const pack = await prPack(fx, conflicting, { resolvePolicy });
+    assert.strictEqual(pack.pr.value.conflictNote, `Run PR #1901 is CONFLICTING with ${branch} — CI will not run on it until the conflict is resolved.`, branch);
+  }
 });
