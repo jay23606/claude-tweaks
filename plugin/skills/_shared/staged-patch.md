@@ -128,11 +128,15 @@ patches in apply order.
 - **exit 1 with `rederived`** — the patch failed on top of an earlier one and its 3-way re-derive
   onto the stacked state succeeded. Overwrite `staged/{slug}-{n}.patch` with the re-derived file
   (same writer the site used). The re-derived diff assumes the earlier patch, so re-run only the
-  stacked check. Then write the normal `STAGED` entry, suffixed ` Re-derived onto staged/{earlier}.patch.`
+  stacked check, once: a second non-zero exit takes the exit-1-without-`rederived` branch (exit 1)
+  or the exit 2, 3 or 4 branch (any other code), and never re-derives again. Then write the normal
+  `STAGED` entry, suffixed ` Re-derived onto staged/{earlier}.patch.`
 - **exit 1, `rederived` null** — no re-derive was produced: `rederiveReason` says why, or the
-  target is the earlier patch, which never attempts one. If the edit admits another anchor,
-  recompose it once in the worktree, overwrite, and re-run both checks. Otherwise keep the
-  `.patch` and log `STAGED {time} — {step}: {finding} — stacked check: staged/{slug}-{n}.patch conflicts with staged/{earlier}.patch in apply order ({first stderr line}); kept — the console re-derives it from Invariant:. Stage path: staged/{slug}-{n}.patch. Reversibility: high.`
+  conflict has the target as the earlier side (`targetConflict.conflictsWith` is the target), which
+  never attempts one. Name the sides from the CLI's `targetConflict`, which is the failing patch and
+  the patch it fails on, whichever side the target is. Re-anchor only when `targetConflict.patch` is
+  this patch and the edit admits another anchor: recompose once in the worktree, overwrite, and
+  re-run both checks once. Otherwise keep the `.patch` and log `STAGED {time} — {step}: {finding} — stacked check: staged/{targetConflict.patch} does not apply on top of staged/{targetConflict.conflictsWith} in apply order ({first stderr line}); kept — the console re-derives staged/{targetConflict.patch} from its Invariant:. Stage path: staged/{slug}-{n}.patch. Reversibility: high.`
 - **exit 2, 3 or 4** — the stack is unverified and the patch, which passed its solo check, is kept
   as written. Log `STAGED {time} — {step}: {finding} — gate could not run: stacked check exit {code} ({first stderr line}); kept unstacked — the console's stale path covers a conflict. Reversibility: high.`
 

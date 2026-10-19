@@ -253,7 +253,7 @@ function assertStackedGate(text) {
   assert.ok(gate.includes(STACKED_HEADING), 'gate names the Stacked check subsection');
   assert.ok(gate.includes('bin/check-staged-stack.js'), 'gate names the stacked-check CLI');
   assert.ok(gate.includes('--rederive-out'), 'gate passes --rederive-out');
-  assert.ok(gate.includes('staged/{slug}-{n}.patch') && gate.includes('staged/{earlier}.patch'), 'conflict STAGED line names both patches');
+  assert.ok(gate.includes('staged/{targetConflict.patch}') && gate.includes('staged/{targetConflict.conflictsWith}') && gate.includes('staged/{slug}-{n}.patch'), 'conflict STAGED line names both patches from targetConflict, plus the stage path');
   // AC2.1: a clean stack writes only the normal STAGED entry
   const exit0 = stacked.match(/- \*\*exit 0\*\*([\s\S]*?)(?=\n- |\n\n|$)/);
   assert.ok(exit0, 'stacked subsection has an exit-0 bullet');
