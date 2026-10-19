@@ -159,51 +159,85 @@ test('realTarget: empty, non-string and relative targets are unprovable', () => 
 test('realTarget: a leaf whose realpath AND lstat fail with a non-ENOENT code takes the parent-only fallback', () => {
   const { root, policy } = policyRepo();
   fs.writeFileSync(policy, 'x: 1\n');
-  const realReal = fs.realpathSync;
-  const realLstat = fs.lstatSync;
   const denied = () => Object.assign(new Error('EACCES'), { code: 'EACCES' });
-  const patchedReal = (p, ...a) => { if (p === policy) throw denied(); return realReal(p, ...a); };
-  patchedReal.native = realReal.native;
-  fs.realpathSync = patchedReal;
-  fs.lstatSync = (p, ...a) => { if (p === policy) throw denied(); return realLstat(p, ...a); };
-  try {
-    assert.equal(isPolicyFile(root, policy), true);
-  } finally {
-    fs.realpathSync = realReal;
-    fs.lstatSync = realLstat;
-  }
+  const realpathSync = (p, ...a) => fs.realpathSync(p, ...a);
+  realpathSync.native = (p, ...a) => { if (p === policy) throw denied(); return fs.realpathSync.native(p, ...a); };
+  const lstatSync = (p, ...a) => { if (p === policy) throw denied(); return fs.lstatSync(p, ...a); };
+  assert.equal(isPolicyFile(root, policy, { fsImpl: { ...fs, realpathSync, lstatSync } }), true);
 });
 
 test('realTarget: a leaf that lstat reports as present but whose realpath fails with a non-ENOENT code takes the parent-only fallback', () => {
   const { root, policy } = policyRepo();
   fs.writeFileSync(policy, 'x: 1\n');
-  const realReal = fs.realpathSync;
-  const patchedReal = (p, ...a) => { if (p === policy) throw Object.assign(new Error('EACCES'), { code: 'EACCES' }); return realReal(p, ...a); };
-  patchedReal.native = realReal.native;
-  fs.realpathSync = patchedReal;
-  try {
-    assert.equal(isPolicyFile(root, policy), true);
-  } finally {
-    fs.realpathSync = realReal;
-  }
+  const realpathSync = (p, ...a) => fs.realpathSync(p, ...a);
+  realpathSync.native = (p, ...a) => { if (p === policy) throw Object.assign(new Error('EACCES'), { code: 'EACCES' }); return fs.realpathSync.native(p, ...a); };
+  assert.equal(isPolicyFile(root, policy, { fsImpl: { ...fs, realpathSync } }), true);
 });
 
-test('realTarget: resolves with the JS fs.realpathSync, never .native', () => {
+test('realTarget: resolves with .native, never the JS fs.realpathSync', () => {
   const { root, policy } = policyRepo();
   fs.writeFileSync(policy, 'x: 1\n');
-  // A symlink alias, so a .native call that throws could not be masked by the
+  // A symlink alias, so a JS-form call that throws could not be masked by the
   // parent-only fallback that a plain missing leaf would take.
   const alias = path.join(root, 'alias.yml');
   fs.symlinkSync(policy, alias);
-  const realReal = fs.realpathSync;
-  const patched = (p, ...a) => realReal(p, ...a);
-  patched.native = () => { throw new Error('native realpath must not be used here'); };
-  fs.realpathSync = patched;
-  try {
-    assert.equal(isPolicyFile(root, alias), true);
-  } finally {
-    fs.realpathSync = realReal;
-  }
+  const patched = () => { throw new Error('JS realpath must not be used here'); };
+  patched.native = fs.realpathSync.native;
+  assert.equal(isPolicyFile(root, alias, { fsImpl: { ...fs, realpathSync: patched } }), true);
+});
+
+// #3495: a case-insensitive volume model. `entries` maps canonical absolute
+// paths to { type: 'file' | 'directory' } or { type: 'symlink', target }; lookup
+// is by lowercased path. The JS realpathSync echoes the caller's casing; the
+// .native form returns the canonical key, as the OS does on such a volume.
+function caseInsensitiveFs(entries) {
+  const byLower = new Map(Object.entries(entries).map(([key, v]) => [key.toLowerCase(), { key, ...v }]));
+  const lookup = (p) => {
+    const e = byLower.get(p.toLowerCase());
+    if (!e) throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+    return e;
+  };
+  const jsRealpath = (p) => {
+    const e = lookup(p);
+    return e.type === 'symlink' ? jsRealpath(e.target) : p;
+  };
+  const nativeRealpath = (p) => {
+    const e = lookup(p);
+    return e.type === 'symlink' ? nativeRealpath(e.target) : e.key;
+  };
+  const realpathSync = (p) => jsRealpath(p);
+  realpathSync.native = (p) => nativeRealpath(p);
+  const lstatSync = (p) => {
+    const e = lookup(p);
+    return { isSymbolicLink: () => e.type === 'symlink', isFile: () => e.type === 'file', isDirectory: () => e.type === 'directory' };
+  };
+  return { ...fs, realpathSync, lstatSync };
+}
+
+const CI_DIRS = {
+  '/Vol': { type: 'directory' },
+  '/Vol/Repo': { type: 'directory' },
+  '/Vol/Repo/.claude-tweaks': { type: 'directory' },
+};
+
+test('isPolicyFile (#3495): a mis-cased target to an existing policy.yml matches on a case-insensitive volume', () => {
+  const fsImpl = caseInsensitiveFs({ ...CI_DIRS, '/Vol/Repo/.claude-tweaks/policy.yml': { type: 'file' } });
+  assert.equal(isPolicyFile('/Vol/Repo', '/vol/repo/.CLAUDE-TWEAKS/Policy.yml', { fsImpl }), true);
+});
+
+test('isPolicyFile (#3495): a mis-cased repoRoot still matches the correctly-cased target', () => {
+  const fsImpl = caseInsensitiveFs({ ...CI_DIRS, '/Vol/Repo/.claude-tweaks/policy.yml': { type: 'file' } });
+  assert.equal(isPolicyFile('/vol/REPO', '/Vol/Repo/.claude-tweaks/policy.yml', { fsImpl }), true);
+});
+
+test('isPolicyFile (#3495): a symlink swapped in for policy.yml is still denied through a mis-cased target', () => {
+  const fsImpl = caseInsensitiveFs({
+    ...CI_DIRS,
+    '/Vol/Repo/.claude-tweaks/policy.yml': { type: 'symlink', target: '/Vol/Elsewhere/evil.yml' },
+    '/Vol/Elsewhere': { type: 'directory' },
+    '/Vol/Elsewhere/evil.yml': { type: 'file' },
+  });
+  assert.equal(isPolicyFile('/Vol/Repo', '/vol/repo/.CLAUDE-TWEAKS/POLICY.yml', { fsImpl }), false);
 });
 
 // ---- installed-plugins.js ---------------------------------------------------

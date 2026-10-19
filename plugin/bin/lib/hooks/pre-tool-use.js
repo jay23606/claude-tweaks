@@ -35,7 +35,7 @@ const { runGit, FAILURE } = require('./git-exec');
 const { detectIntegrationModel, resolvePolicyConfig } = require('../policy-schema');
 const { isPathContained, escapeRegExp } = require('../shared-primitives');
 const { hasClaimLogFor } = require('../log-decision/claim-log');
-const { resolveLeaf } = require('../path-guard');
+const { resolveLeaf, canonicalRealpath } = require('../path-guard');
 
 function pluginRoot() {
   return process.env.CLAUDE_PLUGIN_ROOT || '${CLAUDE_PLUGIN_ROOT}';
@@ -184,21 +184,18 @@ function isPipelineBookkeeping(repoRoot, targetPath) {
 // swap masquerade as a fresh Write and slip through the parent-only fallback
 // meant for genuinely new files. Non-absolute/empty/non-string input is
 // unprovable, matching isPipelineBookkeeping's own posture above.
-function realTarget(targetPath) {
+function realTarget(targetPath, { fsImpl } = {}) {
   if (typeof targetPath !== 'string' || !targetPath || !path.isAbsolute(targetPath)) return null;
   const resolved = path.resolve(targetPath);
-  // realpath: fs.realpathSync (the JS form), not path-guard's .native default:
-  // canonicalRepoPath and safeReal resolve the other side of isPolicyFile's
-  // equality with the JS form, so switching only this side to .native would
-  // turn a mis-cased allow into a deny. Moving both sides together is a
-  // separate change (#3495).
-  const leaf = resolveLeaf(resolved, { realpath: fs.realpathSync });
+  // Both sides of isPolicyFile resolve through path-guard's .native default, so
+  // a mis-cased path compares equal to the on-disk casing (#3495).
+  const leaf = resolveLeaf(resolved, { fsImpl });
   if (leaf.state === 'resolved') return leaf.path;
   if (leaf.state === 'dangling') return null;
   // 'missing' and 'unreadable' both keep the parent-only path: the pre-#3417
   // code treated every lstat failure as "nothing there yet". It is a write
   // target, so the write itself fails on the same EACCES.
-  const parentReal = safeReal(path.dirname(resolved));
+  const parentReal = canonicalRealpath(path.dirname(resolved), { fsImpl });
   if (!parentReal) return null;
   return path.join(parentReal, path.basename(resolved));
 }
@@ -212,10 +209,10 @@ function realTarget(targetPath) {
 // trivially agree on the forged destination. This side always means
 // "whatever is literally at {relPath}", never wherever a swapped-in symlink
 // currently points.
-function canonicalRepoPath(repoRoot, relPath) {
+function canonicalRepoPath(repoRoot, relPath, { fsImpl } = {}) {
   if (!repoRoot) return null;
   const joined = path.join(repoRoot, relPath);
-  const parentReal = safeReal(path.dirname(joined));
+  const parentReal = canonicalRealpath(path.dirname(joined), { fsImpl });
   if (!parentReal) return null;
   return path.join(parentReal, path.basename(joined));
 }
@@ -226,10 +223,10 @@ function canonicalRepoPath(repoRoot, relPath) {
 // equality only, never containment — so a symlink ALIAS to policy.yml
 // resolves to the same allow and policy.yml itself being SWAPPED for a
 // symlink elsewhere resolves to the same deny (see canonicalRepoPath).
-function isPolicyFile(repoRoot, targetPath) {
-  const real = realTarget(targetPath);
+function isPolicyFile(repoRoot, targetPath, { fsImpl } = {}) {
+  const real = realTarget(targetPath, { fsImpl });
   if (!real) return false;
-  const canonical = canonicalRepoPath(repoRoot, POLICY_FILE);
+  const canonical = canonicalRepoPath(repoRoot, POLICY_FILE, { fsImpl });
   if (!canonical) return false;
   return real === canonical;
 }
