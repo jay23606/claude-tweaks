@@ -80,3 +80,39 @@ test('FAILING_CONCLUSIONS equals the merge gate prose list (code twin)', () => {
   const prose = [...tail.matchAll(/`([A-Z_]+)`/g)].map((m) => m[1]);
   assert.deepEqual(prose, [...FAILING_CONCLUSIONS]);
 });
+
+const PR_CHECKS = read('plugin/bin/pr-checks.js');
+
+test('AC1.1: inherited-red passes with a caveat and an AUTO line naming the base sha and checks', () => {
+  const b = section(GATE, /\*\*`inherited-red`\*\*/, /\n- \*\*/);
+  assert.match(b, /caveat/i);
+  assert.match(b, /--status AUTO/);
+  assert.ok(b.includes('{baseSha short}'), 'AUTO text names the base sha');
+  assert.match(b, /`TEST_PASSED` is set/);
+});
+
+test('AC2.1: red names only checks not flagged inherited as the cause', () => {
+  const red = section(GATE, /\*\*`red`\*\*/, /\n- \*\*/);
+  assert.match(red, /`inherited`/);
+  assert.match(red, /attributable/i);
+  assert.ok(!red.includes('separate follow-up record'), 'stale deferral note removed');
+});
+
+test('AC3.1: the gate states an unreadable base stays red, never green', () => {
+  assert.match(GATE, /`baseReason`/);
+  assert.match(GATE, /stays `red`/);
+});
+
+test('every state pr-checks.js can print is routed by a bullet in the gate (code twin)', () => {
+  const m = PR_CHECKS.match(/'  state: ([^'\\]+)\\n'/);
+  assert.ok(m, 'USAGE state line found');
+  const states = m[1].split('|').map((s) => s.trim()).filter(Boolean);
+  assert.ok(states.includes('inherited-red'));
+  const routing = section(GATE, /## Routing by `state`/, /\n## /);
+  for (const s of states) assert.ok(routing.includes(`\`${s}\``), `gate routes ${s}`);
+});
+
+test('/test names inherited-red in its PR-check gate bullet', () => {
+  const pb = section(TEST_SKILL, /\*\*Pipeline behavior:\*\*/, /\n## /);
+  assert.ok(pb.includes('`inherited-red`'), 'test/SKILL.md Pipeline behavior names inherited-red');
+});
