@@ -52,8 +52,8 @@ files:
 - **URL:** `node plugin/bin/verify.js --log-dir /tmp/verify-demo --cmd tests="npm test" --cmd smoke="./scripts/smoke.sh"`
 - **Action:** Supply a `--cmd` name outside the reserved `types`/`lint`/`tests` set.
 - **Should feel:** Extensible without a spec change — any project-specific check rides along under the same ordering discipline.
-- **Should understand:** Unknown names run serially, after the known stages, in the order given, subject to the same fail-fast rule — a failing `tests` skips `smoke` — except on a `--baseline` run (#3511), where every suite runs — and a failing `smoke` (if there were a second unknown check after it) would skip that one too.
-- **Red flags:** An unknown check running before `tests` finishes; an unknown check's failure not fail-fasting a later unknown check.
+- **Should understand:** Unknown names run serially, after the known stages, in the order given, subject to the same fail-fast rule — a failing `tests` skips `smoke` — except on a `--baseline` run (#3511), where only a `types`/`lint` failure skips the suites — and a failing `smoke` (if there were a second unknown check after it) would skip that one too.
+- **Red flags:** An unknown check running before `tests` finishes; an unknown check's failure not fail-fasting a later unknown check (outside a `--baseline` run).
 
 ### 5. Trigger a usage error
 - **URL:** `node plugin/bin/verify.js --log-dir /tmp/verify-demo --cmd "smoke:e2e=echo hi"`
