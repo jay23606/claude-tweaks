@@ -116,6 +116,42 @@ test('worktree untouched: the check leaves git status clean and f.txt at its bas
   assert.equal(fs.readFileSync(path.join(fx.dir, 'f.txt'), 'utf8'), BASE);
 });
 
+// Injectable-git seam: the numstat call reports `reported` as the patch's copied path; every other
+// call runs real git. `calls` records each invocation so a test can prove what was never run.
+function numstatReporting(reported, calls) {
+  return (args, { cwd }) => {
+    calls.push(args);
+    if (args[0] === 'apply' && args[1] === '--numstat') {
+      return { status: 0, stdout: `1\t1\t${reported}\0`, stderr: '' };
+    }
+    const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+    return { status: r.status, stdout: r.stdout, stderr: r.stderr };
+  };
+}
+
+test('a copied path with a .. segment is skipped as unsafe and never read', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const p = stage(dir, 'unsafe.patch', captureDiff(t, BASE, editLine('l1', 'l1-edit')));
+  const calls = [];
+  const r = checkStack({ worktree: fx.dir, patches: [p], target: p, git: numstatReporting('../escape.txt', calls) });
+  assert.deepEqual(r.skipped, [{ patch: 'unsafe.patch', error: 'unsafe path ../escape.txt' }]);
+  assert.equal(r.ok, false);
+  assert.equal(r.targetUnapplicable, true);
+  assert.deepEqual(calls.filter((a) => a[0] === 'apply' && a[1] !== '--numstat'), []);
+});
+
+test('an absolute copied path is skipped as unsafe and never read', (t) => {
+  const fx = gitFixture(t);
+  const dir = stagedDir(t);
+  const p = stage(dir, 'absolute.patch', captureDiff(t, BASE, editLine('l1', 'l1-edit')));
+  const calls = [];
+  const r = checkStack({ worktree: fx.dir, patches: [p], target: p, git: numstatReporting('/etc/passwd', calls) });
+  assert.deepEqual(r.skipped, [{ patch: 'absolute.patch', error: 'unsafe path /etc/passwd' }]);
+  assert.equal(r.ok, false);
+  assert.deepEqual(calls.filter((a) => a[0] === 'apply' && a[1] !== '--numstat'), []);
+});
+
 test('stagedApplyOrder sorts byte-wise and drops non-patches', () => {
   assert.deepEqual(stagedApplyOrder(['review-2.patch', 'x.md', 'review-10.patch']), ['review-10.patch', 'review-2.patch']);
 });
