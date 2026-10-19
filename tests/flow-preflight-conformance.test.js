@@ -7,7 +7,7 @@ const { readText } = require('./helpers/read-skill');
 
 const ROOT = path.join(__dirname, '..');
 const read = (rel) => readText(path.join(ROOT, rel));
-const { ADOPTION_NOTES } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'flow', 'preflight'));
+const { ADOPTION_NOTES, PR_CONFLICT_NOTE } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'flow', 'preflight'));
 
 test('steps-and-gates.md calls flow-preflight.js --run exactly once in the adoption section, no longer invokes check-resume-freshness --run, still names the verb, and checks BLOCKED right after the call (#1931 AC5)', () => {
   const t = read('plugin/skills/flow/steps-and-gates.md');
@@ -67,4 +67,42 @@ test('manifesto.md renders the auto FYI table from preflight.levers and lists th
 test('flow/SKILL.md names the pack in Step 3 (#1931 AC6)', () => {
   const t = read('plugin/skills/flow/SKILL.md');
   assert.match(t, /flow-preflight\.js/);
+});
+
+test('the adoption section surfaces a CONFLICTING run PR and routes it to the git-discipline catch-up (#3014)', () => {
+  const t = read('plugin/skills/flow/steps-and-gates.md');
+  const section = t.slice(t.indexOf('### Adopting an inherited run directory'), t.indexOf('### Partial step lists'));
+  assert.ok(section.includes('`' + PR_CONFLICT_NOTE + '`'), 'the conflict line literal is rendered verbatim');
+  assert.match(section, /pr\.value\.mergeable === 'CONFLICTING'/);
+  assert.match(section, /pr\.value\.conflictNote/);
+  assert.match(section, /pr\.ok/, 'the check guards on a successful pr read');
+  assert.match(section, /_shared\/git-discipline\.md`'s Post-push merge-state check/);
+  assert.match(section, /Catch-up \(`auto`\)/);
+  assert.match(section, /--diff-filter=U/, 'the conflicting paths are named');
+  assert.match(section, /HARD-GATE/);
+  assert.match(section, /`MERGEABLE`/);
+  assert.match(section, /`UNKNOWN`/);
+  assert.match(section, /print nothing and log nothing/, 'the MERGEABLE/UNKNOWN no-op (no line, no decision entry) is stated, not just the tokens named');
+  // ordering: after the BLOCKED freshness stop, before case 1
+  const conflict = section.indexOf("pr.value.mergeable === 'CONFLICTING'");
+  const blocked = section.indexOf("freshness.value.verdict === 'BLOCKED'");
+  assert.ok(blocked !== -1 && blocked < conflict, 'the BLOCKED freshness stop is present and precedes the conflict paragraph');
+  assert.ok(conflict < section.indexOf('1. **Set, the directory it names exists'));
+  // the abort-and-stop path logs its own decision entry before the stop
+  assert.match(section, /--reversibility high/, 'the aborted-merge entry is logged with reversibility high');
+  assert.ok(section.indexOf('--reversibility high') < section.indexOf('stop as a HARD-GATE failure'), 'the abort entry is logged before the stop');
+  // final-review fixes: open-only guard, spelled-out abort text, recovery form, no second `test` run
+  assert.match(section, /pr\.value\.state === 'OPEN'/, 'only an open PR triggers the stop (pr-merge-state.js excludes non-OPEN)');
+  assert.match(section, /merge aborted — HARD-GATE stop before \{next phase\}/, 'the abort entry spells out its --text');
+  assert.match(section, /PIPELINE_RUN_DIR="\{run-dir\}" \/claude-tweaks:flow "\{target\}" \{step\}/, 'the stop names its resume form');
+  assert.match(section, /\*\*Auto-insert `test`:\*\* rule/, 'the stamp re-verification cites the auto-insert rule instead of restating a test run');
+});
+
+test('auto-mode-contract registers the adopted-run PR-conflict stop in its HARD-GATE row (#3014)', () => {
+  const t = read('plugin/skills/_shared/auto-mode-contract.md');
+  const row = t.split('\n').find((l) => l.startsWith('| HARD-GATE / BLOCKED / STOP conditions'));
+  assert.ok(row, 'the HARD-GATE row exists');
+  assert.match(row, /adopted-run PR-conflict catch-up stop/);
+  assert.match(row, /flow\/steps-and-gates\.md/);
+  assert.match(row, /#3014/);
 });
