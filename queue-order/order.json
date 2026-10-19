@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T14:16:16.043Z",
+  "computedAt": "2026-10-19T15:02:35.118Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -435,7 +435,7 @@
       },
       {
         "number": 3226,
-        "updatedAt": "2026-10-17T06:12:16Z",
+        "updatedAt": "2026-10-19T14:17:45Z",
         "state": "OPEN"
       },
       {
@@ -6271,84 +6271,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Overview\n\nThe #2837 post-hoc `checkFirstCallArtifacts` check and the two-call gate it feeds currently treat a missing `config.yml` as first-failure-wins: any `missing-config` result routes straight to the two-call gate's §5 teardown, releasing the record as `pr-opened` and stranding a tested, correct PR outside pipeline review (the #3111/#3129/#3138/#3126 shape). This unit adds a `repairable` classification to the artifact check — `missing-config` plus an intact live claim and (under `pr-first`) an intact recorded/pushed PR becomes `repairable: true` — and adds a repair-then-continue branch to the two-call gate and its `sequential-execution.md` mirror: log the repair, dispatch call 2 unchanged, and let `/flow`'s own case-3 adoption rebuild `config.yml` through its sanctioned writer. Every other failure, and `missing-config` with `repairable: false`, keeps the existing §5 teardown.\n\n**Complexity:** Medium\n**Estimated tasks:** 6\n\n## Non-Goals\n\n- Changing the #2429 status-line check or its ordering — it still runs first, and a malformed status line is still `BLOCKED` regardless of this unit's repair branch.\n- Building the dispatcher-bound run / `checkDispatchConfigGate` early checkpoint — a separate sub-issue of this same decomposition (file-overlap note: that sub-issue edits `sibling-session-check.md`, this one edits `sequential-execution.md` — deliberately disjoint files).\n- Changing the first call's model profile — a separate sub-issue of this same decomposition.\n- Relaxing the malformed-status-line case — the design doc notes the early checkpoint and the profile change make it rarer in practice, but this unit does not loosen that check.\n\n## Current State\n\n- `plugin/bin/lib/dispatch/first-call-artifact-check.js` — `checkFirstCallArtifacts` currently returns immediately on a `missing-config` result (first-failure-wins), without checking whether the claim and PR are otherwise intact.\n- `plugin/skills/dispatch/two-call-gate.md` §2 — a failed artifact check with any `reason` currently routes to §5's teardown; there is no repair branch today.\n- `plugin/skills/dispatch/sequential-execution.md` \"The loop\" (~line 30) — mirrors two-call-gate.md's §2/§5 logic for the sequential (non-parallel) dispatch path, and also carries a stale \"`/claude-tweaks:flow {target} wrap-up`\" teardown reference (~line 32) that §5 itself already replaced with a direct `/claude-tweaks:wrap-up {target} cleanup-only` (#1766) — this unit fixes both in the same pass since they're in the same file section.\n- `plugin/skills/flow/steps-and-gates.md:72-80` (read-only) — documents adoption case 3 (`hasConfig` false, `hasOtherContent` true); `plugin/bin/lib/flow/preflight.js` (read-only) — `computeAdoption` is what returns case 3 for a run in this shape.\n- `tests/bin-lib/dispatch/first-call-artifact-check.test.js` — the existing suite for `checkFirstCallArtifacts`; its current cases must stay byte-for-byte green after this unit's additive field lands.\n- Suites that read the files this unit touches and must stay green: `tests/flow-cleanup-only-conformance.test.js`, `tests/build-already-shipped-exit.test.js`, `tests/dispatch-mechanical-enforcement.test.js`, `tests/dispatch-sequential-execution-conformance.test.js`, `tests/pr-first-merge.test.js`, `tests/dispatch-settle-and-merge-lazy-read.test.js`.\n\n## Deliverables\n\n- [ ] In `plugin/bin/lib/dispatch/first-call-artifact-check.js`, on a `missing-config` result, continue the remaining checks instead of returning immediately: the claim checks (live, `runId` matches the claim record's own `runId` — not read from `config.yml`, which is absent), and — when `integration-model` resolves to `pr-first` — the PR checks (recorded PR, branch recorded and pushed). The check's final return on this path is always `{ ok: false, reason: 'missing-config', repairable }` — a secondary check's own more specific failure reason (e.g. `claim-absent`, `pr-branch-unpushed`) is used only to compute `repairable`, never surfaced as a different top-level `reason` once `missing-config` has already fired. `repairable` is exactly `true` when, in order: the claim is live and its `runId` matches, AND (when `integration-model !== 'pr-first'`, the PR checks are skipped entirely and this condition is satisfied by the claim check alone) (when `integration-model === 'pr-first'`, the PR is recorded and its branch is pushed). Any other resolved `integration-model` value (unknown or future) is treated like non-`pr-first`: the strict `=== 'pr-first'` equality check already skips its PR branch for anything else, with no special-casing needed. Read `integration-model` via `plugin/bin/lib/policy-schema.js`'s `resolvePolicyConfig`/`resolvePolicyKeys` — **not** the defaulting `resolveIntegrationModel`, which falls through to `detectIntegrationModel` and is documented to never fail/never return null; `resolvePolicyKeys` is the one that can surface `invalid: true` or an unreadable/unparseable policy file, which AC 4 below requires to be reachable. `resolvePolicyConfig` needs a `repoRoot` the check does not currently take as input — reuse the same injected `git`/`readFile` deps `resolvePolicyConfig`'s other callers (`bin/resolve-policy.js`, `bin/lib/blast-radius-cli.js`) already inject, rather than adding a bespoke resolution path.\n- [ ] Add a `repairable` boolean field to the check's return value: `true` exactly when every check in the enumerated set above (claim-live, claim-runId-match, and — `pr-first` only — PR-recorded, PR-branch-pushed) passes; `false` otherwise, including when the `resolvePolicyConfig`/`resolvePolicyKeys` read for `integration-model` fails (throws, or returns `invalid: true`). Every other failure reason keeps today's first-failure-wins return shape unchanged — `repairable` is a purely additive field that appears only alongside `reason: 'missing-config'`. Add a test or explicit comment cross-referencing that these same fields (claim liveness/`runId`, PR recorded/pushed) are exactly what `plugin/bin/lib/flow/preflight.js`'s `computeAdoption` needs to land a repaired run in adoption case 3 — not a superset or subset of its inputs.\n- [ ] In `plugin/skills/dispatch/two-call-gate.md` §2, add the repair branch: a failed check with `reason: 'missing-config'` and `repairable: true` does not route to §5. Instead the dispatching session logs `AUTO {time} — Artifact check: config.yml missing, claim/PR intact — repairing via call 2's /flow case-3 adoption. Reversibility: high.` and dispatches call 2 unchanged — \"unchanged\" means byte-identical to the normal call-2 invocation, carrying no repair-context flag or hint; `/flow` self-detects adoption case 3 purely from on-disk state (`hasConfig: false`, `hasOtherContent: true`) exactly as it already does for any other case-3 adoption, so no new signal needs to be threaded through the dispatch call. Every other failure, and `missing-config` with `repairable: false`, keeps §5's existing teardown.\n- [ ] Mirror the same repair branch into `plugin/skills/dispatch/sequential-execution.md`'s \"The loop\" (~line 30).\n- [ ] In the same `sequential-execution.md` edit, fix the stale \"`/claude-tweaks:flow {target} wrap-up`\" teardown reference (~line 32) to §5's direct `/claude-tweaks:wrap-up {target} cleanup-only` (#1766).\n- [ ] Add a test (or extend an existing ordering test covering `two-call-gate.md`/`sequential-execution.md`) asserting the #2429 status-line check still runs before the artifact check in both files — not just a narrative confirmation: a fixture with a malformed status line and an otherwise `repairable: true`-shaped artifact result must still resolve `BLOCKED`, never the repair branch.\n\n## Acceptance Criteria\n\n1. A new test: `missing-config` + claim live and matching `runId` + (under `pr-first`) PR recorded and pushed → `checkFirstCallArtifacts` returns `repairable: true`.\n2. A new test: `missing-config` + claim absent (or not live, or `runId` mismatch) → returns `repairable: false`.\n3. A new test: `missing-config` + PR unpushed (or unrecorded, under `pr-first`) → returns `repairable: false`.\n4. A new test: the `resolvePolicyConfig`/`resolvePolicyKeys` read for `integration-model` fails (throws, or resolves `invalid: true`) → returns `repairable: false` — it never repairs on missing evidence.\n5. A new test: `missing-config` + claim live and matching `runId`, under `integration-model: local-merge` (or any value other than `pr-first`) → returns `repairable: true` from the claim checks alone, with the PR checks skipped entirely — the same non-`pr-first` skip the check logic already specifies, now pinned for the `repairable` computation too.\n6. Every existing case in `tests/bin-lib/dispatch/first-call-artifact-check.test.js` stays byte-for-byte green — in particular, every failure reason other than `missing-config` has no `repairable` field at all, exactly as before this change.\n7. `plugin/skills/dispatch/two-call-gate.md` §2 contains the repair branch described above, including the literal `AUTO {time} — Artifact check: config.yml missing, claim/PR intact — repairing via call 2's /flow case-3 adoption. Reversibility: high.` log-line template, pinned by a prose-conformance test (extend `tests/dispatch-mechanical-enforcement.test.js` if it already parses `two-call-gate.md`'s §2, else add a case to a dispatch prose-conformance suite).\n8. `plugin/skills/dispatch/sequential-execution.md` \"The loop\" mirrors the same repair branch, and no longer names `/claude-tweaks:flow {target} wrap-up` anywhere in that section — it names `/claude-tweaks:wrap-up {target} cleanup-only` instead.\n9. A test confirms the status-line-before-artifact-check ordering per the Deliverables item above.\n10. `tests/flow-cleanup-only-conformance.test.js`, `tests/build-already-shipped-exit.test.js`, `tests/dispatch-mechanical-enforcement.test.js`, `tests/dispatch-sequential-execution-conformance.test.js`, `tests/pr-first-merge.test.js`, and `tests/dispatch-settle-and-merge-lazy-read.test.js` all pass unchanged.\n\n## Release Note\n\nDispatch now repairs and continues a build whose only problem is a missing run-configuration file, instead of abandoning a tested, correct pull request outside pipeline review.\n\n## Technical Approach\n\nThe `repairable` field is additive and scoped to exactly one failure reason (`missing-config`), so no existing caller or test that checks other failure reasons is affected. The repair itself does no direct file writing — it relies on `/flow`'s own adoption case 3 (already-existing behavior, `steps-and-gates.md:72-80` and `preflight.js`'s `computeAdoption`) to rebuild `config.yml` through the sanctioned writer when call 2 runs. This unit's job is purely the classification (is a repair safe?) and the dispatch-side branch (route to repair instead of teardown).\n\n### Data / API Surface\n\n`checkFirstCallArtifacts`'s return shape gains one new optional field:\n\n```\n{ ok: boolean, reason?: string, repairable?: boolean, ...existingFields }\n```\n\n`repairable` is present only when `reason === 'missing-config'`; absent (not `false`) for every other `reason` value, and absent on `ok: true`.\n\n### Key Files\n\n- `plugin/bin/lib/dispatch/first-call-artifact-check.js` — add the continued-checks-on-missing-config logic and the `repairable` field; add a `repoRoot` (or equivalent injected `git`/`readFile` deps) the function currently lacks, needed to call `resolvePolicyConfig`.\n- `plugin/bin/lib/policy-schema.js` (read-only) — `resolvePolicyConfig`/`resolvePolicyKeys` (the non-defaulting read, lines ~598-649 house this cluster) is the function this unit calls for `integration-model`; `resolveIntegrationModel` (same file) is the wrong function — it falls through to `detectIntegrationModel` and never fails, so it cannot produce the \"policy read fails\" signal AC 4 requires.\n- `tests/bin-lib/dispatch/first-call-artifact-check.test.js` — add the five new cases listed in Acceptance Criteria.\n- `plugin/skills/dispatch/two-call-gate.md` — §2: add the repair branch and its `AUTO` log-line template.\n- `plugin/skills/dispatch/sequential-execution.md` — \"The loop\" (~line 30): mirror the repair branch; (~line 32): fix the stale teardown reference.\n- `plugin/skills/flow/steps-and-gates.md` — read-only; confirms adoption case 3's definition (lines 72-80) that the repair branch relies on.\n- `plugin/bin/lib/flow/preflight.js` — read-only; confirms `computeAdoption` returns case 3 for this run shape.\n\n## Gotchas\n\n- First-failure-wins is the existing, correct behavior for every failure reason other than `missing-config` — do not generalize the repair classification to other reasons; the design doc scopes it to this one case because it is the one case where the remaining evidence (claim, PR) can independently confirm the build is otherwise sound.\n- A policy read failure must resolve `repairable: false`, never throw past the check or default to `true` — \"never repair on missing evidence\" is a stated design invariant, not an incidental default. Use `resolvePolicyConfig`/`resolvePolicyKeys`, not `resolveIntegrationModel` — the latter is documented to never fail (falls through to `detectIntegrationModel`'s own fail-open-to-`local-merge` default), so it cannot structurally produce the failure this AC requires.\n- The #2429 status-line check still runs first in both `two-call-gate.md` and `sequential-execution.md` — a malformed status line is `BLOCKED` regardless of this unit's change; the repair branch is reachable only after that check and a `build-test-ok` pass on every other artifact-check dimension. This is now a tested invariant, not only a narrative one — see the Deliverables item and AC 9 above.\n- `sequential-execution.md`'s stale `/claude-tweaks:flow {target} wrap-up` reference (~line 32) is a pre-existing bug this unit fixes in passing because it is in the same file section being edited for the repair branch — not a separate unrelated cleanup.\n- The claim's own `runId` (not `config.yml`, which is absent on this path) is the comparison value for the \"claim live and matching `runId`\" check — the same claim record `checkFirstCallArtifacts` already reads for its existing claim checks on every other path.\n\n\n<!-- work-fingerprint: dispatch-first-call-integrity:repairable-artifact-check-and-a-repair-then-continue-branch -->\nwork-fingerprint: dispatch-first-call-integrity:repairable-artifact-check-and-a-repair-then-continue-branch",
-        "createdAt": "2026-10-16T16:03:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3226,
-        "state": "OPEN",
-        "title": "Dispatch: repairable missing-config.yml classification + repair-then-continue branch in the two-call gate",
-        "updatedAt": "2026-10-17T06:12:16Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
