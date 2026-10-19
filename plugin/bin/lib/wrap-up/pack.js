@@ -35,10 +35,12 @@ const EXEC_OPTS = { maxBuffer: 32 * 1024 * 1024, timeout: 30000 };
 // rethrown naming the timeout. Every other rejection (ENOENT for gh-absent,
 // a maxBuffer overflow) passes through unchanged.
 async function execBounded(deps, cmd, args, cwd) {
-  try { return await deps.execFile(cmd, args, { cwd, ...EXEC_OPTS }); } catch (err) {
+  try {
+    return await deps.execFile(cmd, args, { cwd, ...EXEC_OPTS });
+  } catch (err) {
     if (err && err.killed === true) {
-      const label = cmd === 'node' ? path.basename(args[0]) : args[0];
-      throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${label} (killed by ${err.signal || 'timeout'})`, { cause: err });
+      const target = cmd === 'node' ? path.basename(args[0]) : args[0];
+      throw new Error(`timeout after ${EXEC_OPTS.timeout}ms: ${cmd} ${target} (killed by ${err.signal || 'timeout'})`, { cause: err });
     }
     throw err;
   }
