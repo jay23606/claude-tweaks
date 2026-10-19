@@ -52,7 +52,7 @@ The compact form never suppresses information, only empty scaffolding: if any se
 - Tests: {pass/fail}
 
 ### QA Validation (from /test)
-- **Status:** {ALL PASSED | PASSED WITH OBSERVATIONS (N stories, M caveats) | PARTIAL FAILURE (N passed, M failed) | ALL FAILED (M failed) | Skipped — no stories | Skipped — no dev server | Not run}
+- **Status:** {ALL PASSED | PASSED WITH OBSERVATIONS (N stories, M caveats) | PARTIAL FAILURE (N passed, M failed) | ALL FAILED (M failed) | Skipped — no stories | Skipped — no dev server | Not run}{stale-QA qualifier, when it applies}
 
 Possible QA statuses (the four canonical values from qa-reporting.md's Status determination, plus /review's own Skipped/Not run variants):
 - **ALL PASSED** — every story passed (PASS or PASS_WITH_CAVEATS), no failures
@@ -60,6 +60,8 @@ Possible QA statuses (the four canonical values from qa-reporting.md's Status de
 - **PARTIAL FAILURE** — some stories passed, some failed
 - **ALL FAILED** — no stories passed
 - **Skipped** / **Not run** — QA did not execute
+
+**Stale-QA qualifier (#3047):** when `code-mode-steps.md` Step 6.7 applied a fix wave that touched a story's `source_files` and its post-wave `/claude-tweaks:test qa affected` re-run did not happen (self-skipped with no dev server or browser, or errored), append ` — ran before the review's fix wave ({N} commits since); stories touching changed files: {ids}` to the status — `{N}` is `git rev-list --count {WAVE_BASE}..HEAD`, `{ids}` the stories whose `source_files` the wave touched. When the re-run ran, report its own status, unqualified; with no applied wave, or a wave touching no story file, the qualifier never renders. The verdict comment (`code-mode-steps.md` Step 7) copies this line verbatim.
 
 ### Code Review Findings (confirmed)
 | Category | Finding | Severity | Action |

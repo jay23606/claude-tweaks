@@ -43,3 +43,18 @@ test('AC4.1: the verdict comment carries the same qualified QA status, no separa
 test('AC5.1: code-mode-steps.md stays under the Read-limit byte rail', () => {
   assert.ok(Buffer.byteLength(steps) <= RAIL_BYTES, `${Buffer.byteLength(steps)} > ${RAIL_BYTES}`);
 });
+
+const template = fs.readFileSync(path.join(REVIEW, 'review-summary-template.md'), 'utf8');
+const qa = template.slice(template.indexOf('### QA Validation (from /test)'), template.indexOf('### Code Review Findings'));
+
+test('AC3.1: the template documents the stale-QA qualifier and when it renders', () => {
+  assert.ok(qa.includes('**Stale-QA qualifier (#3047):**'));
+  assert.ok(qa.includes(" — ran before the review's fix wave ({N} commits since); stories touching changed files: {ids}"));
+  assert.ok(qa.includes('`git rev-list --count {WAVE_BASE}..HEAD`'));
+  assert.ok(qa.includes('re-run did not happen'));
+  assert.ok(qa.includes('the qualifier never renders'));
+});
+
+test('AC4.1: the template states the verdict comment copies the qualified line verbatim', () => {
+  assert.ok(qa.includes('The verdict comment (`code-mode-steps.md` Step 7) copies this line verbatim.'));
+});
