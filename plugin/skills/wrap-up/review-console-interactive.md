@@ -49,7 +49,9 @@ report `pending-review` and stop; a read failure is not "no CI"), never green �
 Recommended. This is the same rule
 `dispatch/SKILL.md`'s "Confirm before resuming" applies to its own Resume/Cancel options, so a
 run reaching both prompts in one session (dispatch's resume confirmation, then this console on
-re-entry) never sees them disagree. Four options:
+re-entry) never sees them disagree. Render the verdict as one line directly above the options —
+`CI: {ci.state}`, with the `pending` or `failing` check names appended when non-empty — so a green
+rollup over a head run still in progress reads `CI: pending`, not passing (#3469). Four options:
 - Option 1 — `label`: `"Approve all + merge"` (append `" (Recommended)"` when `ci.state` is green, no-ci, pending or stale), `description`: `"Apply pending items, accept auto-applied, apply skill + config updates, execute cleanup incl. merging the branch (items 1-{N}); resolve every Q#/M# to Apply and every U# to filed (if its staged draft carries a systemic causal tag) or declined (otherwise) — their own stated defaults, no further prompts except rows marked drills-individually, listed above the options when present"`
 - Option 2 — `label`: `"Approve all, leave PR open"` (append `" (Recommended)"` instead when `ci.state` is red or inherited-red, or the read failed — apply everything except the merge, which stays blocked until CI is fixed), `description`: `"Same as above, but skip the branch-finish merge — the PR stays open for manual merge later"`
 - Option 3 — `label`: `"Override specific items"`, `description`: `"Reply with #s to skip/modify (e.g., \"skip 5, modify 7, revert 1\"); also the only path that drills Q#/M#/U# individually"`

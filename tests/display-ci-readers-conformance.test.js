@@ -17,7 +17,7 @@ test('AC1.1: review console classifies CI from pack.pr.value.ci (pr-checks.js), 
   const end = t.indexOf('Exactly one of options 1 and 2');
   assert.ok(start >= 0 && end > start, 'the pr-first paragraph and its Exactly-one trailer are both found');
   const slice = t.slice(start, end);
-  for (const needle of ['pack.pr.value.ci', 'pr-checks.js" --pr', 'pending', 'read-failed']) {
+  for (const needle of ['pack.pr.value.ci', 'pr-checks.js" --pr', 'pending', 'read-failed', '`CI: {ci.state}`', 'reads `CI: pending`']) {
     assert.ok(slice.includes(needle), `slice names ${needle}`);
   }
   assert.ok(!slice.includes('pr-checks.js" --run'), 'the pack-absent fallback reads the PR head (--pr), not --run, which reads stale off a differing local HEAD');
