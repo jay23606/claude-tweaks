@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792404492006
+    "lastAuditedMs": 1792438853389
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
@@ -202,5 +202,9 @@
   "skill:mcp-agent-fetch-node-compute": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792409995003
+  },
+  "skill:post-merge-workflow-live-probe": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792438860091
   }
 }
