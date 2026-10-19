@@ -7,6 +7,8 @@
 // reporter, #3043), generic.
 // `extractFailingFiles` (#1925) names the failing TEST files the same way,
 // ANSI-stripped, for the runner's flaky retry; `[]` when nothing parses.
+// `unattributedFailureCount` accounts spec, tap, and the jest/vitest dialects
+// of summary (#3480); pytest and an ambiguous summary log return null.
 'use strict';
 
 const MAX_REGION_LINES = 100;
@@ -195,8 +197,10 @@ const TAP_FRAME_RE = /(?:location:\s*'(.+?):\d+:\d+'|\((.+?):\d+:\d+\)|\bat\s+(.
 // for vitest/jest, `::` for pytest's `path::name` (review finding, refs
 // #1925 — `:` must not be swallowed into the capture), or end of line for a
 // bare `FAIL path` — never at a bare space, which would truncate a
-// space-containing path.
-const SUMMARY_FAIL_RE = /^\s*(?:FAIL|❯|FAILED)\s+(.+?)(?=\s>\s|\s\(|::|$)/;
+// space-containing path. ` [` also terminates it: vitest's `Failed Suites`
+// block prints ` FAIL  path [ path ]` (#3480), and without the bracket
+// terminator the suffix is swallowed into the capture.
+const SUMMARY_FAIL_RE = /^\s*(?:FAIL|❯|FAILED)\s+(.+?)(?=\s>\s|\s\(|\s\[|::|$)/;
 
 // A run of backslashes is ONE separator: node's TAP `location: '...'` line is
 // YAML-quoted, so on Windows it carries `\\` per separator — read as two, the
@@ -560,6 +564,54 @@ function countUnmatchedFailures(text, family, { cwd = process.cwd(), exists } = 
     .filter(({ file }) => !isRetryableFile(relativize(file, cwd), exists)).length;
 }
 
+// The runner behind a summary-family log, from its own summary block: jest
+// prints `Test Suites:`/`Tests:` (colon), vitest a colon-free `Test Files  N`.
+// null when neither (pytest, anything unrecognized) or both — a log carrying
+// both dialects' markers is ambiguous, and accounting against the wrong
+// summary line would read as accounted (#3480). Expects ANSI-stripped text.
+function summaryDialect(text) {
+  const jest = /^Test Suites:/m.test(text) || /^Tests:/m.test(text);
+  const vitest = /^\s*Test Files\s+\d+/m.test(text);
+  if (jest === vitest) return null;
+  return jest ? 'jest' : 'vitest';
+}
+
+// jest's `Jest: "global" coverage threshold for lines (100%) not met: 66.66%`
+// and vitest's `ERROR: Coverage for lines (50%) does not meet global
+// threshold (100%)`: a failing check that no `FAIL` line names, so retrying
+// the named files would clear a check that still fails (#3480).
+const COVERAGE_THRESHOLD_RES = [
+  /^Jest: .*coverage threshold for .* not met/gm,
+  /^ERROR: Coverage for .* does not meet .*threshold/gm,
+];
+
+// The summary family's per-dialect accounting (#3480) — see the comment on
+// `unattributedFailureCount`. null for pytest and an ambiguous log.
+function summaryUnattributedCount(text, { cwd }) {
+  const clean = stripAnsi(text);
+  const dialect = summaryDialect(clean);
+  if (dialect === null) return null;
+  const named = new Set();
+  let unmatched = 0;
+  for (const line of clean.split('\n')) {
+    if (!/^\s*FAIL\s/.test(line)) continue;
+    const m = line.match(SUMMARY_FAIL_RE);
+    const rel = m ? relativize(m[1], cwd) : null;
+    if (rel !== null && isRetryableFile(rel)) named.add(rel);
+    else unmatched += 1;
+  }
+  let nonFile = COVERAGE_THRESHOLD_RES.reduce((sum, re) => sum + (clean.match(re) || []).length, 0);
+  if (dialect === 'vitest') {
+    const errors = clean.match(/^\s*Errors\s+(\d+) errors?\b/m);
+    nonFile += Math.max(errors ? Number(errors[1]) : 0, /^⎯+ Unhandled Errors? ⎯+/m.test(clean) ? 1 : 0);
+  }
+  if (unmatched + nonFile > 0) return unmatched + nonFile;
+  const totalLine = clean.match(dialect === 'jest' ? /^Test Suites:.*$/m : /^\s*Test Files\s.*$/m);
+  if (!totalLine) return 1;
+  const failed = totalLine[0].match(/(\d+) failed/);
+  return Math.abs(named.size - (failed ? Number(failed[1]) : 0));
+}
+
 // Whether a spec/tap log's failing-file list accounts for the whole
 // failure — the same accounting `baseline.js`'s `adjudicate` already
 // applies before trusting a classification, reused here so the flaky-retry
@@ -571,11 +623,19 @@ function countUnmatchedFailures(text, family, { cwd = process.cwd(), exists } = 
 // `ℹ fail`/`# fail` + `ℹ cancelled`/`# cancelled` — any of these means the
 // failing-file list used to plan a retry is an undercount, so retrying and
 // passing those named files would wrongly clear the whole check. Returns 0
-// (accounted) or a positive count (unattributed); every family other than
-// spec/tap returns null — no failure-accounting guard exists for it (the
-// same refusal `baseline.js`'s `adjudicate` applies), so a caller must never
-// read it as accounted (#3204).
+// (accounted) or a positive count (unattributed). The summary family is
+// accounted per dialect (#3480): jest compares the distinct test files on its
+// `FAIL` lines against `Test Suites: N failed`, vitest against `Test Files N
+// failed` plus its `Errors` block, and both add every `FAIL` line naming no
+// test file and any coverage-threshold failure line — failures no file
+// accounts for. pytest (collection `ERROR`s sit outside every `FAILED` line)
+// and an ambiguous summary log (both dialects' markers, or neither) return
+// null, as does every family other than spec/tap/summary — no
+// failure-accounting guard exists for it (the same refusal `baseline.js`'s
+// `adjudicate` applies), so a caller must never read null as accounted
+// (#3204).
 function unattributedFailureCount(text, family, { cwd = process.cwd() } = {}) {
+  if (family === 'summary') return summaryUnattributedCount(text, { cwd });
   if (family !== 'spec' && family !== 'tap') return null;
   const unmatched = countUnmatchedFailures(text, family, { cwd });
   if (unmatched > 0) return unmatched;
@@ -615,7 +675,7 @@ function extractFailingFiles(text, family, { cwd = process.cwd(), exists } = {})
 
 module.exports = {
   sniffFamily, extractFailingRegion, parseCounts, summaryLine,
-  stripAnsi, extractFailingFiles, countUnmatchedFailures, unattributedFailureCount, fileLevelFailures, failingTestsByFile, specEntryCount,
+  stripAnsi, extractFailingFiles, countUnmatchedFailures, unattributedFailureCount, summaryDialect, fileLevelFailures, failingTestsByFile, specEntryCount,
   cancelledCount, testTree, tapLines, TEST_FILE_RE,
   MAX_REGION_LINES, GENERIC_TAIL_LINES, MAX_LINE_CHARS,
 };
