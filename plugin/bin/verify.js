@@ -521,7 +521,9 @@ async function main() {
     return { ...retried, retryDecision: decision };
   };
   const results = (sel && sel.mode === 'none' ? [] : (await runChecks({
-    cmds, logDir, retry: retryHook, cwd: parsed.cwd,
+    // #3511: any --baseline run needs every suite's evidence — a fail-fast
+    // skip makes the adjudicator refuse (baseline.js), so suites keep running.
+    cmds, logDir, retry: retryHook, cwd: parsed.cwd, continueSuitesAfterFailure: Boolean(parsed.baseline),
   })).map(enrich)).map((c) => {
     // #1837: countsUnparsed is real report content only when a count stamp
     // is actually in play — never disable the comparison silently, but also
