@@ -82,3 +82,21 @@ test('test/design-gate.md resolves <changed-files> via verify.js --changed-files
   // form — that's a documented fallback, not the primary resolution this test guards.
   assert.match(invocation, /exit 1.*git diff --name-only HEAD~1\.\.HEAD/s);
 });
+
+test('verification.md Skip-if-recent Mismatch re-stamps HEAD through the runner, never a hand-rolled skip (#3284)', () => {
+  const v = read('plugin/skills/test/verification.md');
+  const start = v.indexOf('- **Mismatch**');
+  const end = v.indexOf('- **Signal absent**');
+  assert.ok(start !== -1 && end > start, 'Mismatch bullet must precede the Signal absent bullet');
+  const bullet = v.slice(start, end);
+  assert.ok(!bullet.includes('skip this procedure entirely'), 'a moved HEAD must never skip without the runner — the stamp would stay at VERIFICATION_SHA');
+  assert.ok(!bullet.includes('git diff --name-only'), 'the runner classifies the delta, not a hand-rolled git diff');
+  assert.ok(bullet.includes('scoped invocation'), 'the Mismatch case runs the scoped invocation');
+  assert.ok(bullet.includes('re-stamps HEAD'), 'the bullet states why: the runner re-stamps HEAD');
+  assert.ok(bullet.includes('#3284'));
+  assert.ok(bullet.includes('no declaration'), 'no-declaration projects fall back to the full procedure');
+  const table = v.slice(v.indexOf('### Re-verify scoping'));
+  const row = table.split('\n').find((l) => l.startsWith('|') && l.includes('`VERIFICATION_SHA` ≠ HEAD'));
+  assert.ok(row, 'the scoping table names the build→test VERIFICATION_SHA mismatch site');
+  assert.ok(row.includes('scoped (`none` on a bookkeeping-only delta)'), row);
+});
