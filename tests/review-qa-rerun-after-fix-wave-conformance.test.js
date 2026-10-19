@@ -136,3 +136,29 @@ test('I-3: the test skill contract and the skill graph record the Step 6.7 qa af
 test('M-1: the qualifier distinguishes uncommitted Fix-now edits from the commit count', () => {
   assert.ok(qa.includes('plus uncommitted edits'));
 });
+
+test('fix round 1 (#3598): the recompute applies to the merge path; the never-run rule replaces it', () => {
+  assert.ok(step67.includes('instead of this recompute'));
+  assert.ok(step67.indexOf('then recompute Step 7') < step67.indexOf('With no pre-wave per-story results'), 'recompute sentence precedes the never-run branch');
+});
+
+test('fix round 1 (#3598): the unexecuted-story qualifier rule carves out the never-run case', () => {
+  assert.ok(step67.includes('unless the never-run rule applies, since a status from stories that never ran has no earlier pass to call stale'));
+  assert.ok(qa.includes('unqualified (except under the never-run rule below)'));
+  assert.ok(qa.includes('{stale-QA qualifier or never-run suffix, when one applies}'));
+});
+
+test('fix round 1 (#3598): Step 3 capture precedes parallel fix dispatch and Step 5 edits count', () => {
+  assert.ok(step3.includes('and before any parallel fix dispatch'));
+  assert.ok(step3.includes('A Step 5 simplification edit made after that capture falls inside the same diff'));
+  assert.ok(!step67.includes('WAVE_BASE=$(git rev-parse HEAD)'), 'the old HEAD-only capture form is gone');
+});
+
+test('fix round 1 (#3598): the dirty-tree uncommitted-edits overstatement is stated as accepted', () => {
+  assert.ok(qa.includes('accepted (#3598): on a tree dirty before the wave, that check also counts the pre-wave edits'));
+});
+
+test('fix round 1 (#3598): the test skill contract notes the Step 3 Routing wave', () => {
+  const testSkill = readText(path.join(__dirname, '..', 'plugin', 'skills', 'test', 'SKILL.md'));
+  assert.ok(testSkill.includes('which also covers a Step 3 Routing fix wave (#3598)'));
+});
