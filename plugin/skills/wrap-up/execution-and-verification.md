@@ -72,8 +72,8 @@ route on it in every mode; only git's own auto-merge runs, so there is no judgme
 Log with `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status AUTO
 --section "/wrap-up" --step "Leave-open mergeability re-check" --reversibility high --text
 "mergeability: {outcome}"`. The phase-trace report's Verdict line (`summary-template.md`) and
-`/claude-tweaks:flow`'s resume-to-merge row (`flow/summary-template.md`) name the same outcome, so a
-parked PR whose CI GitHub suppressed is visible from the summary. A merge outcome of `merged`,
+`/claude-tweaks:flow`'s resume-to-merge row (`flow/summary-template.md`) name a `DIRTY` outcome, so a
+parked PR whose CI GitHub suppressed is visible from the summary; any other outcome stays in `decisions.md` only. A merge outcome of `merged`,
 `armed`, or the merge path's own `pending-review` skips this paragraph — `_shared/pr-first-merge.md`
 Step 2.5 already read the state on that path.
 

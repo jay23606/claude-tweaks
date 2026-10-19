@@ -87,8 +87,13 @@ function assertResumeRow(text) {
   const first = flat.indexOf(row);
   assert.ok(first !== -1, 'AC1.2: the Next Actions resume row names the mergeability outcome');
   assert.ok(flat.indexOf(row, first + 1) !== -1, 'AC1.2: the Resume-to-merge row restatement names it too');
-  assert.ok(flat.includes('Leave-open mergeability re-check'), 'AC1.2: the row cites its producer');
-  assert.ok(flat.includes('DIRTY → merged main as {sha}'), 'AC1.2: the row names the merge');
+  const para = flat.slice(flat.indexOf('**Resume-to-merge row.**'));
+  assert.ok(para.length < flat.length, 'AC1.2: the Resume-to-merge row paragraph exists');
+  assert.ok(para.includes('Leave-open mergeability re-check'), 'AC1.2: the row cites its producer');
+  assert.ok(para.includes('DIRTY → merged main as {sha}'), 'AC1.2: the row names the merge');
+  assert.ok(para.includes('only when it starts with `DIRTY`'), 'AC3.1: the suffix carries the outcome only for a DIRTY outcome');
+  assert.ok(para.includes('any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed read)'), 'AC3.1: any other outcome is named');
+  assert.ok(para.includes('drops the ` — mergeability: {outcome}` suffix'), 'AC3.1: any other outcome drops the suffix');
 }
 
 test('AC2.1: wrap-up Verdict reads blocked on a leave-open conflict', () => {
@@ -103,6 +108,9 @@ test('go-red control: an unnamed resume row or a softened Verdict makes the shar
   const row = FLOW_SUMMARY.split('{is ready | is blocked} — mergeability: {outcome}').join('is ready');
   assert.ok(row !== FLOW_SUMMARY, 'the control must actually mutate the text');
   assert.throws(() => assertResumeRow(row), /AC1\.2/);
+  const undirty = FLOW_SUMMARY.replace('only when it starts with `DIRTY`', 'for every outcome');
+  assert.ok(undirty !== FLOW_SUMMARY, 'the control must actually mutate the text');
+  assert.throws(() => assertResumeRow(undirty), /AC3\.1/);
   const verdict = WRAP_SUMMARY.replace('never "everything shipped"', 'usually not "everything shipped"');
   assert.ok(verdict !== WRAP_SUMMARY, 'the control must actually mutate the text');
   assert.throws(() => assertVerdictRule(verdict), /AC2\.1/);

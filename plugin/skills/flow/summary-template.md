@@ -107,8 +107,7 @@ Close the template's fence above, then assemble the applicable lines (the base 2
 (`wrap-up/execution-and-verification.md`) logged to `decisions.md`, verbatim — e.g.
 `DIRTY → merged main as {sha}` — so a parked PR whose CI GitHub suppressed is visible from this
 summary; `is blocked` replaces `is ready` when that outcome is `DIRTY — conflict in {files}` or
-`DIRTY — not caught up ({reason})`. No such line (an `armed` or merge-path `pending-review`
-outcome) drops the ` — mergeability: {outcome}` suffix. The row:
+`DIRTY — not caught up ({reason})`. The suffix carries the logged outcome only when it starts with `DIRTY` (e.g. `DIRTY → merged main as {sha}`); any other outcome (`CLEAN`, `BLOCKED`, `UNKNOWN`, a failed read), like no such line at all (an `armed` or merge-path `pending-review` outcome), drops the ` — mergeability: {outcome}` suffix. The row:
 
 `PIPELINE_RUN_DIR="{run-dir}" /claude-tweaks:flow "{target}" wrap-up` — resume to re-offer the merge decision, PR #{n} {is ready | is blocked} — mergeability: {outcome}
 
