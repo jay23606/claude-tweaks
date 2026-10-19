@@ -2,3 +2,14 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | countPendingDispatches JSON-parsed every prior transcript line on every graded reply (second full pass beside countToolUseBlocks) | fixed | Folded into the final-review fix wave (5ffb3e1c1): computed lazily in run() after the compliant return and the #2041/#2714 skips |
+| 2 | build | Launch predicate is any toolUseResult.isAsync===true, not Agent-specific — add a comment noting the shapes coincide today | deferred | — |
+| 3 | build | Fixtures omitted real-ack fields and launch-side single-id correlation cases | fixed | Replaced by verbatim real-line fixtures per carrier in the fix wave (5ffb3e1c1) |
+| 4 | build | Ruling: accept the two consumer cross-reference clauses (journey-1928 doc, reflect/full-mode.md) and leave dispatch/task-prompt.md unedited — cost if wrong: one sentence in task-prompt.md slightly overstates when an unmarked interim reply is graded | observation | SDD Task 2 ruling; whole-branch review judged it acceptable |
+| 5 | build | reflect/full-mode.md:87 added clause is a 150-char line in a ~100-char hard-wrapped paragraph — re-wrap | deferred | — |
+| 6 | build | subagent-output-contract.md:81 #3015 sentences follow the paragraph's closing rule; consider placing them before it | deferred | — |
+| 7 | build | Ruling: Critical — queued_command attachment completion carrier was ignored; recognize it, fail closed on any unrecognized carrier of <task-notification> — cost if wrong: none (fail-closed) | observation | Fixed in 5ffb3e1c1; scoped re-review ADDRESSED |
+| 8 | build | Ruling: fork transcripts inherited parent launches; reset at the last fork boundary — cost if wrong: a fork with its own pending children is graded as today | observation | Fixed in 5ffb3e1c1; scoped re-review ADDRESSED |
+| 9 | build | Ruling: hung child within the 60-minute window can hide a final-reply violation; documented as residual risk, no skip-count ceiling (a hung child leaves the yield as the agent's last stop) — cost if wrong: one hidden violation per hung child, bounded to 60 minutes | observation | Documented in subagent-stop.js header and docs/hooks.md (9f8c54d01) |
+| 10 | build | Ruling: re-review's new Important (drifted origin carrier skipped instead of null) is load-bearing — narrow resumed-implementer micro-fix plus the reviewer's queued_command tag gate, controller go-red check instead of a third review — cost if wrong: an unreviewed two-line change | observation | 0c60ec662; new tests fail at 9f8c54d01 (38/40), pass at HEAD |
+| 11 | build | On Claude Code 2.1.302 a fork boundary echoed in an api-request-blob line would null the count (safe — graded as today), so the fork reset never applies there; docs/hooks.md fork sentence may overstate — unverified, no 2.1.302 forks in corpus | deferred | — |
