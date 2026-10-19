@@ -103,6 +103,24 @@
 //    interim replies can carry — see isInterimProgressReply/INTERIM_MARKER_RE
 //    below and `_shared/subagent-output-contract.md`'s matching dispatch-side
 //    instruction.
+// 6. (fixed, #3015) #2041 needs the async signal IMMEDIATELY before the reply
+//    and #2714 needs the dispatch prompt to have requested the marker; neither
+//    knows whether this agent's own in-turn async `Agent` dispatches are still
+//    outstanding. A nested dispatcher that yields after intervening tool calls,
+//    its marker-less prompt never having asked for INTERIM_STATUS, was graded
+//    (and blocked) mid-wait. countPendingDispatches reads the live-verified
+//    shapes (subagents/agent-a39fe70648c970fc6.jsonl): a launch is a user entry
+//    with `toolUseResult.isAsync: true` carrying `agentId` and the launching
+//    `tool_use_id`; a completion is an entry with `origin.kind:
+//    'task-notification'` whose string body carries `<task-id>` /
+//    `<tool-use-id>`. A launch is pending when neither of its ids appears in any
+//    completion (correlated by id, never by count, so a background-Bash
+//    notification cannot complete an agent launch). Any indeterminate shape
+//    (unparseable line, id-less launch or notification, missing timestamp)
+//    yields null, which run() grades exactly as before — never a blanket
+//    exemption. Bounded by PENDING_DISPATCH_MAX_AGE_MS (60 minutes, mirroring
+//    flow/claim-targets.md's liveness default): a launch older than that is
+//    presumed hung and no longer hides a real contract violation.
 'use strict';
 const fs = require('fs');
 const ctxLib = require('./context');
@@ -265,14 +283,62 @@ function isAsyncWaitSignal(entry) {
   return false;
 }
 
-// -> { text: string|null, asyncWaitCheckpoint: boolean }. `asyncWaitCheckpoint`
-// is true only when `text` is non-null AND the nearest earlier parseable
-// transcript line is an isAsyncWaitSignal hit — i.e. this reply is reacting
-// to "a background dispatch just launched or reported in", not to genuine
-// content (#2041).
+// #3015: an in-turn async `Agent` dispatch older than this with no completion
+// notification is presumed hung — it stops exempting a non-compliant reply.
+// 60 minutes mirrors flow/claim-targets.md's liveness judgment default.
+const PENDING_DISPATCH_MAX_AGE_MS = 60 * 60 * 1000;
+
+// #3015: how many of this transcript's async `Agent` launches (before the
+// reply at `replyIndex`) have no completion notification yet? `lines` is the
+// raw transcript split on '\n'. -> number, or `null` when the shape is
+// indeterminate (run() treats null exactly like 0 — grade as before). See the
+// header comment's source 6 for the live-verified shapes and the reasoning.
+function countPendingDispatches(lines, replyIndex) {
+  let replyTs;
+  try { replyTs = Date.parse(JSON.parse(lines[replyIndex]).timestamp); } catch { return null; }
+  const launches = [];
+  const completed = new Set();
+  for (let i = 0; i < replyIndex; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { return null; }
+    if (!entry || typeof entry !== 'object') continue;
+    if (entry.toolUseResult && entry.toolUseResult.isAsync === true) {
+      const content = entry.message && entry.message.content;
+      const first = Array.isArray(content) ? content[0] : null;
+      const agentId = typeof entry.toolUseResult.agentId === 'string' && entry.toolUseResult.agentId ? entry.toolUseResult.agentId : null;
+      const toolUseId = first && typeof first.tool_use_id === 'string' && first.tool_use_id ? first.tool_use_id : null;
+      if (!agentId && !toolUseId) return null;
+      launches.push({ agentId, toolUseId, ts: Date.parse(entry.timestamp) });
+    }
+    if (entry.origin && entry.origin.kind === 'task-notification') {
+      const body = entry.message && entry.message.content;
+      if (typeof body !== 'string') return null;
+      const ids = [...body.matchAll(/<(?:task-id|tool-use-id)>([^<]+)<\/(?:task-id|tool-use-id)>/g)].map((m) => m[1].trim());
+      if (!ids.length) return null;
+      for (const id of ids) completed.add(id);
+    }
+  }
+  let pending = 0;
+  for (const l of launches) {
+    if ((l.agentId && completed.has(l.agentId)) || (l.toolUseId && completed.has(l.toolUseId))) continue;
+    if (Number.isNaN(replyTs) || Number.isNaN(l.ts)) return null;
+    if (replyTs - l.ts > PENDING_DISPATCH_MAX_AGE_MS) continue; // presumed hung
+    pending += 1;
+  }
+  return pending;
+}
+
+// -> { text: string|null, asyncWaitCheckpoint: boolean, pendingDispatches: number }.
+// `asyncWaitCheckpoint` is true only when `text` is non-null AND the nearest
+// earlier parseable transcript line is an isAsyncWaitSignal hit — i.e. this
+// reply is reacting to "a background dispatch just launched or reported in",
+// not to genuine content (#2041). `pendingDispatches` is the #3015 count of
+// still-outstanding in-turn async dispatches (0 when none or indeterminate).
 function lastAssistantText(transcriptPath) {
   let raw;
-  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false }; }
+  try { raw = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 }; }
   const lines = raw.split('\n');
   // Scan from the tail and stop at the first assistant message found — the
   // last assistant message is almost always near the end of a long-running
@@ -300,9 +366,9 @@ function lastAssistantText(transcriptPath) {
     // result comes back, so this narration precedes the eventual final
     // reply rather than being it. Grading it here is the same category of
     // misfire as the tool-call-only case above: nothing to grade yet (#1329).
-    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false };
+    if (msg.content.some((c) => c && c.type === 'tool_use')) return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
     const texts = msg.content.filter((c) => c && c.type === 'text' && typeof c.text === 'string');
-    if (!texts.length) return { text: null, asyncWaitCheckpoint: false };
+    if (!texts.length) return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
     // Look at the nearest earlier parseable line — what this reply is
     // actually reacting to. Blank/unparseable lines are skipped, same
     // tolerance the outer scan already applies.
@@ -315,9 +381,9 @@ function lastAssistantText(transcriptPath) {
       asyncWaitCheckpoint = isAsyncWaitSignal(priorEntry);
       break;
     }
-    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint };
+    return { text: texts[texts.length - 1].text, asyncWaitCheckpoint, pendingDispatches: countPendingDispatches(lines, i) || 0 };
   }
-  return { text: null, asyncWaitCheckpoint: false };
+  return { text: null, asyncWaitCheckpoint: false, pendingDispatches: 0 };
 }
 
 function run(ctx) {
@@ -344,7 +410,7 @@ function run(ctx) {
   // transcriptPath is already a confirmed non-empty string (checked above),
   // so a straight equality test already implies mainTranscriptPath is one too.
   if (ctx.input.transcript_path === transcriptPath) return {};
-  const { text, asyncWaitCheckpoint } = lastAssistantText(transcriptPath);
+  const { text, asyncWaitCheckpoint, pendingDispatches } = lastAssistantText(transcriptPath);
   if (typeof text !== 'string') return {}; // unreadable -> best-effort no-op
   const trimmedText = text.trim();
   const firstLine = trimmedText.split('\n')[0].slice(0, 120);
@@ -387,6 +453,10 @@ function run(ctx) {
   // immediately above: must run before the #2345 zero-tool-use-verdict
   // check below, since an interim checkpoint is not graded at all.
   if (isInterimProgressReply(trimmedText)) return {};
+  // #3015: a yield while this agent's own in-turn async Agent dispatches are
+  // still pending is not its final reply. Bounded (PENDING_DISPATCH_MAX_AGE_MS);
+  // null (indeterminate transcript shape) grades as today.
+  if (pendingDispatches > 0) return {};
   if (toolUseCount === 0) {
     ctxLib.appendEvent(ownedRun.dir, 'zero-tool-use-verdict', { firstLine }, ownedRun.attribution);
   }
@@ -423,4 +493,4 @@ function run(ctx) {
   return { json: { systemMessage: 'claude-tweaks: a subagent reply is missing the Subagent Contract status line (STATUS: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED, as the last non-empty line). Logged to events.jsonl.' } };
 }
 
-module.exports = { run, isExemptAgentType, isAsyncWaitSignal, detectStatus, classifyViolationVariant, countToolUseBlocks, isInterimProgressReply };
+module.exports = { run, isExemptAgentType, isAsyncWaitSignal, detectStatus, classifyViolationVariant, countToolUseBlocks, isInterimProgressReply, countPendingDispatches, PENDING_DISPATCH_MAX_AGE_MS };

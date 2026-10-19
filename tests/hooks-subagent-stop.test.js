@@ -314,3 +314,160 @@ test('#2714: isInterimProgressReply recognizes the marker only as the trailing l
   assert.strictEqual(substop.isInterimProgressReply('No marker at all.\nSTATUS: DONE'), false);
   assert.strictEqual(substop.isInterimProgressReply(''), false);
 });
+
+// #3015 fixtures — line shapes copied from live transcripts (subagents/agent-a39fe70648c970fc6.jsonl,
+// flow-spec-3573 main transcript): launch ack = toolUseResult.isAsync + agentId + tool_use_id;
+// completion = origin.kind 'task-notification' with a string <task-notification> body.
+const T0 = Date.parse('2026-10-19T09:00:00.000Z');
+const at = (min) => new Date(T0 + min * 60000).toISOString();
+function agentCall(id, min) {
+  return { type: 'assistant', timestamp: at(min), message: { role: 'assistant', content: [{ type: 'tool_use', id, name: 'Agent', input: { description: `Lens ${id}` } }] } };
+}
+function launchAck(agentId, toolUseId, min) {
+  return {
+    type: 'user',
+    timestamp: at(min),
+    message: { role: 'user', content: [{ tool_use_id: toolUseId, type: 'tool_result', content: [{ type: 'text', text: `Async agent launched successfully.\nagentId: ${agentId} (internal ID)` }] }] },
+    toolUseResult: { isAsync: true, status: 'async_launched', agentId, description: `Lens ${toolUseId}`, canContinueAgent: true },
+  };
+}
+function notification(agentId, toolUseId, min, status = 'completed') {
+  return {
+    type: 'user',
+    timestamp: at(min),
+    message: { role: 'user', content: `<task-notification>\n<task-id>${agentId}</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>/tmp/x/tasks/${agentId}.output</output-file>\n<status>${status}</status>\n<summary>Agent "Lens" finished</summary>\n</task-notification>` },
+    origin: { kind: 'task-notification', producer: 'session-task', runId: 'r1' },
+  };
+}
+// An intervening tool call (assistant tool_use + user tool_result) — defeats the #2041 immediately-preceding-signal filter.
+function readCall(min) {
+  return [
+    { type: 'assistant', timestamp: at(min), message: { role: 'assistant', content: [{ type: 'tool_use', id: `toolu_read${min}`, name: 'Read', input: {} }] } },
+    { type: 'user', timestamp: at(min), message: { role: 'user', content: [{ tool_use_id: `toolu_read${min}`, type: 'tool_result', content: 'ok' }] } },
+  ];
+}
+function reply(text, min) {
+  const e = { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } };
+  if (min !== undefined) e.timestamp = at(min);
+  return e;
+}
+const toLines = (entries) => entries.map((e) => (typeof e === 'string' ? e : JSON.stringify(e)));
+function writeTranscript(entries) {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ct-substop-p-')), 'agent.jsonl');
+  fs.writeFileSync(f, toLines(entries).join('\n') + '\n');
+  return f;
+}
+function runOn(transcriptPath, extraInput = {}) {
+  const run = mkRun();
+  const out = substop.run({
+    input: { agent_transcript_path: transcriptPath, ...extraInput },
+    runDir: run,
+    runState: null,
+    ownedRun: { dir: run, attribution: 'session' },
+    cwd: '/x',
+  });
+  const eventsPath = path.join(run, 'events.jsonl');
+  const events = fs.existsSync(eventsPath)
+    ? fs.readFileSync(eventsPath, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
+    : [];
+  return { out, events };
+}
+const launches3 = () => [
+  agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0),
+  agentCall('toolu_2', 0), launchAck('a2', 'toolu_2', 1),
+  agentCall('toolu_3', 1), launchAck('a3', 'toolu_3', 1),
+];
+
+test('#3015 AC1.1: a yield after intervening tool calls while 2 of 3 launched Agent dispatches are pending is not blocked and logs nothing', () => {
+  const sessionId = `cr-3015-ac1-${process.pid}`;
+  cleanupRetries(sessionId);
+  const p = writeTranscript([
+    ...launches3(), notification('a1', 'toolu_1', 3), ...readCall(4),
+    reply('Lens 1 back; waiting on lenses 2 and 3.', 5),
+  ]);
+  const { out, events } = runOn(p, { session_id: sessionId, agent_id: 'parent-1' });
+  assert.deepStrictEqual(out, {});
+  assert.strictEqual(events.length, 0);
+  assert.strictEqual(contractRetries.readRetried(sessionId).has('parent-1'), false, 'no forced STATUS retry while dispatches are pending');
+  cleanupRetries(sessionId);
+});
+
+test('#3015 AC2.1: the same transcript with every launched dispatch completed, ending in a non-compliant reply, is still blocked', () => {
+  const sessionId = `cr-3015-ac2-${process.pid}`;
+  cleanupRetries(sessionId);
+  const p = writeTranscript([
+    ...launches3(), notification('a1', 'toolu_1', 3), notification('a2', 'toolu_2', 3), notification('a3', 'toolu_3', 3),
+    ...readCall(4), reply('All lenses back; folded the findings in.', 5),
+  ]);
+  const { out } = runOn(p, { session_id: sessionId, agent_id: 'parent-2' });
+  assert.strictEqual(out.json.decision, 'block');
+  cleanupRetries(sessionId);
+});
+
+test('#3015 AC3.1: INTERIM_STATUS and immediately-after-async-signal replies behave as today with nothing pending', () => {
+  const sessionId = `cr-3015-ac3-${process.pid}`;
+  cleanupRetries(sessionId);
+  const done = [...launches3(), notification('a1', 'toolu_1', 3), notification('a2', 'toolu_2', 3), notification('a3', 'toolu_3', 3), ...readCall(4)];
+  // (a) all completed, INTERIM_STATUS trailing line
+  let r = runOn(writeTranscript([...done, reply('Drafting.\nINTERIM_STATUS: drafting the summary', 5)]), { session_id: sessionId, agent_id: 'p3a' });
+  assert.deepStrictEqual(r.out, {});
+  assert.strictEqual(r.events.length, 0);
+  // (b) one launch, reply immediately after the launch ack (#2041)
+  r = runOn(writeTranscript([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), reply('Launched; waiting.', 1)]), { session_id: sessionId, agent_id: 'p3b' });
+  assert.deepStrictEqual(r.out, {});
+  assert.strictEqual(r.events.length, 0);
+  // (c) all completed, canonical status
+  r = runOn(writeTranscript([...done, reply('Done.\nSTATUS: DONE', 5)]), { session_id: sessionId, agent_id: 'p3c' });
+  assert.deepStrictEqual(r.out, {});
+  assert.strictEqual(r.events.length, 0);
+  cleanupRetries(sessionId);
+});
+
+test('#3015 AC4.1: fixture line shapes match the live-transcript shapes', () => {
+  assert.strictEqual(substop.isAsyncWaitSignal(JSON.parse(JSON.stringify(launchAck('a1', 'toolu_1', 0)))), true);
+  assert.strictEqual(substop.isAsyncWaitSignal(JSON.parse(JSON.stringify(notification('a1', 'toolu_1', 1)))), true);
+  const lines = toLines([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('a1', 'toolu_1', 1), reply('x', 2)]);
+  assert.strictEqual(substop.countPendingDispatches(lines, 3), 0);
+});
+
+test('#3015 bound: a launch older than 60 minutes with no completion no longer exempts a non-compliant reply', () => {
+  const sessionId = `cr-3015-bound-${process.pid}`;
+  cleanupRetries(sessionId);
+  const mk = (replyMin) => [agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), ...readCall(replyMin - 1), reply('Done with everything.', replyMin)];
+  const { out } = runOn(writeTranscript(mk(62)), { session_id: sessionId, agent_id: 'parent-bound' });
+  assert.strictEqual(out.json.decision, 'block');
+  const lines59 = toLines(mk(59));
+  assert.strictEqual(substop.countPendingDispatches(lines59, lines59.length - 1), 1);
+  cleanupRetries(sessionId);
+});
+
+test('#3015 countPendingDispatches: correlates a completion by tool-use-id alone', () => {
+  const lines = toLines([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('other', 'toolu_1', 1), reply('x', 2)]);
+  assert.strictEqual(substop.countPendingDispatches(lines, 3), 0);
+});
+
+test('#3015 countPendingDispatches: a background-Bash notification does not complete an unrelated agent launch', () => {
+  const lines = toLines([agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), notification('bash9', 'toolu_bash9', 1), reply('x', 2)]);
+  assert.strictEqual(substop.countPendingDispatches(lines, 3), 1);
+});
+
+test('#3015 countPendingDispatches: returns null for an id-less task-notification, a launch with no ids, an unparseable prior line, and a missing timestamp', () => {
+  const idless = { ...notification('a1', 'toolu_1', 1), message: { role: 'user', content: '<task-notification>\n<status>completed</status>\n</task-notification>' } };
+  const idlessEntries = [agentCall('toolu_1', 0), launchAck('a1', 'toolu_1', 0), idless, ...readCall(2), reply('Done with everything.', 3)];
+  assert.strictEqual(substop.countPendingDispatches(toLines(idlessEntries), idlessEntries.length - 1), null);
+
+  const noIds = { type: 'user', timestamp: at(1), message: { role: 'user', content: 'plain' }, toolUseResult: { isAsync: true, status: 'async_launched' } };
+  assert.strictEqual(substop.countPendingDispatches(toLines([noIds, reply('x', 2)]), 1), null);
+
+  assert.strictEqual(substop.countPendingDispatches(toLines([launchAck('a1', 'toolu_1', 0), 'not json {', reply('x', 2)]), 2), null);
+
+  const noTs = launchAck('a1', 'toolu_1', 0); delete noTs.timestamp;
+  assert.strictEqual(substop.countPendingDispatches(toLines([noTs, reply('x', 2)]), 1), null);
+
+  // run(): an indeterminate shape falls back to today's grading, never a blanket exemption.
+  const sessionId = `cr-3015-null-${process.pid}`;
+  cleanupRetries(sessionId);
+  const { out } = runOn(writeTranscript(idlessEntries), { session_id: sessionId, agent_id: 'parent-null' });
+  assert.strictEqual(out.json.decision, 'block');
+  cleanupRetries(sessionId);
+});
