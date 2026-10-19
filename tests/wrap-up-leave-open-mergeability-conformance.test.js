@@ -66,3 +66,44 @@ test('git-discipline.md names the leave-open exception at wrap-up exit and keeps
   assert.ok(flat.includes("`wrap-up/execution-and-verification.md`'s Leave-open mergeability re-check takes it"),
     'the wrap-up-exit bullet must point at the leave-open exception');
 });
+
+const WRAP_SUMMARY = read('plugin', 'skills', 'wrap-up', 'summary-template.md');
+const FLOW_SUMMARY = read('plugin', 'skills', 'flow', 'summary-template.md');
+
+function assertVerdictRule(text) {
+  const flat = text.replace(/\s+/g, ' ');
+  const start = flat.indexOf('**Leave-open mergeability (#3483).**');
+  const state = flat.indexOf('### State');
+  assert.ok(start !== -1 && start < state, 'AC2.1: the Verdict rule sits before ### State');
+  const rule = flat.slice(start, state);
+  assert.ok(rule.includes('`blocked — conflict with main in {files}`'), 'AC2.1: conflict Verdict wording');
+  assert.ok(rule.includes('never "everything shipped"'), 'AC2.1: never everything shipped');
+  assert.ok(rule.includes('`decisions.md` line'), 'AC2.1: read from the decisions line, never memory');
+}
+
+function assertResumeRow(text) {
+  const flat = text.replace(/\s+/g, ' ');
+  const row = '— resume to re-offer the merge decision, PR #{n} {is ready | is blocked} — mergeability: {outcome}';
+  const first = flat.indexOf(row);
+  assert.ok(first !== -1, 'AC1.2: the Next Actions resume row names the mergeability outcome');
+  assert.ok(flat.indexOf(row, first + 1) !== -1, 'AC1.2: the Resume-to-merge row restatement names it too');
+  assert.ok(flat.includes('Leave-open mergeability re-check'), 'AC1.2: the row cites its producer');
+  assert.ok(flat.includes('DIRTY → merged main as {sha}'), 'AC1.2: the row names the merge');
+}
+
+test('AC2.1: wrap-up Verdict reads blocked on a leave-open conflict', () => {
+  assertVerdictRule(WRAP_SUMMARY);
+});
+
+test('AC1.2: flow summary resume-to-merge row names the mergeability outcome', () => {
+  assertResumeRow(FLOW_SUMMARY);
+});
+
+test('go-red control: an unnamed resume row or a softened Verdict makes the shared assertions throw', () => {
+  const row = FLOW_SUMMARY.split('{is ready | is blocked} — mergeability: {outcome}').join('is ready');
+  assert.ok(row !== FLOW_SUMMARY, 'the control must actually mutate the text');
+  assert.throws(() => assertResumeRow(row), /AC1\.2/);
+  const verdict = WRAP_SUMMARY.replace('never "everything shipped"', 'usually not "everything shipped"');
+  assert.ok(verdict !== WRAP_SUMMARY, 'the control must actually mutate the text');
+  assert.throws(() => assertVerdictRule(verdict), /AC2\.1/);
+});
