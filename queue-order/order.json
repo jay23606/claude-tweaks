@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-19T13:16:32.685Z",
+  "computedAt": "2026-10-19T14:16:16.043Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -264,11 +264,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3429,
-        "updatedAt": "2026-10-19T04:25:54Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3378,
         "updatedAt": "2026-10-17T18:13:55Z",
         "state": "OPEN"
@@ -291,11 +286,6 @@
       {
         "number": 3350,
         "updatedAt": "2026-10-19T07:52:30Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3347,
-        "updatedAt": "2026-10-18T21:29:49Z",
         "state": "OPEN"
       },
       {
@@ -331,11 +321,6 @@
       {
         "number": 3328,
         "updatedAt": "2026-10-17T09:04:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3327,
-        "updatedAt": "2026-10-18T20:40:20Z",
         "state": "OPEN"
       },
       {
@@ -440,7 +425,7 @@
       },
       {
         "number": 3258,
-        "updatedAt": "2026-10-17T09:03:09Z",
+        "updatedAt": "2026-10-19T13:17:55Z",
         "state": "OPEN"
       },
       {
@@ -511,16 +496,6 @@
       {
         "number": 2986,
         "updatedAt": "2026-10-17T06:10:12Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2912,
-        "updatedAt": "2026-10-19T08:41:45Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2887,
-        "updatedAt": "2026-10-19T07:07:12Z",
         "state": "OPEN"
       },
       {
@@ -6290,78 +6265,6 @@
         "facets": {
           "origin": null,
           "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Verified-as-of: d81250829ae2c3db172448be1f3588da29b78222\n\nOrigin: ledger resolve gate\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nUnder `integration-model: pr-first`, `/claude-tweaks:test`'s pipeline gate and `/claude-tweaks:review` Step 1.5 run `bin/pr-checks.js` (#3013) and stop on `state: red`. A check that is already failing on `origin/{integration-branch}`'s tip is inherited by every branch cut from it, so every pr-first run in that window stops at `/test` for a failure its diff did not cause.\n\nLocal verification already separates inherited from attributable failures (`verify.js --baseline` adjudication); this gate does not. `plugin/skills/_shared/pr-check-gate.md` names the inherited case in prose only (catch the branch up instead of debugging the diff), and `plugin/bin/lib/pr-checks/classify.js` has no base comparison.\n\n## Deliverables\n\n- `bin/pr-checks.js`: when the PR read is `red`, also read the integration branch tip's check runs (`gh api repos/{owner}/{repo}/commits/{sha}/check-runs` or equivalent) and report each failing check as `inherited` when the same check name is failing at the base tip, `attributable` otherwise.\n\n- `bin/lib/pr-checks/classify.js`: a pure helper that partitions the failing list against the base's failing names; a new `inherited-red` state (or an `inherited` flag per failing entry) when every failing check is inherited.\n\n- `_shared/pr-check-gate.md`: route all-inherited red as a caveat (AUTO line naming the base tip and checks), not a gate failure; mixed red still fails on the attributable checks only.\n\n- Tests in `tests/bin-lib/pr-checks/` for all-inherited, mixed, and base-read-failed (fails closed to plain red).\n\n## Acceptance Criteria\n\n- [ ] A PR whose only failing check is also failing at the integration tip passes `/test`'s gate with a logged caveat naming the base sha and check.\n\n- [ ] A PR with one inherited and one new failing check still stops, naming only the new check as the cause.\n\n- [ ] An unreadable base tip leaves the read as plain `red` (never green).\n\n## Release Note\n\npr-first runs no longer stop at /test when the only red check on their PR is one already failing on the integration branch; the gate reports it as inherited and continues.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-16T17:40:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3258,
-        "state": "OPEN",
-        "title": "PR-check gate: demote checks already red on the integration tip to a caveat",
-        "updatedAt": "2026-10-17T09:03:09Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
           "size": "medium",
           "ceremony": null,
           "solutionUnjustified": false,
