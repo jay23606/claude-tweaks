@@ -81,17 +81,18 @@ function classifyRollup({ rollup, headRefOid, localHead, hasPrCi, headRuns } = {
 // returns every run for the sha, so a failure a later run of the same workflow
 // superseded would otherwise mark a real PR failure inherited (check-runs and
 // statuses are already latest-per-name from the API). A row with no numeric
-// `databaseId` is kept as-is — never hidden, so it can only keep a verdict red.
+// `databaseId` cannot be ordered, so it is dropped: at the base tip a counted
+// failure can only make the verdict looser (more checks read inherited), and a
+// dropped one can only leave it red — the fail-closed direction.
 function newestRunPerWorkflow(runs) {
   const newest = new Map();
-  const kept = [];
   for (const r of runs) {
     const key = r && (r.workflowName || r.name);
-    if (!key || !Number.isFinite(r.databaseId)) { kept.push(r); continue; }
+    if (!key || !Number.isFinite(r.databaseId)) continue;
     const cur = newest.get(key);
     if (!cur || r.databaseId > cur.databaseId) newest.set(key, r);
   }
-  return [...kept, ...newest.values()];
+  return [...newest.values()];
 }
 
 // Names failing at the integration-branch tip, from the three REST reads the

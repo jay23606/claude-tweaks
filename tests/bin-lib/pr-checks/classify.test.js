@@ -173,8 +173,8 @@ test('failingNamesAt: real e91df452c shape — job name and workflow name both c
     { name: 'windows', status: 'completed', conclusion: 'success' },
   ];
   const runs = [
-    { name: 'windows-regression', workflowName: 'windows-regression', status: 'completed', conclusion: 'failure' },
-    { name: 'test', workflowName: 'test', status: 'completed', conclusion: 'cancelled' },
+    { databaseId: 11, name: 'windows-regression', workflowName: 'windows-regression', status: 'completed', conclusion: 'failure' },
+    { databaseId: 12, name: 'test', workflowName: 'test', status: 'completed', conclusion: 'cancelled' },
   ];
   assert.deepEqual(failingNamesAt({ checkRuns, statuses: [], runs }), ['file', 'windows-regression']);
 });
@@ -229,14 +229,15 @@ test('a null-named failing entry is never inherited', () => {
   assert.equal(r.failing[0].inherited, false);
 });
 
-test('failingNamesAt: only the newest run of a workflow counts; a run row without a databaseId is kept', () => {
+test('failingNamesAt: only the newest run of a workflow counts; a run row without a databaseId is ignored (fails closed)', () => {
   const failed = (databaseId, workflowName) => ({ databaseId, name: workflowName, workflowName, status: 'completed', conclusion: 'failure' });
   const passed = (databaseId, workflowName) => ({ ...failed(databaseId, workflowName), conclusion: 'success' });
   const names = (runs) => failingNamesAt({ checkRuns: [], statuses: [], runs });
   assert.deepEqual(names([failed(5, 'ci'), passed(9, 'ci')]), []);
   assert.deepEqual(names([passed(5, 'ci'), failed(9, 'ci')]), ['ci']);
   assert.deepEqual(names([failed(5, 'ci'), passed(9, 'other')]), ['ci']);
-  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }, passed(9, 'ci')]), ['ci']);
+  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }, passed(9, 'ci')]), []);
+  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }]), []);
 });
 
 test('non-red verdicts pass through unchanged (same object)', () => {
