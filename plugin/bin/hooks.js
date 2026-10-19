@@ -1362,12 +1362,15 @@ async function main(argv) {
   }
   if (cmd === 'check-sibling-sessions') {
     // [IL-107]: before claiming a record, enumerate live worktrees and their
-    // lock-owning pids, not just branches/claims/labels — those are the
-    // signals that stayed silent while a sibling session sat eleven commits
-    // deep in an unpushed worktree. This fails OPEN by construction: an
-    // unresolvable --record, an unparseable lock, or a dead pid all read as
-    // "no conflict", never as a block with no way forward (see
-    // sibling-sessions.js's own header comment).
+    // lock-owning pids — branches/claims/labels alone stayed silent while a
+    // sibling session sat eleven commits deep in an unpushed worktree — and
+    // also read the claims registry for a live claim held by another session
+    // (a sibling on another machine, whose worktree lock this host cannot
+    // see). This fails OPEN by construction: an unresolvable --record, an
+    // unparseable lock, a dead pid, or a claim read failure (offline, auth,
+    // unresolved repo slug, unreadable blob) all read as "no conflict", never
+    // as a block with no way forward (see sibling-sessions.js's own header
+    // comment).
     const args = argv.slice(3);
     const flagIdx = args.indexOf('--record');
     const recordRef = flagIdx !== -1 ? args[flagIdx + 1] : null;
@@ -1380,6 +1383,18 @@ async function main(argv) {
       process.stdout.write(
         `claude-tweaks: sibling session may already hold record ${recordRef} — ` +
         `worktree ${match.path} (branch ${match.branch || '(none)'}, pid ${match.pid}) is in use by a live session; ` +
+        `verify before claiming\n`,
+      );
+      return 0;
+    }
+    // The worktree lock above sees only local siblings; the live claim is the
+    // remote-facing half (another machine, the cloud, no worktree yet).
+    const claim = siblingSessions.findLiveClaim(recordRef, { cwd: process.cwd() });
+    if (claim) {
+      process.stdout.write(
+        `claude-tweaks: sibling session may already hold record ${recordRef} — ` +
+        `live claim by run ${claim.runId || '(unknown)'} (session ${claim.sessionId || '(unknown)'}, ` +
+        `host ${claim.host || '(unknown)'}, claimed ${claim.claimedAt || '(unknown)'}); ` +
         `verify before claiming\n`,
       );
     } else {
