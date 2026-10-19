@@ -472,12 +472,8 @@ function detectCrossLensOverlap(findingsByLens) {
 // `unconfirmed` keeps every input lens key (empty array when none remain).
 function corroborateCrossLens(unconfirmedByLens) {
   const lenses = Object.keys(unconfirmedByLens);
-  const nodes = [];
-  lenses.forEach((lens) => {
-    unconfirmedByLens[lens].forEach((raw) => {
-      nodes.push({ lens, finding: normalizeFinding(raw) });
-    });
-  });
+  const nodes = lenses.flatMap((lens) => unconfirmedByLens[lens]
+    .map((raw) => ({ lens, finding: normalizeFinding(raw) })));
 
   const directMatch = (i, j) => {
     if (!sameLocation(nodes[i].finding, nodes[j].finding, LINE_TOLERANCE_CORROBORATION)) return false;
