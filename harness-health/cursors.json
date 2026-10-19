@@ -61,7 +61,7 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792384994721
+    "lastAuditedMs": 1792385654230
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -173,7 +173,7 @@
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792273209400
+    "lastAuditedMs": 1792387004753
   },
   "skill:visual-review": {
     "lastAuditedSha": null,
@@ -198,5 +198,9 @@
   "skill:single-source-constant-guard": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792384075027
+  },
+  "skill:mcp-agent-fetch-node-compute": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792385652098
   }
 }
