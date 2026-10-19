@@ -116,3 +116,18 @@ test('steps-and-gates.md case 3 recovery batch carries the integration-model pin
   const region = steps.slice(start, end);
   assert.match(region, /integration-model=/, 'case 3 batch-write bullet must carry integration-model={v}');
 });
+
+test('manifesto.md Write mechanism: an empty integration-model resolve omits the pair and logs a SKIP, so the 13 levers still write', () => {
+  const para = writeMechanismParagraph(fs.readFileSync(MANIFESTO, 'utf8'));
+  assert.match(para, /resolve prints an EMPTY value/, 'Write mechanism must say what to do when the pin resolve prints an empty value');
+  assert.match(para, /omit that pair so the 13 levers still write/, 'Write mechanism must say the empty pin pair is omitted and the 13 levers still write');
+  assert.match(para, /log-decision\.js --status SKIP/, 'Write mechanism must log the omission as a SKIP decision');
+});
+
+test('steps-and-gates.md case 3 fresh-resolve branch reaches the empty-resolve omit-and-SKIP rule', () => {
+  const steps = fs.readFileSync(STEPS, 'utf8');
+  const start = steps.indexOf('### Adopting an inherited run directory');
+  const end = steps.indexOf('### Partial step lists');
+  const region = steps.slice(start, end);
+  assert.match(region, /resolved fresh as `manifesto\.md`'s Write mechanism section does, including its empty-resolve rule — omit the pair and log a `SKIP` decision/);
+});

@@ -38,9 +38,9 @@
 // `-> proceeding (no approval needed)` line as visible output — but that
 // render was prose the orchestrating model had to remember to compose
 // *after* this CLI's write call, and it was observed being silently
-// skipped. When a `--set` batch supplies exactly the 13 canonical Manifesto
-// levers (any order) with `mode=auto`, this is unambiguously that write
-// call, so success also prints the FYI table itself — a mechanical side
+// skipped. When a `--set` batch supplies the 13 canonical Manifesto levers
+// (any order), plus at most the run pins (`RUN_PINS`), with `mode=auto`,
+// this is unambiguously that write call, so success also prints the FYI table itself — a mechanical side
 // effect of the write, not a separate step to forget. Any other invocation
 // shape (single-key form, a partial batch, `mode` other than `auto`) prints
 // only the existing per-lever lines, unchanged.

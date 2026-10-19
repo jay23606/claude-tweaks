@@ -186,14 +186,14 @@ test('AC3.1: with no integration-model pin, a degrade line is printed instead of
   const deps = captured(makeDeps({ integrationModel: null, claims: OWN_CLAIM }));
   assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);
   assert.strictEqual(deps.err.length, 1);
-  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*integration-model/m);
+  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*carries no valid integration-model pin \(absent\)/m);
 });
 
 test('AC3.1: an invalid integration-model pin prints the same degrade line', () => {
   const deps = captured(makeDeps({ integrationModel: 'bogus', claims: OWN_CLAIM }));
   assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 0);
   assert.strictEqual(deps.err.length, 1);
-  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*integration-model/m);
+  assert.match(deps.err.join(''), /^verify-run-bookends: degraded — .*carries no valid integration-model pin \(bogus\)/m);
 });
 
 test('a local-merge pin prints no degrade line', () => {

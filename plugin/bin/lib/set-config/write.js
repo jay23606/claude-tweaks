@@ -16,10 +16,10 @@
 // against manifesto.md's config.yml example block by
 // tests/bin-lib/set-config/write.test.js), plus RUN_PINS — run-scoped keys
 // (integration-model) validated the same way but never Manifesto levers.
-// Values validate against
-// POLICY_KEYS enums where a schema row exists; `mode` and `ceremony-profile`
-// are config.yml-only levers with no POLICY_KEYS row (flow/manifesto.md
-// computes them per run), so their enums live here.
+// Values validate against POLICY_KEYS enums where a schema row exists;
+// `mode` and `ceremony-profile` are config.yml-only levers with no
+// POLICY_KEYS row (flow/manifesto.md computes them per run), so their enums
+// live here.
 //
 // Caveat: bin/resolve-policy.js --run resolves only POLICY_KEYS-backed
 // levers — `ceremony-profile` and `mode` return unknown-key there, by
@@ -57,10 +57,10 @@ const CONFIG_ONLY_VALUES = Object.freeze({
 });
 
 // key -> allowed values array, or null when key is not a config.yml lever OR
-// is a lever with no known enum (name-only validation; none exists today).
-// validateLever below tells the two null cases apart itself — it checks
-// MANIFESTO_LEVERS membership before calling this — so this function's null
-// return does not by itself mean "unknown key".
+// is a lever or run pin with no known enum (name-only validation; none
+// exists today). validateLever below tells the two null cases apart itself —
+// it checks MANIFESTO_LEVERS and RUN_PINS membership before calling this — so
+// this function's null return does not by itself mean "unknown key".
 function leverValues(key) {
   if (!MANIFESTO_LEVERS.includes(key) && !RUN_PINS.includes(key)) return null;
   if (CONFIG_ONLY_VALUES[key]) return [...CONFIG_ONLY_VALUES[key]];

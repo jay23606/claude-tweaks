@@ -207,6 +207,26 @@ test('cli: a 13-lever auto batch plus the integration-model pin writes the pin a
   assert.ok(out.join('').includes('### Pipeline Config (auto)'));
 });
 
+test('cli: a 13-lever batch WITHOUT the integration-model pin still writes all 13 levers (the empty-resolve fallback)', () => {
+  const { main, runDir } = fixture();
+  const { deps } = fakeDeps(main);
+  assert.equal(run(['--run', runDir, '--set', FULL_MANIFESTO_BATCH_AUTO], deps), 0);
+  const body = fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8');
+  for (const pair of FULL_MANIFESTO_BATCH_AUTO.split(',')) {
+    const [k, v] = pair.split('=');
+    assert.ok(body.split('\n').includes(`${k}: ${v}`), `config.yml missing ${k}: ${v}`);
+  }
+  assert.ok(!/^integration-model:/m.test(body));
+});
+
+test('cli: an empty integration-model value in the batch is exit 2 and writes no lever', () => {
+  const { main, runDir } = fixture();
+  const before = fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8');
+  const { deps } = fakeDeps(main);
+  assert.equal(run(['--run', runDir, '--set', FULL_MANIFESTO_BATCH_AUTO + ',integration-model='], deps), 2);
+  assert.equal(fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8'), before);
+});
+
 test('cli: an invalid integration-model pin value is exit 2 and writes nothing', () => {
   const { main, runDir } = fixture();
   const before = fs.readFileSync(path.join(runDir, 'config.yml'), 'utf8');
