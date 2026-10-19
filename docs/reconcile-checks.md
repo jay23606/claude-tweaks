@@ -134,6 +134,33 @@ worktree PR, already archived the gitignored half while the tracked headers stay
   Without `worktree-always`, the sweep completes the move itself via `archiveRunDir`'s normal
   twin-resolution path above.
 
+**A merged PR is not a finished run (#3503).** When a run's PR is MERGED, the main loop's two
+paths still check one more thing before archiving: the branch-joined path (`archiveMergedRun`)
+and the by-number fallback. Each checks whether the run's own records all shipped.
+`runRecordSet(dir)` gives that record set. It is the manifest's spec ids, minus `failed`/`not-run`
+specs and minus deferred-closure entries. With no manifest it is the ids in a
+`-record-{n}`/`-spec-{n}` slug, and `null` (no check) for any other slug, for a non-integer
+manifest id, or under an explicit `work-backend: local-files`.
+
+A record counts as closed in either of two ways. The first is the merged PR's
+`closingIssuesReferences`, read through `release-merged.js`'s `prClosesIssue`. The second, in
+`settleMergedPartial`, is that the record's own issue is CLOSED, which covers a record shipped
+later by a second PR or at `/release`. When the PR's `closingIssuesReferences` is an empty array,
+as on a non-default integration base where GitHub never links closing keywords, only a manifest
+spec still `pending`/`running` blocks (`inFlightRecords`).
+
+Three skip reasons come out of this check:
+
+- **`merged-partial`**: carries `unclosed: number[]`, which `reconcile/index.js` passes through to
+  `result.runs`. It is in `STRUCTURALLY_STUCK_REASONS`, so a run left waiting escalates after the
+  TTL instead of freezing.
+- **`closing-issues-unknown`**: the PR object carries no `closingIssuesReferences` array. This
+  reason is transport-class and untracked.
+- **`no-repo-slug`**: there is no resolvable `origin` slug. This reason is tracked.
+
+Run-state is never written on any of these skips. The `status: clean` sweep is exempt from this
+check: wrap-up already closed that run.
+
 **Residue pruning.** After every `archive` pass, `cache.js`'s `pruneResidueFailures` drops any
 `residueFailures` entry (reason-agnostic — `move-failed`, `structurally-stuck`, any future reason)
 whose tracked path no longer exists on disk: a path can never fail or succeed there again, so it
