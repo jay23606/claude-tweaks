@@ -12,9 +12,9 @@ Two independent findings-quality mechanisms live in this step, each gated at its
 
 After per-lens reproduction completes, scan for contradictions across lenses before routing. Two lenses that both flagged the same region with mismatched severity get exactly one debate round to converge or escalate to `contested`. A silent lens — one that reviewed the region but produced no finding there at all — cannot enter this mechanism: `detectCrossLensOverlap` below only pairs findings that exist in *both* lenses' arrays, so the asymmetric "one flagged, the other did not" case has no data to pair against and is never dispatched (see step 5's skip condition).
 
-1. **Detect overlap.** Collect each lens's `confirmed` and `unconfirmed` findings into one `{lensName: [findings...]}` object, write it to `{ctx-dir}/findings-by-lens.json` (the scratch dir minted by Step 3's `build-review-context.js` call — never a fixed shared `/tmp` name, which collides across concurrent review sessions), and call:
+1. **Detect overlap.** Collect each lens's `confirmed` and `unconfirmed` findings into one `{lensName: [findings...]}` object, resolve its path with one plain call — `node "${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js" F=review-{ctx-id}-findings-by-lens.json` (`_shared/session-tmp-root.md`; `{ctx-id}` as defined in `step3-lens-dispatch.md` — never a fixed shared `/tmp` name, which collides across concurrent review sessions) — `Write` the object to the printed `F` path (`{path-F}` below) with the `Write` tool, and call:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" detect-overlap {ctx-dir}/findings-by-lens.json
+   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" detect-overlap {path-F}
    ```
    It returns pairs `{lensA, lensB, findingA, findingB}` for findings on the same `path` within ±5 lines from *different* lenses.
 
@@ -95,7 +95,7 @@ This pass is the only place in the skill where an unbounded fan-out would meet t
 >
 >    [... READ-ONLY REVIEW line, verbatim from the review-dispatch bundle's Read-only Reviewer Discipline section ...]
 >
->    SCRATCH: {ctx-dir}/agent-scratch/{agent-id} — any probe script or fixture you create to verify this finding goes there (never in the repository tree) and must be deleted before your status word (`_shared/subagent-output-contract.md`'s Scratch rule). If this path lies outside your own worktree (`worktree-always`, or any `EnterWorktree`-isolated dispatch), create and delete it via Bash (`mkdir -p` + a redirect/heredoc, then `rm`) — never `Write`/`Edit`, which the worktree-pinning guard refuses for a path outside your worktree.
+>    SCRATCH: {ctx-dir}/agent-scratch/{agent-id} — any probe script or fixture you create to verify this finding goes there (never in the repository tree) and must be deleted before your status word (`_shared/subagent-output-contract.md`'s Scratch rule). If this path lies outside your own worktree (`worktree-always`, or any `EnterWorktree`-isolated dispatch), create and delete it via Bash, one plain command per call — `mkdir -p` as its own call, the file written by one plain `printf` redirect or `node -e` call, `rm` as its own call; never a heredoc or an `&&` chain, which the harness Bash guard refuses by shape — never `Write`/`Edit`, which the worktree-pinning guard refuses for a path outside your worktree.
 >
 >    [Use: Capable — refutation agent. Independent run; fresh file read, not the
 >    lens's original context. Resolve via `node "${CLAUDE_PLUGIN_ROOT}/bin/resolve-profile.js" capable` (contract § Model Selection).]
@@ -132,7 +132,7 @@ in step3-lens-dispatch.md ...]
 
 [... READ-ONLY REVIEW line, verbatim from the review-dispatch bundle's Read-only Reviewer Discipline section ...]
 
-SCRATCH: {ctx-dir}/agent-scratch/gap-sweep — any probe script or fixture you create to verify a finding goes there (never in the repository tree) and must be deleted before your status word (`_shared/subagent-output-contract.md`'s Scratch rule). If this path lies outside your own worktree (`worktree-always`, or any `EnterWorktree`-isolated dispatch), create and delete it via Bash (`mkdir -p` + a redirect/heredoc, then `rm`) — never `Write`/`Edit`, which the worktree-pinning guard refuses for a path outside your worktree.
+SCRATCH: {ctx-dir}/agent-scratch/gap-sweep — any probe script or fixture you create to verify a finding goes there (never in the repository tree) and must be deleted before your status word (`_shared/subagent-output-contract.md`'s Scratch rule). If this path lies outside your own worktree (`worktree-always`, or any `EnterWorktree`-isolated dispatch), create and delete it via Bash, one plain command per call — `mkdir -p` as its own call, the file written by one plain `printf` redirect or `node -e` call, `rm` as its own call; never a heredoc or an `&&` chain, which the harness Bash guard refuses by shape — never `Write`/`Edit`, which the worktree-pinning guard refuses for a path outside your worktree.
 
 [Use: Frontier — gap-sweep agent. Independent run; single dispatch, not a
 reproduction pair. Degrades per the resolver's preconditions (contract § Model Selection).]

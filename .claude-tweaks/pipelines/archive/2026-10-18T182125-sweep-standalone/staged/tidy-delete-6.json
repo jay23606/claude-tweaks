@@ -1,0 +1,9 @@
+[
+  {
+    "tag": "parked",
+    "record": 159,
+    "title": "Decide whether work-backend / work-types / record…",
+    "action": "Close as not planned — parked 70d, stale, trigger not met",
+    "command": "gh issue close 159 --reason \"not planned\" --comment \"tidy: parked 70d, trigger unmet\""
+  }
+]

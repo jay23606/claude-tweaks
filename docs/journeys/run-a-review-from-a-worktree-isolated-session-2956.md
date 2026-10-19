@@ -1,0 +1,32 @@
+---
+files:
+  - plugin/skills/review/step3-lens-dispatch.md
+  - plugin/skills/review/step3-debate-and-refutation.md
+---
+
+# Run a Review from a Worktree-Isolated Session
+
+**Persona:** a developer whose `/claude-tweaks:review` runs inside a session isolated to a linked worktree — the review call of `/claude-tweaks:dispatch`'s two-call handoff, or any `worktree-always` project — with a pipeline run directory anchored in the main checkout.
+**Goal:** the review's Step 3 reproduction pairs and cross-lens overlap check run to completion without a single refused file write.
+**Entry point:** `/claude-tweaks:review #{n}` (or the `review` phase of `/claude-tweaks:flow #{n}`) with `$PIPELINE_RUN_DIR` set, from a worktree-isolated session.
+**Success state:** every lens pair is categorised and, at `high`+, overlap detection runs, with zero "Edit the worktree copy of this file instead" or "too complex to verify" refusals in the transcript.
+
+## Steps
+
+### 1. Categorise a lens reproduction pair — worktree-isolated session
+- **URL:** `/claude-tweaks:review #{n}` at `review-effort` `medium` or above, Step 3 reproduction dispatch
+- **Action:** both agents of a lens pair return; the orchestrator resolves `review-{ctx-id}-lens-{LENS}-agentA.json` / `…-agentB.json` with one plain `session-tmp-resolve.js` call, `Write`s each `findings` array to the printed path, and passes both paths to `review-coordination.js categorise-reproduction`.
+- **Should feel:** uneventful. No refused tool call, no improvised workaround path, no retry.
+- **Should understand:** these coordination inputs live in the session-scoped temp dir (`_shared/session-tmp-root.md`), outside every checkout, not in `{ctx-dir}`. Under `--run`, `{ctx-dir}` is `{run}/review-ctx` inside the main checkout, where a worktree-isolated session is refused both `Write` and a heredoc redirect. `{ctx-id}` is `{ctx-dir}`'s parent basename joined to its own basename, so two concurrent reviews in one session (dispatched subagents share `CLAUDE_CODE_SESSION_ID`) never share a filename.
+- **Red flags:** a `Write` refused with "Edit the worktree copy of this file instead"; a Bash heredoc refused as "too complex to verify"; a filename without the `{ctx-id}` segment, such as a bare `lens-3a-agentA.json` in the temp dir.
+
+### 2. Detect cross-lens overlap — `high` effort and above
+- **URL:** Step 3.5 Cross-Lens Debate, step 1 (Detect overlap)
+- **Action:** the orchestrator writes the `{lensName: [findings...]}` object to the resolved `review-{ctx-id}-findings-by-lens.json` path and calls `review-coordination.js detect-overlap` on it.
+- **Should feel:** the same as step 1 — no refusal, no detour.
+- **Should understand:** `{ctx-dir}` still holds the context bundle and the pre/post-fan-out status snapshots; only the orchestrator-written coordination inputs moved. The fan-out leftover sweep's `{ctx-dir}` exclusion no longer names `lens-*.json` or `findings-by-lens.json`, because they are no longer there.
+- **Red flags:** `detect-overlap` invoked on a `{ctx-dir}/findings-by-lens.json` path; the leftover sweep reporting a findings JSON file as a fan-out leftover.
+
+## Origin
+- Created during build of #2956. On plugin 6.133.0, an unattended `/claude-tweaks:flow` review step in a worktree-isolated session hit 3 refused tool calls (about 2 minutes) writing `{ctx-dir}/lens-*.json` under the main-checkout run directory, and only finished by writing the JSON elsewhere by hand. The fix moves the orchestrator-written inputs to per-review names in the session temp dir; `review-coordination.js` and `build-review-context.js` are unchanged.
+- Related journeys: `confirm-coverage-findings-across-reproduction-pairs-3049.md` (the same reproduction pairs' matcher), `keep-review-lenses-from-running-suites-3001.md` (the same fan-out's leftover sweep).
