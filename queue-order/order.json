@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-19T19:06:28.205Z",
-  "runId": "2026-10-19T190438-dispatch-standalone",
+  "computedAt": "2026-10-19T19:26:12.024Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "number": 3597,
-        "updatedAt": "2026-10-19T18:56:21Z",
+        "updatedAt": "2026-10-19T19:10:10Z",
         "state": "OPEN"
       },
       {
@@ -700,84 +700,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #1887, #1488\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/backlog/grant-lane-decision.md`'s Idempotence check only suppresses a fresh `needs:decision` when an *unresolved* `<!-- needs-decision: backlog-refine -->` comment exists. Once a human resolves the refusal through `/claude-tweaks:backlog refine #N` (keep, or build it myself), the next human-present `refine` run's grant-check refuses the same record for the same reason and stamps a fresh `needs:decision` and comment.\n\nObserved 2026-10-19 (run `2026-10-19T122748-backlog-standalone`): 15 ready records already carried a human-resolved backlog-refine refusal. #3214, #3215, #3216, #3217, #3256, #3295, #3396, #3193 and #3067 were each resolved twice (2026-10-15/17 \"build it myself\", 2026-10-19 \"keep\"), so every refine run reopens a question the human already answered. That session skipped them by hand and logged a SKIP line.\n\n## Deliverables\n\n1. Extend the Idempotence check so a record whose latest backlog-refine decision comment is resolved (`keep` or `build it myself`), and whose body and labels have not changed since that resolution, is not re-refused. Render it as one annotation line under the Needs-decision lane (e.g. `#N — refusal resolved {choice} on {date}; not re-asked`) and write nothing.\n2. A body or label change after the resolution (a re-shape, a new `risk:*`/`size:*`) re-opens the record for grant-check, as today.\n3. Apply the same rule on `refine-headless.md`'s gate-4 refusal path, which reaches the identical `needs:decision` outcome.\n\n## Acceptance Criteria\n\n- A fixture with a resolved `keep` backlog-refine comment and an unchanged body renders the annotation and produces no `needs:decision` action.\n- The same fixture with a body edit after the resolution goes through grant-check and can be stamped again.\n- `npm test` passes.\n\n## Release Note\n\nBacklog refine no longer re-asks a grant decision you already resolved, unless the record has changed since.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T12:30:50Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3597,
-        "state": "OPEN",
-        "title": "backlog refine re-refuses records a human already resolved",
-        "updatedAt": "2026-10-19T18:56:21Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
