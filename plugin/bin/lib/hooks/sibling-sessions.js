@@ -13,6 +13,12 @@
 // via lockVerdict) for a different question: not "is this worktree done?" but
 // "is somebody else standing in it right now?"
 //
+// The module also consults the claims registry (`findLiveClaim`) — the
+// remote-facing half, for a sibling on another machine whose worktree lock this
+// host cannot see. With no resolvable session id (no CLAUDE_CODE_SESSION_ID, no
+// `sessionId` opt) the caller's own live claim cannot be told from a sibling's,
+// so it reports as one.
+//
 // Every predicate here fails OPEN, deliberately the opposite posture from
 // worktree-reap.js's fail-closed reaper. A false negative here just means a
 // claim proceeds that a human would have paused — recoverable. A false
@@ -162,4 +168,69 @@ function findConflictingSession(recordRef, opts = {}) {
   return null;
 }
 
-module.exports = { findConflictingSession, matchesRecordRef, tokenize };
+// Default claims-registry reader: `(n) => blob string | null`. The requires are
+// lazy — claim-store/claims-git-cas pull in the whole claim transport, and most
+// callers (tests, the worktree-lock half) never read a claim. `createClaimReader`
+// turns an unresolved repo slug into a `{failure}` rather than a
+// `repos/null/...` request; a failure and an absent claim both read as null
+// here — fail open, same posture as the rest of this module.
+function defaultReadClaim(cwd) {
+  return (n) => {
+    const { createClaimReader } = require('../issues/claim-store');
+    const { defaultRunner } = require('../issues/claims-git-cas');
+    const { repoSlugOf } = require('./git-exec');
+    const r = createClaimReader({
+      gitRunner: (args, o) => defaultRunner(args, { cwd, ...o }),
+      repoSlug: repoSlugOf(cwd),
+    }).read(n);
+    return r.failure ? null : r.content;
+  };
+}
+
+// findLiveClaim(recordRef, opts) -> { runId, sessionId, host, claimedAt } | null
+//
+// The remote-facing half of the sibling-session check: a live, non-stale claim
+// in the claims registry held by a session other than the caller's. A claim on
+// another machine leaves no worktree lock `findConflictingSession` can see.
+//
+// opts: cwd (repo root for the default reader), readClaim ((n:number) =>
+// string|null, injected by tests), sessionId (same idiom and default as
+// `findConflictingSession`), now (epoch ms, for the TTL check).
+//
+// Only a numeric record ref (`77` / `#77`) has a claim blob; a slug ref returns
+// null without reading. Every other non-match — absent, tombstone, stale,
+// unparseable, throwing reader, the caller's own claim — is null too. When no
+// session id is resolvable the caller's own claim cannot be told from a
+// sibling's, so a live claim reports as a sibling's.
+function findLiveClaim(recordRef, opts = {}) {
+  const ref = String(recordRef);
+  if (!/^#?[1-9]\d*$/.test(ref)) return null;
+  const n = Number(ref.replace('#', ''));
+
+  const cwd = opts.cwd || process.cwd();
+  const readClaim = opts.readClaim || defaultReadClaim(cwd);
+  const sessionId = Object.prototype.hasOwnProperty.call(opts, 'sessionId')
+    ? opts.sessionId
+    : process.env.CLAUDE_CODE_SESSION_ID;
+  const now = opts.now || Date.now();
+
+  let content;
+  try {
+    content = readClaim(n);
+  } catch {
+    return null;
+  }
+
+  const { classifyClaimBlob } = require('../issues/claims');
+  if (classifyClaimBlob(content, now).state !== 'live') return null;
+  const claim = JSON.parse(content);
+  if (sessionId && claim.sessionId === sessionId) return null;
+  return {
+    runId: claim.runId || null,
+    sessionId: claim.sessionId || null,
+    host: claim.host || null,
+    claimedAt: claim.claimedAt || null,
+  };
+}
+
+module.exports = { findConflictingSession, findLiveClaim, matchesRecordRef, tokenize };
