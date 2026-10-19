@@ -206,7 +206,7 @@ main loop, landed via #1962/#2226/#2228/#2231):
   (`parseStuckPaths`/`renderStuckPathsBlock`) edited in place via `gh issue edit --body` on each new
   path (plus a comment, so both the record body and its thread reflect the addition) — never a
   second `issue create`. The body's fixed text names every skip reason that feeds the record
-  (`no-worktree`, `no-branch`, `no-pr`, `console-never-rendered-pr-closed`, and #3543's
+  (`no-worktree`, `no-branch`, `no-pr`, `console-never-rendered-pr-closed`, `console-never-rendered-staged-pending` (#3297), and #3543's
   `pr-not-found` — a stamped `run-state.json` `pr.number` GitHub's structured GraphQL error confirms
   names no PR, whose remedy is correcting or clearing that stamp); each path's own reason is its
   residue entry's `lastError` (`stuck at {reason}`), not rendered per path. `cache.js`'s per-path consecutive-failure counter (`trackResidue`,

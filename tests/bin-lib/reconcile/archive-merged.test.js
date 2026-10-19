@@ -2595,7 +2595,7 @@ test('archiveMerged: a MERGED PR reached via the by-number fallback with no cons
 // Companion (#657/#1130 protection, preserved): the SAME shape as above,
 // except staged/ holds a real pending file — this run must still skip,
 // never silently archived out from under an unresolved staged proposal.
-test('archiveMerged: a MERGED PR reached via the by-number fallback with no console.json but a pending staged/ item still skips (#3249, #657 protection)', () => {
+test('AC3.1: archiveMerged: a MERGED PR reached via the by-number fallback with no console.json but a pending staged/ item still skips with the staged-pending reason (#3249, #657 protection, #3297)', () => {
   const { root, featureSha } = mergedFeatureBranchRepo('feat-3249-merged-staged-pending');
   git(root, 'branch', '-D', 'feat-3249-merged-staged-pending'); // branch ref gone too — nothing for fallbackBranch to recover
   const runId = '2026-08-01T090000-record-3249-mergedpr-staged';
@@ -2627,8 +2627,17 @@ test('archiveMerged: a MERGED PR reached via the by-number fallback with no cons
   assert.ok(!result.archived.includes(runDir), 'a run with a genuinely pending staged/ item must never be archived out of sight');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
-  assert.equal(skip.reason, 'console-never-rendered');
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
+
+  // #3297: the pending-staged skip is tracked toward escalation (its dir is
+  // already backdated past STRUCTURALLY_STUCK_TTL_MS above), so one pass
+  // starts the structurally-stuck residue counter.
+  const failures = listResidueFailures(root);
+  assert.ok(
+    failures.some((f) => f.reason === 'structurally-stuck' && f.path === runDir),
+    `expected ${runDir} to start accumulating a structurally-stuck residue count, got ${JSON.stringify(failures)}`,
+  );
 });
 
 // #3249 (whole-branch review): exercises the archiveMergedRun -> decideArchiveCore
@@ -2690,12 +2699,12 @@ test('archiveMerged: ordinary path — a staged/ holding only dotfiles counts as
 
 // #657/#1130 protection on the ordinary path: a real pending staged item
 // still skips with plain 'console-never-rendered'.
-test('archiveMerged: ordinary path — a real pending staged/ item still skips console-never-rendered (#3249, #657 protection)', () => {
+test('archiveMerged: ordinary path — a real pending staged/ item still skips console-never-rendered-staged-pending (#3249, #657 protection, #3297)', () => {
   const { runDir, result } = fixtureOrdinaryMergedNoConsole('feat-3249-ordinary-pending', '2026-08-01T090000-record-3249-ordinary-pending', ['reflect-1.md']);
   assert.ok(!result.archived.includes(runDir), 'a run with a genuinely pending staged/ item must never be archived out of sight');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
-  assert.equal(skip.reason, 'console-never-rendered');
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -2735,7 +2744,7 @@ test('archiveMerged: ordinary path — staged/ existing as a non-directory (ENOT
   assert.ok(!result.archived.includes(runDir), 'an unreadable staged/ entry must never be treated as "nothing pending"');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
-  assert.equal(skip.reason, 'console-never-rendered');
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -2743,12 +2752,12 @@ test('archiveMerged: ordinary path — staged/ existing as a non-directory (ENOT
 // spec-{N}/staged/, not the top-level staged/. hasStagedItems must count them,
 // or a run with a pending per-spec proposal archives on the never-rendered
 // console fast path.
-test('AC5.1: a multi-spec run whose only staged items sit under spec-N/staged/ skips console-never-rendered (#3416)', () => {
+test('AC5.1: a multi-spec run whose only staged items sit under spec-N/staged/ skips console-never-rendered-staged-pending (#3416, #3297)', () => {
   const { runDir, result } = fixtureOrdinaryMergedNoConsole('feat-3416-spec-staged', '2026-10-17T144508-spec-3375-3380', [], { 'spec-3375': ['review-1.patch', 'review-2.patch', 'reflect-1.md'] });
   assert.ok(!result.archived.includes(runDir), 'a run with a pending per-spec staged item must never be archived out of sight');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
-  assert.equal(skip.reason, 'console-never-rendered');
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -2786,7 +2795,7 @@ test('AC5.1 fail-closed: a spec-N/staged that exists as a file (ENOTDIR) counts 
   assert.ok(!result.archived.includes(runDir), 'an unreadable spec-N/staged entry must never be treated as "nothing pending"');
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
-  assert.equal(skip.reason, 'console-never-rendered');
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -2801,9 +2810,13 @@ test('decideArchiveCore: consoleState none + MERGED + no 3rd arg still skips (un
   const decision = decideArchiveCore({ state: 'MERGED' }, 'none');
   assert.deepStrictEqual(decision, { action: 'skip', reason: 'console-never-rendered' });
 });
-test('decideArchiveCore: consoleState none + MERGED + hasStagedPending:true skips', () => {
+test('AC1.2: decideArchiveCore: consoleState none + MERGED + hasStagedPending:true skips with the staged-pending reason (#3297)', () => {
   const decision = decideArchiveCore({ state: 'MERGED' }, 'none', true);
-  assert.deepStrictEqual(decision, { action: 'skip', reason: 'console-never-rendered' });
+  assert.deepStrictEqual(decision, { action: 'skip', reason: 'console-never-rendered-staged-pending' });
+});
+test('STRUCTURALLY_STUCK_REASONS includes console-never-rendered-staged-pending but not plain console-never-rendered (#3297)', () => {
+  assert.equal(STRUCTURALLY_STUCK_REASONS.has('console-never-rendered-staged-pending'), true);
+  assert.equal(STRUCTURALLY_STUCK_REASONS.has('console-never-rendered'), false);
 });
 test('decideArchiveCore: consoleState none + MERGED + hasStagedPending:false archives (#3249)', () => {
   const decision = decideArchiveCore({ state: 'MERGED' }, 'none', false);
