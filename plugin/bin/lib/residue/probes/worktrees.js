@@ -112,10 +112,16 @@ function defaultIsDirty(worktreePath) {
   return lines.length > 0;
 }
 
-function probeWorktrees({ scope, isPidAlive = defaultIsPidAlive, isDirty = defaultIsDirty } = {}) {
+// `cliScope` is the residue CLI's `--scope` value. Every finding this probe
+// emits is `scope: 'observed'` by construction, and `filterResultsByScope`
+// drops all observed findings under `blast-radius` — so the per-worktree
+// `git status` (one sequential subprocess per unlocked worktree) would be
+// discarded work under that scope. Skip it (#3479).
+function probeWorktrees({ scope, isPidAlive = defaultIsPidAlive, isDirty = defaultIsDirty, cliScope } = {}) {
   if (!scope || !scope.ran) {
     return { ran: false, reason: (scope && scope.reason) || 'scope unresolved', findings: [] };
   }
+  if (cliScope === 'blast-radius') return { ran: true, reason: null, findings: [] };
   const findings = [];
   for (const wt of scope.worktrees) {
     // The first entry of `git worktree list` is the main working tree. It is
