@@ -2,7 +2,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const { readText } = require('./helpers/read-skill');
 
@@ -38,4 +40,70 @@ test('AC1.1: settle-parked reads CI through pr-checks.js --pr and maps its state
   for (const needle of ['pending', 'green', 'no-ci', 'passing', 'red', 'inherited-red', 'failing', 'read-failed', 'gh-absent', 'unavailable']) {
     assert.ok(bullet.includes(needle), `CI status bullet names ${needle}`);
   }
+});
+
+const PR_SCAN = 'plugin/skills/_shared/github-pr-scan.md';
+
+function item9Slice() {
+  const t = read(PR_SCAN);
+  const start = t.indexOf('9. **Unarmed ready PR**');
+  const end = t.indexOf('10. **Unsettled run**', start);
+  assert.ok(start >= 0 && end > start, 'item 9 slice is found');
+  return t.slice(start, end);
+}
+
+// The extraction sweep-backstop.test.js uses: node -e bodies closing on a bare `"` line.
+function item9Scripts() {
+  const scripts = [];
+  const re = /node -e "\n([\s\S]*?)\n\s*"/g;
+  const section = item9Slice();
+  let m;
+  while ((m = re.exec(section)) !== null) scripts.push(m[1].replace(/\\"/g, '"').replace(/\\\$/g, '$'));
+  return scripts;
+}
+
+test('AC1.1: pr-scan item 9 gates candidates on a pr-checks.js --pr verdict', () => {
+  const slice = item9Slice();
+  assert.ok(slice.includes('pr-checks.js'), 'item 9 names pr-checks.js');
+  assert.ok(slice.includes('--pr'), 'item 9 uses the --pr mode');
+  assert.ok(slice.includes("NON_BLOCKING = new Set(['SUCCESS', 'SKIPPED', 'NEUTRAL'])"), 'the NON_BLOCKING rollup pre-filter is still present');
+});
+
+test('AC1.1: item 9 CI filter keeps green/no-ci, drops pending, red and a failed read', () => {
+  const scripts = item9Scripts();
+  assert.ok(scripts.length >= 2, 'item 9 has the candidate filter plus the CI filter');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-display-ci-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'bin'));
+    fs.writeFileSync(path.join(tmp, 'bin', 'pr-checks.js'), [
+      'const a = process.argv;',
+      "if (a[2] !== '--pr') process.exit(2);",
+      'const n = a[3];',
+      "if (n === '5') process.exit(1);",
+      "const state = { 1: 'green', 2: 'no-ci', 3: 'pending', 4: 'red' }[n];",
+      'console.log(JSON.stringify({ state }));',
+    ].join('\n'));
+    const candidatesFile = path.join(tmp, 'candidates.json');
+    fs.writeFileSync(candidatesFile, JSON.stringify([1, 2, 3, 4, 5].map((number) => ({ number }))));
+    const script = scripts[1]
+      .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, tmp)
+      .replace(/\$PR_SCAN_UNARMED_CANDIDATES/g, candidatesFile);
+    const scriptFile = path.join(tmp, 'ci-filter.js');
+    fs.writeFileSync(scriptFile, script);
+    const res = spawnSync('node', [scriptFile], { encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, `CI filter exits 0: ${res.stderr}`);
+    const kept = JSON.parse(fs.readFileSync(candidatesFile, 'utf8')).map((p) => p.number);
+    assert.deepStrictEqual(kept, [1, 2]);
+    assert.match(res.stderr, /PR #3 not offered: CI pending/);
+    assert.match(res.stderr, /PR #4 not offered: CI red/);
+    assert.match(res.stderr, /PR #5 not offered: CI read-failed/);
+    assert.ok(!/PR #[12] /.test(res.stderr), 'kept PRs are not reported');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('github-pr-scan.md stays under the nearCeiling', () => {
+  const size = fs.statSync(path.join(ROOT, PR_SCAN)).size;
+  assert.ok(size < 47250, `github-pr-scan.md is ${size} B, ceiling 47250`);
 });
