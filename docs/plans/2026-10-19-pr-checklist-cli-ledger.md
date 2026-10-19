@@ -11,7 +11,7 @@
 | 7 | build | restored-line none/some wording keyed on restored.length === 3 couples to repairPrBody's marker count; 'some' branch untested | deferred | Final review: semantics correct today |
 | 8 | build | Edited M1 ordering pin (Refresh precedes mcp__github__update_pull_request) cannot go red on the old text — forward-only guard | deferred | Final review: ok to defer |
 | 9 | build | Dropped the prose sentence on '; '-joined sibling-spec Revised-during-build notes surviving (behavior lives in reviseSpecSummary) for the byte budget | deferred | Behavior pinned in pr-body.js tests; final review: ok to defer |
-| 10 | build | docs/journeys/read-an-accurate-spec-summary-after-a-premise-reversal-3050.md:27-28 describes the old temp-file order | open | To update in Common Step 6 (journeys) of this build |
+| 10 | build | docs/journeys/read-an-accurate-spec-summary-after-a-premise-reversal-3050.md:27-28 describes the old temp-file order | fixed | Steps 2 and 4 rewritten for the CLI path in Common Step 6 (journeys) |
 | 11 | build | Task 3 Ruling: pre-merge step 1 re-runs the CLI once per exited phase (no-op when landed), names --phase polish --remove; Best-effort no longer claims a cross-phase re-flip | observation | Ruling recorded during Task 3 fix round 1 (534017f45) |
 | 12 | build | Go-red control PRE_3263 only proves the /tmp/pr-checklist- assertion can fail; the gh pr edit / Locate-the-checklist-span assertions are never shown red one at a time | deferred | Final review: ok to defer (PRE_3263 contains all three strings) |
 | 13 | build | MCP path lost the best-effort handling for a non-zero revise-pr-summary.js exit | fixed | Restored "non-zero exit → warn, write checklist-only" (30202e23a) |
