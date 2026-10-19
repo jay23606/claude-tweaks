@@ -535,4 +535,4 @@ async function adjudicate({
   }
 }
 
-module.exports = { adjudicate, realGit, findStaleBaselineWorktrees };
+module.exports = { adjudicate, realGit, findStaleBaselineWorktrees, RUNNER_ERROR_RE };

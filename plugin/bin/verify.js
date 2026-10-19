@@ -19,7 +19,9 @@ const { spawn } = require('child_process');
 
 const { parseArgs, UsageError, USAGE } = require('./lib/verify/args');
 const { runChecks, runOne } = require('./lib/verify/run');
-const { adjudicate, realGit, findStaleBaselineWorktrees } = require('./lib/verify/baseline');
+const {
+  adjudicate, realGit, findStaleBaselineWorktrees, RUNNER_ERROR_RE,
+} = require('./lib/verify/baseline');
 const {
   sniffFamily, extractFailingRegion, parseCounts, summaryLine, extractFailingFiles, stripAnsi, unattributedFailureCount,
 } = require('./lib/verify/extract');
@@ -559,13 +561,15 @@ async function main() {
   // all (no-parse) makes the whole run ineligible, never "covered". #3481:
   // a named-file list is only complete when the log's failure accounting is
   // (the same guard flaky retry applies, planRetry #3066/#3204): a family with
-  // no accounting guard refuses, and so does any failure no named file accounts for.
+  // no accounting guard refuses, and so does any failure no named file accounts for
+  // or a runner-level error line the count cannot see (baseline.js's RUNNER_ERROR_RE).
   let preExistingAdjudicated = null;
   if (decl && decl.preExisting && decl.preExisting.length && !rawPass && !adjudicatedPass) {
     const failingChecks = results.filter((c) => !c.skipped && c.exitCode !== 0);
     let noParse = false;
     let noGuardFamily = null;
     let unattributedTotal = 0;
+    let runnerError = false;
     const allFailingFiles = [];
     for (const check of failingChecks) {
       let text;
@@ -578,11 +582,14 @@ async function main() {
       const unattributedCount = unattributedFailureCount(plain, family);
       if (unattributedCount === null) noGuardFamily = noGuardFamily ?? family;
       else unattributedTotal += unattributedCount;
+      // Node reports a runner-level error beside a failing test only as this log line (baseline.js).
+      if (RUNNER_ERROR_RE.test(plain)) runnerError = true;
     }
     let refusal = null;
     if (noParse) refusal = 'no-parse';
     else if (noGuardFamily !== null) refusal = `no-accounting-guard: ${noGuardFamily}`;
     else if (unattributedTotal > 0) refusal = `unattributed-failures: ${unattributedTotal}`;
+    else if (runnerError) refusal = 'runner-error';
     if (refusal) {
       preExistingAdjudicated = { declared: decl.preExisting, eligible: false, reason: refusal };
     } else {

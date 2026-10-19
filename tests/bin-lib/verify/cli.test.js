@@ -1774,6 +1774,12 @@ test('AC1.3 preExisting: unattributed failures sum across failing checks — typ
   });
 });
 
+test('AC1.4 preExisting: a fully accounted spec log whose covered failing file also carries a runner-level error line is refused — runner-error (#3481)', async () => {
+  const log = ['ℹ tests 1', 'ℹ pass 0', 'ℹ fail 1', '', '✖ failing tests:', '',
+    'test at tests/known-shallow.test.js:1:1', '✖ x (1ms)', '', 'ℹ Error: asynchronous activity outlived its test'].join('\n');
+  await assertPreExistingRefused(log, 'runner-error');
+});
+
 // #1928 AC1: the runner is the mechanical source of the verify event.
 function anchoredRunDir(repo) {
   const dir = path.join(repo, '.claude-tweaks', 'pipelines', '2026-09-06T100000-record-7');
