@@ -16,14 +16,14 @@ const { classifyDiffFiles, blastRadiusSummary } = require('../issues/blast-radiu
 
 // Prompt prose: markdown under a Claude Code component directory (`skills/`,
 // `agents/`, `commands/`, at any prefix). It is the shipped product of a
-// plugin (this repo's CLAUDE.md Stack table: "Content | Markdown (SKILL.md
-// files …)") or a project's own harness, so it counts as production for the
+// plugin or a project's own harness, so it counts as production for the
 // low-surface gate. Keyed on Claude Code's directory conventions, not on
 // `plugin/`, so it is project-agnostic. Erring toward production costs only a
 // `standard` wrap-up, and, since `implFiles` also feeds `profiles.js`'s
 // diff-ceiling, can lift a small prose diff's whole-branch reviewer from
-// Standard to Capable — still the safe direction. #3477: run `2026-10-17T194130-record-3005` (#3005's four
-// prose files plus one test) derived `fast-lane` when it should not have.
+// Standard to Capable — still the safe direction.
+// #3477: run `2026-10-17T194130-record-3005` (#3005's four prose files plus
+// one test) derived `fast-lane` when it should not have.
 function isPromptProsePath(path) {
   return /(^|\/)(skills|agents|commands)\/.+\.md$/i.test(path);
 }
