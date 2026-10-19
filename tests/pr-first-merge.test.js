@@ -210,6 +210,7 @@ test('AC1.1: Step 4.2 reports a console-never-rendered-staged-pending skip as ne
   assert.ok(section.includes('`console-never-rendered-staged-pending`'), 'the reason string must be named verbatim');
   assert.match(section, /needs human action/, 'the skip must be reported as needing human action');
   assert.match(section, /AUTO \{time\} — pr-first-merge Step 4\.2:[^\n]*console-never-rendered-staged-pending/, 'the Step 4.2 log line must name the reason');
+  assert.match(section, /\$PIPELINE_RUN_DIR\/console\.json/, 'the skip must be decided by checking this run directly, not from the aggregate summary');
 });
 
 test('AC2.1: Step 4.2 still leaves a transient failure for the next trigger point (#3297)', () => {

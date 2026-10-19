@@ -2698,7 +2698,7 @@ test('archiveMerged: ordinary path — a staged/ holding only dotfiles counts as
 });
 
 // #657/#1130 protection on the ordinary path: a real pending staged item
-// still skips with plain 'console-never-rendered'.
+// still skips with 'console-never-rendered-staged-pending'.
 test('archiveMerged: ordinary path — a real pending staged/ item still skips console-never-rendered-staged-pending (#3249, #657 protection, #3297)', () => {
   const { runDir, result } = fixtureOrdinaryMergedNoConsole('feat-3249-ordinary-pending', '2026-08-01T090000-record-3249-ordinary-pending', ['reflect-1.md']);
   assert.ok(!result.archived.includes(runDir), 'a run with a genuinely pending staged/ item must never be archived out of sight');

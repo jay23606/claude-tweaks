@@ -30,7 +30,7 @@ files:
 
 ### 3. A multi-spec run with pending per-spec proposals and no console yet — same sweep, after the run's own PR merged
 - **URL:** —
-- **Action:** `hasStagedItems` checks the run's top-level `staged/` and every `spec-{N}/staged/`; a non-dotfile item anywhere (or an unreadable `staged` entry) counts as pending, so a MERGED PR with no `console.json` skips with `console-never-rendered`. When every `staged/` is empty or absent, the #3249 fast path archives as before.
+- **Action:** `hasStagedItems` checks the run's top-level `staged/` and every `spec-{N}/staged/`; a non-dotfile item anywhere (or an unreadable `staged` entry) counts as pending, so a MERGED PR with no `console.json` skips with `console-never-rendered-staged-pending`. When every `staged/` is empty or absent, the #3249 fast path archives as before.
 - **Should feel:** Safe — staged decisions wait for the console that surfaces them.
 - **Should understand:** The console reader (`console/resolve.js`) still reads only the top-level `staged/`; the archive check deliberately reads more, failing toward not archiving.
 - **Red flags:** A run archived while `spec-{N}/staged/` still holds `review-*.patch` or `reflect-*.md` items nobody approved.

@@ -290,6 +290,7 @@ test('structurallyStuckBody: names every feeding skip reason, the cache lastErro
   assert.match(body, /\.claude-tweaks\/reconcile-cache\.json/);
   assert.match(body, /`pr-not-found` directory, the `pr\.number` stamped in its `run-state\.json` names a PR that GitHub confirms does not exist/);
   assert.match(body, /correct or clear that stamp/);
+  assert.match(body, /apply or delete the files under `staged\/`[^\n]*or write a resolved `console\.json`/, 'the staged-pending sentence must carry the remedy');
   assert.deepEqual(parseStuckPaths(body), ['/x/run-a']);
   assert.ok(body.includes(structurallyStuckMarker()));
 });

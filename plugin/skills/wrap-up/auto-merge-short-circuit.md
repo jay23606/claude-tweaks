@@ -219,6 +219,7 @@ The pr-first `PushNotification` is an FYI that records only that a notification 
 anyone approved or discarded the staged proposals. Marking the console resolved would let reconcile
 archive those proposals out of the console's sight, which is the #657/#1130 loss. Instead, a run
 left with pending `staged/` items reports `console-never-rendered-staged-pending` and escalates
+once it sits past the TTL and repeated stuck passes, while the run is not yet closed
 (`pr-first-merge-post-merge.md` Step 4.2).
 
 **`integration-model: local-merge`:** run the Verdict backstop above first (anything but `{n}=1`,
