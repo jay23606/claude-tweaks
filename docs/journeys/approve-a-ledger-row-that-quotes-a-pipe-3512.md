@@ -7,6 +7,7 @@ files:
   - plugin/skills/_shared/ledger-format.md
   - plugin/skills/ledger/SKILL.md
   - plugin/skills/build/dispatch.md
+  - plugin/skills/review/step3-routing.md
 ---
 
 # Approve a Ledger Row That Quotes a Pipe
