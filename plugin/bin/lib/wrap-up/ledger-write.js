@@ -10,26 +10,42 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
+const { ownedPlansFiles } = require('./ledger-ownership');
 const { splitLedgerRow, escapeLedgerCell } = require('./ledger-cells');
 const { isPathContained } = require('../shared-primitives');
 
 const TERMINAL_STATUSES = ['fixed', 'deferred', 'accepted', 'acknowledged', 'observation'];
 
+// Local on purpose: resolveLedgerPath must not load pack.js eagerly (pack.js is required lazily, only on the docs/plans fallback).
+function defaultGit(args, { cwd } = {}) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+}
+
 // Resolves the single active ledger file for a run dir, per
 // _shared/ledger-format.md's Location section: `{run-dir}/ledger.md` first
-// (the worktree-always/no-worktree gated location), else exactly one
-// `docs/plans/*-ledger.md` candidate in the worktree. Returns
-// `{ ok: true, path }` or `{ ok: false, reason: 'not-found' | 'ambiguous',
-// candidates? }` — never guesses among 2+ docs/plans/ candidates (unlike the
+// (the worktree-always/no-worktree gated location), else the one
+// `docs/plans/*-ledger.md` this branch owns — added or changed against the
+// merge base, or untracked (shared with pack.js's ledger probe via
+// ./ledger-ownership.js, #3566). A ledger inherited from the merge base was
+// written by another run and is never a candidate. Returns `{ ok: true, path }`
+// or `{ ok: false, reason: 'not-found' | 'ambiguous' | 'unattributable',
+// candidates?, detail? }` — never guesses among 2+ owned candidates (unlike the
 // read-only probe in ./pack.js, a write needs a single certain target; the
-// caller passes `explicit` to disambiguate instead). An `explicit` path is
-// confined: it must be named `ledger.md` or `*-ledger.md` and its real path
-// must sit under `runDir` or `worktree` — otherwise `{ ok: false, reason:
-// 'rejected', detail }`, since callers unlink or overwrite whatever it names.
+// caller passes `explicit` to disambiguate instead), and fails closed as
+// `unattributable` when ownership cannot be computed (no merge base, or git
+// failed) rather than treating a lone candidate as this run's. An `explicit`
+// path is never ownership-filtered; it is confined: it must be named
+// `ledger.md` or `*-ledger.md` and its real path must sit under `runDir` or
+// `worktree` — otherwise `{ ok: false, reason: 'rejected', detail }`, since
+// callers unlink or overwrite whatever it names.
 function resolveLedgerPath({ runDir, worktree, explicit, deps = {} } = {}) {
   const existsSync = deps.existsSync || fs.existsSync;
   const readdirSync = deps.readdirSync || fs.readdirSync;
   const realpathSync = deps.realpathSync || fs.realpathSync;
+  const git = deps.git || defaultGit;
+  // Lazy: pack.js is a heavy module, and only the docs/plans fallback needs it.
+  const resolveBase = deps.resolveBase || ((wt) => require('./pack').resolveWorktreeBase(wt));
 
   if (explicit) {
     const base = path.basename(explicit);
@@ -52,7 +68,19 @@ function resolveLedgerPath({ runDir, worktree, explicit, deps = {} } = {}) {
   const plansDir = path.join(worktree, 'docs', 'plans');
   let entries = [];
   try { entries = readdirSync(plansDir); } catch { entries = []; }
-  const candidates = entries.filter((f) => f.endsWith('-ledger.md')).map((f) => path.join(plansDir, f));
+  const names = entries.filter((f) => f.endsWith('-ledger.md'));
+  if (names.length === 0) return { ok: false, reason: 'not-found', candidates: [] };
+
+  // Ownership decides which of them is this run's (#3566): a ledger inherited
+  // from the merge base belongs to another run, and flipping or deleting it
+  // from here would destroy that run's record.
+  let owned;
+  try {
+    owned = ownedPlansFiles({ worktree, base: resolveBase(worktree), git });
+  } catch (e) {
+    return { ok: false, reason: 'unattributable', detail: e.message, candidates: names.map((f) => path.join(plansDir, f)) };
+  }
+  const candidates = names.filter((f) => owned.has(f)).map((f) => path.join(plansDir, f));
   if (candidates.length === 0) return { ok: false, reason: 'not-found', candidates: [] };
   if (candidates.length > 1) return { ok: false, reason: 'ambiguous', candidates };
   return { ok: true, path: candidates[0] };

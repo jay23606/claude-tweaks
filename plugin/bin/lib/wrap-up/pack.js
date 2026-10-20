@@ -19,6 +19,7 @@ const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
+const { ownedPlansFiles } = require('./ledger-ownership');
 const { ledgerRowCells } = require('./ledger-cells');
 const { isTimeoutError } = require('../shared-primitives');
 
@@ -310,6 +311,21 @@ function mergeBase(deps, cwd, integrationBranch) {
   return { base: null, ref: null };
 }
 
+// The merge base of `worktree`'s HEAD against its integration branch, or null
+// when it cannot be resolved. Same ladder resolveInputs uses for `inputs.base`
+// (policy key, then git/gh default, then origin/{branch} before the local
+// branch) so a caller outside the pack — ledger-write.js's resolveLedgerPath
+// — attributes ledgers against the same base. Never throws.
+function resolveWorktreeBase(worktree, deps = defaultDeps(worktree)) {
+  try {
+    const values = deps.resolvePolicy(['integration-branch'], worktree) || {};
+    const { branch } = resolveIntegrationBranch(deps, worktree, values['integration-branch']);
+    return mergeBase(deps, worktree, branch).base;
+  } catch {
+    return null;
+  }
+}
+
 // Resolved once, reported with sources: state ← run-state.json (or the parent
 // run's, for a spec-* subdirectory); records ← the resolveRecords ladder;
 // pr/worktree ← that state; policy ← one resolvePolicyConfig call;
@@ -471,15 +487,6 @@ function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
 }
 
-const PLANS_PREFIX = 'docs/plans/';
-
-// The names of the files directly under docs/plans/ in a `-z` git path list.
-function plansFileNames(nulSeparatedPaths) {
-  return nulSeparatedPaths.split('\0')
-    .filter((p) => p.startsWith(PLANS_PREFIX) && !p.slice(PLANS_PREFIX.length).includes('/'))
-    .map((p) => p.slice(PLANS_PREFIX.length));
-}
-
 function ledgerProbe(inputs, deps) {
   // _shared/ledger-format.md's Location section: a gated no-worktree run
   // (worktree-always and a run that will never have a worktree —
@@ -521,11 +528,7 @@ function ledgerProbe(inputs, deps) {
   // current-branch run legitimately has it (its uncommitted ledger is still
   // owned).
   if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
-  const gitOptions = { cwd: inputs.worktree };
-  const owned = new Set([
-    ...plansFileNames(deps.git(['diff', '--name-only', '-z', '--relative', '--end-of-options', inputs.base, '--', PLANS_PREFIX], gitOptions)),
-    ...plansFileNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS_PREFIX], gitOptions)),
-  ]);
+  const owned = ownedPlansFiles({ worktree: inputs.worktree, base: inputs.base, git: deps.git });
   const ownedCandidates = candidates.filter((f) => owned.has(f));
   // Two or more owned ledgers (a branch that carries an earlier run's ledger
   // beside its own): the record-number boundary picks this run's, when it
@@ -760,5 +763,5 @@ async function gatherPack({ runDir, cwd = process.cwd(), only = null, deps: over
 }
 
 module.exports = {
-  gatherPack, resolveInputs, wrapProbe, withTimeout, parseLedger, PROBE_NAMES, resolveRecords, headerRecords, closingRecords, worktreeMirror,
+  gatherPack, resolveInputs, resolveWorktreeBase, wrapProbe, withTimeout, parseLedger, PROBE_NAMES, resolveRecords, headerRecords, closingRecords, worktreeMirror,
 };
