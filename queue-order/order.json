@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T12:40:34.120Z",
+  "computedAt": "2026-10-20T12:52:48.617Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -25,7 +25,7 @@
       },
       {
         "number": 3691,
-        "updatedAt": "2026-10-20T07:07:21Z",
+        "updatedAt": "2026-10-20T12:44:16Z",
         "state": "OPEN"
       },
       {
@@ -40,12 +40,12 @@
       },
       {
         "number": 3682,
-        "updatedAt": "2026-10-20T07:09:45Z",
+        "updatedAt": "2026-10-20T12:43:11Z",
         "state": "OPEN"
       },
       {
         "number": 3680,
-        "updatedAt": "2026-10-20T07:07:33Z",
+        "updatedAt": "2026-10-20T12:43:52Z",
         "state": "OPEN"
       },
       {
@@ -85,7 +85,7 @@
       },
       {
         "number": 3668,
-        "updatedAt": "2026-10-20T07:08:02Z",
+        "updatedAt": "2026-10-20T12:43:31Z",
         "state": "OPEN"
       },
       {
@@ -100,7 +100,7 @@
       },
       {
         "number": 3664,
-        "updatedAt": "2026-10-20T07:09:40Z",
+        "updatedAt": "2026-10-20T12:42:59Z",
         "state": "OPEN"
       },
       {
@@ -140,7 +140,7 @@
       },
       {
         "number": 3641,
-        "updatedAt": "2026-10-20T07:08:44Z",
+        "updatedAt": "2026-10-20T12:43:42Z",
         "state": "OPEN"
       },
       {
@@ -375,7 +375,7 @@
       },
       {
         "number": 3048,
-        "updatedAt": "2026-10-15T16:32:18Z",
+        "updatedAt": "2026-10-20T12:45:28Z",
         "state": "OPEN"
       },
       {
@@ -720,84 +720,6 @@
     ],
     [
       {
-        "body": "## Current State\n\n`skills/dispatch/mcp-transport.md` documents the GitHub MCP transport dispatch uses when `gh` is absent or GraphQL-blocked, including required workarounds for several known gaps (label truncation, no generic GraphQL passthrough, etc.). It does not document that `mcp__github__list_issues` and `mcp__github__issue_read` return issue timestamps as `created_at`/`updated_at` (snake_case), while every downstream consumer of the fetched issue list — `parseRecordFacets` and `next`-ranking's oldest-first tie-break among them — reads camelCase `createdAt`/`updatedAt`. Observed live during a `/claude-tweaks:dispatch next` firing (run `2026-10-20T022848-record-3630`, 2026-10-20): the queue-pull had to patch `dispatch-groups.json` with camelCase aliases before ranking, or the oldest-first tie-break would silently degenerate to array order with no error surfaced.\n\n## Deliverables\n\n- [ ] Add a documented aliasing step to `mcp-transport.md`'s queue-pull section, naming the exact snake_case to camelCase fields a caller must alias before any ranking/eligibility computation.\n- [ ] Prefer a code-level fix if cheap: alias the fields once, at the MCP-fetch boundary (whichever shared adapter normalizes an MCP-fetched issue into the shape `record.js`'s `parseRecordFacets` and `grouping.js` expect), so every MCP-path consumer gets the correct shape without each call site re-deriving the aliasing by hand.\n- [ ] Add a conformance test or fixture pinning the expected camelCase shape for an MCP-sourced issue object.\n\n## Acceptance Criteria\n\n- `mcp-transport.md` names this gap and its required workaround, in the same style as its existing #3137/#2523/#1579 gap sections.\n- A test (or documented manual check) confirms an MCP-fetched issue's `createdAt`/`updatedAt` resolve correctly for `next`-ranking's oldest-first tie-break.\n- `npm test` passes.\n\n## Release Note\n\nDispatch's MCP transport path now gets a correct oldest-first ranking tie-break instead of a silent array-order fallback.\n\nDefer-reason: tangential\n\n---\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T02:54:15Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3691,
-        "state": "OPEN",
-        "title": "mcp-transport.md doesn't document that list_issues/issue_read return snake_case created_at/updated_at, degenerating next-ranking's oldest-first tie-break",
-        "updatedAt": "2026-10-20T07:07:21Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up leftover from #3566\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3566 made wrap-up's own ledger paths ownership-aware: `resolveLedgerPath` (plugin/bin/lib/wrap-up/ledger-write.js) and the wrap-up ledger probe (plugin/bin/lib/wrap-up/pack.js) now share `ownedPlansFiles` (plugin/bin/lib/wrap-up/ledger-ownership.js), and wrap-up/SKILL.md's post-sweep re-count re-runs the ledger probe. Other readers still resolve a ledger by the `docs/plans/*-ledger.md` glob, which also matches ledgers inherited from the integration branch: `_shared/ledger-format.md` (the Location section), `ledger/SKILL.md` (its find-active-ledger steps), `review/code-mode-steps.md` (QA Ledger Check), and `wrap-up/auto-merge-short-circuit.md` (its ledger-deletion locate step); `tidy/scan-procedures.md` globs every ledger on purpose (a cross-run sweep) and is not in scope. Out of #3566's scope by its Deliverable 2 (final whole-branch review Recommendations, ledger row 8 of that run).\n\n## Deliverables\n\n- [ ] Move `_shared/ledger-format.md`'s Location glob fallback onto the ledger probe's `value.files` (`wrap-up-pack.js --print ledger`), keeping the glob only as the documented fallback when the probe is `ok: false` or absent\n- [ ] Repoint each reader that resolves THIS run's ledger by glob (ledger/SKILL.md, review/code-mode-steps.md, wrap-up/auto-merge-short-circuit.md) at that resolution rule by citation, not restatement\n- [ ] Pin the repointed readers with a conformance test so a new bare `docs/plans/*-ledger.md` glob in a this-run ledger lookup fails the suite\n\n## Acceptance Criteria\n\n- `grep -rn -F 'docs/plans/*-ledger.md' plugin/skills` (first run against the current tree to see ledger/SKILL.md, review/code-mode-steps.md and _shared/ledger-format.md match) no longer matches a this-run ledger lookup in those three files, only the documented fallback and prose explaining why the glob is wrong\n- A conformance test fails when a this-run ledger lookup in an instruction step reintroduces the bare glob\n- `npm test` passes\n\n## Release Note\n\nLedger readers outside wrap-up no longer pick up another run's ledger inherited from the integration branch.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/ledger-format.md` — Location fallback uses the ledger probe's files\n- `plugin/skills/ledger/SKILL.md` — repoint glob reader\n- `plugin/skills/review/code-mode-steps.md` — QA Ledger Check repoint\n- `plugin/skills/wrap-up/auto-merge-short-circuit.md` — repoint glob reader\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
         "createdAt": "2026-10-20T00:52:35Z",
         "labels": [
@@ -851,156 +773,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (wrap-up of #3495, ledger row 3)\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3642\n\n## Current State\n\nplugin/bin/lib/hooks/pre-tool-use.js compares paths resolved with the JS fs.realpathSync (safeReal) in several worktree-always gate decisions: the teardown gate's own-cwd containment (safeReal(target) === mainRoot and the isPathContained check, ~lines 564 and 577) and the E1 / worktree-identity checks (~lines 1746-2140). The JS form echoes the input's casing on a case-insensitive volume, so a mis-cased target or cwd can slip past those comparisons (IL-150, #3380). #3495 moved only isPolicyFile and shadowPipelineRunDir to path-guard's case-canonical .native resolvers; the remaining safeReal comparisons were left as they were, so some sites resolve one way and some the other.\n\n## Deliverables\n\n- [ ] Audit each remaining `safeReal` comparison in `plugin/bin/lib/hooks/pre-tool-use.js` and decide per site whether both operands can move to `canonicalRealpath()` together (a one-sided move turns an allow into a deny or the reverse)\n- [ ] Migrate the sites that can, with a case-insensitive-fs regression test each (`tests/helpers/case-insensitive-fs.js`)\n- [ ] Update the `lib/hooks/pre-tool-use.js` allowlist reason in `tests/path-guard-conformance.test.js` and the `pre-tool-use-gate-exemptions` skill row that says `safeReal` stays JS-form\n\n## Acceptance Criteria\n\n- [ ] A mis-cased cwd or target is treated the same as the correctly-cased one by the own-cwd containment and E1 checks, shown by tests on the case-insensitive fake\n- [ ] `npm test` passes, including `tests/path-guard-conformance.test.js`\n\n## Release Note\n\nThe worktree guard treats a path typed with different letter casing the same as the correctly-cased one.\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-19T23:21:41Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3682,
-        "state": "OPEN",
-        "title": "Move the remaining pre-tool-use safeReal comparisons to case-canonical realpath",
-        "updatedAt": "2026-10-20T07:09:45Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: build of #3477 (final whole-branch review follow-up)\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/lib/issues/blast-radius.js` `TEST_PATH_RE` (`/(^|\\/)tests?\\//`) matches any `test/` path segment, so `isTestPath` classifies shipped skill prose under a skill named `test` (`plugin/skills/test/*.md`) as test files.\n- `classifyDiffFiles`/`blastRadiusSummary` feed `assess-agent-autonomy`'s merge-check blast-radius facts (`plugin/bin/lib/blast-radius-cli.js` `computeBlastRadius`): a prose edit to the `/test` skill counts as test lines, understating implementation blast radius — the unsafe direction for an auto-merge verdict.\n- #3477 fixed the same collision locally in `plugin/bin/lib/dispatch/ceremony-derive.js` (`computeDiffFacts` clears `isTest` on `isPromptProsePath` paths) and deliberately left the shared `isTestPath` untouched.\n\n## Deliverables\n\n- [ ] Decide whether `isTestPath` (or `classifyDiffFiles`) should exclude prompt prose (markdown under `skills/`, `agents/`, `commands/`), reusing `isPromptProsePath` from `ceremony-derive.js` or moving it to a shared home, and apply it so merge-check counts `plugin/skills/test/*.md` as implementation.\n- [ ] If the shared classifier changes, drop the now-redundant local remap in `computeDiffFacts`.\n- [ ] Add `tests/bin-lib/issues/blast-radius.test.js` cases, each shown to go red when the change is reverted.\n\n## Acceptance Criteria\n\n- [ ] `classifyDiffFiles([{ path: 'plugin/skills/test/qa-prompts.md', additions: 5, deletions: 0 }])` reports the file as non-test (counted in `implFiles`/`implLines`).\n- [ ] `tests/foo.test.js` and `tests/fixtures/x.json` still classify as test.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed the auto-merge blast-radius check so edits to a skill named `test` count as production changes, not test changes.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/blast-radius.js` — exclude prompt prose from isTestPath\n- `plugin/bin/lib/dispatch/ceremony-derive.js` — drop local isTest remap if shared fix lands\n- `tests/bin-lib/issues/blast-radius.test.js` — cover\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T22:26:24Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3680,
-        "state": "OPEN",
-        "title": "blast-radius isTestPath classifies shipped skill prose under skills/test/ as test files",
-        "updatedAt": "2026-10-20T07:07:33Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -1542,84 +1314,6 @@
     ],
     [
       {
-        "body": "**Related:** #3297 #3249 #657 #1130 #3130\n\nOrigin: whole-branch review of #3297 (declined to judge — pre-existing, outside diff)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/hooks.js`'s `archive-run` verb (~l.1151-1158) refuses archival only on a rendered-but-unresolved console (`readConsoleState === 'unresolved'`). A terminal-status run whose `console.json` was never written (`'none'`) archives unconditionally — the inline comment reasons that terminal status means wrap-up's flow completed.\n\nThe fast-lane auto-merge short-circuit (`plugin/skills/wrap-up/auto-merge-short-circuit.md`) never writes `console.json` and surfaces staged proposals only as a non-blocking PushNotification FYI, so a fast-lane run whose `staged/` (or `spec-*/staged/`) still holds pending proposals can be archived out of the console's sight by this verb — the #657/#1130 loss reconcile's `archive-merged.js` guards against via `hasStagedItems` (#3249; #3297's `console-never-rendered-staged-pending` reason). The #3130 incident run (`.claude-tweaks/pipelines/archive/2026-10-16T155630-record-3130/`, pending `staged/reflect-1.md` and `staged/wrap-up-skill-1.md`) already sits in `archive/`.\n\nRelatedly, reconcile's clean-status sweep (`archive-merged.js`'s `iterCleanRunDirs` loop) emits `console-never-rendered-staged-pending` for a closed run but never calls `trackStuckSkip`, so a closed-but-unarchived run in that state never escalates; the two \"intentional asymmetry\" comments point at each other without stating the reason.\n\n## Deliverables\n\n1. Make `archive-run` apply the same staged-items guard as `archive-merged.js`'s `decideArchiveCore` when `readConsoleState` is `'none'`: refuse, with an actionable message naming the pending `staged/` paths, when `hasStagedItems(runDir)` is true — reuse the existing helper (export it) rather than duplicating it.\n\n2. Decide whether the clean-status sweep should track `console-never-rendered-staged-pending` via `trackStuckSkip`, record the reason in the clean-sweep comment, and implement with a test if adopted.\n\n## Acceptance Criteria\n\n- `archive-run` on a terminal run with no `console.json` and a non-dotfile under `staged/` or `spec-*/staged/` does not archive and prints a message naming the pending items; a test pins it.\n\n- `archive-run` on a terminal run with no `console.json` and nothing pending still archives, unchanged.\n\n- The clean-sweep tracking decision is recorded in a code comment stating its reason, and any adopted behavior has a test.\n\n## Release Note\n\nCleaning up a finished run no longer hides staged proposals nobody approved when the run never showed its review console.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T21:32:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3668,
-        "state": "OPEN",
-        "title": "archive-run archives a closed run with no rendered console regardless of pending staged/ items",
-        "updatedAt": "2026-10-20T07:08:02Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up leftover from #3377\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/build/SKILL.md` Spec Step 2 says \"If the plan is still valid and work remains, skip to Common Step 2\" (line 84, and again at line 151). Common Steps 1.5 (plan audit), 1.6 (plan review, added by #3377) and 1.7 (design pre-build) sit between Spec Step 3 and Common Step 2, so a resumed build whose plan is still valid never runs any of them. Found at #3377's final review; it predates that record, which only added the 1.6 instance of it.\n\n## Deliverables\n\n- [ ] Decide, per skipped step, whether a resumed build with a valid plan should run it (plan audit and design pre-build are idempotent re-checks; the plan review is a once-per-plan gate that a resume has probably already passed).\n- [ ] Make the Spec Step 2 resume branch state which of Common Steps 1.5-1.7 it runs, skips, or conditionally re-runs (for example when the spec or plan changed since the last run), instead of jumping to Common Step 2 unconditionally.\n- [ ] Pin the chosen behaviour in the build conformance suite.\n\n## Acceptance Criteria\n\n1. The Spec Step 2 resume branch names Common Steps 1.5, 1.6 and 1.7 and what a resumed build does with each.\n2. A conformance test fails if the resume branch goes back to an unconditional skip to Common Step 2.\n3. npm test passes.\n\n## Release Note\n\nA resumed build with a still-valid plan now says which pre-execution checks it re-runs, so a plan or spec that changed between runs is audited again.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/SKILL.md` — Spec Step 2 resume branch (lines ~84 and ~151)\n- `plugin/skills/build/plan-review.md` — state whether a resumed build re-runs the plan review\n\n_Filed by `wrap-up leftover routing`. Close to resolve; label `wontfix` to suppress future reports of this finding._",
         "createdAt": "2026-10-19T21:26:28Z",
         "labels": [
@@ -1745,78 +1439,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full mode from #3021 (review lens findings 3b/3c, both agents of each pair)\n\nDefer-reason: tangential\n\n**Related:** #3656, #3657\n\n## Current State\n\n`plugin/skills/wrap-up/cleanup-procedures-execution.md` Section D steps 2-4 stop the server `ephemeral-server.txt` names. Step 2 hands the recorded `{pid}` to `kill {pid}` (and `kill -- -{pid}` on `detached:yes`) without checking it is a positive integer, so a truncated or hand-edited record such as pid `0` or `-1` signals the caller's own process group. Step 4 says \"Confirm the port is free, then delete `ephemeral-server.txt`\" but defines no outcome when the port is still held after the kill (a leader-only stop under `detached:no`), so a literal reading deletes the only record of a server that is still live and wrap-up never stops it. A stale pid reused by an unrelated process is killed the same way. #3021's fix-wave coordination (`review/step3-routing.md`) now routes a mid-review stop through these same steps, so the exposure is reached up to four more times per review; that coordination guards the cases on its own side, and the root cause stays here.\n\n## Deliverables\n\n1. Section D validates the record before step 2 acts: fewer than four fields, a pid or port that is not a positive integer, or no trailing `detached:` token is unprovable, so log it and stop nothing.\n2. Step 4 defines the port-still-held outcome: keep the record, log it, and report a cleanup failure instead of deleting the file.\n3. A conformance test pins both rules and goes red against the current text.\n\n## Acceptance Criteria\n\n- A record whose pid is `0`, `-1`, or non-numeric makes Section D log the condition and signal nothing.\n- When the port is still held after the kill, `ephemeral-server.txt` is not deleted and the cleanup report names the survivor.\n- `npm test` passes in full.\n\n## Release Note\n\nPipeline cleanup no longer signals a corrupted pid and no longer forgets a test server it failed to stop.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/cleanup-procedures-execution.md` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T21:20:04Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3664,
-        "state": "OPEN",
-        "title": "wrap-up Section D kills the recorded pid without validating it and has no branch for a port still held after the kill",
-        "updatedAt": "2026-10-20T07:09:40Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -2343,84 +1965,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3498\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/friction-events.js` returns `[]` for a run that logged real friction, whenever the operator's timezone is ahead of UTC. `computeClaimBoundary(runDir)` reads the first `decisions.md` entry's `HH:MM:SS` and builds a `Date` from the string `{mintDay}T{HH:MM:SS}Z`, i.e. it parses that time as UTC. `plugin/bin/lib/log-decision/append.js` writes it with `getHours()/getMinutes()/getSeconds()`, i.e. in local time. `events.jsonl` timestamps are UTC (`toISOString`). On a CEST host the claim line `20:59:10` becomes `20:59:10Z`, two hours after the real claim (`18:59:10Z`), so every event the run logged before then is dropped as \"pre-claim noise\" (#2989).\n\nObserved in the #3498 run (2026-10-19, CEST): `events.jsonl` held 12 `wd-guard-refusal` events (11 of them after the real claim), and `node plugin/bin/friction-events.js --run <run-dir>` printed `[]`. `/claude-tweaks:reflect`'s Friction lens treats `[]` as \"consistent with a frictionless run\", so the lens had no evidence to judge. The mirror case (a host behind UTC) lets pre-claim noise through instead, which is the failure #2989 fixed.\n\n## Deliverables\n\n- [ ] Make `computeClaimBoundary` interpret `decisions.md`'s clock time in the same zone `log-decision/append.js` wrote it in, or have `append.js` persist an unambiguous instant the reader can parse without guessing (expand-contract: keep reading the existing `HH:MM:SS` form for runs already on disk).\n\n- [ ] Add a regression test that runs with a non-UTC `TZ` (e.g. `TZ=Europe/Copenhagen` and `TZ=America/Los_Angeles`) and asserts a post-claim event survives and a pre-claim event is dropped.\n\n## Acceptance Criteria\n\n- [ ] With `TZ=Europe/Copenhagen`, a run dir whose `decisions.md` first entry is stamped by `log-decision.js` and whose `events.jsonl` holds a later `wd-guard-refusal` returns that event from `friction-events.js`.\n\n- [ ] With `TZ=America/Los_Angeles`, an event timestamped before the claim is still excluded.\n\n- [ ] The new test fails on the pre-fix `computeClaimBoundary` (verified by reverting the fix).\n\n## Release Note\n\nFixed: the reflect Friction lens no longer reports a frictionless run when the machine's timezone is ahead of UTC.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/friction-events.js` — modify\n- `plugin/bin/lib/log-decision/append.js` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T19:59:36Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3641,
-        "state": "OPEN",
-        "title": "friction-events.js reads decisions.md local-time claim stamp as UTC, dropping every event in a non-UTC timezone",
-        "updatedAt": "2026-10-20T07:08:44Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -5651,90 +5195,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3047\n\n## Current State\n\n`/claude-tweaks:test`'s pipeline path with `VERIFICATION_PASSED=true` and stories present (`plugin/skills/test/SKILL.md:70`) selects QA stories by `source_files` ∩ `node bin/verify.js --changed-files --integration-branch {ref}`. `--changed-files` (`plugin/bin/verify.js:156`, `changedFilesMode`) resolves its base through `resolveBase` (`plugin/bin/lib/verify/changed-files.js:54`) with this precedence: `--base` first, then the checkout's own verification-stamp anchor whenever it is usable and not equal to HEAD (`:62-77`), and only then the `--integration-branch` merge-base (`:78-84`).\n\nIn a `/flow` run, `/build` Common Step 5 writes the stamp. Bookkeeping commits follow (for example `/stories` committing a new story YAML), so by the time `/test` selects stories the stamp anchor is an ancestor of HEAD but not HEAD. The changed-file set is then only the post-stamp bookkeeping, never the build's own source changes. Observed (reporter, plugin 6.136.0): the set was a single `stories/*.yaml` file. No story's `source_files` matched it, the Layer-3 UI sniff found no UI trigger file in it, and the documented path would have reported `QA: skipped — no affected stories` for a build that had just changed three admin-UI components. The reporter selected stories by hand against `git diff --name-only <merge-base>..HEAD`.\n\nThe stamp anchor is the right base for re-running tests (`affected`, `verification.md`'s Re-verify scoping table): the stamp records what was already verified. It is the wrong base for QA story selection, because the stamp says nothing about QA. `plugin/skills/test/design-gate.md:9` reads the same `--changed-files` set to decide which files the design CLI gate judges, so it has the same blind spot.\n\n## Deliverables\n\n1. Add an opt-in `--ignore-stamp` flag to `verify.js --changed-files` (parsed in `plugin/bin/lib/verify/args.js`, honored by `changedFilesMode`/`resolveBase`). It skips the stamp anchor and resolves the base from `--base` or the `--integration-branch` merge-base, keeping the existing exit-1 and `warning: resolved base equals HEAD` semantics. Reject it outside `--changed-files` the way the other read-only flags are rejected.\n2. Switch `test/SKILL.md`'s pipeline QA story selection (`:70`) to `verify.js --changed-files --ignore-stamp --integration-branch {ref}`, so selection compares story `source_files` against the run's own branch diff.\n3. Switch `test/design-gate.md:9`'s `<changed-files>` resolution to the same `--ignore-stamp` form.\n4. Leave `/claude-tweaks:test affected` (test re-runs) and `verification.md`'s Re-verify scoping unchanged — they keep the stamp-anchored set.\n\n## Acceptance Criteria\n\n- With a stamp anchored at commit A, a later source commit B, and a bookkeeping commit C on HEAD, `verify.js --changed-files --integration-branch {ref}` still returns only C's files, and `--changed-files --ignore-stamp --integration-branch {ref}` returns B's and C's files (the merge-base diff). Both cases are covered in `tests/bin-lib/verify/changed-files.test.js` and/or `cli.test.js`.\n- `--ignore-stamp` with no resolvable `--base`/`--integration-branch` base exits 1 with a message, never an empty list.\n- `--ignore-stamp` combined with a non-`--changed-files` mode is a usage error (exit 2), covered by `args.test.js`.\n- `test/SKILL.md`'s QA selection and `design-gate.md` both name the `--ignore-stamp` form; the `affected` mode does not.\n- The existing `verify` suites (`node --test tests/bin-lib/verify/*.test.js`) pass.\n\n## Release Note\n\nSelect pipeline QA stories against the run's full branch diff, so a build's own UI changes are never skipped because a verification stamp was written before them.\n\n## Technical Approach\n\nAn additive flag keeps every existing `--changed-files` caller's behavior unchanged. Flipping the default would change the `affected`/`--scope` semantics that rely on the stamp anchor. The alternative of passing `--base $(git merge-base …)` from the skill prose was rejected: that hand-rolls merge-base resolution (`preferOriginRef`, degenerate-base handling) that `resolveBase` already owns.\n\n### Key Files\n\n- `plugin/bin/lib/verify/args.js` — parse and validate `--ignore-stamp`\n- `plugin/bin/verify.js` — pass the flag through `changedFilesMode`\n- `plugin/bin/lib/verify/changed-files.js` — `resolveBase` skips the stamp anchor when asked\n- `plugin/skills/test/SKILL.md` — QA story selection uses `--ignore-stamp`\n- `plugin/skills/test/design-gate.md` — design-gate changed-file set uses `--ignore-stamp`\n- `tests/bin-lib/verify/changed-files.test.js` — stamp-anchored vs ignore-stamp base cases\n- `tests/bin-lib/verify/args.test.js` — flag validation\n\n## Gotchas\n\n- `verify.js`'s usage string (`args.js:14`) and `verification.md`'s `--changed-files` description must name the new flag. Grep for every `--changed-files` mention in `plugin/skills/` before finishing (`test/SKILL.md`, `test/design-gate.md`, `test/verification.md`).\n- `tests/bin-lib/verify/snippet-conformance.test.js` does not currently pin the `--changed-files` snippet. Run the full `npm test` anyway, because other conformance suites pin `test/SKILL.md` prose repo-wide.\n- The reporter's alternative base (the run's materialize commit's parent) was not chosen. The integration-branch merge-base is already resolvable by `verify.js` without run-dir knowledge, and on a pr-first branch it is the same diff.\n\n## Original request\n\ntest: pipeline QA story selection reads only post-stamp changes, so it can skip the build's own UI change\n\n**Component:** claude-tweaks `skills/test` (pipeline QA selection) + `bin/verify.js --changed-files`\r\n**Kind:** gap\r\n\r\n## What happened\r\n\r\nInside a `/flow` run, `/build` Common Step 5 writes the verification pass stamp. `/stories` then commits a new story YAML, and `/test` (with `VERIFICATION_PASSED=true` and stories present) selects stories by `source_files ∩ verify.js --changed-files`. Because `--changed-files` resolves its base to the stamp's `fullSha` whenever that sha is an ancestor of HEAD, the set at that point is only the post-stamp commits — here a single `stories/*.yaml` file. No story's `source_files` matched it, the Layer-3 UI sniff found no UI trigger file in that one-file set, and the documented path would have reported `QA: skipped — no affected stories` for a build that had just changed three admin-UI components.\r\n\r\n## Expected\r\n\r\nThe pipeline's QA selection should compare story `source_files` against the run's own change set (the branch diff from its merge-base / the run's materialize base), not against \"changes since the last verification stamp\", which in a pipeline is almost always just the bookkeeping that follows `/build`.\r\n\r\n## Workaround used\r\n\r\nSelected stories manually against the branch diff (`git diff --name-only <merge-base>..HEAD`) and logged the deviation to `decisions.md`.\r\n\r\n## Suggested fix\r\n\r\nGive `/test`'s pipeline selection its own base (the run's materialize commit's parent, or `--integration-branch` merge-base) instead of the stamp-anchored `--changed-files`, or add a `--since-base` mode to `verify.js --changed-files` that ignores the stamp.\r\n\r\n\r\n_Filed from a recommender-system `/claude-tweaks:wrap-up` run (record #1207, plugin 6.136.0)._\r\n\n",
-        "createdAt": "2026-10-08T18:57:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3048,
-        "state": "OPEN",
-        "title": "test: pipeline QA story selection reads only post-stamp changes, so it can skip the build's own UI change",
-        "updatedAt": "2026-10-15T16:32:18Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
