@@ -57,7 +57,7 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792521554033
+    "lastAuditedMs": 1792522272126
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
@@ -206,5 +206,9 @@
   "skill:post-merge-workflow-live-probe": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792438860091
+  },
+  "skill:bin-source-scan-conformance": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792522277172
   }
 }
