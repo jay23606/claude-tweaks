@@ -88,6 +88,41 @@ Three conventions follow from how this repo works, and all are visible below:
 * wrap-up Dispatch-claim branch matches every human-run… ([#3711](https://github.com/thn-inc/claude-tweaks/issues/3711)) ([a34fe8b](https://github.com/thn-inc/claude-tweaks/commit/a34fe8bb9773dcc73df7f65cb742e3eee5f71912))
 * wrap-up Section D kills the recorded pid without… ([#3664](https://github.com/thn-inc/claude-tweaks/issues/3664)) ([904c37b](https://github.com/thn-inc/claude-tweaks/commit/904c37ba942ca243583552d94a40e6e4bf99d0b4))
 
+### Highlights
+* Approving a wrap-up Review Console no longer half-applies when a ledger row can't be updated; it stops and names the row before writing anything.
+* Fixed a module load-order hazard when the code-health dead-code check is loaded directly.
+* Spec shaping now corrects a mandated decision-log line whose status word breaks the decision-log contract, and builds now side with the project contract over conflicting spec wording.
+* A run directory stuck because its merged PR left a record open is now named in reconcile's stuck-runs issue, with the step that clears it.
+* Review lens agents stop tripping the worktree-isolation Bash guard on their own scratch files.
+* A verification pass is no longer credited to a commit that landed while the tests were still running.
+* verify.js's "could not resolve a base" message no longer claims there was no usable stamp when --ignore-stamp skipped it.
+* Review context bundles no longer carry full copies of large changed files, which cuts the tokens each lens agent spends on prose-heavy diffs.
+* No user-visible change.
+* Verification reports how many known-failing tests now pass, alongside new failures.
+* The Review Console no longer stops to ask under an `unattended` autonomy ceiling: the plugin now blocks that question and resolves the console automatically.
+* A dispatched review whose nested reader overruns its wait no longer loses its final report to a late wake-up.
+* A human-run `/flow` under `local-merge`, including one resuming a dispatched run, now merges when its authorization allows it, instead of stopping at `ready-to-merge` for a dispatcher that does not exist.
+* Added a top-tier plan review before the first build task that catches spec gaps and undecided behaviour early, and stops the build for a human decision when the spec cannot answer.
+* Select pipeline QA stories against the run's full branch diff, so a build's own UI changes are never skipped because a verification stamp was written before them.
+* A reversed SDD ruling on the PR-hosted Review Console is now reported as reversed in the PR reply comment, and the console resolves.
+* Fixed a /specify ceremony-tally test that failed on Windows because of line endings and a backslash plugin path.
+* Phase timing now finds session transcripts when Claude Code runs with a custom config directory.
+* Every remaining plugin git path reader handles non-ASCII paths the same way as the --name-only/--name-status readers.
+* Runner-owned flaky retry no longer passes an unquoted, runner-printed file path to the shell.
+* The worktree guard's own-working-directory removal check and its commit-location check treat a path typed with different letter casing the same as the correctly-cased one.
+* Dispatch's MCP transport path now gets a correct oldest-first ranking tie-break instead of a silent array-order fallback.
+* Added `/code-health focus=scale-readiness`. It flags N+1 and unpaginated queries, slow work done inline on requests, missing caching, connection-pool, and monitoring setup, and lists a load test for you to run before launch.
+* A run whose draft PR conflicts with the base branch now reaches the conflict handling at the merge decision instead of waiting out a 15-minute CI watch.
+* Review's untracked-file sweep now works in worktree-isolated sessions: its baseline is captured automatically.
+* Cleaning up a finished run no longer hides staged proposals nobody approved when the run never showed its review console.
+* Subagent replies sent right after a queued-command completion notice are no longer graded as missing their status line.
+* Fixed the auto-merge blast-radius check so edits to a skill named `test` count as production changes, not test changes.
+* Fixes the worktree guard seeing different targets for `git -C ''` and plain `git` on Windows.
+* Pipeline cleanup no longer signals a corrupted pid and no longer forgets a test server it failed to stop.
+* Fix visual-decide `stop` sometimes leaving a cleanly stopped server reported as crashed on Windows.
+* Fixed: the reflect Friction lens no longer reports a frictionless run when the machine's timezone is ahead of UTC.
+* Fixed premise checks never running on Windows, so harness-health findings and builds there now detect work that is already done.
+
 ## [6.148.0](https://github.com/thn-inc/claude-tweaks/compare/v6.147.1...v6.148.0) (2026-10-20)
 
 
