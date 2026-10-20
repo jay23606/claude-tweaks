@@ -183,3 +183,11 @@ git commit -m "Name fleet composition rows by bucket, not number — count-free 
 | AC1.1, AC1.2 | Task 1 tests |
 | AC2.1 | Task 2 test + Step 4 grep |
 | AC3.1 (`npm test` passes) | Waived AC3.1 at task level: run by `/build` Common Step 5 / `/test` on the whole branch, not per task |
+
+## As-built deviations (Common Step 4.5)
+
+| # | Spec/plan said | Built | Classification |
+|---|---|---|---|
+| 1 | Deliverable 2 names fleet.md and routine-template-schema.md as the literal sites | Also migrated the same row-number/count citers in docs/skill-graph.md, docs/journeys/routine-fleet-on.md, docs/journeys/code-health-focus-sweep.md, docs/getting-started.md and the code-health/routine-template.yml comment (Task 2 + fix round 1) | Beneficial: each became false when the row landed; same cardinality-drift rule |
+| 2 | Step 5 summary example kept a numbered Row cell pinned by tests/backlog-refine-headless.test.js | Row cell is `{n}` and the pin dropped the number (final-review fix wave f51b58e85) | Beneficial: removes the last renumber-and-repin coupling |
+| 3 | Global Constraint "do not change any existing row cron" was prose-only | Pinned by a name-to-cron map test in tests/routine-fleet-security-hardening.test.js | Beneficial: makes the constraint mechanical |
