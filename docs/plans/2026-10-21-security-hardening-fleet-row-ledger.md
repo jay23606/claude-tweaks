@@ -1,9 +1,0 @@
-# Open Items — Add a security-hardening vertical row to the routine fleet
-
-| # | Phase | Item | Status | Resolution |
-|---|-------|------|--------|------------|
-| 1 | build | compositionRows silently skips non-numeric table lines; numbering-gap assertion only partly covers a malformed row | fixed | Commit bc7493e70 (tests/routine-fleet-security-hardening.test.js): compositionRows now asserts every non-header table line is a numbered row of 7 cells; a temporary `x` row turned three tests red, then restored. Origin: SDD Task 1 review (minor); resolved in wrap-up Phase 1 (fix-now, localized to one test file). |
-| 2 | build | test helpers read/routineSkillFiles/schemaPath sit mid-file after Task 1 tests rather than at top | fixed | Commit bc7493e70 (tests/routine-fleet-security-hardening.test.js): routineDir/routineSkillFiles/schemaPath moved to the top beside `fleet`. Origin: SDD Task 2 review (minor, cosmetic); resolved in wrap-up Phase 1. |
-| 3 | build | 'four/five focus-scoped' alternation regex would miss a future 'six' count word | fixed | Commit bc7493e70 (tests/routine-fleet-security-hardening.test.js): the guard now matches any count word two through ten before "focus-scoped", case-insensitive. Origin: SDD Task 2 re-review (minor); resolved in wrap-up Phase 1. |
-| 4 | build | SDD ruling — extend Task 2 to docs/journeys/code-health-focus-sweep.md:14 and docs/getting-started.md:128 (stale "four focus-scoped" counts the plan's citer list missed): ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
-| 5 | build | Final review: 0 Critical / 0 Important; Minors 1-3 folded into one fix wave (commit f51b58e85: {n} summary row cell + pin, stale row-10 comment, existing cron map pin); Minor 4 (window "inclusive" wording, table not cron-ordered) parked — accurate as written, plan chose bucket grouping over cron order | observation | Informational — whole-branch review verdict Ready to merge: Yes. |
