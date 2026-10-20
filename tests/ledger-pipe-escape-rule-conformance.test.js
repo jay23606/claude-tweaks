@@ -54,7 +54,7 @@ test('AC1.1 go-red control: the shared helper throws when the rule paragraph is 
       routing: read('plugin/skills/review/step3-routing.md'),
       dispatch: read('plugin/skills/build/dispatch.md'),
     }),
-    { name: 'AssertionError' },
+    { name: 'AssertionError', message: /ledger-format\.md Format section must state the pipe rule/ },
   );
 });
 
