@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T07:53:23.206Z",
+  "computedAt": "2026-10-20T07:58:07.092Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -365,7 +365,7 @@
       },
       {
         "number": 3289,
-        "updatedAt": "2026-10-20T07:38:54Z",
+        "updatedAt": "2026-10-20T07:55:50Z",
         "state": "OPEN"
       },
       {
@@ -385,7 +385,7 @@
       },
       {
         "number": 3078,
-        "updatedAt": "2026-10-20T07:52:43Z",
+        "updatedAt": "2026-10-20T07:53:24Z",
         "state": "OPEN"
       },
       {
@@ -420,7 +420,7 @@
       },
       {
         "number": 2734,
-        "updatedAt": "2026-10-20T05:59:10Z",
+        "updatedAt": "2026-10-20T07:56:19Z",
         "state": "OPEN"
       },
       {
@@ -6024,90 +6024,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n**Existing mechanism, found during shaping.** `_shared/autonomy-ceiling.md` already documents a *per-run* escape hatch, distinct from `consoleAutoResolve`: an explicit Manifesto `confirm`/`hybrid` override can set `merge-authorization` for that one run — \"always requiring a live answer... regardless of the project's ceiling setting,\" never settable via `policy.yml`. The same passage states plainly: \"an `unattended`-ceiling project still needs `consoleAutoResolve` (or this lever) to actually skip the terminal click — raising the ceiling alone does not, by itself, answer this lever.\" This confirms the gap precisely: `consoleAutoResolve` is granted automatically at `unattended` and resolves every *other* Review Console section with zero clicks, but `merge-authorization`'s `ask` default is either a deliberate carve-out `consoleAutoResolve` does not override, or (less likely, given how explicitly this is documented) a genuine implementation gap — Deliverable 1 below needs to settle which, since the doc reads as intentional design, not an oversight, but the actual session cost (a 7.5h stall) argues the design should be revisited regardless of original intent.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n3. `npm test` passes.\n\n## Technical Approach\n\nWhichever way Deliverable 1 resolves, the change site is `bin/lib/issues/autonomy.js`'s `bookkeepingPermissions(ceiling)` (the single source of truth `_shared/autonomy-ceiling.md`'s Bookkeeping capabilities table documents) plus `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution path — the same three places every existing `unattended`-only capability (`opsAckAutoAcknowledge`, `consoleAutoResolve`, `refineAutoApply`, `ledgerRouteRemainder`) already threads through, so a new `mergeAuthorizationAutoResolve`-shaped capability (if the decision favors extension) follows the identical pattern rather than inventing a new mechanism. If the decision instead favors the command-line opt-in flag (Deliverable 3's middle ground), that's a `/flow` argument-parsing change plus a one-line Manifesto lever override, independent of the `bookkeepingPermissions()` table.\n\n### Key Files\n\n- `plugin/skills/flow/manifesto.md` — the `merge-authorization: ask` default (line ~181) and the \"Never a `policy.yml` default\" rule\n- `plugin/skills/_shared/autonomy-ceiling.md` — `bookkeepingPermissions()`'s documented table, and the existing per-run confirm/hybrid override this record's investigation found (the \"this lever\" passage) — the natural place to add a new capability row if the decision favors extension\n- `plugin/bin/lib/issues/autonomy.js` — `bookkeepingPermissions(ceiling)`'s actual code, the source of truth the markdown table documents\n\n## Gotchas\n\n- The existing confirm/hybrid per-run override is a real, already-working mechanism for pre-authorizing one run's merge — don't present this record as \"there's no way to do this today\" in a build; the gap is specifically that `auto` mode + `unattended` ceiling can't reach the same outcome without reopening the whole Manifesto gate.\n- `_shared/autonomy-ceiling.md`'s own prose reads like the current `ask`-always default for merge-authorization was a deliberate, considered design choice (it's called out explicitly, not silently absent) — treat \"was this intentional\" as a real open question for Deliverable 1, not an assumed bug, even though the session cost (7.5h stall) argues for revisiting it.\n\n## Original request\n\nflow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall\n\nSurface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n\n## Release Note\n\nDecided whether an `unattended` autonomy ceiling should extend to merge-authorization, closing the gap where a fully green, reviewed `/flow` run still stalls on a single manual merge click.\n",
-        "createdAt": "2026-09-21T04:53:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMTcg",
-            "name": "risk:high",
-            "description": "Scoring: high blast radius — human review required",
-            "color": "D93F0B"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2734,
-        "state": "OPEN",
-        "title": "flow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall",
-        "updatedAt": "2026-10-20T05:59:10Z",
-        "facets": {
-          "origin": null,
-          "risk": "high",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
