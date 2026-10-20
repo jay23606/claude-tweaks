@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T07:58:07.092Z",
+  "computedAt": "2026-10-20T12:14:14.507Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -154,11 +154,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3581,
-        "updatedAt": "2026-10-19T12:28:34Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3579,
         "updatedAt": "2026-10-19T12:28:39Z",
         "state": "OPEN"
@@ -166,26 +161,6 @@
       {
         "number": 3577,
         "updatedAt": "2026-10-19T12:28:44Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3574,
-        "updatedAt": "2026-10-20T00:56:48Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3565,
-        "updatedAt": "2026-10-19T12:29:03Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3564,
-        "updatedAt": "2026-10-19T12:29:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3563,
-        "updatedAt": "2026-10-19T12:29:11Z",
         "state": "OPEN"
       },
       {
@@ -211,11 +186,6 @@
       {
         "number": 3537,
         "updatedAt": "2026-10-19T12:29:36Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3515,
-        "updatedAt": "2026-10-19T20:25:09Z",
         "state": "OPEN"
       },
       {
@@ -364,28 +334,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3289,
-        "updatedAt": "2026-10-20T07:55:50Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3276,
         "updatedAt": "2026-10-17T09:03:20Z",
         "state": "OPEN"
       },
       {
-        "number": 3266,
-        "updatedAt": "2026-10-17T09:03:15Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3265,
         "updatedAt": "2026-10-17T09:02:51Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3078,
-        "updatedAt": "2026-10-20T07:53:24Z",
         "state": "OPEN"
       },
       {
@@ -416,11 +371,6 @@
       {
         "number": 2799,
         "updatedAt": "2026-10-16T16:31:35Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2734,
-        "updatedAt": "2026-10-20T07:56:19Z",
         "state": "OPEN"
       },
       {
@@ -2804,90 +2754,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3507, #3509, #3562, #3564, #3565, #3581\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39213275646, on `windows-latest`) attributed three test files to PR #3552 (`87875beca`, \"Make harness-health Premise-check paths portable across machines\", #2857). All three still fail on the latest Windows run (39242652806, at `7eaa543fc`, base `df15212d5`), where the base run now covers them, so they read as baseline failures and the verdict passes. Verified against `origin/main` at `1c8cda70b`. None of the files involved has changed since `7eaa543fc`.\n\nThe issue excerpt shows one test per file. The Windows logs show nine failing tests:\n\n- `tests/bin-lib/harness-health/cli-validate-findings.test.js`, 5 of 32: test 22 `a patch finding against a real target file carries a Premise-check: line resolvable to that file`; test 23 `--root a subdirectory of a git repo composes the Premise-check: path relative to the git top-level`; test 24 `--root a git subdirectory, removal polarity: …`; test 25 `a non-git --root composes the absolute target path (the fail-safe)`; and test 29 `a finding whose target differs from --target/--kind never gets the CLI-resolved path …`. In every case the filed body has no `Premise-check:` line.\n- `tests/bin-lib/health-core/premise-self-check.test.js`, 3 of 11: test 8 `real shell: an additive check whose anchor is absent reads unresolved and is kept` (`false !== true`); test 10 `defaultRunner returns the exit code of a command that ran`, with error `spawnSync /bin/sh ENOENT` thrown from `plugin/bin/lib/health-core/premise-self-check.js:26`; and test 11 `AC4.1: real shell: a repo-relative command composed with root resolves at filing time` (`false !== true`).\n- `tests/materialize-premise-check.test.js`, 1 of 15: test 12 `AC5.1: a command composed under root A reads unresolved from checkout B …`. `premise` is `null` where `{ command, exit: 0, satisfiedAtBase: false }` was expected.\n\nRoot cause, product-side with test-side siblings. `defaultRunner` in `plugin/bin/lib/health-core/premise-self-check.js` (line 26) runs every Premise-check: command as `execFileSync('/bin/sh', ['-c', command], …)`. On win32, Node resolves the literal `/bin/sh` against the current drive root (`D:\\bin\\sh`), which does not exist, so the spawn throws `ENOENT` (the test-10 log line above). Both consumers then degrade to their fail-safe answer:\n\n- `premiseReadsUnresolved` reads any throw as `false`. `plugin/bin/harness-health.js validate-findings` (its `premiseSelfCheck`, line 315) therefore drops every composed `Premise-check:` line at filing time. That accounts for cli-validate-findings tests 22–25 and 29 and premise-self-check tests 8 and 11.\n- `plugin/bin/materialize.js`'s `computePremise` catches the throw from `runPremiseCheckDefault` (which is `defaultRunner`) and returns `premise: null`. That accounts for materialize AC5.1.\n\nSo on any Windows checkout the Premise-check feature is silently off end to end. harness-health files no premise lines, and `materialize.js` never evaluates one, so `satisfiedAtBase` is never detected. Both failures fail safe (nothing is wrongly auto-closed), but neither says why. The literal dates from #2633 (and `materialize.js`'s earlier runner before it). #3552 did not introduce it. #3552 added or rewrote tests that exercise it (cli-validate-findings 23–25, premise-self-check AC4.1, materialize AC5.1). verify.js's per-test baseline coverage (`plugin/bin/lib/verify/baseline.js`: a base run covers a file only when it names every test failing at HEAD) could not cover those tests at `13019828d`, so the three files became attributable. The older tests (cli-validate-findings 22 and 29, premise-self-check 8 and 10) run through the same literal at the base.\n\nThere are two test-side defects of the same shape:\n\n- `cli-validate-findings.test.js` lines 442 and 467 run the composed command with `spawnSync('/bin/sh', …)` themselves. On Windows, tests 23 and 24 fail earlier, at their missing-line assertions (lines 438 and 464), so this second `ENOENT` is masked. It surfaces as soon as the product fix lands.\n- `tests/bin-lib/harness-health/issue-payload.test.js` line 288 runs a composed removal command with `execSync(cmd, { shell: true })`, which uses `cmd.exe` on win32. Its test 25 (`buildPremiseCheck for a removal against a nonexistent target file composes a command that exits 0 …`) fails on Windows with `got 2`. That is consistent with `cmd.exe` rejecting `!`, then running `grep` from PATH against a single-quoted path it never unquotes. This file is a pre-existing baseline failure from #2621 and is not in this record's excerpt. It is in scope because it runs the same Premise-check: command contract through a non-POSIX shell.\n\nSome tests currently pass on Windows for the wrong reason. A missing shell reads the same as \"the premise already resolved\", so every drop-path test stays green: premise-self-check test 7 (`… anchor already appears … is dropped`), test 9 (`a hung command is killed at the timeout and dropped`), and cli-validate-findings tests 30–32 (the self-check drop cases). The parity skill names this failure class: a Windows-only launch failure must not read as a real answer.\n\nReproduced in scratch on macOS, Node 22, with an `origin/main` tree. A `--require` preload rewrote only the literal `/bin/sh` to a nonexistent path, which simulates win32's drive-root resolution. Under the preload the pre-fix code fails exactly the Windows set: cli-validate-findings `# fail 5` (22, 23, 24, 25, 29), premise-self-check `# fail 3` (8, 10, 11), and materialize `# fail 1` (12), with identical test names. A patched copy whose runner picks `sh` from PATH when the platform is win32 passes all four files under the same preload (32/32, 11/11, 15/15, 66/66). At function level under the preload, `defaultRunner('exit 3', …)` throws `ENOENT` pre-fix and returns `3` post-fix with `platform: 'win32'`. This is a POSIX simulation of the missing literal path, not a Windows run. It cannot show Git for Windows' `sh.exe` resolving, MSYS handling of a native `D:\\…` path inside the command, or `cmd.exe` behavior.\n\nRepo-wide sibling grep on `origin/main` for `'/bin/sh'`, `shell: true` and `execSync(`:\n\n- `plugin/bin/lib/health-core/premise-self-check.js:26`: the one product hit. In scope.\n- `tests/bin-lib/harness-health/cli-validate-findings.test.js:442,467` and `tests/bin-lib/harness-health/issue-payload.test.js:288`: in scope (above).\n- `tests/build-ac-forwarding-verification.test.js:83`: out of scope. It is already `{ skip: process.platform === 'win32' … }`.\n- `tests/dispatch-per-record-groups-prose.test.js:190`: out of scope. It runs a dispatch skill snippet with `PATH` emptied, and #3565 covers it.\n- `tests/verify-expectations-writer-conformance.test.js:66`: out of scope. On Windows it currently fails earlier (`extraction pattern is out of sync with the doc`, a CRLF extraction failure). It will reach the same `/bin/sh` literal once that is fixed, and no open record covers it.\n- `plugin/bin/lib/plan-audit/checks.js:342`, `plugin/bin/lib/verify/run.js:83`, `plugin/bin/release-local.js:343`, `tools/upstream-drift/checks.js`: out of scope. They run user- or plan-authored commands through the platform's native shell by design, not a plugin-composed POSIX command.\n\n## Deliverables\n\n1. `plugin/bin/lib/health-core/premise-self-check.js`: add a pure, exported `posixShell(platform = process.platform)` that returns `'sh'` (resolved from PATH, Git for Windows' `sh.exe`) on `win32` and exactly `'/bin/sh'` everywhere else. Have `defaultRunner` take `platform` (default `process.platform`) and an injectable `exec` (default `execFileSync`), and spawn `exec(posixShell(platform), ['-c', command], { cwd, stdio: 'ignore', timeout: timeoutMs, windowsHide: true })`. Keep the exit-code semantics unchanged: a non-zero exit is returned, and a missing exit code (timeout, spawn error) re-throws. Leave `premiseReadsUnresolved`'s call shape `{ cwd, timeoutMs }` unchanged, so the existing runner-call pin (test 5) holds. POSIX behavior stays byte-identical.\n2. `tests/bin-lib/health-core/premise-self-check.test.js`:\n   - Pin `posixShell` with exact strings: `'win32'` gives `'sh'`, and `'linux'` and `'darwin'` give `'/bin/sh'`.\n   - Pin `defaultRunner` through an injected `exec`. For `platform: 'win32'` it receives `('sh', ['-c', command], …)`, and for `'linux'` it receives `('/bin/sh', ['-c', command], …)`, with `windowsHide: true` in both.\n   - Make the drop-path real-shell test (test 7) prove a real exit. Assert `defaultRunner(command, { cwd: dir, timeoutMs: 5000 })` returns `1` (a `! grep` that found its anchor) next to the existing `premiseReadsUnresolved(...) === false`, so a missing shell turns it red instead of green.\n3. `tests/bin-lib/harness-health/cli-validate-findings.test.js`: replace the two `spawnSync('/bin/sh', ['-c', command], { cwd: top, … })` runs (lines 442 and 467) with the product's `defaultRunner(command, { cwd: top, timeoutMs: PREMISE_SELF_CHECK_TIMEOUT_MS })`. The test then reads the command the way `materialize.js` will on every platform. Drop the `run.stderr` interpolation, since `defaultRunner` ignores stdio.\n4. `tests/bin-lib/harness-health/issue-payload.test.js`: replace test 25's `execSync(cmd, { shell: true, … })` with `defaultRunner(cmd, { cwd: os.tmpdir(), timeoutMs: … })`. Remove the `execSync` import (line 3). Line 288 is its only use.\n5. `tests/materialize-premise-check.test.js`: no edit. AC5.1 already runs through `runPremiseCheckDefault` and passes once deliverable 1 lands.\n6. Update the prose that names the literal: `plugin/bin/materialize.js`'s `runPremiseCheckDefault` comment (line 133, \"ENOENT on /bin/sh\") and `docs/journeys/harness-health-premise-check.md` line 37 (\"via `/bin/sh -c`\"). Both should say a POSIX `sh -c` (`/bin/sh`, or `sh` from PATH on Windows).\n7. `.claude/skills/windows-checkout-test-parity/SKILL.md`: add one Anti-Patterns row. A literal `/bin/sh` passed to `execFileSync`/`spawnSync` resolves to `<drive>:\\bin\\sh` on win32 and throws `ENOENT`. A `catch` that reads every throw as \"resolved\" then disables the feature silently, and every drop-path test passes for the wrong reason (#2633's runner; this record). Pick the shell through a `platform` parameter.\n8. Before opening the PR, re-run the sibling grep (`'/bin/sh'`, `shell: true`, `execSync(` across `plugin/`, `tests/` and `tools/`). Record the result in the PR body, including the out-of-scope hits listed above. File a follow-up record for `tests/verify-expectations-writer-conformance.test.js:66` with `/claude-tweaks:capture` if no open record covers it by then.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/bin-lib/harness-health/cli-validate-findings.test.js tests/bin-lib/health-core/premise-self-check.test.js tests/materialize-premise-check.test.js tests/bin-lib/harness-health/issue-payload.test.js` passes on macOS/Linux with no test skipped or removed.\n- [ ] All four files pass on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}`. Quote the run's per-file result for each file: its log shows `# fail 0`, or it is absent from the report's `failingFiles`. The run's verdict is not enough, because on a dispatch the base is the integration branch (#3568), where these files already fail, so a still-failing file would be classified as baseline and the run would still pass. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat the POSIX simulation below as a Windows run.\n- [ ] `posixShell('win32') === 'sh'`, `posixShell('linux') === '/bin/sh'` and `posixShell('darwin') === '/bin/sh'` are pinned with exact strings, and so is the injected-`exec` argument pin for both platforms.\n- [ ] Simulation on macOS/Linux, with a `--require` preload that rewrites only the literal `/bin/sh` to a nonexistent path: `defaultRunner('exit 3', { cwd: os.tmpdir(), timeoutMs: 5000, platform: 'win32' })` returns `3`, and the same call with `platform: 'linux'` throws `ENOENT`. Against the pre-fix module the `win32` call throws `ENOENT`.\n- [ ] Discrimination, part 1: under the same preload, premise-self-check test 7 (`… anchor already appears … is dropped`) goes red after deliverable 2. It passes there before the change.\n- [ ] Discrimination, part 2: temporarily change `posixShell`'s `win32` branch to return `'/bin/sh'`, and the exact-string pin and the injected-`exec` pin both go red. Restore the file in the same command.\n- [ ] On every non-win32 platform `defaultRunner` still spawns exactly `/bin/sh`. No other file under `plugin/bin/` changes behavior. `materialize.js` changes only a comment.\n- [ ] `tests/windows-hide-spawn-conformance.test.js` passes, and the new `exec(...)` call carries `windowsHide: true` literally in its arguments.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed premise checks never running on Windows, so harness-health findings and builds there now detect work that is already done.\n\n## Technical Approach\n\nThis is a product fix plus test alignment, following `.claude/skills/windows-checkout-test-parity/SKILL.md`. Its \"Take `platform` and `env` as parameters\" pattern gives `posixShell(platform)` and `defaultRunner`'s `platform` option; never stub `process.platform`. Its \"Pin the win32 output with exact strings\" pattern gives the `'sh'` and `'/bin/sh'` pins plus an injected-`exec` argument pin that runs on Linux CI. Its \"A Windows-only launch failure must not read as a real answer\" rule is why the drop-path test must assert a real exit code. The existing real-shell tests (premise-self-check 7–11, cli-validate-findings 22–25, materialize AC5.1) already serve as the win32 real-process round-trip once the shell resolves, so they get no `skip`. Running them on `windows-latest` is the ground truth.\n\nWhy `sh` from PATH on win32:\n\n- Claude Code on Windows runs its Bash tool through Git Bash. A `node` process started from there (how every skill invokes `harness-health.js` and `materialize.js`) inherits Git's `usr\\bin` on PATH, and `sh.exe` sits there and in `Git\\bin`.\n- `windows-regression.yml` runs its steps with `shell: bash`, so the runner's PATH is the same shape.\n- PATH-resolved `bash` spawns already pass on `windows-latest` (`tests/session-tmp-resolve-cli.test.js`, `tests/flow-mixed-execution-convention.test.js` and `tests/issue-branch-tracking.test.js` are absent from the latest failing set).\n- issue-payload test 25's `cmd.exe` run reached a PATH `grep` (exit 2, not `9009`).\n\nWhen no `sh` is found, the spawn still throws `ENOENT` and both consumers keep today's fail-safe answer (line dropped, `premise: null`).\n\nThe command text itself needs no change. `buildPremiseCheck` (`plugin/bin/lib/harness-health/issue-payload.js`) composes POSIX `sh` with single-quoted operands and forward-slash repo-relative paths (#2857). The out-of-root fallback keeps a native absolute path, which on win32 is `D:\\…`. MSYS `grep` accepts that inside single quotes, but only the `windows-latest` run proves it (cli-validate-findings test 25, premise-self-check tests 7 and 8).\n\n### Key Files\n\n- `plugin/bin/lib/health-core/premise-self-check.js` — add `posixShell(platform)`; `defaultRunner` takes `platform` and an injectable `exec`; export `posixShell`\n- `tests/bin-lib/health-core/premise-self-check.test.js` — exact-string `posixShell` pins, the injected-`exec` argument pin, and a real-exit assertion on the drop-path test 7\n- `tests/bin-lib/harness-health/cli-validate-findings.test.js` — lines 442 and 467 run the command through `defaultRunner` instead of `spawnSync('/bin/sh', …)`\n- `tests/bin-lib/harness-health/issue-payload.test.js` — test 25 (line 288) runs through `defaultRunner` instead of `execSync(…, { shell: true })`\n- `plugin/bin/materialize.js` — comment at line 133 only; `runPremiseCheckDefault` and `computePremise` unchanged\n- `docs/journeys/harness-health-premise-check.md` — line 37 wording (\"via `/bin/sh -c`\")\n- `.claude/skills/windows-checkout-test-parity/SKILL.md` — one new Anti-Patterns row for the literal `/bin/sh` spawn\n- `tests/materialize-premise-check.test.js` — read-only reference: AC5.1 (line 366) passes once the runner resolves a shell\n- `plugin/bin/harness-health.js` — read-only reference: `premiseSelfCheck` wiring (line 315) and its drop log\n- `plugin/bin/lib/harness-health/issue-payload.js` — read-only reference: `buildPremiseCheck` and `shQuote` compose the POSIX command\n- `tests/windows-hide-spawn-conformance.test.js` — read-only reference: scans `exec(` calls under `plugin/bin/` for `windowsHide`\n\n## Gotchas\n\n- Do not run the command with `shell: true`. On win32 that is `cmd.exe`, which understands neither `!` nor single quotes. That is exactly issue-payload test 25's Windows failure.\n- Do not switch POSIX platforms to a PATH `sh`. `/bin/sh` stays PATH-independent off Windows, and changing it widens the blast radius for no Windows gain.\n- Do not add `{ skip: process.platform === 'win32' }` to the real-shell tests to turn the run green. They are the only win32 round-trip for this runner, and skipping them hides a feature that is off end to end on Windows.\n- Do not stub `process.platform` in any test. Pass `platform` explicitly.\n- The dispatched `windows-regression.yml` run's overall verdict will pass even if these files still fail, because they fail at the integration-branch base too (#3568). Read the per-file logs.\n- `tests/windows-hide-spawn-conformance.test.js` treats any `exec(` call under `plugin/bin/` as a spawn. If the injected seam is named `exec`, its call must name `windowsHide` in its own argument text.\n- This changes Windows behavior on purpose. From now on, Premise-check: lines filed from Windows are kept when the premise still holds, and `materialize.js` on Windows can report `satisfiedAtBase: true`, as it already does on POSIX.\n- Keep this record to the Premise-check runner, its four test files and the listed prose. `tests/dispatch-per-record-groups-prose.test.js` belongs to #3565. Other open `Windows regression:` records (#3429, #3507, #3509, #3562, #3564, #3565, #3581) cover different commits and files.\n\n## Original request\n\nWindows regression: 3 test file(s) newly failing after 87875beca\n\nThe post-merge Windows check failed on commit 87875beca6d92f08f50e63e8cd4f650c9a6cd7fd (compared against 13019828d).\n\n**Merged PR:** #3552 (https://github.com/thn-inc/claude-tweaks/pull/3552)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39213275646\n\n### Newly failing test files\n- `tests/bin-lib/harness-health/cli-validate-findings.test.js`\n- `tests/bin-lib/health-core/premise-self-check.test.js`\n- `tests/materialize-premise-check.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/harness-health/cli-validate-findings.test.js`\n\n```\nnot ok 2134 - validate-findings: a patch finding against a real target file carries a Premise-check: line resolvable to that file\n  ---\n  duration_ms: 658.7281\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\harness-health\\\\cli-validate-findings.test.js:396:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    expected a Premise-check: line anchored on the repo-relative target path, got body:\n    **Skill:** auth | **Section:** Key Patterns | **Category:** drift | **Classification:** restructural | **Confidence:** high\n    \n    ## Current State\n    \n```\n\n#### `tests/bin-lib/health-core/premise-self-check.test.js`\n\n```\nnot ok 2573 - real shell: an additive check whose anchor is absent reads unresolved and is kept\n  ---\n  duration_ms: 2.2393\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\health-core\\\\premise-self-check.test.js:59:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    false !== true\n    \n  code: 'ERR_ASSERTION'\n```\n\n#### `tests/materialize-premise-check.test.js`\n\n```\nnot ok 10388 - AC5.1: a command composed under root A reads unresolved from checkout B until B's file carries the anchor, then resolved\n  ---\n  duration_ms: 146.5417\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\materialize-premise-check.test.js:366:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n    + null\n    - {\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-19T07:11:33Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3563,
-        "state": "OPEN",
-        "title": "Windows regression: 3 test file(s) newly failing after 87875beca",
-        "updatedAt": "2026-10-19T12:29:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
@@ -5383,84 +5249,6 @@
     ],
     [
       {
-        "body": "**Related:** #3130, #1965, #2533\n\nOrigin: #3130 reflect staged finding (reflect-1), run 2026-10-16T155630-record-3130\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/dispatch/task-prompt.md`'s context-pack item 7 (async-wait discipline) and both templates' Foreground execution clause tell a dispatched subagent that an in-turn `Agent`-tool dispatch's completion notification is a normal resume signal \"while other work remains in flight\".\n\nDuring #3130's second dispatch call (run `2026-10-16T155630-record-3130`), the subagent sent a narration-only reply with no tool call (\"Now waiting for the code-simplifier subagent's completion notification...\") while a nested code-simplifier Task was running. The SubagentStop hook treated it as a stop with no trailing `STATUS:` line and blocked it, costing one retry turn. The hook was right; the prompt wording never says that any reply ending without a queued tool call counts as stopping.\n\n## Deliverables\n\n- Add one sentence to the async-wait guidance in `plugin/skills/dispatch/task-prompt.md` (and to `plugin/skills/_shared/subagent-output-contract.md` if that is where the hook's rule is canonically stated): any reply that ends without a queued tool call counts as stopping, whatever is still in flight. An intermediate progress note must therefore carry a tool call, or be skipped.\n\n### Key Files\n\n- `plugin/skills/dispatch/task-prompt.md` — context-pack item 7 / Foreground execution clause\n- `plugin/skills/_shared/subagent-output-contract.md` — status-line rule\n\n## Acceptance Criteria\n\n- [ ] The async-wait guidance states that a reply without a queued tool call is a stop, and must carry the trailing `STATUS:` line.\n\n- [ ] Byte ceilings and conformance tests covering those files still pass (`npm test`).\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-16T17:57:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3266,
-        "state": "OPEN",
-        "title": "Dispatch async-wait guidance should say any reply without a tool call counts as stopping",
-        "updatedAt": "2026-10-17T09:03:15Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "**Related:** #3130, #3071, #3027\n\nOrigin: #3130 wrap-up staged finding (wrap-up-skill-1), run 2026-10-16T155630-record-3130\n\nDefer-reason: tangential\n\n## Current State\n\n`cmdStop` in `plugin/bin/lib/visual-decide/cli.js` sends `SIGTERM`, then `waitFor`s until either the `server-stopped` marker exists or `!pidAlive(info.pid)`. It writes the marker itself (`writeStoppedMarker`) only when `waitFor` times out, which is the zombie-PID case #3130 fixed.\n\nOn win32, `process.kill(pid, 'SIGTERM')` terminates the daemon unconditionally and its `SIGTERM` handler (`process.on('SIGTERM', stop)`, which writes `server-stopped`) never runs. `waitFor` then settles through `!pidAlive`, `settled` is true, and no marker is written. After a clean `stop`, `status` can then report the server as crashed rather than stopped. The same holds anywhere the PID dies without running its handler, such as SIGKILL by an outside actor between the signal and the poll.\n\nThe stuck-PID test in `tests/bin-lib/visual-decide/cli.test.js` is skipped on win32, and CI is ubuntu-only, so nothing exercises this path today. Reasoning from documented Node behavior; not observed on a Windows run.\n\n## Deliverables\n\n- In `cmdStop`, write the `server-stopped` marker whenever the wait settles without the marker present (PID gone or timeout), not only on timeout, so `stop` always leaves the marker behind.\n\n- Add a platform-independent test: simulate a daemon whose PID disappears without writing the marker, and assert `stop` leaves `server-stopped` in place and `status` reports stopped.\n\n### Key Files\n\n- `plugin/bin/lib/visual-decide/cli.js` — `cmdStop` marker write\n- `tests/bin-lib/visual-decide/cli.test.js` — handler-less exit case\n\n## Acceptance Criteria\n\n- [ ] After `stop` against a daemon that exits without running its SIGTERM handler, `server-stopped` exists and `status` reports stopped, not crashed.\n\n- [ ] The new test runs on Linux CI and fails on the pre-fix `cmdStop`.\n\n- [ ] `npm test` passes.\n\n## Release Note\n\nFix visual-decide `stop` sometimes leaving a cleanly stopped server reported as crashed on Windows.\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-16T17:56:53Z",
         "labels": [
@@ -6040,272 +5828,6 @@
           "shapedHeadless": true
         }
       }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3507, #3509, #3562, #3563, #3565, #3581\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39213725882, on `windows-latest`) found one test file newly failing after PR #3531 merged as `31d2ce142`. That commit (#3497's change) added `tests/flow-pass-reentry-conformance.test.js`, so this failure is genuinely new rather than inherited. It is still failing on the latest Windows run (39242652806, at `7eaa543fc`), where it now shows as a baseline failure: the base-commit log and the isolated HEAD log both report `# pass 7` / `# fail 1`. Verified against `origin/main` at `1c8cda70b`, where the test file is unchanged since `31d2ce142`.\n\nExactly one of the file's eight tests fails: `AC2.1 retired limit sentences are gone from every skill file` (line 108). The assertion that fails is the doctored-corpus control at line 127, not the real-corpus check:\n\n```\n+   'flow\\\\x.md: no documented step re-runs the pass'\n-   'flow/x.md: no documented step re-runs the pass'\n```\n\nRoot cause, test-side only. The test's own `walk()` helper (lines 110-118) lists files with `fs.readdirSync(dir, { recursive: true })`. Node joins recursive entries with the native separator, so on win32 the doctored file comes back as `flow\\x.md`. The helper then uses that native relative path directly as a display ID (`hits.push(\\`${f}: ${phrase}\\`)`, line 115), and the control compares the result with the forward-slash literal `'flow/x.md: …'`. The display-ID producer is the test, not plugin code; no file under `plugin/` is involved. The real-corpus assertion `assert.deepEqual(real.hits, [])` passes on Windows only because a clean corpus yields no hits. On a real regression its message would carry the same backslash IDs.\n\nCRLF plays no part. `collapse()` folds `\\r` into whitespace, and the file's other section extractors already use `\\r?$` and `split(/\\r?\\n/)`. The other seven tests pass in both Windows logs.\n\nReproduced in scratch on macOS with a win32 simulation. A `--require` preload makes recursive `fs.readdirSync` return `\\`-joined entries, lets `fs.readFileSync` accept `\\` the way Windows fs does, and sets `path.sep` to `\\`. Run against the `origin/main` copy of the test and `plugin/`:\n\n- Unsimulated, pre-fix: `# pass 8` / `# fail 0`.\n- Simulated, pre-fix: `not ok 6 - AC2.1 …`, with the same `+ 'flow\\\\x.md: …'` / `- 'flow/x.md: …'` diff as the Windows log, and `# pass 7` / `# fail 1`.\n- Simulated and unsimulated, with `toPosix` applied at the hit producer: `# pass 8` / `# fail 0`.\n\nThe simulation cannot show drive letters, real Windows fs semantics or `path.win32.join` behavior. It reproduces only the separator Node puts into recursive `readdirSync` entries, which is exactly what this failure turns on.\n\nSibling grep on `origin/main`. `git grep -nE \"readdirSync\\([^)]*recursive\" -- '*.js'` finds this file's line 111 as the only recursive-readdir site in the repo. No `globSync` or async recursive `readdir` call exists. The broader class, a native relative path used as a display ID and compared with `/` keys, also fails on the same latest Windows run in eight other files. All eight are pre-existing baseline failures, not attributable to #3531, and all are out of scope here (see Gotchas).\n\n## Deliverables\n\n1. `tests/flow-pass-reentry-conformance.test.js`: normalize the display ID at its producer. Require `toPosix` from `plugin/bin/lib/shared-primitives.js` and build each hit as `` `${toPosix(String(f), sep)}: ${phrase}` ``, through a small `hitId(f, phrase, sep = path.sep)` helper inside the AC2.1 test. Leave the fs path native: `fs.readFileSync(path.join(dir, String(f)), 'utf8')` keeps the raw `f`.\n2. Pin the win32 branch on a Linux-runnable path. In the same test, assert `hitId('flow\\\\x.md', retired[0], path.win32.sep) === \\`flow/x.md: ${retired[0]}\\``. A `toPosix` call that takes the default `sep` is otherwise invisible to ubuntu CI: dropping it stays green there (the parity skill's display-ID section). This assertion makes that drop go red on Linux.\n3. Leave the doctored-corpus control's expected value as the forward-slash literal `'flow/x.md: no documented step re-runs the pass'`. Do not rebuild it with `path.join`.\n4. Before opening the PR, re-run the sibling grep (`git grep -nE \"readdirSync\\([^)]*recursive|globSync\" -- '*.js'`). Fix any new recursive-readdir hit that builds a display ID with the same move. Record the result in the PR body: at shaping time against `origin/main` `1c8cda70b` this file was the only hit.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/flow-pass-reentry-conformance.test.js` passes on macOS/Linux with all 8 tests running, none skipped or removed.\n- [ ] The same file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's per-file isolated log result for this file (`# pass 8` / `# fail 0`). A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat a win32 path simulation as a Windows run.\n- [ ] A scratch win32 simulation passes against the fixed test and fails against the pre-fix one with the Windows diff (`'flow\\\\x.md: …'` vs `'flow/x.md: …'`). The simulation is a `--require` preload that makes recursive `fs.readdirSync` return `\\`-joined entries, maps `\\` to `/` in `fs.readFileSync`, and sets `path.sep = '\\\\'`. Quote both runs' `# pass` / `# fail` lines in the PR body.\n- [ ] The new `path.win32.sep` pin discriminates on Linux: with `toPosix` removed from `hitId`, an unsimulated `node --test tests/flow-pass-reentry-conformance.test.js` goes red with the `'flow\\\\x.md: …'` diff. Restore the line in the same command.\n- [ ] The retired-phrase check still discriminates: append `no documented step\\nre-runs the pass` to a skill file under `plugin/skills/` and the test goes red, naming that file with forward slashes (for example `flow/multi-spec.md: no documented step re-runs the pass`). Restore the file in the same command.\n- [ ] No file under `plugin/` changes. The skill prose and `toPosix` are correct; only the test's display-ID construction is wrong.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a flow conformance test that failed on Windows because it compared a backslash file path with a forward-slash one.\n\n## Technical Approach\n\nThis is a test-side fix that follows the \"Display IDs and native paths are two contracts\" rule in `.claude/skills/windows-checkout-test-parity/SKILL.md`. A path the code shows or compares as an ID uses `/` on every OS and is normalized at its producer with `shared-primitives.js`'s `toPosix(p, sep = path.sep)`. A path later opened with `fs` stays native. The producer here is the test's own `walk()`, which builds the hit string from a native recursive-readdir entry. So the fix goes there, and the expected literal stays as it is. The skill rejects per-fixture `.replace(/\\\\/g, '/')` patches and `path.join`-built expectations for display IDs, because they hide a producer that is still wrong.\n\nThe `sep` parameter on `hitId` follows the skill's injection pattern: the default stays `path.sep` for the real walk, and the pin passes `path.win32.sep` explicitly. That is the same seam `tests/bin-lib/shared-primitives.test.js` uses for `toPosix` itself. Do not stub `process.platform`.\n\nVerified in scratch: two added lines (the `toPosix` require and the `hitId` helper with its pin) plus the changed `push` turn the simulated run from 7/1 to 8/0, and the unsimulated run stays 8/0.\n\n### Key Files\n\n- `tests/flow-pass-reentry-conformance.test.js` — AC2.1 (lines 108-128): `walk()`'s hit push (line 115) routed through a `toPosix`-based `hitId`, plus a `path.win32.sep` pin; the `fs.readFileSync` path (line 114) and the control's expected literal (line 127) unchanged\n- `plugin/bin/lib/shared-primitives.js` — read-only reference: `toPosix(p, sep = path.sep)` (line 208), the shared display-ID normalizer\n- `tests/bin-lib/shared-primitives.test.js` — read-only reference: the existing `toPosix` pins under `path.win32.sep` that the new assertion mirrors\n- `.claude/skills/windows-checkout-test-parity/SKILL.md` — read-only reference: the display-ID vs native-path rule and the win32-simulation caveats\n\n## Gotchas\n\n- Do not apply `toPosix` to the path passed to `fs.readFileSync`. Native fs paths stay native. Only the reported hit string is a display ID.\n- Do not \"fix\" this by rewriting the expected value to `path.join('flow', 'x.md') + ': …'` or by `.replace(/\\\\/g, '/')` on the hits array at the assertion. Either one turns the control green while the producer still emits native IDs, and the real-corpus failure message stays backslashed on Windows.\n- The win32 simulation is harness evidence, not a Windows run. On POSIX `path.posix === path`, so setting `path.sep` also flips `path.posix.sep`. Run the simulation from a scratch cwd and check `git status` afterwards, since the AC2.1 control writes a temp tree. Only the `gh workflow run windows-regression.yml --ref {branch}` result closes the Windows criterion.\n- Keep this record to this one file. The same latest Windows run shows the broader native-display-ID class in eight other files, all pre-existing baseline failures that #3531 did not introduce:\n  - Test-side producers using `path.relative` from a `withFileTypes` walk: `tests/ceremony-profile-roster.test.js`, `tests/integration-branch-conformance.test.js`, `tests/merge-verification-gate-conformance.test.js`, `tests/integration-model.test.js`, `tests/try-it-contract-conformance.test.js`, `tests/payload-boundary.test.js`.\n  - Product-side producers: `plugin/bin/release-local.js`'s `listPlanFiles` `path.join`, failing `tests/bin-lib/release-local/cli.test.js`, and `plugin/bin/lib/code-health/scope.js`, already owned by #3315.\n\n  The six test-side files and the `release-local` producer belong to #2767's classification work (#3318). Folding them in here would turn a fast-lane fix into a multi-file sweep.\n- This is one of several open `Windows regression:` records (#3429, #3507, #3509, #3562, #3563, #3565, #3581), each for a different commit and different files.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 31d2ce142\n\nThe post-merge Windows check failed on commit 31d2ce142da524f005212f790c67f21df7a19fe6 (compared against 52aabeb84).\n\n**Merged PR:** #3531 (https://github.com/thn-inc/claude-tweaks/pull/3531)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39213725882\n\n### Newly failing test files\n- `tests/flow-pass-reentry-conformance.test.js`\n\n### Failure excerpts\n\n#### `tests/flow-pass-reentry-conformance.test.js`\n\n```\nnot ok 8958 - AC2.1 retired limit sentences are gone from every skill file\n  ---\n  duration_ms: 145.918\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\flow-pass-reentry-conformance.test.js:108:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n      [\n    +   'flow\\\\x.md: no documented step re-runs the pass'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-19T07:18:55Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3564,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 31d2ce142",
-        "updatedAt": "2026-10-19T12:29:07Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3507, #3509, #3562, #3563, #3564, #3581, #3587, #3574\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39214085383, on `windows-latest`) flagged three test files as newly failing after PR #3530 merged #3520 as `9dc2c1df4` (base `31d2ce142`). #3520 added every test that fails here. All three files still fail on the latest run, 39242652806 at `7eaa543fc` (base `df15212d5`), where they are now adjudicated as baseline failures. A baseline failure is never re-flagged, so only this fix will clear them. Verified against `origin/main` at `1c8cda70b`: none of the three test files, `tests/helpers/read-skill.js`, or `plugin/skills/dispatch/` has changed since `7eaa543fc`.\n\nPer-file breakdown from the latest run's isolated logs. There are five failing tests and three root causes, all test-side.\n\n1. **`tests/console-autoresolve-drain-overlap-carveout.test.js`: 4/6 pass. Two tests fail on a CRLF read.** The failing tests are `near-duplicate Step 6 hold template is parsed by drainOverlapHoldPrs (AC7)` (line 88) and its `go-red control: …` (line 93). Both fail inside `nearDuplicateHoldTemplate` (lines 70-76) with `drain-pr-overlap.md has a fenced Auto-merge gate template with the near-duplicate suffix`. That helper reads `plugin/skills/dispatch/drain-pr-overlap.md` with a raw `fs.readFileSync` (line 71) and extracts fences with `/```\\n([\\s\\S]*?)\\n```/g` (line 72). On a `core.autocrlf=true` checkout every fence line ends in `\\r\\n`, so the regex matches no fence. The other four tests read through `collapse()`, which turns `\\r\\n` into a space, so they are unaffected.\n2. **`tests/dispatch-near-dup-pairs-script.test.js`: 1/3 pass. Two tests fail on a CRLF read, and a second failure is hidden behind it.** `AC8.1: the heredoc warns on every cross-group pair …` (line 64) and `Review Focus 4: a pull with no strong pair rewrites a stale pairs file to []` (line 85) both fail in `heredoc()` with `the #1944 heredoc has no NODE_EVAL_EOF terminator`. `QUEUE_PULL` is a raw read (line 16), and the terminator search is `'\\n' + 'NODE_EVAL_EOF\\n'` (lines 20 and 28), which never matches `\\r\\nNODE_EVAL_EOF\\r\\n`. Behind that, `run()` (line 56) passes the native `path.join(ROOT, 'plugin')` as `CLAUDE_PLUGIN_ROOT`. The #1944 heredoc in `plugin/skills/dispatch/queue-pull-script.md` (lines 685-690) is unquoted, so bash expands that value into `require('${CLAUDE_PLUGIN_ROOT}/bin/lib/dispatch/near-dup-pairs.js')`. A `D:\\a\\…` value then becomes JS escapes, the same `Cannot find module 'D:aclaude-tweaks…'` failure #3517 hit after its CRLF fix.\n3. **`tests/dispatch-per-record-groups-prose.test.js`: 13/14 pass. One test fails because Windows has no `/bin/sh`.** The record's excerpt quotes `AC2.1: the neighbour-in-flight heredoc runs offline …` with `Cannot find module 'D:aclaude-tweaks…'`. That test was already failing at base `31d2ce142`. #3518 has since fixed it (`e4d6b12bf`, forward-slash `PLUGIN_DIR`), and it passes on the latest run. The test #3520 added, and the one that still fails, is `a failed neighbour-in-flight pool fetch writes an empty pool and says so, so nothing is excluded (#3278)` (line 185), with `null !== 0` and no stderr. It runs `spawnSync('/bin/sh', ['-c', poolFetchBlock()], { env: { PATH: dir, … } })` (line 190). On win32 `/bin/sh` resolves to `D:\\bin\\sh`, which does not exist, so the spawn fails with `ENOENT`, `status` is `null`, and `stderr` is empty. A bare `'sh'` would not fix it, because Node looks the command up through the child env's `PATH`, which the test deliberately points at an empty dir so `gh` is unreachable.\n\n**Reproduction (macOS, a simulation and not a Windows run).** `git archive origin/main` of `tests/` and `plugin/` was extracted into scratch, and every `plugin/**/*.md` and `docs/**/*.md` was converted to CRLF.\n\n- Before the fix, the LF tree passed 23/23. The CRLF tree failed exactly the four CRLF tests above with the Windows error strings.\n- Feeding the #1944 heredoc through `bash` with `CLAUDE_PLUGIN_ROOT=D:\\a\\claude-tweaks\\claude-tweaks\\plugin` turned the `require` specifier into `D:aclaude-tweaksclaude-tweaksplugin/bin/lib/dispatch/near-dup-pairs.js`. The forward-slash root kept it intact.\n- `spawnSync` of a missing absolute shell, and of bare `'sh'` under `env: { PATH: emptyDir }`, both returned `status=null error=ENOENT` with no stderr, the Windows failure's exact shape.\n- After the fix described below, the CRLF tree and the LF tree each passed 25/25.\n\nThe `/bin/sh` failure itself can only be shown on a real Windows runner.\n\n**Sibling sweep** of `tests/` on `origin/main` `1c8cda70b` for the three shapes:\n\n- **In scope:** `tests/dispatch-named-target-exclusion-fixture.test.js`. It has the same two-layer defect against the same skill file: a raw `queue-pull-script.md` read (line 32), a `<<NODE_EVAL_EOF\\n` start anchor (line 45), and a native `CLAUDE_PLUGIN_ROOT` passed to `bash -c` (line 99). It fails at the latest run's baseline with `extraction start anchor not found in queue-pull-script.md`, which reproduced exactly under CRLF in scratch and passed after the same fix. No open record owns it.\n- **Out of scope, owned elsewhere:** `spawnSync('/bin/sh', …)` in `tests/bin-lib/harness-health/cli-validate-findings.test.js:442,467` (masked behind #3563's failures) and `execFileSync('/bin/sh', …)` in `tests/verify-expectations-writer-conformance.test.js:66` (masked behind #3562's CRLF extraction failure).\n- **Out of scope, already handled:** `tests/build-ac-forwarding-verification.test.js:60` already skips on win32 for its `/bin/sh` use.\n- **False positive:** `tests/bin-lib/reconcile/release-merged.test.js`'s `EOF\\n` hits are in-test stub literals, not a skill read.\n\n## Deliverables\n\n1. `tests/console-autoresolve-drain-overlap-carveout.test.js`: read `drain-pr-overlap.md` once through `tests/helpers/read-skill.js`'s `readText()`. Give `nearDuplicateHoldTemplate` an optional text parameter that defaults to that read and LF-normalizes its input before the fence regex. Add a CRLF case: `nearDuplicateHoldTemplate(text.replace(/\\n/g, '\\r\\n'))` returns the same template as the LF read, and the built input contains `\\r\\n` and no `\\r\\r\\n`. Leave the `collapse()`-based reads (line 23) unchanged.\n2. `tests/dispatch-near-dup-pairs-script.test.js`:\n   - Read `queue-pull-script.md` through `readText()`.\n   - Give `heredoc()` an optional source parameter that LF-normalizes, and add the same CRLF-vs-LF extractor case.\n   - Pass `CLAUDE_PLUGIN_ROOT` with forward slashes from one module-level constant (`path.join(ROOT, 'plugin').split(path.sep).join('/')`), with a one-line comment naming the JS-string-literal reason, as `tests/dispatch-neighbour-in-flight-mcp.test.js:72-74` does.\n3. `tests/dispatch-per-record-groups-prose.test.js`, the pool-fetch test (line 185): stop depending on `/bin/sh`.\n   - Preferred: run the block with `bash`, looked up through the inherited environment (`env: { ...process.env, EMPTY_PATH: dir, DISPATCH_IN_FLIGHT_RAW: rawPath }`). Make `gh` unreachable inside the script by prefixing it with `PATH=\"$EMPTY_PATH\"`, not through the spawn env's `PATH`. The sibling `bash -c` suites already pass on `windows-latest` with that spawn shape.\n   - Before the status assertion, assert `result.error` is `undefined`, so a spawn failure names itself instead of reading `null !== 0`.\n   - If the dispatched Windows run shows the in-script `PATH` does not hide `gh` there, fall back to `tests/build-ac-forwarding-verification.test.js:60`'s `{ skip: process.platform === 'win32' && '<reason>' }` form for this one test, and say so in the PR body.\n4. `tests/dispatch-named-target-exclusion-fixture.test.js` (sweep hit): read `queue-pull-script.md` through `readText()` (line 32), and pass a forward-slash `CLAUDE_PLUGIN_ROOT` (line 99).\n5. Before opening the PR, re-run the sweep over `tests/`:\n   - a raw read of a tracked markdown file searched with a `\\n`-anchored fence or `NODE_EVAL_EOF` anchor;\n   - `CLAUDE_PLUGIN_ROOT: path.join(` without `.split(path.sep)`;\n   - `'/bin/sh'` / `'/bin/bash'` as a spawn target.\n\n   Fix any new unowned hit with the same move, and record the result and the owner of each remaining hit in the PR body.\n\n## Acceptance Criteria\n\n- [ ] `node --test tests/console-autoresolve-drain-overlap-carveout.test.js tests/dispatch-near-dup-pairs-script.test.js tests/dispatch-per-record-groups-prose.test.js tests/dispatch-named-target-exclusion-fixture.test.js` passes on macOS/Linux with no test removed or weakened.\n- [ ] All four files pass on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}`. Quote that run's per-file isolated result for each of the four files: the pool-fetch test must report `ok`, not `# SKIP`, unless Deliverable 3's fallback was taken and the PR body says so. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. A CRLF or `path.win32` simulation on macOS/Linux is not a Windows run.\n- [ ] On macOS/Linux, a CRLF-checkout simulation passes: a scratch copy of the tree with `plugin/**/*.md` converted to `\\r\\n` runs the four files green. Against the pre-fix tests, the same simulation fails the two drain-overlap tests, the two near-dup-pairs tests and the named-target test with their Windows error strings.\n- [ ] The new CRLF cases discriminate. Temporarily remove the LF normalization inside `nearDuplicateHoldTemplate` and inside `heredoc()`, and each CRLF case goes red (`… fenced Auto-merge gate template …` / `… no NODE_EVAL_EOF terminator`). Restore both files in the same command.\n- [ ] The pool-fetch test discriminates. Temporarily put an executable `gh` stub that prints `[]` and exits 0 into the test's empty dir (POSIX only), and the test goes red on the missing `AUTO — dispatch: neighbour-in-flight pool fetch failed …` line. Restore the file in the same command.\n- [ ] No file under `plugin/` changes. The skill prose, the heredocs and `plugin/bin/lib/` are correct; only the tests' reads, substitutions and shell choice are platform-dependent.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed six dispatch and console prose tests that failed only on Windows checkouts.\n\n## Technical Approach\n\nThe fix is test-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`. Three of its rules apply:\n\n- \"A test extracts regions from live skill markdown → a CRLF input proving the extractor still finds the region\" covers causes 1 and 2. `readText()` is the repo's single normalizing read. Normalizing again inside the extractor is what lets the CRLF case go red on Linux CI, as #3518 did with `refusalFenceBody`.\n- The Anti-Patterns row \"Treating a CRLF fix as the whole Windows fix for a test that extracts and runs a skill's shell snippet\" covers the masked backslash-root layer in cause 2 and in the named-target sibling. #3517 and #3518 already fixed the identical shape this way (`tests/dispatch-neighbour-in-flight-mcp.test.js:74`, `tests/dispatch-per-record-groups-prose.test.js`'s `PLUGIN_DIR`).\n- \"Keep a win32-only real-process round-trip as the ground truth\" is why cause 3 prefers running the block through a real shell on Windows over skipping it.\n\nThe pool-fetch test's `PATH` moves from the spawn env into the script because the spawn env's `PATH` is also what Node uses to find the shell. Overriding it there forces an absolute shell path, and Windows has no portable one. Assigning `PATH` inside the script leaves the shell lookup on the inherited environment and still hides `gh` from the block. All of the block's remaining commands (`echo`, redirections) are shell builtins.\n\nThe product-side question of whether a real Windows Claude Code install hands Git Bash a backslash `CLAUDE_PLUGIN_ROOT` belongs to #3555. This record does not touch the heredocs.\n\n### Key Files\n\n- `tests/console-autoresolve-drain-overlap-carveout.test.js` — `readText()` read of `drain-pr-overlap.md`; `nearDuplicateHoldTemplate` (lines 70-76) takes text and LF-normalizes; new CRLF extractor case\n- `tests/dispatch-near-dup-pairs-script.test.js` — `readText()` read (line 16); `heredoc()` (lines 23-31) takes a source and LF-normalizes; forward-slash `CLAUDE_PLUGIN_ROOT` in `run()` (line 56); new CRLF extractor case\n- `tests/dispatch-per-record-groups-prose.test.js` — pool-fetch test (lines 185-197): `bash` with an in-script `PATH=\"$EMPTY_PATH\"` and a `result.error` assertion, replacing `spawnSync('/bin/sh', …)`\n- `tests/dispatch-named-target-exclusion-fixture.test.js` — `readText()` read (line 32) and forward-slash `CLAUDE_PLUGIN_ROOT` (line 99)\n- `tests/helpers/read-skill.js` — read-only reference: the shared `readText()` EOL-normalizing read\n- `tests/dispatch-neighbour-in-flight-mcp.test.js` — read-only reference: the #3517 precedent (forward-slash `PLUGIN_ROOT`, line 74; CRLF-vs-LF snippet case)\n- `tests/build-ac-forwarding-verification.test.js` — read-only reference: the win32 `/bin/sh` skip form (line 60), Deliverable 3's fallback only\n- `plugin/skills/dispatch/drain-pr-overlap.md` — read-only reference: the near-duplicate Auto-merge gate fence (lines 97-99)\n- `plugin/skills/dispatch/queue-pull-script.md` — read-only reference: the pool-fetch block (lines 615-618), the named-target heredoc, and the #1944 heredoc (lines 685-690)\n\n## Gotchas\n\n- Do not fix the CRLF failures with a `.gitattributes` `eol=lf` rule, and do not loosen the extractors to accept `\\r\\r\\n` or bare `\\r`. The parity skill keeps `.gitattributes` scoped to the hashed upstream fixtures on purpose.\n- Do not build a CRLF case from a raw read (`raw.replace(/\\n/g, '\\r\\n')`). On a Windows checkout that yields `\\r\\r\\n` (#3523). Build it from the `readText()` value and assert there is no `\\r\\r\\n`.\n- The pool-fetch test passes for the wrong reason if `gh` is reachable but fails for an unrelated cause, such as no auth or no git repo in cwd. That is why its go-red control plants a succeeding `gh` stub instead of relying on the real CLI. Keep the in-script `PATH` line as the block's first line, so nothing in the block runs before it.\n- If the Windows run fails the pool-fetch test only on the `AUTO — dispatch: …` stderr match while the empty-pool assertion passes, suspect em-dash encoding through Git Bash's `echo`. Set a UTF-8 locale in the spawned env (`LC_ALL: 'C.UTF-8'`) rather than loosening the regex.\n- Fixing only the excerpted test misses its siblings. The `per-record` excerpt names a test that #3518 already fixed; the failing one is the pool-fetch test. Read each file's isolated log from the dispatched run, not the record's excerpt, before calling the fix done.\n- Keep the scope to these four files. `cli-validate-findings` (#3563) and `verify-expectations-writer-conformance` (#3562) also spawn `/bin/sh`, but their own records own them. Other open `Windows regression:` records (#3429, #3507, #3509, #3562, #3563, #3564, #3581) cover other commits and files.\n\n## Original request\n\nWindows regression: 3 test file(s) newly failing after 9dc2c1df4\n\nThe post-merge Windows check failed on commit 9dc2c1df496df79bf9b22e3a21345458617efe62 (compared against 31d2ce142).\n\n**Merged PR:** #3530 (https://github.com/thn-inc/claude-tweaks/pull/3530)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39214085383\n\n### Newly failing test files\n- `tests/console-autoresolve-drain-overlap-carveout.test.js`\n- `tests/dispatch-near-dup-pairs-script.test.js`\n- `tests/dispatch-per-record-groups-prose.test.js`\n\n### Failure excerpts\n\n#### `tests/console-autoresolve-drain-overlap-carveout.test.js`\n\n```\nnot ok 8278 - near-duplicate Step 6 hold template is parsed by drainOverlapHoldPrs (AC7)\n  ---\n  duration_ms: 0.8903\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\console-autoresolve-drain-overlap-carveout.test.js:88:1'\n  failureType: 'testCodeFailure'\n  error: 'drain-pr-overlap.md has a fenced Auto-merge gate template with the near-duplicate suffix'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  operator: '=='\n  stack: |-\n```\n\n#### `tests/dispatch-near-dup-pairs-script.test.js`\n\n```\nnot ok 8695 - AC8.1: the heredoc warns on every cross-group pair and persists only the strong one, without a strong key\n  ---\n  duration_ms: 3.2931\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\dispatch-near-dup-pairs-script.test.js:64:1'\n  failureType: 'testCodeFailure'\n  error: 'the #1944 heredoc has no NODE_EVAL_EOF terminator'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: -1\n  actual: -1\n  operator: 'notStrictEqual'\n```\n\n#### `tests/dispatch-per-record-groups-prose.test.js`\n\n```\nnot ok 8726 - AC2.1: the neighbour-in-flight heredoc runs offline and excludes nothing when no in-flight record neighbours a candidate (\\#3393)\n  ---\n  duration_ms: 46.1687\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\dispatch-per-record-groups-prose.test.js:158:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    node:internal/modules/cjs/loader:1433\n      throw err;\n      ^\n    \n    Error: Cannot find module 'D:aclaude-tweaksclaude-tweaksplugin/bin/lib/dispatch/in-flight-neighbours.js'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-19T07:20:13Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3565,
-        "state": "OPEN",
-        "title": "Windows regression: 3 test file(s) newly failing after 9dc2c1df4",
-        "updatedAt": "2026-10-19T12:29:03Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #3429, #3507, #3509, #3562, #3563, #3564, #3565, #3543\n\n## Current State\n\nThe post-merge `windows-regression` workflow (run 39229351955, on `windows-latest`) flagged two test files after PR #3533 merged #3416 as `dcdd58863`: `tests/bin-lib/reconcile/archive-merged.test.js` and `tests/bin-lib/reconcile/release-merged.test.js`. The production code is not at fault in either file. Every failure comes from the way the tests fake `gh`.\n\n**The excerpts are misleading.** Both quoted tests also fail at the base commit `3bf097c8e`. The run's `verify-report` artifact shows `archive-merged.test.js:1928` (\"a main-loop decideArchive skip (no-pr)…\") among 19 failures at base, and `release-merged.test.js:246` (\"Phase 1.5 resolves prState via the pool…\") among 17 failures at base. The filer quotes the first failure in each file. It flagged the files because #3416 added new tests that fail for the same reason:\n\n| File | Base `3bf097c8e` | HEAD `dcdd58863` | Newly failing (all added by #3416) |\n|---|---|---|---|\n| `archive-merged.test.js` | 19 of 119 fail | 26 of 128 fail | AC5.1, AC5.2, AC5.1 fail-closed, AC1.1, AC1.1 orthogonal, AC2.1, AC4.1 (current lines 2738, 2747, 2755, 2831, 2852, 2889, 2909) |\n| `release-merged.test.js` | 17 of 50 fail | 18 of 53 fail | \"resolves by stamped pr.number ahead of the live-worktree branch join\" and \"AC3.1 AC3.2: a live claim whose stamped pr.number is OPEN…\" |\n\n**`release-merged.test.js` is already fixed, and this record has no work in it.** `1ed26d947` (#3506, merged after `dcdd58863`) added the per-file `PATH_STUB_SKIP` constant to all 19 stub-installing tests in that file, including the #3416 ones. On the latest `windows-latest` run (39242652806, `7eaa543fc`, which contains `1ed26d947`), the file is not in `baselineAdjudicated.failingFiles`. That run's `verify-logs/tests.log` reports `releaseMerged: Phase 1.5 resolves prState…` as `ok … # SKIP win32: execFileSync(\"gh\") never spawns a \\#!/bin/sh stub named gh on PATH`, and it reports 41 such skip lines in total: 22 from `pr-state.test.js` and 19 from `release-merged.test.js`. It was not flaky. Its 1835 ms duration is the real `gh.exe` network round-trip described below. A scripted pass over the file at `origin/main` `1c8cda70b` shows that the set of tests that install a stub equals the set that carries `PATH_STUB_SKIP`, exactly.\n\n**`archive-merged.test.js` still fails.** On the latest run it fails 26 of 128 tests at both HEAD and base, so the filer no longer counts it as new. It stays in the Windows baseline set until it is fixed. The file has not changed since `dcdd58863`.\n\n**Root cause, test-side only.** `archive-merged.js` resolves PR and issue state through `plugin/bin/lib/reconcile/pr-state.js`, which calls `execFileSync('gh', …)` and `execFile('gh', …)`. Both are bound when the module is required and have no injection point. The test file fakes `gh` by writing a `#!/bin/sh` script named `gh` (no extension) into a temp directory and putting that directory first on `PATH`. Three helpers do this: `installGhWrapper` (line 91), `installGhPrWrapper` (line 124) and `installGhIssueStateWrapper` (line 156). On win32, Node's (libuv's) command lookup appends `.com` and `.exe` to an extensionless name and never runs an extensionless file, so the stub is invisible. The runner's own `gh.exe` answers instead. The job has `GH_TOKEN` set, so that real `gh` makes an authenticated call for a fixture repository that does not exist (`acme/w`, or no remote at all), exits non-zero, and `classifyExecError` correctly reports `network-failure`. That is the excerpt's `\"reason\":\"network-failure\"`. The product classification is right: a real `gh.exe` ran and failed. This is not a Windows launch failure misread as an answer, because `gh` ships as `gh.exe` on Windows and lookup finds it. This is the same defect #3506 fixed in the two sibling files.\n\n**The fix is reproduced by simulation, not by a Windows run.** A scratch `--require` preload swapped `child_process`'s `execFileSync`/`execFile`/`spawn`/`spawnSync` so that a bare `gh` resolves the way win32 resolves it: try `gh.com`/`gh.exe` on `PATH`, otherwise use a fake runner `gh` that prints `no git remotes found` and exits 1. It changed nothing else. Results against the `origin/main` files:\n\n- `archive-merged.test.js` without the preload: `# tests 128`, `# pass 128`, `# fail 0`.\n- With the preload: `# pass 102`, `# fail 26`. The failing set is identical, by test name, to the 26 in the latest Windows run's isolated log (`diff` empty). The failure-reason tallies are identical too (7× `+ 'network-failure'`, 4× `+ 'no-branch'`, 5× `- 'console-never-rendered'`, 3× `- 'pr-open'`, …). The line-1928 test fails with the excerpt's exact message (`expected a no-pr skip, got {… \"reason\":\"network-failure\"}`). The fake runner logged the call it received: `pr list --head feat-nopr-main-1733 --state all --json …`.\n- As a control, the same preload on `release-merged.test.js` reproduces exactly the 18 failures of the original run's HEAD log.\n- With a scratch copy of the fix (the `PATH_STUB_SKIP` constant on the 31 stub-installing tests, forced on by an env var because the simulation cannot make `process.platform` report `win32`): `# pass 97`, `# fail 0`, `# skipped 31` under the preload, and `# pass 128`, `# skipped 0` on POSIX without it.\n\nWhat the simulation cannot show: real `cmd.exe`/libuv behavior, drive letters, or any other win32-only failure hiding behind these. Only a `windows-latest` run proves the file green.\n\n**Which tests install a stub.** A scripted pass over every top-level `test(`, following calls into helpers (`fixtureOrdinaryMergedNoConsole` calls `installGhWrapper`), finds 31 of 128 that install a stub:\n\n- **The 26 that fail on Windows.** Lines 1928, 1965, 2194, 2212, 2249, 2270, 2314, 2339, 2396, 2425, 2464, 2499, 2549, 2590, 2669, 2678, 2685, 2701, 2738, 2747, 2755, 2831, 2852, 2889, 2909 and 3338.\n- **5 that pass on Windows, but only vacuously.**\n  - Lines 1752 and 1858 install the stub only as a \"belt-and-braces guard\" (their own comment). Their assertions read an injected runner and cache I/O, and on win32 the guard cannot work.\n  - Lines 2365, 2869 and 3356 expect an outcome (fall back to `no-branch`, skip `network-failure`, stay in place) that a failing real `gh` produces just as well as the stub does.\n\nThe other 97 tests install no stub and pass on Windows today.\n\n**Sibling grep (`origin/main` `1c8cda70b`).** Grepping `tests/` for files that write a `#!/bin/sh` `gh` or `git` shim and touch `PATH` finds 10 files:\n\n| File | Shim | Windows status (run 39242652806) | Scope |\n|---|---|---|---|\n| `tests/bin-lib/reconcile/archive-merged.test.js` | `gh` | 26 fail | **In scope** |\n| `tests/bin-lib/reconcile/pr-state.test.js` | `gh` | passes (`PATH_STUB_SKIP`, #3506) | Done |\n| `tests/bin-lib/reconcile/release-merged.test.js` | `gh` | passes (`PATH_STUB_SKIP`, #3506) | Done |\n| `tests/console-execute.test.js` | `gh` | passes (win32 skip, #3358) | Done |\n| `tests/bin-lib/reconcile/reap-merged.test.js` | `gh` + `git` spy | 16 fail, 4 skipped | Out: 2 of the failures install no stub (`isOwnCwd`, `attemptLongPathRemoval`, a separator class), and the five `#2566` tests exist to exercise win32 behavior, so a blanket skip would delete their purpose. They need a different fix and stay in the #2767 baseline set |\n| `tests/bin-lib/reconcile/prune-remote.test.js` | `git` | 3 fail | Out: `git` shim, #2767 baseline set |\n| `tests/reconcile.test.js` | `git` | 8 fail (mixed with a `chmod` ENOENT class) | Out: #2767 baseline set |\n| `tests/bin-lib/docs-health/freshness.test.js` | `git` spy | 1 fails | Out: #2767 baseline set |\n| `tests/bin-lib/harness-health/cli-next-target.test.js` | `git` spy | 2 fail (`git-calls.log` ENOENT) | Out: #2767 baseline set |\n| `tests/bin-lib/journey-health/cli-next-target.test.js` | `git` spy | 1 fails (`git-calls.log` ENOENT) | Out: #2767 baseline set |\n\nEvery out-of-scope file was already failing at base on the latest run (`baselineFailing`), so each sits in the open Windows-baseline record #2767.\n\n## Deliverables\n\n1. In `tests/bin-lib/reconcile/archive-merged.test.js`, add the same per-file constant the two sibling files use, with the identical reason string: `const PATH_STUB_SKIP = process.platform === 'win32' && 'win32: execFileSync(\"gh\") never spawns a #!/bin/sh stub named gh on PATH';`. Put it after the `require` block.\n2. Add `{ skip: PATH_STUB_SKIP }` as the options argument of every `test(` whose body, or a helper it calls, installs a `gh` stub on `PATH` through `installGhWrapper`, `installGhPrWrapper` or `installGhIssueStateWrapper`. That was 31 tests at shaping time (the lines listed in Current State). Re-derive the set from the file at build time, because #3503 or another merge may add stub tests first. Include the 5 vacuous passers: the rule is \"writes a stub\", not \"fails today\". Leave every test that installs no stub unchanged, so it keeps running on Windows.\n3. Change no production code and no helper body. In the PR body, state the final stub-test count and the scripted check that produced it.\n\n## Acceptance Criteria\n\n- [ ] Every top-level `test(` in `archive-merged.test.js` whose body, or a helper it calls, invokes `installGhWrapper`, `installGhPrWrapper` or `installGhIssueStateWrapper` carries `{ skip: PATH_STUB_SKIP }`, and no other `test(` does. Prove it with a scripted pass and quote its output: the stub-installing set equals the `PATH_STUB_SKIP` set.\n- [ ] `PATH_STUB_SKIP`'s reason string is byte-identical to the constants in `tests/bin-lib/reconcile/pr-state.test.js` and `tests/bin-lib/reconcile/release-merged.test.js`.\n- [ ] On POSIX, `node --test tests/bin-lib/reconcile/archive-merged.test.js` passes with zero skipped tests. Quote the raw `ℹ tests` / `ℹ pass` / `ℹ fail` / `ℹ skipped` lines.\n- [ ] The stub tests still discriminate on POSIX. With the fix applied, temporarily change the line-1928 test's `installGhWrapper([])` to return one OPEN PR for its branch, and that test goes red (it no longer gets a `no-pr` skip). Restore the file in the same command.\n- [ ] The file passes on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting the run's result for this file. In the run's `verify-report.json`, `tests/bin-lib/reconcile/archive-merged.test.js` is absent from `baselineAdjudicated.failingFiles`. In its `verify-logs/tests.log`, the stub tests show `# SKIP win32: execFileSync(\"gh\") never spawns…`, and the file's other tests are reported `ok` with no SKIP. A non-main ref never files an issue. If the dispatch cannot run, say so explicitly. Do not treat the gh-lookup simulation as a Windows run.\n- [ ] No file under `plugin/` changes.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed a reconciler test suite that failed on Windows checkouts because its fake GitHub CLI never ran there, with no change to plugin behavior.\n\n## Technical Approach\n\nThis is a test-side fix that applies #3506's ruling to the third file with the same defect. Behavior only one platform can produce gets a per-test `skip` with a stated reason. `tests/console-execute.test.js` (#3358) and the two sibling reconcile suites already do this.\n\nRejected: giving `pr-state.js` an injectable runner, so the tests stop faking `gh` through `PATH`. #3506 rejected it because that would change a production module that `archive-merged.js`, `release-merged.js`, `reap-merged.js` and others depend on, for a test-only platform gap. The resolver logic is platform-neutral, and the POSIX run covers it.\n\nAlso rejected: a `gh.cmd` stub next to the extensionless one. libuv appends only `.com`/`.exe` for a bare name, so it would never be found either. A `.cmd` would also need the `cmd.exe` launch path the parity skill warns about.\n\nKeep the skip per test, not file-wide: 97 tests install no stub and pass on Windows today.\n\nTo re-derive the stub set, a small Node script splits the file at top-level `test(` / `function` boundaries. It marks a test when its body, or any helper it calls (transitively), calls an `installGh*` helper. At shaping time that took one indirection: `fixtureOrdinaryMergedNoConsole` calls `installGhWrapper`.\n\nFor local evidence before the Windows dispatch, use the shaping-time simulation from Current State. It is a scratch `--require` preload that resolves a bare `gh` the way win32 does: `.com`/`.exe` only, otherwise a fake runner `gh` that exits 1. Run it from a scratch cwd, never from the worktree. It must give `wrapped[util.promisify.custom]` a promise form, because `pr-state.js` calls `promisify(execFile)` when it loads. Report its result as a simulation.\n\n### Key Files\n\n- `tests/bin-lib/reconcile/archive-merged.test.js` — add `PATH_STUB_SKIP` after the requires, and `{ skip: PATH_STUB_SKIP }` on the 31 stub-installing tests (helpers at lines 91, 124, 156)\n- `tests/bin-lib/reconcile/release-merged.test.js` — read-only reference: the `PATH_STUB_SKIP` constant and per-test placement to mirror (#3506)\n- `tests/bin-lib/reconcile/pr-state.test.js` — read-only reference: the same constant and reason string\n- `plugin/bin/lib/reconcile/pr-state.js` — read-only reference: the `execFileSync('gh')` / `promisify(execFile)` call sites and `classifyExecError`, which correctly maps a real `gh.exe` failure to `network-failure`. No change\n- `.github/workflows/windows-regression.yml` — read-only reference: `GH_TOKEN` on the `windows` job, which is why the unstubbed real `gh` makes a network call; also the dispatch target for the proof AC\n\n## Gotchas\n\n- Do not read the excerpt as the regression. The line-1928 test failed at base too. #3416's own seven tests are what made the file newly failing. Diff the per-test `not ok` sets in the run's `verify-logs/`, not the excerpt.\n- Do not touch `release-merged.test.js`. It was fixed by `1ed26d947` before this record was shaped, and the latest Windows run shows all 19 of its stub tests skipped.\n- Do not \"fix\" this by remapping `network-failure` in `pr-state.js` or `archive-merged.js`. A real `gh.exe` ran and failed, and `network-failure` is the correct answer to that.\n- `reap-merged.test.js` uses the same `installGhWrapper` idiom, but its `#2566` tests exist to exercise win32 behavior. Skipping them on win32 would remove the only platform they test. Keep it, and the `git`-shim files, out of this record; they stay in #2767's baseline set. Do not widen this into a shared `tests/helpers/` stub helper without a separate record (#3506's ruling).\n- The ready record #3503 is likely to add `archive-merged` tests. Any new stub-installing test must carry `PATH_STUB_SKIP`. Whichever PR lands second rebases and re-runs the scripted set check.\n- Do not edit `.claude/skills/windows-checkout-test-parity/SKILL.md` here. #3579 owns the PATH-stub anti-pattern row.\n- Never stub `process.platform` in a committed test to exercise the skip. It is process-global (`windows-checkout-test-parity` Anti-Patterns). The scratch simulation forces the skip through an env var in a throwaway copy only.\n\n## Original request\n\nWindows regression: 2 test file(s) newly failing after dcdd58863\n\nThe post-merge Windows check failed on commit dcdd588637ec1e47fbe9bc8deb55c96859e75b1f (compared against 3bf097c8e).\n\n**Merged PR:** #3533 (https://github.com/thn-inc/claude-tweaks/pull/3533)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39229351955\n\n### Newly failing test files\n- `tests/bin-lib/reconcile/archive-merged.test.js`\n- `tests/bin-lib/reconcile/release-merged.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/reconcile/archive-merged.test.js`\n\n```\nnot ok 5060 - archiveMerged: a main-loop decideArchive skip (no-pr) enters the structurally-stuck residue counter\n  ---\n  duration_ms: 701.0168\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\reconcile\\\\archive-merged.test.js:1928:1'\n  failureType: 'testCodeFailure'\n  error: 'expected a no-pr skip, got {\"archived\":[],\"skipped\":[{\"runDir\":\"D:\\\\\\\\a\\\\\\\\_temp\\\\\\\\archive-merged-oiqhsC\\\\\\\\.claude-tweaks\\\\\\\\pipelines\\\\\\\\2026-01-01T000000-nopr-main-1733\",\"reason\":\"network-failure\"}]}'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n```\n\n#### `tests/bin-lib/reconcile/release-merged.test.js`\n\n```\nnot ok 5372 - releaseMerged: Phase 1.5 resolves prState via the pool and reaches a merged-PR release decision\n  ---\n  duration_ms: 1835.2883\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\reconcile\\\\release-merged.test.js:246:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    the merged-PR evidence must reach decideRelease and release the claim\n    \n    0 !== 1\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-19T09:40:13Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3581,
-        "state": "OPEN",
-        "title": "Windows regression: 2 test file(s) newly failing after dcdd58863",
-        "updatedAt": "2026-10-19T12:28:34Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
     ]
   ],
   "excluded": [
@@ -6317,13 +5839,5 @@
     }
   ],
   "grouping": "per-record",
-  "bundles": [
-    {
-      "records": [
-        3564,
-        3565,
-        3581
-      ]
-    }
-  ]
+  "bundles": []
 }
