@@ -250,11 +250,15 @@ Read `step3-doc-freshness-lens.md` in this skill's directory for the procedure: 
 
 Read `step3-skill-load-delta.md` in this skill's directory and run it on every code-mode review: one read-only CLI call reporting each skill entry point's floor and closure delta. It never changes the verdict and never skips silently.
 
+### Cross-Lens Corroboration (`medium` only)
+
+**Only when the resolved `review-effort` tier (Step 2.5) is `medium`**, read `step3-cross-lens-corroboration.md` in this skill's directory and run it after Step 3's per-lens reproduction completes: a deterministic, agent-free pass that promotes an `unconfirmed` finding two different lenses reported independently to `confirmed`. Skip it at `low` and at `high` and above, where Step 3.5 below applies.
+
 ### Step 3.5 & 3.6: Cross-Lens Debate, Per-Candidate Refutation, and Gap-Sweep
 
 Three effort-gated findings-quality mechanisms run after Step 3's per-lens reproduction completes: Cross-Lens Debate (resolves contradictions between different lenses reviewing the same region), the Per-Candidate Refutation Pass (re-examines `confirmed` findings at or above a `medium` severity floor, capped at 10 per review, for correlated error reproduction-pair agreement alone can't catch), and Gap-Sweep / Completeness Critic (a single fresh-eyes agent asking what every angle-scoped lens, collectively, missed).
 
-**Skip all three entirely when the resolved `review-effort` tier (Step 2.5) is `low` or `medium`** — proceed directly to Step 3 Routing below, matching Step 3's own narrower lens scope at those tiers.
+**Skip all three entirely when the resolved `review-effort` tier (Step 2.5) is `low` or `medium`** — proceed directly to Step 3 Routing below (at `medium`, after Cross-Lens Corroboration), matching Step 3's own narrower lens scope at those tiers.
 
 **At `high` and above**, Cross-Lens Debate runs. **At `xhigh` and `max` only**, the Per-Candidate Refutation Pass and Gap-Sweep additionally run (one tier stricter, so `high`-tier reviews aren't paying for all three mechanisms at once). Read `step3-debate-and-refutation.md` in this skill's directory for the full procedure — dispatch templates, the `review-coordination.js` `detect-overlap`/`resolve-debate`/`resolve-refutation` invocations, and decision-log formats — lazy-loaded only when the resolved tier is `high` or above, following the same lazy-load pattern as `step3-routing.md`.
 
