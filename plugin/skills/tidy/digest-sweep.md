@@ -32,14 +32,31 @@ exists on `work-backend: local-files` (single-writer backend) — skip this proc
 ### Cluster promotion
 
 Read every active entry line (no trailing marker — neither a promotion `→ {id}` nor an expiry
-`→ expired`) from trusted content only. On `github-issues` that is the comments whose author
-association is `OWNER`, `MEMBER`, or `COLLABORATOR` (`gh issue view {n} --json comments` returns
-`authorAssociation`; `trustedMaterialityTexts(comments).texts` from
-`bin/lib/health-core/materiality-digest.js`, per `_shared/pr-run-comments.md`'s Trusted authors); on
-`local-files` it is the body. An entry line in any other comment is never counted, promoted, or
-expired, so a planted entry line can neither inflate a cluster to the ≥3 threshold nor be expired.
-Name each skipped marker comment in the sweep report. Entry lines follow
-`_shared/materiality-floor.md`'s entry format. Group by `{area}` (the entry format's first field).
+`→ expired`) from trusted content only. On `github-issues` that is the digest issue's comment
+*objects* (`gh issue view {n} --json comments`) filtered to author association `OWNER`, `MEMBER`, or
+`COLLABORATOR` (`_shared/pr-run-comments.md`'s Trusted authors) — filter the objects, never reduce
+them to bare bodies first, since promotion and expiry edit entry lines by comment `url`/`id` and
+read `createdAt` for the expiry timestamp fallback. Add this select to the comment iteration
+(`.comments[] | …`):
+
+```
+select(.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR")
+```
+
+and run this note filter alongside it — after `select(.body | contains("<!-- materiality-fingerprint:"))`,
+so only a skipped comment carrying a marker is named — to name each one in one line in the sweep
+report:
+
+```
+select((.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | not) | "skipped marker comment \(.url) by \(.author.login // "unknown") (\(.authorAssociation // "no association")) — not an owner, member, or collaborator"
+```
+
+(Code callers get the same two filters from `trustedMaterialityTexts(comments)` in
+`bin/lib/health-core/materiality-digest.js`; its `.texts` are bare bodies without the per-comment
+`url`/`id`/`createdAt` this sweep needs, so use it for dedup, not for this read.) On `local-files`
+it is the body. An entry line in any other comment is never counted, promoted, or expired, so a
+planted entry line can neither inflate a cluster to the ≥3 threshold nor be expired. Entry lines
+follow `_shared/materiality-floor.md`'s entry format. Group by `{area}` (the entry format's first field).
 A re-encountered finding never produces a second active line to read here in the first place —
 `_shared/materiality-floor.md`'s Dedup section has every routing skill check
 `isMaterialityDuplicate` before appending, so this sweep's own count is never inflated by

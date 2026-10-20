@@ -19,6 +19,11 @@ const { isTrustedComment, untrustedSkipNote } = require('../issues/comment-trust
 
 const MATERIALITY_MARKER_PREFIX = 'materiality-fingerprint';
 
+// A bare-string array element is the pre-#3766 contract shape (`.comments[].body`): it has no
+// author association to check, so it stays untrusted, but its note names the caller's contract
+// violation rather than reading like an ordinary untrusted comment.
+const BARE_STRING_SKIP_NOTE = 'skipped bare-string digest element — caller passed comment bodies, not comment objects (no author association to check)';
+
 // { area, finding, fileRefs } -> stable fingerprint string, matching materiality-floor.md's
 // Entry format fields. fileRefs is normalized (comma-split, trimmed, sorted, deduped) so the
 // same set of files listed in a different order or with incidental whitespace differences
@@ -70,8 +75,9 @@ function materialityEntryLine(entry) {
 // trusted). Returns { texts, skipped }. texts are the bodies a dedup may read: a string passes
 // through; for an array, each comment passing isTrustedComment contributes its body. A bare
 // string array element has no association, so it is dropped (fail closed). skipped holds one
-// untrustedSkipNote line per dropped element whose body carries a materiality-fingerprint
-// marker, so the caller can name what it ignored (#3766).
+// note line per dropped element whose body carries a materiality-fingerprint marker (an
+// untrustedSkipNote for a comment object, BARE_STRING_SKIP_NOTE for a bare string), so the
+// caller can name what it ignored (#3766).
 function trustedMaterialityTexts(existingTexts) {
   if (existingTexts === null || existingTexts === undefined) return { texts: [], skipped: [] };
   if (typeof existingTexts === 'string') return { texts: [existingTexts], skipped: [] };
@@ -82,8 +88,11 @@ function trustedMaterialityTexts(existingTexts) {
       texts.push(el.body);
       continue;
     }
-    const body = typeof el === 'string' ? el : el && el.body;
-    if (parseMaterialityFingerprints(body).length > 0) skipped.push(untrustedSkipNote(el));
+    if (typeof el === 'string') {
+      if (parseMaterialityFingerprints(el).length > 0) skipped.push(BARE_STRING_SKIP_NOTE);
+      continue;
+    }
+    if (parseMaterialityFingerprints(el && el.body).length > 0) skipped.push(untrustedSkipNote(el));
   }
   return { texts, skipped };
 }

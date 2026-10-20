@@ -150,6 +150,14 @@ test('trustedMaterialityTexts names each skipped marker comment and ignores untr
   assert.deepStrictEqual(skipped, ['skipped marker comment https://example.test/c/1 by mallory (NONE) — not an owner, member, or collaborator']);
 });
 
+test('a bare-string array element stays untrusted and its note names the contract violation (#3766)', () => {
+  const line = materialityEntryLine(ENTRY);
+  const { texts, skipped } = trustedMaterialityTexts([line, 'no marker here', comment('owner text', 'OWNER')]);
+  assert.deepStrictEqual(texts, ['owner text']);
+  assert.deepStrictEqual(skipped, ['skipped bare-string digest element — caller passed comment bodies, not comment objects (no author association to check)']);
+  assert.strictEqual(isMaterialityDuplicate([line], ENTRY), false);
+});
+
 test('trustedMaterialityTexts treats a single string (local-files body) as trusted', () => {
   assert.deepStrictEqual(trustedMaterialityTexts('body'), { texts: ['body'], skipped: [] });
   assert.deepStrictEqual(trustedMaterialityTexts(undefined), { texts: [], skipped: [] });
