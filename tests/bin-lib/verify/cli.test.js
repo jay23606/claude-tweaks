@@ -2272,6 +2272,96 @@ test('--baseline: the scratch worktree is gone after the run (#3043)', async () 
   assert.strictEqual((list.match(/^worktree /gm) || []).length, 1, list);
 });
 
+// #3511: --scope + --baseline. baselineRepo() on a feature branch carrying a
+// map-form declaration (unit = the failing-at-base suite) plus src/a.js.
+// The failing suite is declared AHEAD of `other` (the realistic ordering, and
+// the #3401 incident's), so every test here depends on run.js's
+// continueSuitesAfterFailure keeping the later suite running.
+function scopedBaselineRepo(opts = {}) {
+  // `'retry' in opts`, not a destructuring default: `{ retry: undefined }` must
+  // mean "no retry key" (JSON.stringify drops it), not fall back to the default.
+  const retry = 'retry' in opts ? opts.retry : { unit: 'node --test --test-reporter=tap {file}' };
+  const r = baselineRepo();
+  const branch = r.git('symbolic-ref', '--short', 'HEAD').trim();
+  // `envProbe`: the failing file reports the PROBE_ENV it ran under, committed
+  // on the base so base and HEAD both fail with the same test and the run's
+  // per-file logs show which --cmd-env each spawn carried.
+  if (opts.envProbe) commitFile(r, 'tests/env.test.js', "require('node:test')('env', () => { throw new Error('PROBE_ENV=' + process.env.PROBE_ENV); });\n");
+  r.git('checkout', '-q', '-b', 'feature');
+  commitFile(r, '.claude-tweaks/verify-scope.json', JSON.stringify({
+    checks: { tests: { unit: SUITE.slice('tests='.length), other: 'node -e 0' } },
+    retry,
+    rules: [
+      { match: 'src/**', suites: ['unit'], static: false },
+      { match: '.claude-tweaks/**', suites: [], static: false },
+    ],
+  }));
+  commitFile(r, 'src/a.js', 'module.exports = 1;\n');
+  return { ...r, branch, scoped: ['--scope', '.claude-tweaks/verify-scope.json', '--integration-branch', branch, '--baseline', branch, '--no-stamp'] };
+}
+
+test('AC1.1: --scope + --baseline with no --baseline-cmd adjudicates via the declaration retry template — exit 0, never 2, report carries scope and baselineAdjudicated (#3511)', async () => {
+  const r = scopedBaselineRepo();
+  const { code, stdout, stderr } = await runCli(r.scoped, r.opts);
+  assert.notStrictEqual(code, 2, stderr);
+  assert.strictEqual(code, 0, stdout + stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  // No prior stamp anchor → selectScope forces mode full (scope.js), exactly #3401's incident shape.
+  assert.strictEqual(report.scope.mode, 'full');
+  assert.deepStrictEqual(report.scope.suites, ['unit', 'other']);
+  assert.strictEqual(report.baselineAdjudicated.verdict, 'pass');
+  assert.deepStrictEqual(report.baselineAdjudicated.baselineFailing, ['tests/env.test.js']);
+});
+
+test('--scope + --baseline adjudicates when the failing suite is declared before a passing one — the later suite still runs (#3511)', async () => {
+  const r = scopedBaselineRepo();
+  const { code, stdout, stderr } = await runCli(r.scoped, r.opts);
+  assert.strictEqual(code, 0, stdout + stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  assert.strictEqual(report.checks.other.skipped, undefined);
+  assert.strictEqual(report.checks.other.exitCode, 0);
+  assert.strictEqual(report.baselineAdjudicated.verdict, 'pass');
+});
+
+test('AC1.1: --scope + --baseline-cmd naming a declared suite with no --cmd is accepted and wins over the retry template (#3511)', async () => {
+  const r = scopedBaselineRepo({ retry: { unit: 'node -e "process.exit(9)" {file}' } });
+  const { code, stdout, stderr } = await runCli([...r.scoped, '--baseline-cmd', 'unit=node --test --test-reporter=tap {file}'], r.opts);
+  assert.strictEqual(code, 0, stdout + stderr);
+});
+
+test('--scope: a --baseline-cmd naming neither a --cmd nor a declared suite is a usage error (exit 2) before any check runs (#3511)', async () => {
+  const r = scopedBaselineRepo();
+  const { code, stderr } = await runCli([...r.scoped, '--baseline-cmd', 'web=node --test {file}'], r.opts);
+  assert.strictEqual(code, 2);
+  assert.match(stderr, /--baseline-cmd "web" names no --cmd or declared suite \(--cmd: none; suites: unit, other\)/);
+  // Before any check runs: no log of any kind was written, not just no unit.log.
+  const logDir = path.join(r.gitDir, 'claude-tweaks-verify');
+  assert.deepStrictEqual(fs.existsSync(logDir) ? fs.readdirSync(logDir) : [], []);
+});
+
+test('--scope: --baseline with no --baseline-cmd and no declared retry template is a usage error (exit 2) (#3511)', async () => {
+  const r = scopedBaselineRepo({ retry: undefined });
+  const { code, stderr } = await runCli(r.scoped, r.opts);
+  assert.strictEqual(code, 2);
+  assert.match(stderr, /--baseline: no --baseline-cmd and the declaration has no retry template/);
+});
+
+test('--scope + --baseline: a --cmd-env bound to a declared-only suite reaches the per-file base and isolated runs (#3511)', async () => {
+  const r = scopedBaselineRepo({ envProbe: true });
+  const { code, stdout, stderr } = await runCli([...r.scoped, '--cmd-env', 'unit=PROBE_ENV=set'], r.opts);
+  assert.strictEqual(code, 0, stdout + stderr);
+  const logDir = path.join(r.gitDir, 'claude-tweaks-verify');
+  const logs = fs.readdirSync(logDir);
+  for (const kind of ['baseline', 'isolated']) {
+    const names = logs.filter((f) => f.startsWith(`unit-${kind}-`));
+    assert.ok(names.length > 0, `a unit-${kind}-* log exists: ${logs.join(', ')}`);
+    for (const f of names) {
+      const body = fs.readFileSync(path.join(logDir, f), 'utf8');
+      assert.match(body, /PROBE_ENV=set/, `${f} ran under the declared-only suite's --cmd-env`);
+    }
+  }
+});
+
 // #3072: scopedRepo on its init branch (the integration branch), a feature
 // branch cut from it carrying the full-pass anchor, then a --no-ff merge of the
 // integration branch bringing in N `ui/**` files plus one own-work `src/**` commit.
