@@ -75,6 +75,7 @@ function okDeps(overrides = {}) {
       }
       if (cmd === 'node' && String(args[0]).endsWith('wrap-up-state.js')) return { stdout: JSON.stringify({ state: { isRepo: true, branch: 'b' }, ops: [], since: 'abc123', sinceDate: '2026-09-05T00:00:00Z', rendered: 'Branch b\n' }), stderr: '' };
       if (cmd === 'node' && String(args[0]).endsWith('resolve-blockers.js')) return { stdout: JSON.stringify({ 1600: { blockedBy: [1535], openBlocker: false } }), stderr: '' };
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return { stdout: JSON.stringify({ state: 'green', failing: [], pending: [] }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify({ state: 'OPEN', isDraft: false, mergeStateStatus: 'CLEAN', headRefOid: 'deadbee', statusCheckRollup: [], reviewDecision: null }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'view') return { stdout: JSON.stringify({ labels: [{ name: 'ready' }, { name: 'auto:merge' }] }), stderr: '' };
       if (cmd === 'gh' && args[0] === 'issue' && args[1] === 'list') return { stdout: JSON.stringify([{ number: 1600, title: 'Dependent', body: '' }]), stderr: '' };
@@ -859,6 +860,32 @@ test("AC1.1: a pipe inside a deferred row's Resolution stays in the Resolution c
   assert.deepStrictEqual(one.deferredUnstagedItems, ['2']);
 });
 
+test('AC1.1: parseLedger reads a row whose Item carries an escaped pipe as 5 columns (status recognized, Defer-reason found)', () => {
+  const text = [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    String.raw`| 1 | build | Ruling: a\|b\|c | deferred | Defer-reason: genuinely-larger |`,
+    String.raw`| 2 | review | quote x\|y | fixed | done |`,
+    String.raw`| 3 | test | open item p\|q | open | — |`,
+  ].join('\n');
+  const r = parseLedger(text);
+  assert.strictEqual(r.total, 3);
+  assert.strictEqual(r.unrecognized, 0);
+  assert.strictEqual(r.open, 1);
+  assert.deepStrictEqual(r.byPhase.build, { open: 0, total: 1, unrecognized: 0 });
+  assert.strictEqual(r.missingDeferReason, 0);
+});
+
+test('parseLedger reads an escaped pipe in the Resolution cell without losing the Defer-reason', () => {
+  const text = [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    String.raw`| 1 | build | split work | deferred | Defer-reason: genuinely-larger; see a\|b |`,
+  ].join('\n');
+  const r = parseLedger(text);
+  assert.strictEqual(r.total, 1);
+  assert.strictEqual(r.missingDeferReason, 0);
+  assert.strictEqual(r.unrecognized, 0);
+});
+
 test('AC1.1: deferredUnstagedItems are qualified by the counted file across multiple ledgers (#3327)', async () => {
   const { pack } = await probeLedgers({
     '2026-09-05-a-ledger.md': ['| 2 | build | a | deferred | — |', '| 3 | build | b | deferred | → #900 |'],
@@ -1473,4 +1500,45 @@ test('#3399: parkedAtShaping is true for a record when any of its header files c
   const res = resolveRecords(deps, dir, null);
   assert.deepStrictEqual(res.records, [5]);
   assert.deepStrictEqual(res.parkedAtShaping, { 5: true });
+});
+
+// okDeps with pr-checks.js answered by `onPrChecks(args)`; every other command takes the okDeps default.
+function depsWithPrChecks(onPrChecks) {
+  return okDeps({
+    execFile: async (cmd, args) => {
+      if (cmd === 'node' && String(args[0]).endsWith('pr-checks.js')) return onPrChecks(args);
+      return okDeps().execFile(cmd, args);
+    },
+  });
+}
+
+test('pr probe attaches the pr-checks.js --pr verdict as ci (#3469)', async () => {
+  const runDir = fixtureRunDir();
+  const seen = [];
+  const deps = depsWithPrChecks((args) => {
+    seen.push(args);
+    return { stdout: '{"state":"pending","pending":["test"],"failing":[]}\n', stderr: '' };
+  });
+  const pack = await gatherPack({ runDir, cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
+  assert.strictEqual(seen.length, 1);
+  assert.deepStrictEqual(seen[0], [path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'pr-checks.js'), '--pr', '1901']);
+  assert.strictEqual(pack.pr.value.ci.state, 'pending');
+  assert.strictEqual(pack.pr.value.state, 'OPEN');
+});
+
+test('pr probe: a failed pr-checks.js spawn is ci read-failed, pr still ok (#3469)', async () => {
+  const deps = depsWithPrChecks(() => { throw new Error('spawn node ENOENT'); });
+  const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true, JSON.stringify(pack.pr));
+  assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
+  assert.ok(typeof pack.pr.value.ci.reason === 'string' && pack.pr.value.ci.reason.length > 0);
+  assert.strictEqual(pack.pr.value.state, 'OPEN');
+});
+
+test('pr probe: unparseable pr-checks.js output is ci read-failed (#3469)', async () => {
+  const deps = depsWithPrChecks(() => ({ stdout: 'not json\n', stderr: '' }));
+  const pack = await gatherPack({ runDir: fixtureRunDir(), cwd: '/w/tree', only: ['pr'], deps });
+  assert.strictEqual(pack.pr.ok, true);
+  assert.strictEqual(pack.pr.value.ci.state, 'read-failed');
 });

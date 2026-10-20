@@ -1071,8 +1071,11 @@ async function main(argv) {
     // no sanctioned CLI path. --run mirrors record-pr/spec-status's shape
     // (unambiguous-only resolution, explicit --run always wins); --ledger
     // overrides resolveLedgerPath's own run-dir-first/docs-plans-fallback
-    // resolution for the rare case (2+ *-ledger.md candidates) it can't
-    // disambiguate on its own.
+    // resolution for the rare case (2+ owned *-ledger.md candidates, or
+    // ownership not computable) it can't disambiguate on its own. The
+    // fallback only considers the docs/plans ledger this branch owns
+    // (merge-base diff or untracked, #3566) — an inherited one is never
+    // deleted from here.
     const callerIdentity = { sessionId: process.env.CLAUDE_CODE_SESSION_ID, cwd: process.cwd() };
     const {
       runDir, invalidRunArg, rest, worktreeLocalFallback, candidates,
@@ -1093,6 +1096,8 @@ async function main(argv) {
         process.stdout.write(`claude-tweaks: delete-ledger: ${resolved.candidates.length} candidate ledgers found, cannot pick one — pass --ledger <path> explicitly:\n${resolved.candidates.map((c) => `  ${c}`).join('\n')}\nLedger not deleted.\n`);
       } else if (!resolved.ok && resolved.reason === 'rejected') {
         process.stdout.write(`claude-tweaks: delete-ledger: --ledger ${resolved.candidates[0]} rejected (${resolved.detail}) — ledger not deleted\n`);
+      } else if (!resolved.ok && resolved.reason === 'unattributable') {
+        process.stdout.write(`claude-tweaks: delete-ledger: cannot attribute docs/plans ledgers to ${path.basename(runDir)} (${resolved.detail}) — pass --ledger <path> explicitly; ledger not deleted\n`);
       } else if (!resolved.ok) {
         process.stdout.write(`claude-tweaks: delete-ledger: no ledger found for ${path.basename(runDir)} — not found\n`);
       } else {
