@@ -432,19 +432,54 @@ function readConsoleState(runDir) {
 // the top-level staged/: where the two disagree, this check fails toward NOT
 // archiving (a pending per-spec proposal the console does not surface still
 // blocks the archive), never toward archiving it.
-function hasStagedItems(runDir) {
-  const stagedDirs = [
-    path.join(runDir, 'staged'),
-    ...listSpecDirs(runDir).map((name) => path.join(runDir, name, 'staged')),
+//
+// #3668: listStagedItems is the walk itself (names, not just a verdict) so the
+// archive-run verb can name what is pending; hasStagedItems is its non-empty
+// check. Spec dirs and names are sorted because readdir order is unspecified.
+// An unreadable staged/ is reported as one `{rel}/ (unreadable: {code})` entry,
+// so the refusal names the directory it could not prove empty.
+function listStagedItems(runDir) {
+  const stagedRels = [
+    'staged',
+    ...listSpecDirs(runDir).sort().map((name) => `${name}/staged`),
   ];
-  for (const dir of stagedDirs) {
+  const items = [];
+  for (const rel of stagedRels) {
     try {
-      if (fs.readdirSync(dir).some((n) => !n.startsWith('.'))) return true;
+      for (const n of fs.readdirSync(path.join(runDir, rel)).sort()) {
+        if (!n.startsWith('.')) items.push(`${rel}/${n}`);
+      }
     } catch (err) {
-      if (!err || err.code !== 'ENOENT') return true;
+      if (!err || err.code !== 'ENOENT') items.push(`${rel}/ (unreadable: ${(err && err.code) || 'unknown'})`);
     }
   }
-  return false;
+  return items;
+}
+
+function hasStagedItems(runDir) {
+  return listStagedItems(runDir).length > 0;
+}
+
+// #3668: the auto-merge short-circuit renders no console, so its staged/ items were
+// never shown to a human. Its decisions.md line is the signal, and it has two
+// producers: `Fast-lane auto-merge: issue #{n}` on the auto:merge-label path
+// (wrap-up/auto-merge-short-circuit.md), and `Manifesto-authorized auto-merge:
+// issue #{n}` on the merge-authorization-lever path (wrap-up/manifesto-authorized-merge.md,
+// its "Log line" section). That is the one 'none'-console path this guard covers: other
+// terminal runs keep staged/ by design (in-terminal consoles, fleet-approved closes,
+// tidy --approve runs) and must still archive. The line's absence, or a missing
+// decisions.md (ENOENT), leaves the guard off; any other read failure is unprovable
+// and fails toward NOT archiving, like hasStagedItems and readConsoleState. Agents reuse the bare phrase "Fast-lane
+// auto-merge: issue #N" in free-form text (a short-circuit that did not fire, a
+// console that resolved afterward), so the match requires the canonical
+// continuation the short-circuit's own log template writes (`, assess-agent-
+// autonomy verdict auto-merge`), and a `Review Console: terminal decision` line
+// turns the signal off: a console was presented and resolved.
+function consoleReplacedByAutoMergeShortCircuit(runDir) {
+  let raw;
+  try { raw = fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8'); } catch (err) { return !(err && err.code === 'ENOENT'); }
+  if (raw.includes('Review Console: terminal decision')) return false;
+  return /(?:Fast-lane|Manifesto-authorized) auto-merge: issue #\d+, assess-agent-autonomy verdict auto-merge/.test(raw);
 }
 
 // #1130: gh's MERGED state is a remote fact; the local main checkout may not
@@ -1703,8 +1738,15 @@ function trackArchiveResult(cacheTarget, repoSlug, dir, result, { escalate = esc
 // other iterRunDirsWithState caller already gets, rather than this file's own
 // third hand-rolled copy of the walk.
 // #3503: this sweep is exempt from the merged-partial record check — wrap-up
-// already closed a `clean` run, so no record is still being built, and this loop
-// has no stuck tracking, so a skip here would freeze the dir silently.
+// already closed a `clean` run, so no record is still being built. #3668: this
+// loop tracks only console-never-rendered-staged-pending skips of auto-merge
+// short-circuit runs (see the clean loop's onSkip). close-run has already run,
+// so no later step renders a console or applies those staged items, and
+// archive-run refuses exactly that subset — an untracked skip would freeze the
+// dir silently. Other closed no-console staged-pending runs stay untracked:
+// they are typically in-terminal consoles that retain staged/ by design. The
+// other skip reasons stay untracked too: their states (no-pr, pr-open, …) have
+// their own resolution paths or are pre-existing behavior the #1733 test pins.
 function iterCleanRunDirs(root) {
   return [...iterRunDirsWithState(root, { status: 'clean' })];
 }
@@ -1809,10 +1851,11 @@ function resolveRunPrState(root, state, branch) {
 // (skip, with the caller's own onSkip hook) -> localHasMerge ->
 // (skip on not-yet-caught-up) -> dryRun short-circuit -> archiveRunDir ->
 // trackArchiveResult. `onSkip` is the one place the two callers genuinely
-// differ: the main loop also calls `trackStuckSkip` on a `decideArchiveCore`
-// skip (#1613's structurally-stuck visibility); the clean loop does not (see
-// this file's clean-loop comment for why that asymmetry is intentional, not a
-// gap to "fix").
+// differ: the main loop calls `trackStuckSkip` on every `decideArchiveCore`
+// skip (#1613's structurally-stuck visibility); the clean loop passes a hook
+// that tracks only console-never-rendered-staged-pending on auto-merge
+// short-circuit runs (#3668) — see iterCleanRunDirs' comment for why that
+// subset, and why the rest stay untracked.
 function archiveMergedRun({
   root, repoSlug, dir, branch, state, dryRun, onSkip, runner, cacheTarget = root, integration, recordCheck,
 }) {
@@ -2163,14 +2206,20 @@ function archiveMerged({
   // decisions.md's PR-early lifecycle lines) instead. Otherwise identical to
   // the main loop: decideArchiveCore's merged-PR + resolved-console gate, then
   // the same local-fast-forward check before any move — via the same
-  // archiveMergedRun helper, minus the main loop's trackStuckSkip hook (see
-  // that helper's own comment for why the asymmetry is intentional).
+  // archiveMergedRun helper. Its onSkip tracks only
+  // console-never-rendered-staged-pending on auto-merge short-circuit runs:
+  // archive-run refuses exactly that closed subset (#3668), so an untracked skip
+  // would freeze the dir. Other closed no-console staged-pending runs stay
+  // untracked (typically in-terminal consoles that retain staged/ by design).
   for (const { dir, state } of iterCleanRunDirs(root)) {
     const branch = fallbackBranch(root, dir, state);
     if (!branch) { skipped.push({ runDir: dir, reason: 'no-branch' }); continue; }
 
     const runResult = archiveMergedRun({
       root, repoSlug, dir, branch, state, dryRun, runner, cacheTarget: cacheBatch, integration,
+      onSkip: (reason) => {
+        if (reason === 'console-never-rendered-staged-pending' && consoleReplacedByAutoMergeShortCircuit(dir)) trackStuckSkip(cacheBatch, repoSlug, dir, reason, { runner });
+      },
     });
     if (runResult.outcome === 'archived') { archived.push(dir); continue; }
     skipped.push({ runDir: dir, reason: runResult.reason });
@@ -2204,5 +2253,6 @@ module.exports = {
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand,
   compareWorkTwin, resolveIdenticalWorkTwin, listFilesRecursive,
   isClosedSlugStuck, recordNumbersFromSlug, runRecordSet, inFlightRecords,
+  listStagedItems, hasStagedItems, consoleReplacedByAutoMergeShortCircuit,
   refusal,
 };

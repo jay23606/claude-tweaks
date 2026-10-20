@@ -16,6 +16,7 @@ const {
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
   classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS,
   isClosedSlugStuck, recordNumbersFromSlug, refusal, unclosedRecords, runRecordSet, inFlightRecords,
+  listStagedItems, hasStagedItems, consoleReplacedByAutoMergeShortCircuit,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure } = require('../../../plugin/bin/lib/reconcile/cache');
 const { createIssueListCache } = require('../../../plugin/bin/lib/reconcile/issue-list-cache');
@@ -1279,6 +1280,81 @@ test('listSpecDirs: only spec-* subdirectories, ignores files and non-matching d
   assert.deepEqual(listSpecDirs(path.join(dir, 'does-not-exist')), []);
 });
 
+test('listStagedItems: names top-level and spec-N staged items, skips dotfiles, reports an unreadable dir', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'list-staged-items-'));
+  fs.mkdirSync(path.join(dir, 'staged'));
+  fs.writeFileSync(path.join(dir, 'staged', 'reflect-1.md'), 'x');
+  fs.writeFileSync(path.join(dir, 'staged', '.DS_Store'), 'x');
+  fs.mkdirSync(path.join(dir, 'spec-3375', 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'spec-3375', 'staged', 'review-1.patch'), 'x');
+  fs.mkdirSync(path.join(dir, 'spec-3380'));
+  fs.writeFileSync(path.join(dir, 'spec-3380', 'staged'), 'x');
+  assert.deepStrictEqual(listStagedItems(dir), [
+    'staged/reflect-1.md',
+    'spec-3375/staged/review-1.patch',
+    'spec-3380/staged/ (unreadable: ENOTDIR)',
+  ]);
+  assert.strictEqual(hasStagedItems(dir), true);
+});
+
+test('consoleReplacedByAutoMergeShortCircuit: true only for the short-circuit\'s canonical issue line, never a resolved console', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-merge-sc-'));
+  const FAST = '- AUTO 19:26:04 — log-decision: Fast-lane auto-merge: issue #3130, assess-agent-autonomy verdict auto-merge, pr-first-merge outcome merged.\n';
+  fs.writeFileSync(path.join(dir, 'decisions.md'), FAST);
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(dir), true);
+  fs.writeFileSync(path.join(dir, 'decisions.md'),
+    '- AUTO 10:00:00 — Manifesto-authorized auto-merge: issue #3668, assess-agent-autonomy verdict auto-merge (see RATIONALE), pr-first-merge outcome merged.\n');
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(dir), true);
+  fs.writeFileSync(path.join(dir, 'decisions.md'),
+    '- AUTO 07:38:10 — log-decision: Fast-lane auto-merge: deleted resolved ledger docs/plans/x-ledger.md for #3114 before merge.\n');
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(dir), false);
+  // Agent free-form reuse of the phrase, no short-circuit happened.
+  fs.writeFileSync(path.join(dir, 'decisions.md'),
+    '- AUTO 10:00:00 — log-decision: Fast-lane auto-merge: issue #1250 — the fast short-circuit did not fire; fell through to the normal Review Console.\n');
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(dir), false);
+  // A console was presented and resolved after the canonical line.
+  fs.writeFileSync(path.join(dir, 'decisions.md'),
+    `${FAST}- AUTO 10:05:00 — Review Console: terminal decision approve-all-merge. Reversibility: n/a.\n`);
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(dir), false);
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-merge-sc-none-'));
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(bare), false);
+  // An unprovable log (a non-ENOENT read failure — here decisions.md is a directory)
+  // fails toward NOT archiving, unlike a missing one.
+  const unreadable = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-merge-sc-eisdir-'));
+  fs.mkdirSync(path.join(unreadable, 'decisions.md'));
+  assert.strictEqual(consoleReplacedByAutoMergeShortCircuit(unreadable), true);
+});
+
+// Prose-code twin (#3668): the signal regex is a hand-copy of the log line the two
+// producer skills tell the agent to write. Extract those templates from the live prose
+// (whitespace-collapsed: the Manifesto-authorized one is hard-wrapped), fill the
+// placeholders, and require the detector to accept each. The exact count pins the
+// producer set, so a new or reworded template fails here instead of silently
+// disabling the archive-run guard.
+const REPO_ROOT = path.join(__dirname, '..', '..', '..');
+function shortCircuitLogTemplates(text) {
+  return [...text.matchAll(/`AUTO \{time\} — ((?:Fast-lane|Manifesto-authorized) auto-merge: issue #\{n\}, [^`]*)`/g)]
+    .map((m) => m[1].replace(/\s+/g, ' '))
+    .filter((t) => t.includes('assess-agent-autonomy'));
+}
+function detectsTemplate(template) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-merge-sc-twin-'));
+  fs.writeFileSync(path.join(dir, 'decisions.md'), `- AUTO 10:00:00 — ${template.replace('{n}', '3668')}\n`);
+  return consoleReplacedByAutoMergeShortCircuit(dir);
+}
+test('consoleReplacedByAutoMergeShortCircuit: detects every log-line template the producer skills write', () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, 'plugin', 'skills', 'wrap-up', rel), 'utf8');
+  const fast = shortCircuitLogTemplates(read('auto-merge-short-circuit.md'));
+  const manifesto = shortCircuitLogTemplates(read('manifesto-authorized-merge.md'));
+  assert.strictEqual(fast.length, 2, 'auto-merge-short-circuit.md carries two Fast-lane log templates');
+  assert.strictEqual(manifesto.length, 1, 'manifesto-authorized-merge.md carries one Manifesto-authorized log template');
+  for (const template of [...fast, ...manifesto]) {
+    assert.strictEqual(detectsTemplate(template), true, template);
+  }
+  // Go-red control: a producer reword that drops the canonical continuation is not detected.
+  assert.strictEqual(detectsTemplate(manifesto[0].replace('verdict auto-merge', 'verdict merge')), false);
+});
+
 // Re-pin the existing exports still resolve after the refactor above touched
 // the same module — a regression here would mean the export list drifted.
 test('archive-merged module still exports its pre-existing surface', () => {
@@ -1947,9 +2023,11 @@ test('archiveMerged: a pass processing 2 structurally-stuck dirs reads and write
 // --- #1733: archiveMergedRun's onSkip asymmetry — the one behavioral
 // difference the loop-dedup extraction had to preserve rather than "fix":
 // only the main loop's decideArchive skip feeds trackStuckSkip; the #1544
-// clean-status sweep's decideArchive skip does not. Both fixtures below
-// reach decideArchive's 'no-pr' reason (a resolvable branch with no PR found
-// at all, `gh pr list` returning an empty array), which IS one of
+// clean-status sweep's no-pr decideArchive skip does not (the sweep tracks
+// console-never-rendered-staged-pending since #3668, pinned by AC3.1 below).
+// Both fixtures below reach decideArchive's 'no-pr' reason (a resolvable
+// branch with no PR found at all, `gh pr list` returning an empty array),
+// which IS one of
 // STRUCTURALLY_STUCK_REASONS, and both dirs are backdated well past
 // STRUCTURALLY_STUCK_TTL_MS — so a residue-counter difference can only come
 // from the onSkip hook itself, not from isStructurallyStuck's own gating.
@@ -2008,7 +2086,67 @@ test('archiveMerged: a clean-loop decideArchive skip (no-pr) does NOT enter the 
   const failures = listResidueFailures(root);
   assert.ok(
     !failures.some((f) => f.reason === 'structurally-stuck' && f.path === runDir),
-    'the #1544 clean-status sweep must never feed a decideArchive skip into the structurally-stuck residue counter — the onSkip asymmetry is intentional, not a gap',
+    'the #1544 clean-status sweep must never feed a decideArchive no-pr skip into the structurally-stuck residue counter — the onSkip asymmetry is intentional, not a gap',
+  );
+});
+
+// #3668 AC3.1: the clean-status sweep tracks exactly one skip —
+// console-never-rendered-staged-pending on an auto-merge short-circuit run.
+// archive-run refuses exactly that closed subset, so no later step will ever
+// apply the staged items; without tracking, the dir would freeze silently.
+test('AC3.1: the clean-status sweep tracks a console-never-rendered-staged-pending skip toward structurally-stuck escalation (#3668)', { skip: PATH_STUB_SKIP }, () => {
+  const runId = '2026-10-16T155630-record-3668-clean';
+  const { root, runDir, featureSha } = fixtureCleanUnarchivedRun({ runId, consoleResolved: false });
+  fs.writeFileSync(path.join(runDir, 'decisions.md'),
+    '- AUTO 19:26:04 — log-decision: Fast-lane auto-merge: issue #3130, assess-agent-autonomy verdict auto-merge, pr-first-merge outcome merged.\n');
+  fs.mkdirSync(path.join(runDir, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'staged', 'reflect-1.md'), 'x\n');
+  const backdated = new Date(Date.now() - STRUCTURALLY_STUCK_TTL_MS * 2);
+  fs.utimesSync(runDir, backdated, backdated);
+
+  const wrapper = installGhWrapper([{
+    number: 99, state: 'MERGED', mergedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z', mergeCommit: { oid: featureSha },
+  }]);
+  let result;
+  try {
+    result = archiveMerged({ cwd: root });
+  } finally {
+    wrapper.restore();
+  }
+
+  const skip = result.skipped.find((s) => s.runDir === runDir);
+  assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
+  assert.ok(
+    listResidueFailures(root).some((f) => f.reason === 'structurally-stuck' && f.path === runDir),
+    'the clean sweep must start the structurally-stuck residue counter for a staged-pending skip',
+  );
+});
+
+test('AC3.2: the clean-status sweep does NOT track a staged-pending skip for a closed run whose console was not replaced by the auto-merge short-circuit (#3668)', { skip: PATH_STUB_SKIP }, () => {
+  const runId = '2026-10-16T155630-record-3668-clean-noshort';
+  const { root, runDir, featureSha } = fixtureCleanUnarchivedRun({ runId, consoleResolved: false });
+  fs.mkdirSync(path.join(runDir, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'staged', 'reflect-1.md'), 'x\n');
+  const backdated = new Date(Date.now() - STRUCTURALLY_STUCK_TTL_MS * 2);
+  fs.utimesSync(runDir, backdated, backdated);
+
+  const wrapper = installGhWrapper([{
+    number: 99, state: 'MERGED', mergedAt: '2026-08-01T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z', mergeCommit: { oid: featureSha },
+  }]);
+  let result;
+  try {
+    result = archiveMerged({ cwd: root });
+  } finally {
+    wrapper.restore();
+  }
+
+  const skip = result.skipped.find((s) => s.runDir === runDir);
+  assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
+  assert.equal(skip.reason, 'console-never-rendered-staged-pending');
+  assert.ok(
+    !listResidueFailures(root).some((f) => f.reason === 'structurally-stuck' && f.path === runDir),
+    'a closed no-console staged-pending run without the short-circuit line (e.g. an in-terminal console) must not escalate as structurally stuck',
   );
 });
 
