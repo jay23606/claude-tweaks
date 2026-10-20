@@ -386,7 +386,9 @@ async function reconcile(opts = {}) {
       cwd: root, dryRun, sessionId: opts.sessionId, runner: issueListCache.runner, integration,
     });
     result.runs = r.archived.map((d) => ({ runDir: d, action: 'archived' }))
-      .concat(r.skipped.map((s) => ({ runDir: s.runDir, action: 'skipped', reason: s.reason })));
+      .concat(r.skipped.map((s) => ({
+        runDir: s.runDir, action: 'skipped', reason: s.reason, ...(s.unclosed !== undefined ? { unclosed: s.unclosed } : {}),
+      })));
   }
 
   // Same live-ref dependency as release/archive: derives branch state from

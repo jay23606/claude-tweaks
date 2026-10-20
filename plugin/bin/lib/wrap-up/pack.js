@@ -19,6 +19,8 @@ const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
+const { ownedPlansFiles } = require('./ledger-ownership');
+const { ledgerRowCells } = require('./ledger-cells');
 const { isTimeoutError } = require('../shared-primitives');
 
 const PROBE_NAMES = ['residue', 'state', 'blastRadius', 'pr', 'recordLabels', 'claim', 'ledger', 'unblocked'];
@@ -309,6 +311,21 @@ function mergeBase(deps, cwd, integrationBranch) {
   return { base: null, ref: null };
 }
 
+// The merge base of `worktree`'s HEAD against its integration branch, or null
+// when it cannot be resolved. Same ladder resolveInputs uses for `inputs.base`
+// (policy key, then git/gh default, then origin/{branch} before the local
+// branch) so a caller outside the pack — ledger-write.js's resolveLedgerPath
+// — attributes ledgers against the same base. Never throws.
+function resolveWorktreeBase(worktree, deps = defaultDeps(worktree)) {
+  try {
+    const values = deps.resolvePolicy(['integration-branch'], worktree) || {};
+    const { branch } = resolveIntegrationBranch(deps, worktree, values['integration-branch']);
+    return mergeBase(deps, worktree, branch).base;
+  } catch {
+    return null;
+  }
+}
+
 // Resolved once, reported with sources: state ← run-state.json (or the parent
 // run's, for a spec-* subdirectory); records ← the resolveRecords ladder;
 // pr/worktree ← that state; policy ← one resolvePolicyConfig call;
@@ -427,7 +444,7 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
   const deferredUnstagedItems = [];
   const missingDeferReasonItems = [];
   for (const row of rows) {
-    const cells = row.split('|').slice(1, -1).map((c) => c.trim());
+    const cells = ledgerRowCells(row);
     const phase = cells[1] || 'unknown';
     const status = (cells[3] || '').toLowerCase();
     byPhase[phase] = byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };
@@ -468,15 +485,6 @@ function parseLedger(text, { excludeRecords = [] } = {}) {
 // branch already owns (#2563, #2887).
 function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
-}
-
-const PLANS_PREFIX = 'docs/plans/';
-
-// The names of the files directly under docs/plans/ in a `-z` git path list.
-function plansFileNames(nulSeparatedPaths) {
-  return nulSeparatedPaths.split('\0')
-    .filter((p) => p.startsWith(PLANS_PREFIX) && !p.slice(PLANS_PREFIX.length).includes('/'))
-    .map((p) => p.slice(PLANS_PREFIX.length));
 }
 
 function ledgerProbe(inputs, deps) {
@@ -520,11 +528,7 @@ function ledgerProbe(inputs, deps) {
   // current-branch run legitimately has it (its uncommitted ledger is still
   // owned).
   if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
-  const gitOptions = { cwd: inputs.worktree };
-  const owned = new Set([
-    ...plansFileNames(deps.git(['diff', '--name-only', '-z', '--relative', inputs.base, '--', PLANS_PREFIX], gitOptions)),
-    ...plansFileNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS_PREFIX], gitOptions)),
-  ]);
+  const owned = ownedPlansFiles({ worktree: inputs.worktree, base: inputs.base, git: deps.git });
   const ownedCandidates = candidates.filter((f) => owned.has(f));
   // Two or more owned ledgers (a branch that carries an earlier run's ledger
   // beside its own): the record-number boundary picks this run's, when it
@@ -649,7 +653,22 @@ function buildProbes(inputs, deps) {
     pr: async () => {
       backendOrThrow(); forgeOrThrow(); if (inputs.pr === null) throw new Error('no PR number in run-state.json');
       const { stdout } = await gh(['pr', 'view', String(inputs.pr), '--json', 'state,isDraft,mergeStateStatus,headRefOid,statusCheckRollup,reviewDecision']);
-      return JSON.parse(stdout);
+      const view = JSON.parse(stdout);
+      // #3469: the rollup alone reads a partial run green — pr-checks.js adds
+      // the head-run read and classifies, so the console never re-derives it.
+      // `--pr`, not `--run`: --run reads `stale` whenever local HEAD differs
+      // from the PR head, which would lose the PR head's own verdict; the
+      // console shows the PR head's own verdict.
+      let ci;
+      try {
+        const { stdout: out } = await deps.execFile('node', [path.join(BIN, 'pr-checks.js'), '--pr', String(inputs.pr)], { cwd: inputs.worktree || undefined, ...EXEC_OPTS });
+        const lines = String(out).split('\n').map((l) => l.trim()).filter(Boolean);
+        ci = JSON.parse(lines[lines.length - 1]);
+        if (ci === null || typeof ci !== 'object') throw new Error('pr-checks.js output is not a JSON object');
+      } catch (err) {
+        ci = { state: 'read-failed', reason: (err && err.message) || String(err) };
+      }
+      return { ...view, ci };
     },
     // Concurrency-capped (gh-pool.js's DEFAULT_CONCURRENCY) rather than a
     // raw unbounded Promise.all fan-out, so a large multi-spec record list
@@ -744,5 +763,5 @@ async function gatherPack({ runDir, cwd = process.cwd(), only = null, deps: over
 }
 
 module.exports = {
-  gatherPack, resolveInputs, wrapProbe, withTimeout, parseLedger, PROBE_NAMES, resolveRecords, headerRecords, closingRecords, worktreeMirror,
+  gatherPack, resolveInputs, resolveWorktreeBase, wrapProbe, withTimeout, parseLedger, PROBE_NAMES, resolveRecords, headerRecords, closingRecords, worktreeMirror,
 };
