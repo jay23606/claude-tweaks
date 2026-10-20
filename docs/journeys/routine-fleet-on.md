@@ -27,6 +27,7 @@ files:
 
 4. **Provisioning loop** — The skill walks the fleet composition table (the focus-scoped code-health vertical finders, the generalist sweeps, the shaping unit, the conditional grant unit, the dispatch drain, tidy weekly), running the existing CREATE/UPDATE procedure per row with fleet-resolved crons instead of the interactive cadence picker.
    - **Check:** The conditional grant unit (`backlog refine`'s headless posture) provisions **only** when `autonomy: unattended` AND `grant-origination-enabled: true` were both already set — otherwise it is reported as skipped with the two-key reason. A repo missing a template gets a partial fleet with each skipped row named, never a refusal.
+   - **Check:** Re-running `fleet on` on a fleet provisioned before a row was added (e.g. the `security-hardening` Vertical finder, daily 07:00 UTC, #3276) creates only the new routine. Every existing routine reports "reconciled, no drift", because a new row takes a free cron slot instead of shifting an existing row's cron.
 
 5. **Summary** — One table: each row's PREFIXED_NAME, created vs adopted vs reconciled vs skipped, its cron, and every policy value the Manifesto wrote.
    - **Check:** A second `fleet on` run is an idempotent reconcile — existing routines (including any created earlier by standalone `create`) are adopted or re-synced, never duplicated.
