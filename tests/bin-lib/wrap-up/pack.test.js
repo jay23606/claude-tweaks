@@ -860,6 +860,32 @@ test("AC1.1: a pipe inside a deferred row's Resolution stays in the Resolution c
   assert.deepStrictEqual(one.deferredUnstagedItems, ['2']);
 });
 
+test('AC1.1: parseLedger reads a row whose Item carries an escaped pipe as 5 columns (status recognized, Defer-reason found)', () => {
+  const text = [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    String.raw`| 1 | build | Ruling: a\|b\|c | deferred | Defer-reason: genuinely-larger |`,
+    String.raw`| 2 | review | quote x\|y | fixed | done |`,
+    String.raw`| 3 | test | open item p\|q | open | — |`,
+  ].join('\n');
+  const r = parseLedger(text);
+  assert.strictEqual(r.total, 3);
+  assert.strictEqual(r.unrecognized, 0);
+  assert.strictEqual(r.open, 1);
+  assert.deepStrictEqual(r.byPhase.build, { open: 0, total: 1, unrecognized: 0 });
+  assert.strictEqual(r.missingDeferReason, 0);
+});
+
+test('parseLedger reads an escaped pipe in the Resolution cell without losing the Defer-reason', () => {
+  const text = [
+    '| # | Phase | Item | Status | Resolution |', '|---|---|---|---|---|',
+    String.raw`| 1 | build | split work | deferred | Defer-reason: genuinely-larger; see a\|b |`,
+  ].join('\n');
+  const r = parseLedger(text);
+  assert.strictEqual(r.total, 1);
+  assert.strictEqual(r.missingDeferReason, 0);
+  assert.strictEqual(r.unrecognized, 0);
+});
+
 test('AC1.1: deferredUnstagedItems are qualified by the counted file across multiple ledgers (#3327)', async () => {
   const { pack } = await probeLedgers({
     '2026-09-05-a-ledger.md': ['| 2 | build | a | deferred | — |', '| 3 | build | b | deferred | → #900 |'],
