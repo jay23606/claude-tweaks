@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-20T075412-record-2734",
-  "sessionId": "15f16313-137f-4439-a141-9a6170e83b0e",
-  "claimedAt": "2026-10-20T07:56:12.546Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "merged: spec 2734",
+  "releasedAt": "2026-10-20T11:22:08.272Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/3709"
 }
