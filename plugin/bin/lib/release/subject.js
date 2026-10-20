@@ -1,5 +1,5 @@
 // bin/lib/release/subject.js — the ONE merge-subject/body composer every merge
-// site calls (#2251): pr-first `gh pr merge --squash -t/-b` and the four
+// site calls (#2251): pr-first `gh pr merge --squash -t/--body-file` and the four
 // local-merge `git merge --no-ff -m` sites (settle-and-merge.md,
 // auto-merge-short-circuit.md, local-merge-auto-finish.md, worktree-merge.md)
 // all reach it through bin/compose-subject.js. Conventional Commits grammar

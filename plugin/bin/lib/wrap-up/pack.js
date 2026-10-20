@@ -15,7 +15,7 @@ const { execFile: execFileCb, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const { resolvePolicyConfig } = require('../policy-schema');
 const { parseManifestYaml } = require('../flow/manifest');
-const { parseDependencies } = require('../issues/record');
+const { parseDependencies, DEFER_REASONS } = require('../issues/record');
 const { runWithConcurrency } = require('../reconcile/gh-pool');
 const { parseRepo, repoSlug } = require('../repo-resolve');
 const { readRunStateWithParent } = require('../hooks/context');
@@ -357,12 +357,57 @@ function withTimeout(fn, ms) {
 // "terminal" the way it was before this fix.
 const LEDGER_TERMINAL_STATUSES = new Set(['fixed', 'deferred', 'accepted', 'acknowledged', 'observation']);
 
-function parseLedger(text) {
+// #3327: a `deferred` row must name where its work went — a `staged/…` proposal
+// or a record reference (_shared/ledger-format.md's Resolution-text requirements). A
+// triage-only Resolution is parked with no trace, so it is flagged. A record
+// reference is an issue/PR URL path (`gh issue create` prints URLs) or a `#N`
+// token — except the run's own record numbers (`excludeRecords`: the run's
+// origin, not a carrying record) and a `#N` preceded by the word `item` (a
+// ledger-item cross-reference, not a record).
+const LEDGER_DEFERRED_STAGED_RE = /\bstaged\//;
+const LEDGER_DEFERRED_URL_RE = /\/(?:issues|pull)\/\d+/;
+const LEDGER_DEFERRED_HASH_RE = /#(\d+)/g;
+
+function namesRecordReference(resolution, excludeRecords) {
+  if (LEDGER_DEFERRED_URL_RE.test(resolution)) return true;
+  for (const m of resolution.matchAll(LEDGER_DEFERRED_HASH_RE)) {
+    if (excludeRecords.includes(Number(m[1]))) continue;
+    if (/\bitem\s*$/i.test(resolution.slice(0, m.index))) continue;
+    return true;
+  }
+  return false;
+}
+
+// #3004: /build must not park a review minor without a valid `Defer-reason:`
+// (_shared/deferral-gate.md). The backstop covers rows whose Phase is exactly
+// `build` (case-insensitive) with status `deferred` or `open`. `build/skill`,
+// `build/docs`, and `build/ops` rows are other producers (skill observations,
+// doc deferrals, ops items) and are out of scope. A blocked-work row must name
+// `blocked-dependency` or `blocked-external` like any other, so it is not
+// special-cased. A row naming a `staged/…` path or a record reference is
+// exempt: its reason lives in the staged proposal's or filed record's own
+// `Defer-reason:`. A row whose Item starts with the SDD ruling producer's
+// fixed `SDD ruling —` template is exempt too: a ruling states a decision to
+// ratify, not a deferral, and the producer's no-run-dir and degraded
+// stage-item.js paths emit it `open` with no staged path
+// (build/dispatch.md). A Resolution is valid iff it carries exactly one token
+// and its value is in DEFER_REASONS.
+const LEDGER_DEFER_REASON_RE = /Defer-reason:\s*`?([A-Za-z-]+)(?![\w-])`?/g;
+const LEDGER_SDD_RULING_ITEM_RE = /^SDD ruling —/;
+
+function hasValidDeferReason(resolution) {
+  const matches = [...resolution.matchAll(LEDGER_DEFER_REASON_RE)];
+  return matches.length === 1 && DEFER_REASONS.includes(matches[0][1]);
+}
+
+function parseLedger(text, { excludeRecords = [] } = {}) {
   const rows = text.split('\n').filter((l) => /^\|\s*\d+\s*\|/.test(l));
   const byPhase = {};
   let open = 0;
   let unrecognized = 0;
   const unrecognizedValues = new Set();
+  const deferredUnstagedItems = [];
+  const missingDeferReasonItems = [];
   for (const row of rows) {
     const cells = row.split('|').slice(1, -1).map((c) => c.trim());
     const phase = cells[1] || 'unknown';
@@ -374,8 +419,25 @@ function parseLedger(text) {
     } else if (!LEDGER_TERMINAL_STATUSES.has(status)) {
       unrecognized += 1; byPhase[phase].unrecognized += 1; unrecognizedValues.add(cells[3] || '');
     }
+    if (status === 'deferred') {
+      const resolution = cells.slice(4).join('|');
+      if (!LEDGER_DEFERRED_STAGED_RE.test(resolution) && !namesRecordReference(resolution, excludeRecords)) {
+        deferredUnstagedItems.push(cells[0]);
+      }
+    }
+    if (phase.toLowerCase() === 'build' && (status === 'deferred' || status === 'open')) {
+      const item = cells[2] || '';
+      const resolution = cells.slice(4).join('|');
+      const reasonLivesElsewhere = LEDGER_DEFERRED_STAGED_RE.test(item) || LEDGER_DEFERRED_STAGED_RE.test(resolution)
+        || LEDGER_SDD_RULING_ITEM_RE.test(item) || namesRecordReference(resolution, excludeRecords);
+      if (!reasonLivesElsewhere && !hasValidDeferReason(resolution)) missingDeferReasonItems.push(cells[0]);
+    }
   }
-  return { open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues] };
+  return {
+    open, total: rows.length, byPhase, unrecognized, unrecognizedValues: [...unrecognizedValues],
+    deferredUnstaged: deferredUnstagedItems.length, deferredUnstagedItems,
+    missingDeferReason: missingDeferReasonItems.length, missingDeferReasonItems,
+  };
 }
 
 // A ledger filename names record {n} only at a `-{n}-` or `-{n}.` boundary. A
@@ -383,12 +445,20 @@ function parseLedger(text) {
 // (`#26` matching `2026-09-05-…`), silently folding a stranger's ledger into
 // this run's counts (#1930 review M5). `_shared/ledger-format.md`'s Location
 // section defines the canonical filename as embedding the plan/spec TOPIC
-// slug, not the record number — this check recognizes only the minority of
-// ledgers that happen to be named after a record — so `ledgerProbe` below
-// uses it as a disambiguator between multiple candidates, never as the sole
-// positive-match test (#2563).
+// slug, not the record number, so this check cannot be the test that makes a
+// ledger this run's. `ledgerProbe` uses it only to choose among ledgers the
+// branch already owns (#2563, #2887).
 function namesRecord(file, n) {
   return file.includes(`-${n}-`) || file.includes(`-${n}.`);
+}
+
+const PLANS_PREFIX = 'docs/plans/';
+
+// The names of the files directly under docs/plans/ in a `-z` git path list.
+function plansFileNames(nulSeparatedPaths) {
+  return nulSeparatedPaths.split('\0')
+    .filter((p) => p.startsWith(PLANS_PREFIX) && !p.slice(PLANS_PREFIX.length).includes('/'))
+    .map((p) => p.slice(PLANS_PREFIX.length));
 }
 
 function ledgerProbe(inputs, deps) {
@@ -400,35 +470,58 @@ function ledgerProbe(inputs, deps) {
   // shape. That file, when present, is authoritative; the docs/plans/ glob
   // below is only the fallback for every other run (#2563 AC4).
   const runDirLedgerText = readText(deps, path.join(inputs.runDir, 'ledger.md'));
+  const ownRecords = (inputs.records || []).map(Number);
   if (runDirLedgerText !== null) {
-    return { ...parseLedger(runDirLedgerText), files: ['ledger.md'] };
+    const one = parseLedger(runDirLedgerText, { excludeRecords: ownRecords });
+    return {
+      ...one,
+      deferredUnstagedItems: one.deferredUnstagedItems.map((i) => `ledger.md#${i}`),
+      missingDeferReasonItems: one.missingDeferReasonItems.map((i) => `ledger.md#${i}`),
+      files: ['ledger.md'],
+    };
   }
 
   const dir = path.join(inputs.worktree, 'docs', 'plans');
   const candidates = deps.readdir(dir).filter((f) => f.endsWith('-ledger.md'));
-  // "One ledger per pipeline run" (_shared/ledger-format.md): when exactly
-  // one *-ledger.md file exists in the worktree, it's unambiguously this
-  // run's regardless of how its {feature} slug was named — a real
-  // topic-slug ledger (the observed #2563 case) has no filename convention
-  // `namesRecord` can positively match. Only when more than one candidate is
-  // present does the record-number boundary disambiguate a leftover
-  // stranger ledger from an earlier, uncleaned run (#1930 review M5's
-  // original false-positive fix) from this run's own.
-  let files = candidates.length <= 1 ? candidates : candidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
-  // When 2+ candidates exist and NONE names any of this run's records at a
-  // boundary — the common case, since a real topic-slug ledger (the #2563
-  // AC1 shape) has no record-number convention for `namesRecord` to match —
-  // the filter above can't disambiguate at all. Reporting zero here would
-  // silently hide every one of this run's own open items behind an unrelated
-  // stray ledger (e.g. a fully-resolved file left over from an earlier,
-  // already-merged run). Fail toward over-counting instead: include every
-  // candidate, so a human reviewing `files` sees exactly what was counted
-  // and can correct it, rather than the gate silently passing on a false
-  // "nothing open."
-  if (candidates.length > 1 && files.length === 0) files = candidates;
+  if (candidates.length === 0) {
+    return { open: 0, total: 0, byPhase: {}, files: [], unattributedFiles: [], unrecognized: 0, unrecognizedValues: [], deferredUnstaged: 0, deferredUnstagedItems: [], missingDeferReason: 0, missingDeferReasonItems: [] };
+  }
+  // Ownership decides which docs/plans ledgers belong to this run (#2887). A
+  // ledger this branch's diff against the merge base adds, or that sits
+  // untracked in the worktree, is this run's. A ledger inherited from the base
+  // was written by another run: it is listed as unattributed, never counted.
+  // Filename matching cannot make this call (a topic-slug ledger names no
+  // record, and a stray can name any), so a merge base is required, and a git
+  // failure fails the probe instead of guessing. Ownership also retires the
+  // #2563 fallback that counted every candidate when none named the record:
+  // that fallback traded hiding this run's items behind a stray ledger for
+  // over-counting strangers' ledgers, and ownership removes that dilemma.
+  // If wrap-up runs after the branch already merged into the integration
+  // branch, the merge base equals HEAD and the run's committed ledger reads as
+  // unattributed. Base equal to HEAD is not treated as an error, because a
+  // current-branch run legitimately has it (its uncommitted ledger is still
+  // owned).
+  if (!inputs.base) throw new Error('ledger: merge base unavailable — cannot attribute docs/plans ledgers to this run');
+  const gitOptions = { cwd: inputs.worktree };
+  const owned = new Set([
+    ...plansFileNames(deps.git(['diff', '--name-only', '-z', '--relative', inputs.base, '--', PLANS_PREFIX], gitOptions)),
+    ...plansFileNames(deps.git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS_PREFIX], gitOptions)),
+  ]);
+  const ownedCandidates = candidates.filter((f) => owned.has(f));
+  // Two or more owned ledgers (a branch that carries an earlier run's ledger
+  // beside its own): the record-number boundary picks this run's, when it
+  // names one (#1930 review M5).
+  const named = ownedCandidates.filter((f) => inputs.records.some((n) => namesRecord(f, n)));
+  const files = ownedCandidates.length > 1 && named.length > 0 ? named : ownedCandidates;
+  // An owned ledger displaced by the namesRecord tie-break above is also listed
+  // here under unattributedFiles; it is not counted.
+  const unattributedFiles = candidates.filter((f) => !files.includes(f));
   const totals = {
     open: 0, total: 0, byPhase: {}, files: files.map((f) => path.posix.join('docs', 'plans', f)),
+    unattributedFiles: unattributedFiles.map((f) => path.posix.join('docs', 'plans', f)),
     unrecognized: 0, unrecognizedValues: [],
+    deferredUnstaged: 0, deferredUnstagedItems: [],
+    missingDeferReason: 0, missingDeferReasonItems: [],
   };
   const unrecognizedValuesSet = new Set();
   for (const f of files) {
@@ -436,8 +529,13 @@ function ledgerProbe(inputs, deps) {
     // readdir snapshot and this read is skipped, not a whole-probe failure.
     const text = readText(deps, path.join(dir, f));
     if (text === null) continue;
-    const one = parseLedger(text);
+    const one = parseLedger(text, { excludeRecords: ownRecords });
     totals.open += one.open; totals.total += one.total; totals.unrecognized += one.unrecognized;
+    const displayPath = path.posix.join('docs', 'plans', f);
+    totals.deferredUnstaged += one.deferredUnstaged;
+    totals.deferredUnstagedItems.push(...one.deferredUnstagedItems.map((i) => `${displayPath}#${i}`));
+    totals.missingDeferReason += one.missingDeferReason;
+    totals.missingDeferReasonItems.push(...one.missingDeferReasonItems.map((i) => `${displayPath}#${i}`));
     for (const v of one.unrecognizedValues) unrecognizedValuesSet.add(v);
     for (const [phase, c] of Object.entries(one.byPhase)) {
       totals.byPhase[phase] = totals.byPhase[phase] || { open: 0, total: 0, unrecognized: 0 };

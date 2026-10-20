@@ -7,9 +7,19 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const {
-  run, parseArgs, parseTargets, USAGE,
+  run, parseArgs, parseTargets, USAGE, realDeps,
 } = require('../plugin/bin/verify-run-bookends');
+
+const canonicalClaim = (n) => `## /flow\n- AUTO 09:41:32 — Step 2.8: claimed #${n} (bin/claim-targets.js, transport: git). Reversibility: high.\n`;
+
+function gitIn(cwd) {
+  return (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd, stdio: 'pipe' });
+}
 
 const RUN_DIR = '/repo/.claude-tweaks/pipelines/2026-09-17T001731-record-1728';
 const RUN_ID = '2026-09-17T001731-record-1728';
@@ -28,10 +38,14 @@ function makeDeps({
   runState = { worktree: '/wt', pr: { number: 1, url: 'https://x' } },
   integrationModel = 'pr-first',
   claims = {},
+  isSpecCommitted = () => true,
+  readDecisions = () => `${canonicalClaim(1728)}${canonicalClaim(1729)}`,
 } = {}) {
   return {
     readRunState: () => runState,
     readIntegrationModel: () => integrationModel,
+    isSpecCommitted,
+    readDecisions,
     readClaimBlobGit: ({ issueNumber }) => claims[issueNumber] || { content: null, absent: true, failure: null },
     now: () => NOW,
     stdout: () => {},
@@ -215,4 +229,203 @@ test('multiple targets: one unconfirmed target is reported without masking the c
   const payload = JSON.parse(deps.out[0]);
   assert.strictEqual(payload.missing.length, 1);
   assert.strictEqual(payload.missing[0].issue, 1729);
+});
+
+const OWN_CLAIM = { 1728: { content: liveMarker(RUN_ID), absent: false, failure: null } };
+const BUNDLE_TARGETS = '1728,1729';
+const BUNDLE_CLAIMS = {
+  1728: { content: liveMarker(RUN_ID), absent: false, failure: null },
+  1729: { content: liveMarker(RUN_ID), absent: false, failure: null },
+};
+
+test('AC1.1: a target whose spec is not committed -> exit 1, missing materialize bookend with a materialize.js remedy', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize' && x.issue === 1728);
+  assert.ok(m, 'materialize bookend missing');
+  assert.strictEqual(m.reason, 'not-committed');
+  assert.match(m.remedy, /materialize\.js" 1728/);
+});
+
+test('isSpecCommitted returning null -> missing materialize with reason "undetermined"', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, isSpecCommitted: () => null }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize');
+  assert.strictEqual(m.reason, 'undetermined');
+});
+
+test('AC1.1: realDeps.isSpecCommitted is true only for a spec committed at HEAD', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-spec-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const git = gitIn(root);
+  git('init', '-q');
+  fs.writeFileSync(path.join(root, 'README.md'), 'x\n');
+  git('add', 'README.md');
+  git('commit', '-q', '-m', 'init');
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
+  const specRel = `.claude-tweaks/pipelines/${RUN_ID}/work/1728-spec.md`;
+  fs.mkdirSync(path.join(runDir, 'work'), { recursive: true });
+  fs.writeFileSync(path.join(root, specRel), 'spec\n');
+  const args = { runDir, worktree: root, issue: 1728 };
+  assert.strictEqual(realDeps.isSpecCommitted(args), false, 'untracked');
+  git('add', specRel);
+  assert.strictEqual(realDeps.isSpecCommitted(args), false, 'staged but not committed');
+  git('commit', '-q', '-m', 'spec');
+  assert.strictEqual(realDeps.isSpecCommitted(args), true, 'committed');
+  assert.strictEqual(realDeps.isSpecCommitted({ ...args, issue: 1729 }), false, 'other record');
+
+  const specRunDir = path.join(runDir, 'spec-1730');
+  const nestedRel = `.claude-tweaks/pipelines/${RUN_ID}/spec-1730/work/1730-spec.md`;
+  fs.mkdirSync(path.join(specRunDir, 'work'), { recursive: true });
+  fs.writeFileSync(path.join(root, nestedRel), 'spec\n');
+  git('add', nestedRel);
+  git('commit', '-q', '-m', 'nested spec');
+  assert.strictEqual(realDeps.isSpecCommitted({ runDir: specRunDir, worktree: root, issue: 1730 }), true, 'spec-N run dir');
+  assert.strictEqual(realDeps.isSpecCommitted({ runDir, worktree: root, issue: 1730 }), true, 'nested spec found from the parent run id');
+});
+
+test('realDeps.isSpecCommitted -> null when the worktree is unresolvable', () => {
+  assert.strictEqual(realDeps.isSpecCommitted({ runDir: RUN_DIR, worktree: path.join(os.tmpdir(), 'bookends-no-such-dir-2912'), issue: 1728 }), null);
+  assert.strictEqual(realDeps.isSpecCommitted({ runDir: RUN_DIR, worktree: undefined, issue: 1728 }), null);
+});
+
+test('AC3.1: a paraphrased claim line -> exit 1, missing claim-log bookend whose remedy is the canonical log-decision.js command', () => {
+  const deps = captured(makeDeps({
+    claims: OWN_CLAIM,
+    readDecisions: () => '- AUTO 09:00:00 — Step 2.8: claimed issue #1728. Reversibility: high.',
+  }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'claim-log' && x.issue === 1728);
+  assert.ok(m, 'claim-log bookend missing');
+  assert.match(m.remedy, /--step "Step 2\.8"/);
+  assert.match(m.remedy, /claimed #1728 \(bin\/claim-targets\.js/);
+});
+
+test('unreadable decisions.md (null) -> missing claim-log, not a crash', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, readDecisions: () => null }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  assert.ok(JSON.parse(deps.out[0]).missing.some((x) => x.bookend === 'claim-log' && x.issue === 1728));
+});
+
+test('every missing entry carries a remedy string', () => {
+  const deps = captured(makeDeps({
+    runState: null, claims: {}, isSpecCommitted: () => false, readDecisions: () => '',
+  }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const { missing } = JSON.parse(deps.out[0]);
+  assert.deepStrictEqual(missing.map((m) => m.bookend).sort(), ['claim', 'claim-log', 'materialize', 'pr', 'worktree']);
+  for (const m of missing) assert.strictEqual(typeof m.remedy, 'string', m.bookend);
+});
+
+test('all bookends confirmed -> payload.confirmed.materialize and .claimLog list the targets', () => {
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 0);
+  const { confirmed } = JSON.parse(deps.out[0]);
+  assert.deepStrictEqual(confirmed.materialize, [1728, 1729]);
+  assert.deepStrictEqual(confirmed.claimLog, [1728, 1729]);
+});
+
+test('AC4.1: a run in this record\'s own pre-fix shape (pr-first, no PR, paraphrased claim, uncommitted spec) exits 1 naming pr, materialize and claim-log', () => {
+  const deps = captured(makeDeps({
+    runState: { worktree: '/wt' },
+    integrationModel: 'pr-first',
+    claims: OWN_CLAIM,
+    isSpecCommitted: () => false,
+    readDecisions: () => '- AUTO 09:00:00 — Step 2.8: claimed issue #1728. Reversibility: high.',
+  }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const names = JSON.parse(deps.out[0]).missing.map((m) => m.bookend);
+  for (const b of ['pr', 'materialize', 'claim-log']) assert.ok(names.includes(b), b);
+});
+
+test('realDeps.readDecisions reads decisions.md and returns null when absent', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-dec-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  assert.strictEqual(realDeps.readDecisions(dir), null);
+  fs.writeFileSync(path.join(dir, 'decisions.md'), 'hello\n');
+  assert.strictEqual(realDeps.readDecisions(dir), 'hello\n');
+});
+
+// #2912 final review: remedies must be runnable as printed, on either transport.
+
+test('a bundle-shaped materialize remedy carries the literal run dir and --multi-record-slug, never the placeholder', () => {
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize' && x.issue === 1729);
+  assert.ok(m.remedy.includes(`--run-dir "${RUN_DIR}"`), m.remedy);
+  assert.ok(m.remedy.includes('--multi-record-slug 1729'), m.remedy);
+  assert.ok(!m.remedy.includes('<worktree-local run dir>'), m.remedy);
+  assert.ok(m.remedy.includes('[--record-json <path> when gh is absent]'), m.remedy);
+});
+
+test('a single-target materialize remedy has no --multi-record-slug', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'materialize');
+  assert.ok(!m.remedy.includes('--multi-record-slug'), m.remedy);
+  assert.ok(!m.remedy.includes('<worktree-local run dir>'), m.remedy);
+});
+
+test('a spec-{N} run dir with several targets gets no --multi-record-slug (the run dir already is the per-spec dir)', () => {
+  const specRunDir = `${RUN_DIR}/spec-1728`;
+  const deps = captured(makeDeps({ claims: BUNDLE_CLAIMS, isSpecCommitted: () => false }));
+  assert.strictEqual(run(['--run', specRunDir, '--targets', BUNDLE_TARGETS], deps), 1);
+  const ms = JSON.parse(deps.out[0]).missing.filter((x) => x.bookend === 'materialize');
+  assert.ok(ms.length >= 1);
+  for (const m of ms) assert.ok(!m.remedy.includes('--multi-record-slug'), m.remedy);
+});
+
+test('the claim remedy names the MCP claim procedure for a gh-absent run', () => {
+  const deps = captured(makeDeps({ claims: {} }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', '1728'], deps), 1);
+  const m = JSON.parse(deps.out[0]).missing.find((x) => x.bookend === 'claim');
+  assert.match(m.remedy, /gh-absent: flow\/claim-targets\.md's MCP claim procedure/);
+});
+
+test('a claim-log remedy defers to the claim remedy when the same issue\'s claim is also missing', () => {
+  const deps = captured(makeDeps({ claims: OWN_CLAIM, readDecisions: () => '' }));
+  assert.strictEqual(run(['--run', RUN_DIR, '--targets', BUNDLE_TARGETS], deps), 1);
+  const { missing } = JSON.parse(deps.out[0]);
+  const logFor = (n) => missing.find((x) => x.bookend === 'claim-log' && x.issue === n);
+  assert.match(logFor(1728).remedy, /log-decision\.js/, '1728 claim is held: the log line is its own remedy');
+  assert.strictEqual(logFor(1729).remedy, 'covered by the claim remedy above (claim-targets.js --run writes the canonical line)');
+});
+
+test('a two-target parent run with a spec committed only at flat work/{n}-spec.md reports materialize missing (real git)', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bookends-bundle-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const git = gitIn(root);
+  git('init', '-q');
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
+  const flatRel = `.claude-tweaks/pipelines/${RUN_ID}/work/1729-spec.md`;
+  const nestedRel = `.claude-tweaks/pipelines/${RUN_ID}/spec-1728/work/1728-spec.md`;
+  fs.mkdirSync(path.join(root, path.dirname(flatRel)), { recursive: true });
+  fs.mkdirSync(path.join(root, path.dirname(nestedRel)), { recursive: true });
+  fs.writeFileSync(path.join(root, flatRel), 'spec\n');
+  fs.writeFileSync(path.join(root, nestedRel), 'spec\n');
+  git('add', flatRel, nestedRel);
+  git('commit', '-q', '-m', 'specs');
+  const deps = captured({
+    ...makeDeps({ runState: { worktree: root, pr: { number: 1, url: 'https://x' } } }),
+    isSpecCommitted: realDeps.isSpecCommitted,
+    readClaimBlobGit: () => ({ content: liveMarker(RUN_ID), absent: false, failure: null }),
+  });
+  assert.strictEqual(run(['--run', runDir, '--targets', BUNDLE_TARGETS], deps), 1);
+  const mat = JSON.parse(deps.out[0]).missing.filter((x) => x.bookend === 'materialize');
+  assert.deepStrictEqual(mat.map((x) => x.issue), [1729], 'the flat-layout bundle member is missing; the nested one is found');
+  assert.strictEqual(mat[0].reason, 'not-committed');
+});
+
+test('isSpecCommitted: a git timeout or spawn error is undetermined (null), never "not committed"', () => {
+  const args = { runDir: RUN_DIR, worktree: os.tmpdir(), issue: 1728 };
+  const timeout = () => { const e = new Error('timed out'); e.code = 'ETIMEDOUT'; e.signal = 'SIGTERM'; throw e; };
+  const spawnFail = () => { const e = new Error('spawn git ENOENT'); e.code = 'ENOENT'; throw e; };
+  const exitNonZero = () => { const e = new Error('fatal'); e.status = 128; throw e; };
+  assert.strictEqual(realDeps.isSpecCommitted(args, timeout), null, 'timeout');
+  assert.strictEqual(realDeps.isSpecCommitted(args, spawnFail), null, 'spawn error');
+  assert.strictEqual(realDeps.isSpecCommitted(args, exitNonZero), null, 'cat-file and rev-parse both exit non-zero: HEAD unresolvable');
+  const catFileMissRevParseOk = (cmd, argv) => { if (argv.includes('cat-file')) exitNonZero(); };
+  assert.strictEqual(realDeps.isSpecCommitted(args, catFileMissRevParseOk), false, 'git ran, HEAD resolves, spec absent');
+  const catFileTimeoutRevParseOk = (cmd, argv) => { if (argv.includes('cat-file')) timeout(); };
+  assert.strictEqual(realDeps.isSpecCommitted(args, catFileTimeoutRevParseOk), null, 'cat-file timed out: not provably absent');
 });

@@ -8,25 +8,18 @@
 // bin/link-records.js ("argv -> exit code. All I/O through deps so tests never
 // touch gh or git.") applied here to filesystem + process I/O instead.
 //
-// ASSUMPTION resolution (record #2979 Gotchas — "verify at build"): empirically
-// checked ~/.claude/plugins/installed_plugins.json on the authoring machine
-// (2026-10-05). Several historical entries carry a project-scope `projectPath`
-// pointing at a `.claude/worktrees/*` path (e.g. the `impeccable@impeccable`
-// entries for `claude-tweaks/.claude/worktrees/dispatch-422`,
-// `.../flow+spec-332-602-334`, `.../dispatch-record-2221`, each with its OWN
-// `installPath`/version, distinct from the main checkout's entry) — Claude Code
-// does NOT always collapse a worktree session's projectPath to the main
-// checkout. The spec's original algorithm (match project-scope entries against
-// a forced `mainCheckoutRoot`) would therefore miss a worktree-specific
-// install. The observed rule implemented below instead matches against the
-// CALLING session's own project path (`opts.projectPath` — default
-// `deps.cwd()`, i.e. the real working directory, worktree or not), with the
-// same ancestor-or-equal + longest-match precedence the spec described — this
-// generalizes correctly to both shapes (an entry keyed to the worktree itself,
-// or one keyed to the main checkout that the worktree sits under).
+// ASSUMPTION resolution (record #2979 Gotchas — "verify at build"): which
+// record is "the active install" is decided by installed-plugins.js's
+// selectEntry — the first record in installed_plugins.json order that applies
+// to the CALLING session's own project path (`opts.projectPath` — default
+// `deps.cwd()`, i.e. the real working directory, worktree or not), the rule
+// Claude Code itself uses (#3541). Worktree records still match: a session
+// matches a record for its own path or for any checkout of the same
+// repository. When records exist but none applies, resolve() reports
+// `not-installed` with a `detail` naming the count.
 
 const path = require('path');
-const { selectEntry } = require('../installed-plugins');
+const { readInstalledPlugins, selectEntry } = require('../installed-plugins');
 
 // Frozen contract — sibling sub-issues of #2979 document and test against
 // these exact strings. Treat any rename or addition as a breaking change.
@@ -58,9 +51,10 @@ function defaultDeps() {
   return {
     readFile: (p) => fs.readFileSync(p, 'utf8'),
     exists: (p) => fs.existsSync(p),
-    realpath: (p) => fs.realpathSync(p),
+    realpath: fs.realpathSync.native,
     homedir: () => os.homedir(),
     cwd: () => process.cwd(),
+    env: process.env,
     // spawn(cmd, args, options) -> stdout string; throws on non-zero exit,
     // timeout (err.killed/err.signal), or launch failure (err.code).
     spawn: (cmd, args, options) => {
@@ -103,22 +97,6 @@ function launchSpec(launcher, args, platform, env = {}) {
     args: ['/d', '/s', '/c', `"${line}"`],
     options: { windowsVerbatimArguments: true },
   };
-}
-
-function readInstalledPlugins(deps) {
-  const file = path.join(deps.homedir(), '.claude', 'plugins', 'installed_plugins.json');
-  if (!deps.exists(file)) return { ok: false, detail: `not found: ${file}` };
-  let raw;
-  try {
-    raw = deps.readFile(file);
-  } catch (err) {
-    return { ok: false, detail: err.message };
-  }
-  try {
-    return { ok: true, data: JSON.parse(raw) };
-  } catch (err) {
-    return { ok: false, detail: `malformed JSON (${err.message})` };
-  }
 }
 
 function launcherPath(installPath) {
@@ -167,7 +145,7 @@ function probeFailure(err, launcher) {
 }
 
 // opts: { projectPath, timeoutMs }. deps: { readFile, exists, realpath,
-// homedir, cwd, spawn }.
+// homedir, env, cwd, spawn }.
 function resolve(opts = {}, deps = defaultDeps()) {
   const read = readInstalledPlugins(deps);
   if (!read.ok) {
@@ -177,6 +155,12 @@ function resolve(opts = {}, deps = defaultDeps()) {
   const projectPath = opts.projectPath || deps.cwd();
   const entry = selectEntry(entries, projectPath, deps);
   if (!entry) {
+    if (Array.isArray(entries) && entries.length > 0) {
+      const n = entries.length;
+      const scopes = [...new Set(entries.filter((e) => e && typeof e.scope === 'string').map((e) => e.scope))].join('/');
+      const detail = `${n} install record${n === 1 ? '' : 's'} for impeccable@impeccable, none applies to ${projectPath} (${scopes ? `${scopes} records for other paths; ` : ''}no user or managed record)`;
+      return { ok: false, reason: 'not-installed', fix: NOT_INSTALLED_FIX, detail };
+    }
     return { ok: false, reason: 'not-installed', fix: NOT_INSTALLED_FIX };
   }
   const launcher = launcherPath(entry.installPath);

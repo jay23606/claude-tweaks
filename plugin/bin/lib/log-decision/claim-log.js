@@ -82,10 +82,18 @@ function paraphrasedClaimNumbers(line) {
 // that paraphrases the claim also counts (#3012).
 function hasClaimLogFor(body, n) {
   const text = String(body || '');
-  if (new RegExp(`${STEP_SRC}: claimed #${n}\\b`).test(text)) return true;
+  if (hasCanonicalClaimLogFor(text, n)) return true;
   if (BATCH_LOG_RE.test(text)) return true;
   const want = Number(n);
   return text.split(/\r?\n/).some((line) => paraphrasedClaimNumbers(line).includes(want));
+}
+
+// The exact per-target Step 2.8 line only — no batch form, no paraphrase.
+// For a check that must confirm the line claim-targets.md dictates was
+// actually written (verify-run-bookends.js, #2912), where hasClaimLogFor's
+// lenient readers would accept a line a later parser cannot classify.
+function hasCanonicalClaimLogFor(body, n) {
+  return new RegExp(`${STEP_SRC}: claimed #${n}\\b`).test(String(body || ''));
 }
 
 // decisions.md text (null = file absent) -> 'absent' | 'empty' |
@@ -109,5 +117,5 @@ function classifyDecisions(text) {
 }
 
 module.exports = {
-  CLAIM_LOG_SECTION, CLAIM_LOG_STEP, claimLogText, isClaimLogEntry, hasClaimLogFor, paraphrasedClaimNumbers, classifyDecisions,
+  CLAIM_LOG_SECTION, CLAIM_LOG_STEP, claimLogText, isClaimLogEntry, hasClaimLogFor, hasCanonicalClaimLogFor, paraphrasedClaimNumbers, classifyDecisions,
 };

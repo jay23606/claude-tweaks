@@ -102,7 +102,10 @@ test('a transcript directory holding no main transcript is no-data too', async (
   assert.strictEqual(json().status, 'no-data');
 });
 
-test('an unreadable main transcript is counted, and with none read the result is no-data', skipUnderRoot('mode bits are ignored under root'), async () => {
+// chmod cannot deny reads on Windows, and mode bits are ignored under root.
+const CHMOD_DENIAL_SKIP = { skip: (process.platform === 'win32' && 'win32: chmod does not deny reads') || skipUnderRoot('mode bits are ignored under root').skip };
+
+test('an unreadable main transcript is counted, and with none read the result is no-data', CHMOD_DENIAL_SKIP, async () => {
   const { transcriptDir, deps, json } = setup();
   const file = path.join(transcriptDir, 's1.jsonl');
   writeJsonl(file, invocation('demo:alpha', 't1', 500));
@@ -115,7 +118,7 @@ test('an unreadable main transcript is counted, and with none read the result is
   }
 });
 
-test('an unreadable subagents/ directory is counted and the run continues', skipUnderRoot('mode bits are ignored under root'), async () => {
+test('an unreadable subagents/ directory is counted and the run continues', CHMOD_DENIAL_SKIP, async () => {
   const { transcriptDir, deps, json } = setup();
   writeJsonl(path.join(transcriptDir, 's1.jsonl'), invocation('demo:alpha', 't1', 500));
   const subagentsDir = path.join(transcriptDir, 's1', 'subagents');

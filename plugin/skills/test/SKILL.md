@@ -72,7 +72,7 @@ When running inside a `/claude-tweaks:flow` pipeline, `/test` reads context from
 - No `VERIFICATION_PASSED` + `skip-qa` → run types/lint/tests but skip QA story validation
 - No `VERIFICATION_PASSED` (and no `skip-qa`) + runner stamp verifying `HEAD` (`verify.js --stamp-status` → `verifiedHead: true`, per `verification.md`'s Skip-if-recent artifact branch) → skip verification, report "runner stamp {sha} ({scope}) verifies HEAD", run QA if stories exist (selected and run per bullet 2's rule, including its QA pass stamp check), set `TEST_PASSED=true`
 - No `VERIFICATION_PASSED` (default) → run full suite (and QA if stories exist when mode is `all`)
-- **PR-check gate (#3013):** before any bullet above sets `TEST_PASSED=true`, run `_shared/pr-check-gate.md`'s read — a `red` PR check at HEAD fails the gate like a local test failure (`TEST_PASSED` stays unset); `pending`/`stale` pass with a caveat; every other state fails open with a `SKIP` trace.
+- **PR-check gate (#3013):** before any bullet above sets `TEST_PASSED=true`, run `_shared/pr-check-gate.md`'s read — a `red` PR check at HEAD fails the gate like a local test failure (`TEST_PASSED` stays unset); `pending`/`stale` pass with a caveat; `inherited-red` (every failing check is also failing at the integration tip) passes with a caveat naming the base sha and checks; every other state fails open with a `SKIP` trace.
 
 ## Step 0: PR-Bookkeeping Precondition Check
 
@@ -224,7 +224,7 @@ Pick the row matching the mode just completed:
 
 ## Component-Skill Contract
 
-`/claude-tweaks:test` is invoked by `/claude-tweaks:flow` between build and review, and by `/claude-tweaks:review` Step 1.5 as the test gate. Parent invocation is signaled by the `$PIPELINE_RUN_DIR` env var — the primary signal. `/claude-tweaks:review`'s standalone auto-trigger (Step 1.5, "No recent pass" branch — no pipeline run dir exists yet) may pass `--source review` as an explicit fallback. When `$PIPELINE_RUN_DIR` is set, omit the `## Next Actions` block — the parent owns the handoff. When invoked directly by a user, render Next Actions as documented. The skip-qa flag and qa-mode args are user-facing; parents pass `skip-qa` during the `/flow` polish re-verify gate and never invoke qa mode themselves (qa runs at its own pipeline stage).
+`/claude-tweaks:test` is invoked by `/claude-tweaks:flow` between build and review, and by `/claude-tweaks:review` Step 1.5 as the test gate. Parent invocation is signaled by the `$PIPELINE_RUN_DIR` env var — the primary signal. `/claude-tweaks:review`'s standalone auto-trigger (Step 1.5, "No recent pass" branch — no pipeline run dir exists yet) may pass `--source review` as an explicit fallback. When `$PIPELINE_RUN_DIR` is set, omit the `## Next Actions` block — the parent owns the handoff. When invoked directly by a user, render Next Actions as documented. The skip-qa flag and qa-mode args are user-facing; parents pass `skip-qa` during the `/flow` polish re-verify gate and never invoke qa mode themselves (qa runs at its own pipeline stage) — except `/claude-tweaks:review` Step 6.7's post-fix-wave `qa affected` re-run (#3047).
 
 ## Anti-Patterns
 

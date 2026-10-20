@@ -93,7 +93,7 @@ test('red at HEAD: reads pr.number from run-state.json and reports the failing c
   assert.equal(j.pr, 7);
   assert.equal(j.localHead, HEAD);
   assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test' }]);
-  assert.deepEqual(h.ghCalls[0], ['pr', 'view', '7', '--json', 'headRefOid,statusCheckRollup']);
+  assert.deepEqual(h.ghCalls[0], ['pr', 'view', '7', '--json', 'headRefOid,statusCheckRollup,baseRefName']);
 });
 
 test('no pr in run-state.json is no-pr and never calls gh (local-merge / standalone fail-open)', () => {
@@ -260,4 +260,209 @@ test('a green rollup plus a completed failing head run is red, naming that run (
   const j = h.json();
   assert.equal(j.state, 'red');
   assert.deepEqual(j.failing, [{ name: 'lint', url: 'https://ci.example/r/2' }]);
+});
+
+const BASE_SHA = 'e'.repeat(40);
+// gh fake for a red PR (failing: given names) and a base tip failing `baseFailing` (as check-run names).
+function redWithBase(prFailing, baseFailing, over = {}) {
+  const calls = [];
+  const gh = (args) => {
+    calls.push(args);
+    if (args[0] === 'pr') return JSON.stringify({ headRefOid: HEAD, statusCheckRollup: prFailing.map((n) => ({ __typename: 'CheckRun', name: n, status: 'COMPLETED', conclusion: 'FAILURE', detailsUrl: `https://ci.example/${n}` })) });
+    if (args[0] === 'run' && args[3] === HEAD) return '[]';
+    if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/commits/main') return `${BASE_SHA}\n`;
+    if (args[0] === 'api' && args[1] === `repos/{owner}/{repo}/commits/${BASE_SHA}/check-runs?per_page=100`) return JSON.stringify({ total_count: baseFailing.length, check_runs: baseFailing.map((n) => ({ name: n, status: 'completed', conclusion: 'failure' })) });
+    if (args[0] === 'api' && args[1] === `repos/{owner}/{repo}/commits/${BASE_SHA}/status?per_page=100`) return JSON.stringify({ state: 'failure', total_count: 0, statuses: [] });
+    if (args[0] === 'run' && args[3] === BASE_SHA) return '[]';
+    throw new Error('unexpected gh ' + args.join(' '));
+  };
+  return { calls, over: { integrationBranch: () => 'main', gh, ...over } };
+}
+
+test('AC1.1: a PR red only on a check also red at the integration tip reads inherited-red, naming baseSha', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, f.over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseSha, BASE_SHA);
+  assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test', inherited: true }]);
+  assert.deepEqual(f.calls.find((a) => a[0] === 'run' && a[3] === BASE_SHA), ['run', 'list', '--commit', BASE_SHA, '--limit', '100', '--json', 'databaseId,name,workflowName,status,conclusion,url']);
+});
+
+test('AC2.1: one inherited + one new failing check stays red; only the new one is attributable', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, redWithBase(['test', 'lint'], ['test']).over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'red');
+  assert.deepEqual(j.failing.filter((x) => !x.inherited).map((x) => x.name), ['lint']);
+});
+
+test('AC3.1: a base read that throws leaves plain red (never green) with baseReason', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, { ...f.over, gh: (args) => { if (args[0] === 'api') throw new Error('HTTP 502'); return f.over.gh(args); } });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'red');
+  assert.match(j.baseReason, /HTTP 502/);
+  assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test' }]);
+});
+
+test('an unresolvable integration branch is plain red and makes no gh api call', () => {
+  for (const integrationBranch of [() => null, () => { throw new Error('no origin'); }]) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const f = redWithBase(['test'], ['test'], { integrationBranch });
+    const h = makeDeps(main, f.over);
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    assert.equal(h.json().state, 'red');
+    assert.ok(h.json().baseReason);
+    assert.equal(f.calls.some((a) => a[0] === 'api'), false);
+  }
+});
+
+test('a non-sha base response is plain red and skips the check-runs read', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, { ...f.over, gh: (args) => (args[1] === 'repos/{owner}/{repo}/commits/main' ? 'Not Found\n' : f.over.gh(args)) });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  assert.equal(h.json().state, 'red');
+  assert.match(h.json().baseReason, /base sha unreadable/);
+  assert.equal(f.calls.some((a) => String(a[1]).includes('/check-runs')), false);
+});
+
+test('green, pending and stale verdicts never read the base tip', () => {
+  const rollups = {
+    green: { headRefOid: HEAD, rollup: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'SUCCESS' }] },
+    pending: { headRefOid: HEAD, rollup: [{ __typename: 'CheckRun', name: 'test', status: 'IN_PROGRESS', conclusion: '' }] },
+    stale: { headRefOid: 'd'.repeat(40), rollup: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'FAILURE' }] },
+  };
+  for (const [state, { headRefOid, rollup }] of Object.entries(rollups)) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const calls = [];
+    const h = makeDeps(main, { integrationBranch: () => 'main', gh: (args) => { calls.push(args); return args[0] === 'pr' ? JSON.stringify({ headRefOid, statusCheckRollup: rollup }) : '[]'; } });
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    assert.equal(h.json().state, state);
+    assert.equal(calls.some((a) => a[0] === 'api'), false);
+  }
+});
+
+test('the PR\'s own baseRefName is the comparison base, not the resolver branch', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, {
+    ...f.over,
+    integrationBranch: () => 'main',
+    gh: (args) => {
+      if (args[0] === 'pr') return JSON.stringify({ headRefOid: HEAD, baseRefName: 'dev', statusCheckRollup: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'FAILURE', detailsUrl: 'https://ci.example/test' }] });
+      if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/commits/dev') { f.calls.push(args); return `${BASE_SHA}\n`; }
+      return f.over.gh(args);
+    },
+  });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseBranch, 'dev');
+  assert.equal(f.calls.some((a) => a[1] === 'repos/{owner}/{repo}/commits/dev'), true);
+  assert.equal(f.calls.some((a) => a[1] === 'repos/{owner}/{repo}/commits/main'), false);
+});
+
+test('with no baseRefName the integration-branch resolver is the fallback base', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const h = makeDeps(main, redWithBase(['test'], ['test']).over);
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'inherited-red');
+  assert.equal(j.baseBranch, 'main');
+});
+
+test('a failed head-runs read plus a base comparison that concludes inherited-red is read-failed (partial read)', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, {
+    ...f.over,
+    gh: (args) => { if (args[0] === 'run' && args[3] === HEAD) throw new Error('HTTP 503'); return f.over.gh(args); },
+  });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  const j = h.json();
+  assert.equal(j.state, 'read-failed');
+  assert.match(j.reason, /^gh run list failed:/);
+});
+
+test('AC3.1: any one failing base read — check-runs, statuses or base run list — leaves plain red, never inherited-red', () => {
+  const failers = {
+    'check-runs': (args) => args[0] === 'api' && String(args[1]).includes('/check-runs'),
+    statuses: (args) => args[0] === 'api' && String(args[1]).includes('/status?'),
+    'run list': (args) => args[0] === 'run' && args[3] === BASE_SHA,
+  };
+  for (const [label, fails] of Object.entries(failers)) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const f = redWithBase(['test'], ['test']);
+    const h = makeDeps(main, { ...f.over, gh: (args) => { if (fails(args)) throw new Error(`HTTP 502 ${label}`); return f.over.gh(args); } });
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    const j = h.json();
+    assert.equal(j.state, 'red', label);
+    assert.match(j.baseReason, new RegExp(`HTTP 502 ${label}`), label);
+    assert.deepEqual(j.failing, [{ name: 'test', url: 'https://ci.example/test' }], label);
+  }
+});
+
+test('a malformed base listing (check_runs not an array) is plain red with baseReason', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, { ...f.over, gh: (args) => (args[0] === 'api' && String(args[1]).includes('/check-runs') ? JSON.stringify({ total_count: 1, check_runs: {} }) : f.over.gh(args)) });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  assert.equal(h.json().state, 'red');
+  assert.match(h.json().baseReason, /malformed base read/);
+});
+
+test('a truncated base listing (check-runs or statuses) is plain red naming the truncation, never inherited-red', () => {
+  const truncators = {
+    'check-runs': (args, body) => (String(args[1]).includes('/check-runs') ? JSON.stringify({ ...JSON.parse(body), total_count: 250 }) : body),
+    statuses: (args, body) => (String(args[1]).includes('/status?') ? JSON.stringify({ ...JSON.parse(body), total_count: 31 }) : body),
+  };
+  for (const [label, bend] of Object.entries(truncators)) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const f = redWithBase(['test'], ['test']);
+    const h = makeDeps(main, { ...f.over, gh: (args) => { const body = f.over.gh(args); return args[0] === 'api' ? bend(args, body) : body; } });
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    const j = h.json();
+    assert.equal(j.state, 'red', label);
+    assert.match(j.baseReason, /truncated/, label);
+  }
+});
+
+test('a base ref name with URL-significant characters is encoded per segment in the tip read', () => {
+  const { main, runDir } = fixture({ pr: { number: 7 } });
+  const f = redWithBase(['test'], ['test']);
+  const h = makeDeps(main, {
+    ...f.over,
+    gh: (args) => {
+      if (args[0] === 'pr') return JSON.stringify({ headRefOid: HEAD, baseRefName: 'release/v1#x', statusCheckRollup: [{ __typename: 'CheckRun', name: 'test', status: 'COMPLETED', conclusion: 'FAILURE', detailsUrl: 'https://ci.example/test' }] });
+      if (args[0] === 'api' && args[1] === 'repos/{owner}/{repo}/commits/release/v1%23x') { f.calls.push(args); return `${BASE_SHA}\n`; }
+      return f.over.gh(args);
+    },
+  });
+  assert.equal(run(['--run', runDir], h.deps), 0);
+  assert.equal(h.json().state, 'inherited-red');
+  assert.equal(f.calls.some((a) => a[1] === 'repos/{owner}/{repo}/commits/release/v1%23x'), true);
+});
+
+test('a workflow failing at the base tip only as a run row is inherited; a superseded failed run is not', () => {
+  const cases = [
+    { rows: [{ databaseId: 5, name: 'ci', workflowName: 'windows-regression', status: 'completed', conclusion: 'failure' }], state: 'inherited-red' },
+    { rows: [
+      { databaseId: 5, name: 'ci', workflowName: 'windows-regression', status: 'completed', conclusion: 'failure' },
+      { databaseId: 9, name: 'ci', workflowName: 'windows-regression', status: 'completed', conclusion: 'success' },
+    ], state: 'red' },
+  ];
+  for (const { rows, state } of cases) {
+    const { main, runDir } = fixture({ pr: { number: 7 } });
+    const f = redWithBase(['windows-regression'], []);
+    const h = makeDeps(main, { ...f.over, gh: (args) => (args[0] === 'run' && args[3] === BASE_SHA ? JSON.stringify(rows) : f.over.gh(args)) });
+    assert.equal(run(['--run', runDir], h.deps), 0);
+    assert.equal(h.json().state, state);
+  }
 });

@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { FAILING_CONCLUSIONS, normalizeEntry, normalizeHeadRun, classifyRollup } = require('../../../plugin/bin/lib/pr-checks/classify');
+const { FAILING_CONCLUSIONS, normalizeEntry, normalizeHeadRun, classifyRollup, failingNamesAt, applyBaseComparison } = require('../../../plugin/bin/lib/pr-checks/classify');
 
 const HEAD = 'a'.repeat(40);
 const run = (name, status, conclusion) => ({ __typename: 'CheckRun', name, status, conclusion, detailsUrl: `https://ci.example/${name}` });
@@ -161,4 +161,89 @@ test('a non-array headRuns is read-failed, never green', () => {
 test('stale still wins over head runs', () => {
   const r = classifyRollup({ rollup: GREEN_ROLLUP, headRefOid: 'b'.repeat(40), localHead: HEAD, hasPrCi: true, headRuns: [hr('test', 'in_progress', '')] });
   assert.equal(r.state, 'stale');
+});
+
+const BASE = 'b'.repeat(40);
+const redVerdict = (names) => ({ state: 'red', failing: names.map((n) => ({ name: n, url: `https://ci.example/${n}` })), pending: [], headRefOid: HEAD });
+
+test('failingNamesAt: real e91df452c shape — job name and workflow name both count', () => {
+  const checkRuns = [
+    { name: 'file', status: 'completed', conclusion: 'failure' },
+    { name: 'test', status: 'completed', conclusion: 'cancelled' },
+    { name: 'windows', status: 'completed', conclusion: 'success' },
+  ];
+  const runs = [
+    { databaseId: 11, name: 'windows-regression', workflowName: 'windows-regression', status: 'completed', conclusion: 'failure' },
+    { databaseId: 12, name: 'test', workflowName: 'test', status: 'completed', conclusion: 'cancelled' },
+  ];
+  assert.deepEqual(failingNamesAt({ checkRuns, statuses: [], runs }), ['file', 'windows-regression']);
+});
+
+test('failingNamesAt: a failed commit status counts; in-progress and null-named rows do not', () => {
+  const names = failingNamesAt({
+    checkRuns: [{ name: 'lint', status: 'in_progress', conclusion: null }, { name: null, status: 'completed', conclusion: 'failure' }],
+    statuses: [{ context: 'ci/legacy', state: 'failure', target_url: 'u' }, { context: 'ci/ok', state: 'success' }],
+    runs: [],
+  });
+  assert.deepEqual(names, ['ci/legacy']);
+});
+
+test('failingNamesAt: a non-array field throws (the CLI turns the throw into plain red — cli.test.js "a malformed base listing")', () => {
+  assert.throws(() => failingNamesAt({ checkRuns: {}, statuses: [], runs: [] }), /malformed base read/);
+});
+
+test('AC1.1: every failing check also failing at base -> inherited-red with baseSha', () => {
+  const r = applyBaseComparison(redVerdict(['test']), { sha: BASE, failing: ['test', 'other'] });
+  assert.equal(r.state, 'inherited-red');
+  assert.equal(r.baseSha, BASE);
+  assert.deepEqual(r.failing, [{ name: 'test', url: 'https://ci.example/test', inherited: true }]);
+});
+
+test('AC2.1: one inherited + one new failing check stays red, flagging only the new one attributable', () => {
+  const r = applyBaseComparison(redVerdict(['test', 'lint']), { sha: BASE, failing: ['test'] });
+  assert.equal(r.state, 'red');
+  assert.deepEqual(r.failing.filter((f) => !f.inherited).map((f) => f.name), ['lint']);
+  assert.deepEqual(r.failing.filter((f) => f.inherited).map((f) => f.name), ['test']);
+});
+
+test('AC3.1: an unreadable base leaves plain red, never green, with baseReason and no inherited flags', () => {
+  const v = redVerdict(['test']);
+  const r = applyBaseComparison(v, { sha: null, reason: 'gh api failed: HTTP 502' });
+  assert.equal(r.state, 'red');
+  assert.equal(r.baseReason, 'gh api failed: HTTP 502');
+  assert.equal(r.baseSha, null);
+  assert.deepEqual(r.failing, v.failing);
+  assert.equal(applyBaseComparison(v, undefined).state, 'red');
+  assert.equal(applyBaseComparison(v, undefined).baseReason, 'base not read');
+});
+
+test('a base check still in progress is not failing there, so the PR failure is attributable', () => {
+  const failing = failingNamesAt({ checkRuns: [{ name: 'test', status: 'in_progress', conclusion: null }], statuses: [], runs: [] });
+  const r = applyBaseComparison(redVerdict(['test']), { sha: BASE, failing });
+  assert.equal(r.state, 'red');
+  assert.equal(r.failing[0].inherited, false);
+});
+
+test('a null-named failing entry is never inherited', () => {
+  const r = applyBaseComparison({ state: 'red', failing: [{ name: null, url: null }], pending: [], headRefOid: HEAD }, { sha: BASE, failing: [null] });
+  assert.equal(r.state, 'red');
+  assert.equal(r.failing[0].inherited, false);
+});
+
+test('failingNamesAt: only the newest run of a workflow counts; a run row without a databaseId is ignored (fails closed)', () => {
+  const failed = (databaseId, workflowName) => ({ databaseId, name: workflowName, workflowName, status: 'completed', conclusion: 'failure' });
+  const passed = (databaseId, workflowName) => ({ ...failed(databaseId, workflowName), conclusion: 'success' });
+  const names = (runs) => failingNamesAt({ checkRuns: [], statuses: [], runs });
+  assert.deepEqual(names([failed(5, 'ci'), passed(9, 'ci')]), []);
+  assert.deepEqual(names([passed(5, 'ci'), failed(9, 'ci')]), ['ci']);
+  assert.deepEqual(names([failed(5, 'ci'), passed(9, 'other')]), ['ci']);
+  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }, passed(9, 'ci')]), []);
+  assert.deepEqual(names([{ name: 'ci', workflowName: 'ci', status: 'completed', conclusion: 'failure' }]), []);
+});
+
+test('non-red verdicts pass through unchanged (same object)', () => {
+  for (const state of ['green', 'pending', 'stale', 'no-ci', 'read-failed']) {
+    const v = { state, failing: [], pending: [], headRefOid: HEAD };
+    assert.equal(applyBaseComparison(v, { sha: BASE, failing: ['x'] }), v);
+  }
 });

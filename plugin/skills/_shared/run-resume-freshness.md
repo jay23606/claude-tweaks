@@ -120,7 +120,9 @@ A `BLOCKED` result stops the resume; it does not mean the run is unrecoverable.
   — a lock alone cannot distinguish the two. Confirm first, don't assume: run
   `node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" check-sibling-sessions --record "{record-number}"`
   (when this run corresponds to a claimed record) or otherwise verify with the human that no other
-  session is working this run. Once confirmed clear, claim ownership explicitly —
+  session is working this run. A `live claim by run {run-id}` line naming this run's own run id
+  is the interrupted session's claim on this same run, not a sibling — treat it as clear; any
+  other run id is a genuine sibling. Once confirmed clear, claim ownership explicitly —
   `node "${CLAUDE_PLUGIN_ROOT}/bin/hooks.js" record-worktree --run "{run-dir}" "{worktree-path}"`
   — which stamps this session as owner, so the next probe call returns `own-session`.
 - **`indeterminate`**: the probe could not resolve the worktree's lock state or its last-commit
