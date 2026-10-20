@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-19T200655-record-3350",
-  "sessionId": "0c44b2b9-5474-4ec3-be09-bf547e54aa66",
-  "claimedAt": "2026-10-19T20:08:14.994Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "merged: spec 3350",
+  "releasedAt": "2026-10-20T06:18:41.264Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/commit/f103f2d170c45b605b50ad7be8a27bfd89e062ad"
 }
