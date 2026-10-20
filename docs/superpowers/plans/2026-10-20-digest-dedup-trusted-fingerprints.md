@@ -188,3 +188,11 @@ git commit -m "Digest dedup contract passes comment objects; digest sweep reads 
 | AC1.1 | Task 1 Step 1 `AC1.1:` test |
 | AC2.1 | Task 1 Step 1 `AC2.1:` test |
 | AC3.1 | Task 1 Step 5 (revert-to-red proof) |
+
+## Build deviations (Common Step 4.5 — classified Beneficial)
+
+| # | Deviation | Spec / plan said | Built | Why |
+|---|---|---|---|---|
+| 1 | Scope widened to the executing merge row | Key Files: `materiality-floor.md`, `digest-sweep.md` | Also `tidy/SKILL.md:136` (Action Vocabulary `Merge-close duplicate digest` row) and `tidy/step-6-auto.md:60`, both now trusted-comments-only, pinned in `tests/materiality-floor-conformance.test.js` | `/tidy` Step 7 executes the bootstrap merge from the SKILL.md row, not from `digest-sweep.md`; leaving it unfiltered kept the laundering path (an untrusted marker re-posted under a MEMBER identity) the reader inventory set out to close — final whole-branch review finding 1 (fc7fdabef) |
+| 2 | Bare-string array element gets its own skip note | Task 1: bare string is simply untrusted | `BARE_STRING_SKIP_NOTE` emitted for a marker-carrying bare string; still untrusted, never throws | A caller still passing raw bodies (the pre-#3766 shape) would otherwise disable dedup silently — final review finding 3; ruling staged as `sdd-ruling-1` |
+| 3 | Sweep reads comment objects via inlined jq | Task 2: point the sweep at `trustedMaterialityTexts` | `digest-sweep.md` filters comment objects with the Trusted-authors jq `select(...)` and skip-note line (byte-pinned against `comment-trust.js`), keeping url/id/createdAt | Promotion/expiry markers and the expiry timestamp fallback need per-comment identity that `.texts` drops; the file is inlined into a subagent that cannot `require` the module — final review finding 2 |
