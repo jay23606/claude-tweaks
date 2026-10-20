@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T20:13:52.202Z",
+  "computedAt": "2026-10-20T20:18:33.000Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -185,7 +185,7 @@
       },
       {
         "number": 3340,
-        "updatedAt": "2026-10-17T09:04:22Z",
+        "updatedAt": "2026-10-20T20:15:44Z",
         "state": "OPEN"
       },
       {
@@ -2757,78 +2757,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\n\nOrigin: reflect hindsight from #2776\n\nDefer-reason: tangential\n\n**Related:** #3338\n\n## Current State\n\n`plugin/skills/_shared/scratch-worktree.md`'s \"## 7. Shell constraint\" records the harness worktree-session Bash guard's refusal shapes as an append-only chronology: a 2026-08-15 observation plus six dated addenda (#1108, #1651, #1876, #1785, #2739/#2742, #2776). Each addendum partly revises earlier ones, and nothing consolidates them. The #2776 addendum found that a standalone `cat \"$TMPDIR/…\"` now runs, unlike #1785's recorded standalone `cat`/`sed` variable-path refusals. It also found that a bare `github.com` argument runs, so #1876's refused form may have tripped on its `\"$RUN_DIR\"` variable, not the substring. Neither earlier entry was re-tested.\n\nA session that hits a refusal has to read every addendum newest-first to learn the current state. `docs/journeys/work-around-a-refused-worktree-bash-command-2776.md` step 2 tells it to do exactly that.\n\n## Deliverables\n\n- Re-verify every refusal shape §7 records as refused, live in a worktree session, one plain command per call (the #2739/#2742 and #2776 addenda's method), including #1785's standalone variable-path entries and #1876's `github.com` entry.\n- Replace the addenda's role as the lookup surface with one current-state table at the top of §7: shape, verdict (refused / passes / permission-rule), refusal wording, workaround, last-verified date and record. Keep the dated addenda below it as the evidence trail, or fold them into the table's rows.\n- Update the #2776 journey's step 2 to point at the table instead of \"scan the addenda newest first\".\n\n## Acceptance Criteria\n\n- §7 opens with a single table covering every shape any addendum records, each row carrying a last-verified date from a live run made during the build.\n- No row's verdict contradicts another row's, and no earlier addendum is left asserting a verdict the table reverses.\n- `npm test` passes, including the byte-ceiling conformance suites covering `scratch-worktree.md`.\n\n## Release Note\n\nMade the worktree Bash refusal catalog a single current-state table instead of a chain of dated addenda.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T06:19:30Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3340,
-        "state": "OPEN",
-        "title": "scratch-worktree §7: consolidate the worktree-guard refusal addenda into one re-verified current-state table",
-        "updatedAt": "2026-10-17T09:04:22Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
