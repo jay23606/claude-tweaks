@@ -63,8 +63,8 @@ matching an existing item's phase and description is a duplicate, not a second r
 `pack.ledger`'s `value.files` is empty (no ledger this run owns yet — the standalone case this
 preamble exists for), create it now via the ledger's own Create operation before adding the first
 item. Key on `value.files`, not on a `docs/plans/*-ledger.md` glob: an inherited `docs/plans` ledger
-lands under `unattributedFiles` and is never this run's. `ok: false` (no merge base to attribute by)
-is the one case that falls back to `_shared/ledger-format.md`'s resolution rule. Under
+lands under `unattributedFiles` and is never this run's. `ok: false` (any probe failure) or an
+absent pack file is the one case that falls back to `_shared/ledger-format.md`'s resolution rule. Under
 `worktree-always: true` this "standalone case" always means no worktree exists for this run — Create resolves to
 `{run-dir}/ledger.md`, never `docs/plans/`, so this step never hits the write-outside-worktree
 gate.

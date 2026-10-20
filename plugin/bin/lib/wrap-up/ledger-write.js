@@ -14,6 +14,7 @@ const { ownedPlansFiles } = require('./ledger-ownership');
 
 const TERMINAL_STATUSES = ['fixed', 'deferred', 'accepted', 'acknowledged', 'observation'];
 
+// Local on purpose: resolveLedgerPath must not load pack.js eagerly (pack.js is required lazily, only on the docs/plans fallback).
 function defaultGit(args, { cwd } = {}) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
 }
