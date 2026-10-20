@@ -7,3 +7,5 @@
 | 3 | build | digest-sweep.md inlined jq keys on authorAssociation (gh transport) only; a gh-absent MCP run sees author_association and finds no trusted comments — fails closed; same limit as _shared/pr-run-comments.md's own jq | deferred | — |
 | 4 | build | SDD ruling — bare-string array element gets a distinct skip note rather than a thrown TypeError: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
 | 5 | build | SDD ruling — bot/app digest writers going write-only logged with no change (consistent with Trusted authors' bot exclusion): ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
+| 6 | review/3a | digest-sweep.md note-filter snippet lacked the marker select its prose requires (3a pair, low) | fixed | dd6685686 |
+| 7 | review/3a,3b | Low-confidence, single-agent: string input trusted in trustedMaterialityTexts (local-files single-writer by design); isMaterialityDuplicate returns no skip notes (prose names trustedMaterialityTexts().skipped); step3-routing.md cites the Dedup section for the object shape | observation | Read directly: each is the documented contract, not a defect |
