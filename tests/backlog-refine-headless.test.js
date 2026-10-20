@@ -148,16 +148,16 @@ test('routine-template.yml kickoff fires refine --source routine, not standalone
   assert.doesNotMatch(source, /^kickoff: backlog grant$/m, 'the old bare `backlog grant` kickoff must be gone');
 });
 
-// --- (7) fleet.md row 10's new withheld wording ---
+// --- (7) fleet.md's grant-unit summary row's new withheld wording ---
 
-test('routine/fleet.md row 10 states the grant lane is withheld while labeling lanes still run', () => {
+test('routine/fleet.md grant-unit summary row states the grant lane is withheld while labeling lanes still run', () => {
   const fleetPath = path.join(ROOT, 'plugin', 'skills', 'routine', 'fleet.md');
   const source = read(fleetPath);
   assert.ok(
     source.includes(
-      '| 10 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |',
+      '| 11 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |',
     ),
-    'expected row 10\'s new withheld wording naming the labeling lanes',
+    'expected the grant-unit summary row\'s new withheld wording naming the labeling lanes',
   );
   // Discriminator: base commit 558291189's row 10 read
   // "| 10 | backlog grant | Withheld — set autonomy: unattended + grant-origination-enabled: true to enable | — | — |"

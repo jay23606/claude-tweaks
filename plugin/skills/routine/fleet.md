@@ -15,18 +15,19 @@ Buckets, named explicitly in the `Bucket` column below (never restated elsewhere
 | 2 | Vertical finder | test-hygiene | `skills/code-health/routine-template.yml` | `test-hygiene` | `15 5 * * *` | `{REPO_SLUG}-code-health-test-hygiene` |
 | 3 | Vertical finder | abstraction-police | `skills/code-health/routine-template.yml` | `abstraction-police` | `30 5 * * *` | `{REPO_SLUG}-code-health-abstraction-police` |
 | 4 | Vertical finder | experiment-cleanup | `skills/code-health/routine-template.yml` | `experiment-cleanup` | `45 5 * * *` | `{REPO_SLUG}-code-health-experiment-cleanup` |
-| 5 | Generalist sweep | code-health (generalist) | `skills/code-health/routine-template.yml` | none | `0 6 * * *` | `{REPO_SLUG}-code-health-daily` |
-| 6 | Generalist sweep | docs-health | `skills/docs-health/routine-template.yml` | n/a | `15 6 * * *` | `{REPO_SLUG}-docs-health-daily` |
-| 7 | Generalist sweep | journey-health | `skills/journey-health/routine-template.yml` | n/a | `30 6 * * *` | `{REPO_SLUG}-journey-health-daily` |
-| 8 | Generalist sweep | harness-health | `skills/harness-health/routine-template.yml` | n/a | `45 6 * * *` | `{REPO_SLUG}-harness-health-daily` |
-| 9 | Shaping unit | specify | `skills/specify/routine-template.yml` | n/a | `0 8 * * 1-5` | `{REPO_SLUG}-specify-weekdays` |
-| 10 | Grant unit (conditional) | backlog refine (routine) | `skills/backlog/routine-template.yml` | n/a | `0 9 * * 1-5` | `{REPO_SLUG}-backlog-grant-weekdays` |
-| 11 | Dispatch drain | dispatch | `skills/dispatch/routine-template.yml` | n/a | `0 10 * * 1-5` | `{REPO_SLUG}-dispatch-weekdays` |
-| 12 | Tidy | tidy weekly | `skills/tidy/routine-template.yml` | n/a | `0 11 * * 0` | `{REPO_SLUG}-tidy-weekly` |
+| 5 | Vertical finder | security-hardening | `skills/code-health/routine-template.yml` | `security-hardening` | `0 7 * * *` | `{REPO_SLUG}-code-health-security-hardening` |
+| 6 | Generalist sweep | code-health (generalist) | `skills/code-health/routine-template.yml` | none | `0 6 * * *` | `{REPO_SLUG}-code-health-daily` |
+| 7 | Generalist sweep | docs-health | `skills/docs-health/routine-template.yml` | n/a | `15 6 * * *` | `{REPO_SLUG}-docs-health-daily` |
+| 8 | Generalist sweep | journey-health | `skills/journey-health/routine-template.yml` | n/a | `30 6 * * *` | `{REPO_SLUG}-journey-health-daily` |
+| 9 | Generalist sweep | harness-health | `skills/harness-health/routine-template.yml` | n/a | `45 6 * * *` | `{REPO_SLUG}-harness-health-daily` |
+| 10 | Shaping unit | specify | `skills/specify/routine-template.yml` | n/a | `0 8 * * 1-5` | `{REPO_SLUG}-specify-weekdays` |
+| 11 | Grant unit (conditional) | backlog refine (routine) | `skills/backlog/routine-template.yml` | n/a | `0 9 * * 1-5` | `{REPO_SLUG}-backlog-grant-weekdays` |
+| 12 | Dispatch drain | dispatch | `skills/dispatch/routine-template.yml` | n/a | `0 10 * * 1-5` | `{REPO_SLUG}-dispatch-weekdays` |
+| 13 | Tidy | tidy weekly | `skills/tidy/routine-template.yml` | n/a | `0 11 * * 0` | `{REPO_SLUG}-tidy-weekly` |
 
 `{REPO_SLUG}` is `create-and-update.md` CREATE Step 2's own derivation (lowercased, non-`[a-z0-9]` runs collapsed to `-`, trimmed) — resolve it once per fleet run and reuse it across every row.
 
-**Stagger rationale (the exact defaults, settled here — not implementer-invented at some later point, per the parent record's Acceptance Criteria):** the vertical finders and generalist sweeps sit in the 05:00-07:00 UTC early-morning window at 15-minute offsets — cheap, read-only sweeps that don't compete with each other for the same repo state. The shaping unit sits at 08:00, after the finder window so overnight-filed records are visible to the firing, and before the grant unit so the one record each firing shapes is grantable the same morning. The grant unit sits at 09:00, after the shaping unit has had a chance to turn a record into `ready` but before the dispatch drain would otherwise claim records nobody has reviewed. The dispatch drain sits at 10:00, after the grant unit so freshly-granted `auto:build`/`auto:merge` records are visible to it the same morning. Tidy is weekly, Sunday 11:00, clear of every daily/weekday entry above.
+**Stagger rationale (the exact defaults, settled here — not implementer-invented at some later point, per the parent record's Acceptance Criteria):** the vertical finders and generalist sweeps sit in the 05:00-07:00 UTC early-morning window at 15-minute offsets — cheap, read-only sweeps that don't compete with each other for the same repo state. The security-hardening finder takes 07:00 rather than a slot among the other vertical finders: those slots are taken, and moving an existing row's cron would read as drift on every already-provisioned fleet's next reconcile (Step 4's cron comparison), so a new finder takes the next free offset in the window instead. The shaping unit sits at 08:00, after the finder window so overnight-filed records are visible to the firing, and before the grant unit so the one record each firing shapes is grantable the same morning. The grant unit sits at 09:00, after the shaping unit has had a chance to turn a record into `ready` but before the dispatch drain would otherwise claim records nobody has reviewed. The dispatch drain sits at 10:00, after the grant unit so freshly-granted `auto:build`/`auto:merge` records are visible to it the same morning. Tidy is weekly, Sunday 11:00, clear of every daily/weekday entry above.
 
 **Naming deviates from `create-and-update.md`'s standard `{REPO_SLUG}-{routine_name}` derivation for rows 1-4 only** — code-health's `routine_name` (`code-health-daily`) is fixed across all five code-health instances (rows 1-5), so reusing it verbatim would collide four times over. Rows 1-4 use `{REPO_SLUG}-code-health-{focus}` instead (dropping the `-daily` suffix, since a focus-scoped routine isn't the daily generalist). Row 5 (the generalist) keeps the standard derivation unchanged — `{REPO_SLUG}-code-health-daily` is exactly what a standalone `/claude-tweaks:routine create code-health` would also produce, so a project that already ran that command before ever running `fleet on` gets that routine *adopted into* the fleet on first reconcile (Idempotent reconcile, below), not duplicated. Rows 6-12 use the standard derivation unchanged, one instance per template.
 
@@ -134,7 +135,7 @@ One consolidated report, closing the Manifesto's begin-stop with an end-of-actio
 |---|---|---|---|---|
 | 1 | dead-code | Created | 05:00 UTC daily | {url} |
 | ... | ... | ... | ... | ... |
-| 10 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
+| 11 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
 | — | (missing template) | Skipped — {skill} has no routine-template.yml | — | — |
 
 Status is one of: `Created`, `Updated (drift)`, `Reconciled, no drift`, `Withheld — {reason}`, `Collision — {PREFIXED_NAME} already exists, not tracked by any record`, `Skipped — {skill} has no routine-template.yml`, `BLOCKED — record exists upstream only, not in this checkout`.
