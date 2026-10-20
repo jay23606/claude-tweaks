@@ -5,7 +5,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const fleet = fs.readFileSync(path.join(ROOT, 'plugin', 'skills', 'routine', 'fleet.md'), 'utf8');
+
+function read(rel) {
+  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+}
+const fleet = read(path.join('plugin', 'skills', 'routine', 'fleet.md'));
 
 // Parses the Fleet composition table (under `## Fleet composition table`) into one
 // object per numbered row. Cell values are backtick-stripped.
@@ -73,9 +77,6 @@ test('existing rows keep their pre-#3276 PREFIXED_NAME -> cron pairs (a changed 
   });
 });
 
-function read(rel) {
-  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
-}
 const routineDir = path.join(ROOT, 'plugin', 'skills', 'routine');
 const routineSkillFiles = fs
   .readdirSync(routineDir)
