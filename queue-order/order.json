@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T21:11:46.311Z",
+  "computedAt": "2026-10-20T22:02:28.649Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -10,17 +10,12 @@
       },
       {
         "number": 3771,
-        "updatedAt": "2026-10-20T20:58:14Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3770,
-        "updatedAt": "2026-10-20T17:38:31Z",
+        "updatedAt": "2026-10-20T21:22:30Z",
         "state": "OPEN"
       },
       {
         "number": 3769,
-        "updatedAt": "2026-10-20T17:38:27Z",
+        "updatedAt": "2026-10-20T21:53:58Z",
         "state": "OPEN"
       },
       {
@@ -195,7 +190,7 @@
       },
       {
         "number": 3329,
-        "updatedAt": "2026-10-17T09:04:11Z",
+        "updatedAt": "2026-10-20T22:00:36Z",
         "state": "OPEN"
       },
       {
@@ -260,174 +255,12 @@
       },
       {
         "number": 2799,
-        "updatedAt": "2026-10-16T16:31:35Z",
+        "updatedAt": "2026-10-20T21:41:16Z",
         "state": "OPEN"
       }
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Verified-as-of: a7b41a727d09cac4d42b594b7c45fabc42aa70eb\n\nOrigin: Review Console residue audit 2026-10-20 — unconfirmed lens 3c finding from run 2026-10-19 record-3257, bulk-acknowledged unread\n\nDefer-reason: tangential\n\n## Current State\n\n`tests/pr-check-gate-conformance.test.js:133` asserts `text.indexOf(block) > text.indexOf('**Read state first')` to prove the StatusContext paragraph sits inside `pr-first-merge.md`'s Step 2.5. If the `**Read state first` anchor is reworded or removed, `indexOf` returns `-1` and the assertion passes for any block, so the ordering pin stops protecting anything without going red. Checked on origin/main a7b41a727.\n\n## Deliverables\n\n- [ ] Assert the anchor is present (`indexOf(...) !== -1`) before the ordering comparison. Apply the same guard to the sibling `entry with \\`conclusion\\` in` anchor on the next line.\n\n## Acceptance Criteria\n\n- [ ] Removing `**Read state first` from a fixture copy of the doc makes the test fail with a message naming the missing anchor.\n- [ ] The test passes unchanged against the current `pr-first-merge.md`.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/pr-check-gate-conformance.test.js` — guard anchor presence\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T17:31:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3770,
-        "state": "OPEN",
-        "title": "pr-check-gate-conformance's Step 2.5 ordering assert passes vacuously if its anchor is reworded",
-        "updatedAt": "2026-10-20T17:38:31Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Verified-as-of: a7b41a727d09cac4d42b594b7c45fabc42aa70eb\n\nOrigin: Review Console residue audit 2026-10-20 — unconfirmed finding from run 2026-10 record-3682 (its ledger row 10, ruled out of scope), bulk-acknowledged unread\n\nDefer-reason: tangential\n\n## Current State\n\nThe teardown gate's assigned-run deny (`plugin/bin/lib/hooks/pre-tool-use.js:608`) finds the run holding a `git worktree remove` target through `ctxLib.findRunByWorktreePath`. That function (`plugin/bin/lib/hooks/context.js:562`) canonicalizes the target with plain `fs.realpathSync`. On a case-insensitive volume (macOS APFS default), the JS `realpathSync` keeps the input's letter case rather than the on-disk case. A differently-cased path to an assigned worktree that is not the session's own cwd may therefore fail to match its run and not be denied.\n\nA second, test-only inconsistency: `shadowPipelineRunDir` (`pre-tool-use.js:689`) calls `canonicalRealpath(repoRoot)` without `{ fsImpl }`, so a fake-volume test resolves its operands on different filesystems.\n\nThe reviewer's claim is unconfirmed: the first deliverable reproduces it before any fix. Checked on origin/main a7b41a727: both call sites are unchanged.\n\n## Deliverables\n\n- [ ] Reproduce first: a test on a simulated case-insensitive volume showing a mis-cased removal target for an assigned worktree is (or is not) denied today. If it is denied, close this record with that evidence.\n- [ ] If reproduced: resolve the target in `findRunByWorktreePath` with the case-canonicalizing resolver the gate already uses elsewhere (`canonicalRealpath`, per the project's `pre-tool-use-gate-exemptions` skill), not plain `fs.realpathSync`.\n- [ ] Pass `{ fsImpl }` through at `pre-tool-use.js:689`.\n\n## Acceptance Criteria\n\n- [ ] A `git worktree remove` whose path differs only in letter case from an assigned, non-own-cwd worktree is denied exactly like the exact-case path.\n- [ ] The exact-case deny and every existing exemption behave as before (existing pre-tool-use suites green).\n- [ ] The new test goes red with the resolver change reverted.\n\n## Release Note\n\nWorktree-removal protection now also holds on macOS when the path is typed with different letter case.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/context.js` — findRunByWorktreePath resolver\n- `plugin/bin/lib/hooks/pre-tool-use.js` — fsImpl at shadowPipelineRunDir\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T17:31:16Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3769,
-        "state": "OPEN",
-        "title": "Teardown gate's assigned-run deny can miss a mis-cased worktree path on a case-insensitive volume",
-        "updatedAt": "2026-10-20T17:38:27Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "Verified-as-of: a7b41a727d09cac4d42b594b7c45fabc42aa70eb\n\nOrigin: Review Console residue audit 2026-10-20 — unconfirmed lens 3a finding from run 2026-10 record-3030, bulk-acknowledged unread\n\nDefer-reason: tangential\n\n## Current State\n\n`hooks.js check-sibling-sessions` (`plugin/bin/hooks.js:1395-1430`) passes `--record`'s value unchanged to both halves of the check.\n\n- `findLiveClaim` accepts `#77` and strips the `#` itself (`plugin/bin/lib/hooks/sibling-sessions.js:208-212`).\n- `findConflictingSession` → `matchesRecordRef` tokenizes on `[/-]` only (`:51`, `:70`). The needle `#77` never equals the branch token `77`, so a live worktree on `worktree-dispatch-record-77` reads as no conflict.\n\nThe check fails open by design, so the miss is silent. Documented callers (`dispatch/sibling-session-check.md:13`, `_shared/run-resume-freshness.md:121`) pass a bare number, so only a `#`-prefixed ref is affected. Checked on origin/main a7b41a727.\n\n## Deliverables\n\n- [ ] Normalize one leading `#` from a numeric record ref once, before both halves run (at the CLI entry or in `matchesRecordRef`), leaving slug refs untouched.\n- [ ] Test: with a locked, in-use worktree on branch `worktree-dispatch-record-77`, `--record \"#77\"` reports the worktree conflict.\n\n## Acceptance Criteria\n\n- [ ] `check-sibling-sessions --record \"#77\"` and `--record 77` report the same worktree conflict for the same worktree.\n- [ ] A slug ref (e.g. `spec-3412`) matches exactly as today.\n- [ ] The `#77` test goes red when the normalization is reverted.\n\n## Release Note\n\nThe sibling-session check now catches a live worktree when the record is written as #N.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/sibling-sessions.js` — normalize leading #\n- `plugin/bin/hooks.js` — check-sibling-sessions entry\n\n_Filed by `capture` via specShapedBody._",
@@ -2380,78 +2213,6 @@
     ],
     [
       {
-        "body": "Origin: reflect full mode from #3249 (Surprises + Near-misses lenses)\n\nDefer-reason: genuinely-larger\n\n**Related:** #3326\n\n## Current State\n\nDuring #3249's review (14 lens agents, 7 reproduction pairs at `review-effort: high`), lens 3a's (Convention) reproduction pair disagreed: one agent (3a-A) returned no findings; the other (3a-B) returned `STATUS: BLOCKED`, citing several specific functions, exports, and parameters as \"completely missing from the codebase\" — with exact line-number citations drawn from the record's own materialized plan file (which shows the code to add). Every one of those claims was false: direct `grep` against the live worktree confirmed every named item already existed exactly as claimed-missing (`plugin/bin/lib/reconcile/pr-state.js:242,326`; `release-merged.js:16,360,365,385`; `archive-merged.js:320`). The agent appears to have conflated the plan document's own illustrative \"add this code\" listing with the code's current applied state.\n\nThe reproduction-pair mechanism (`plugin/skills/review/step3-lens-dispatch.md`) correctly flagged this as a disagreement, but its own handling treats *any* disagreement as `unconfirmed`/low-confidence, which is the right default for a genuine judgment call but is not the cheapest-available resolution for this specific claim shape: \"a named function/export/parameter does not exist\" is mechanically, cheaply verifiable (one `grep`/`Read`) before ever reaching a human at the Review Console. Without an explicit instruction to do that check, a differently-briefed session could plausibly have accepted the disagreement as \"needs a human to judge\" and left a factually-false BLOCKED claim staged as merely low-confidence, sending a human to investigate a non-existent gap.\n\n## Deliverables\n\n- Add one sentence to `step3-lens-dispatch.md`'s dispatch prompt template (or the CALIBRATION block) instructing lens agents not to infer code absence from a plan/spec document's own illustrative code listings — verify a \"missing code\" claim by reading the actual target file directly.\n- Add a narrow, mechanical escape hatch to the reproduction-pair disagreement-handling procedure: when one side of a disagreement asserts code/export/parameter *absence* at a named `path:line`/symbol, the dispatching session runs one `grep`/`Read` check against the live target file before staging the finding as `unconfirmed` — a contradicted \"missing\" claim resolves straight to \"refuted, not staged\" rather than \"low-confidence, staged.\"\n\n## Acceptance Criteria\n\n- [ ] A reproduction-pair disagreement where one side asserts code/export/parameter absence that a one-command `grep`/`Read` check can mechanically refute no longer reaches the Wrap-Up Review Console as a merely low-confidence item — it resolves to refuted before routing.\n- [ ] The dispatch prompt template explicitly warns against inferring code state from a plan/spec document's own code listings.\n\n## Release Note\n\nReview's reproduction-pair handling gains a cheap ground-truth check for mechanically-falsifiable \"code is missing\" disagreements, reducing false BLOCKED verdicts reaching the Review Console.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T21:36:25Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3329,
-        "state": "OPEN",
-        "title": "Review's reproduction-pair disagreement handling should ground-truth-check a mechanically-falsifiable 'code is missing' claim",
-        "updatedAt": "2026-10-17T09:04:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up leftover from #2767\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3314 #3315 #3316 #3318\n\n## Current State\n\n#2767 (PR #3294) added `toPosix(p, sep = path.sep)` to `plugin/bin/lib/shared-primitives.js` as the one repo-display separator conversion.\nNineteen inline copies remain in `plugin/bin`, in two forms:\n- `split(path.sep).join('/')`: plan-audit/checks.js:432, docs-health.js:283, docs-health/scope.js:57,129, findability.js:75, preflight.js:105, harness-health/scope.js:295, journey-health/scope.js:215, candidates-test-hygiene.js:176-177.\n- `.replace(/\\\\/g, '/')`: init/verify-scope-starter.js:96,219, verify/baseline.js:219,314, design-detect/index.js:165, design-detect/surface-lines.js:64, and others.\n\n`plugin/bin/lib/hooks/pre-tool-use.js` also defines its own local `toPosix`.\n\n## Deliverables\n\n- [ ] Replace each inline repo-display separator conversion in `plugin/bin` with `toPosix` from `shared-primitives.js`.\n- [ ] Replace `pre-tool-use.js`'s local `toPosix` with the shared one, after confirming both behave the same (or note why it must differ).\n- [ ] Leave every conversion whose result is later opened with fs native, and list any site deliberately kept.\n\n## Acceptance Criteria\n\n`grep -rnE \"split\\(path\\.sep\\)\\.join\\('/'\\)|replace\\(/\\\\\\\\\\\\\\\\/g, '/'\\)\" plugin/bin` returns only the sites the record lists as deliberately kept.\n\n`npm test` stays green.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
         "createdAt": "2026-10-16T21:08:27Z",
         "labels": [
@@ -3083,96 +2844,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2679 (a practice to re-audit verification prompts on Claude model bumps — adjacent but distinct: that record is about verification-prompt wording specifically, this one is about skill/description trimming)\n\n## Current State\n\nExternal guidance (attributed to newer-model best-practice advice) argues that skill descriptions should shrink and that pre-reading doc stacks written for older, weaker models should stop, on the premise that a more capable model needs less hand-holding prose to trigger and use a skill correctly. claude-tweaks currently has ~40+ skills, many with substantial `SKILL.md` files and multi-file lazy-loaded sub-documents (per `docs/skill-authoring.md`'s conventions), whose descriptions and content depth have not been audited against this specific guidance.\n\n## Deliverables\n\nAudit a representative sample of claude-tweaks' skill descriptions and frontmatter against the trimming guidance, and produce findings: which descriptions carry verbosity that no longer earns its keep for a newer model, and which genuinely need their current depth (a skill whose triggering accuracy or correctness depends on detailed disambiguation, not verbosity for its own sake). Apply trims only where the finding is clear-cut; leave ambiguous cases as documented findings for a human decision rather than trimming speculatively.\n\n## Acceptance Criteria\n\n- At least a representative sample of skill descriptions/frontmatter (not necessarily all ~40+) is reviewed against the guidance, with findings stated per-skill (trim / keep-as-is / needs-human-judgment), not a blanket assertion.\n- Any trims actually applied preserve triggering accuracy — verified by checking the trimmed description still matches this project's own skill-selection conventions (`docs/skill-authoring.md`'s Frontmatter conventions section) and doesn't remove disambiguating detail that exists for a documented reason (e.g. distinguishing near-identical skill names).\n- Findings and any applied changes are summarized in the record's own closing report or a linked doc, not left implicit in a diff alone.\n\n## Release Note\n\nTrimmed skill descriptions that no longer help newer models pick the right skill.\n\n## Technical Approach\n\nRead `docs/skill-authoring.md`'s Frontmatter conventions section first to understand this repo's existing description-writing rules before trimming against external guidance — the two may already agree, or the external guidance may conflict with an already-deliberate convention here, in which case that conflict itself is a finding worth stating rather than silently picking one side. Sample a cross-section of skills (a few long-description ones, a few already-terse ones) rather than attempting all ~40+ in one pass, given the record's own scope is an audit, not a mandated full rewrite.\n\n### Key Files\n\n- `docs/skill-authoring.md` — this repo's existing frontmatter/description conventions, the baseline to compare external guidance against\n- A sample of `plugin/skills/*/SKILL.md` frontmatter blocks — the actual audit targets (specific files depend on which sample is chosen)\n\n## Gotchas\n\n- Don't trim indiscriminately — a skill's description length sometimes exists specifically to disambiguate from a near-identical skill name or to state a hard trigger condition precisely; removing that in the name of brevity could regress triggering accuracy, which is a worse outcome than the verbosity the record is trying to fix.\n- If this repo's own `docs/skill-authoring.md` conventions already conflict with the external trimming guidance, surface that conflict explicitly as a finding rather than silently reconciling it one way — that's a decision for a human, not this shaping pass or the eventual build.\n\n## Original request\n\nTrim skill/AGENTS.md descriptions per newer-model guidance\n\nContext: OpenAI's GPT-6 Astra guidance says to shrink skill descriptions and stop pre-reading doc stacks written for older, weaker models.\n\nScope: Audit claude-tweaks' own skill descriptions and templates against this trimming guidance.\n",
-        "createdAt": "2026-09-29T01:23:46Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 2799,
-        "state": "OPEN",
-        "title": "Trim skill/AGENTS.md descriptions per newer-model guidance",
-        "updatedAt": "2026-10-16T16:31:35Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ]
