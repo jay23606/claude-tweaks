@@ -14,6 +14,7 @@ files:
   - tests/bin-lib/console/resolve.test.js
   - tests/bin-lib/console/cli.test.js
   - tests/console-resolve-conformance.test.js
+  - tests/bin-lib/dispatch/ceremony-derive.test.js
   - tests/console-autoresolve-drain-overlap-carveout.test.js
 ---
 
@@ -30,8 +31,8 @@ files:
 - **URL:** `plugin/skills/wrap-up/ceremony-derivation.md`; `shouldDerive({mode, ceremonyProfile})` in `plugin/bin/lib/dispatch/ceremony-derive.js`
 - **Action:** At the top of Phase 1, read `config.yml`'s `mode` and `ceremony-profile`; derive only when `mode` is `auto` and the profile is still `standard`, then write `fast-lane` through `set-config.js` when the diff touches zero production files.
 - **Should feel:** The 12-minute full-mode reflect on a `size:low` one-file fix is gone; the downgrade fires because the lever was never a question in `auto` mode, not because a dispatch marker happened to be set.
-- **Should understand:** Under `confirm`, `hybrid`, and `interactive` the Manifesto presented `ceremony-profile` as a real question, so its value may be a human's answer and is never clobbered; a standalone wrap-up has no `config.yml` and never derives. The escape hatch below Reflect is still the only path back up to `standard`.
-- **Red flags:** A `DISPATCH_HEADLESS` check reappearing in `ceremony-derivation.md` (`tests/ceremony-derivation-mode-gate.test.js` pins its absence); a `confirm`-mode run whose `config.yml` changed under it.
+- **Should understand:** Under `confirm`, `hybrid`, and `interactive` the Manifesto presented `ceremony-profile` as a real question, so its value may be a human's answer and is never clobbered; a standalone wrap-up has no `config.yml` and never derives. The escape hatch below Reflect is still the only path back up to `standard`. Shipped prompt prose — markdown under a `skills/`, `agents/`, or `commands/` directory, including a skill named `test` — counts as a production file, so a diff that edits skill or agent prose never reads as docs-only (#3477, `isPromptProsePath`); `docs/**` and a materialized `work/{n}-spec.md` still do.
+- **Red flags:** A `DISPATCH_HEADLESS` check reappearing in `ceremony-derivation.md` (`tests/ceremony-derivation-mode-gate.test.js` pins its absence); a `confirm`-mode run whose `config.yml` changed under it; a run whose diff edits `plugin/skills/**/*.md` or `plugin/agents/*.md` logging `Ceremony profile derived from diff: low-surface` (`tests/bin-lib/dispatch/ceremony-derive.test.js`'s AC1.1 case pins the opposite).
 
 ### 2. Run the resolver once, and read its exit code before anything else
 - **URL:** `node "${CLAUDE_PLUGIN_ROOT}/bin/console-resolve.js" --run "$PIPELINE_RUN_DIR" --policy console-auto` (append `--dry-run` on a dry-run wrap-up)
