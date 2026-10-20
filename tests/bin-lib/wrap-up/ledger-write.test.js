@@ -21,6 +21,21 @@ const SAMPLE = [
   '',
 ].join('\n');
 
+// Ledger-ownership git fake (#3566): `owned` are the docs/plans/ paths the
+// branch's diff against the merge base names, `untracked` those present only in
+// the worktree — the same two git calls pack.js's ledger probe makes.
+function ownedGit(owned = [], untracked = []) {
+  return (args) => {
+    if (args[0] === 'diff') return owned.join('\0');
+    if (args[0] === 'ls-files') return untracked.join('\0');
+    return '';
+  };
+}
+
+function ownershipDeps(over = {}) {
+  return { existsSync: () => false, resolveBase: () => 'abc123', ...over };
+}
+
 test('resolveLedgerPath prefers {run-dir}/ledger.md when it exists', () => {
   const deps = { existsSync: (p) => p === path.join('/run', 'ledger.md') };
   const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
@@ -31,6 +46,8 @@ test('resolveLedgerPath falls back to a single docs/plans/*-ledger.md candidate'
   const deps = {
     existsSync: () => false,
     readdirSync: () => ['2026-01-01-foo-ledger.md', 'other.md'],
+    git: ownedGit(['docs/plans/2026-01-01-foo-ledger.md']),
+    resolveBase: () => 'abc123',
   };
   const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
   assert.strictEqual(r.ok, true);
@@ -47,11 +64,77 @@ test('resolveLedgerPath reports ambiguous with every candidate when 2+ exist, ne
   const deps = {
     existsSync: () => false,
     readdirSync: () => ['a-ledger.md', 'b-ledger.md'],
+    git: ownedGit(['docs/plans/a-ledger.md', 'docs/plans/b-ledger.md']),
+    resolveBase: () => 'abc123',
   };
   const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
   assert.strictEqual(r.ok, false);
   assert.strictEqual(r.reason, 'ambiguous');
   assert.strictEqual(r.candidates.length, 2);
+});
+
+test('resolveLedgerPath returns not-found when the only docs/plans ledger is inherited from the merge base', () => {
+  const deps = ownershipDeps({ readdirSync: () => ['2026-01-01-old-ledger.md'], git: ownedGit() });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.deepStrictEqual(r, { ok: false, reason: 'not-found', candidates: [] });
+});
+
+test('resolveLedgerPath returns the owned ledger beside inherited ones', () => {
+  const deps = ownershipDeps({
+    readdirSync: () => ['a-old-ledger.md', 'b-mine-ledger.md', 'c-old-ledger.md'],
+    git: ownedGit(['docs/plans/b-mine-ledger.md']),
+  });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.deepStrictEqual(r, { ok: true, path: path.join('/wt', 'docs', 'plans', 'b-mine-ledger.md') });
+});
+
+test('resolveLedgerPath counts an untracked ledger as owned', () => {
+  const deps = ownershipDeps({
+    readdirSync: () => ['old-ledger.md', 'new-ledger.md'],
+    git: ownedGit([], ['docs/plans/new-ledger.md']),
+  });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.deepStrictEqual(r, { ok: true, path: path.join('/wt', 'docs', 'plans', 'new-ledger.md') });
+});
+
+test('resolveLedgerPath reports ambiguous only among owned candidates', () => {
+  const deps = ownershipDeps({
+    readdirSync: () => ['a-old-ledger.md', 'b-mine-ledger.md', 'c-mine-ledger.md'],
+    git: ownedGit(['docs/plans/b-mine-ledger.md', 'docs/plans/c-mine-ledger.md']),
+  });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'ambiguous');
+  assert.deepStrictEqual(r.candidates, [
+    path.join('/wt', 'docs', 'plans', 'b-mine-ledger.md'),
+    path.join('/wt', 'docs', 'plans', 'c-mine-ledger.md'),
+  ]);
+});
+
+test('resolveLedgerPath fails closed as unattributable when no merge base resolves', () => {
+  const deps = ownershipDeps({ readdirSync: () => ['a-ledger.md'], git: ownedGit(['docs/plans/a-ledger.md']), resolveBase: () => null });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'unattributable');
+  assert.strictEqual(r.path, undefined);
+  assert.deepStrictEqual(r.candidates, [path.join('/wt', 'docs', 'plans', 'a-ledger.md')]);
+});
+
+test('resolveLedgerPath fails closed as unattributable when git throws', () => {
+  const deps = ownershipDeps({ readdirSync: () => ['a-ledger.md'], git: () => { throw new Error('boom'); } });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'unattributable');
+  assert.match(r.detail, /boom/);
+});
+
+test('resolveLedgerPath does not resolve a base when docs/plans holds no ledger', () => {
+  const deps = ownershipDeps({
+    readdirSync: () => [],
+    resolveBase: () => { throw new Error('resolveBase must not be called'); },
+  });
+  const r = resolveLedgerPath({ runDir: '/run', worktree: '/wt', deps });
+  assert.deepStrictEqual(r, { ok: false, reason: 'not-found', candidates: [] });
 });
 
 test('resolveLedgerPath honors an explicit ledger path inside the worktree', () => {
