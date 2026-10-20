@@ -108,6 +108,15 @@ Three conventions follow from how this repo works, and all are visible below:
 * wrap-up-pack.js residue probe runs within 0.5s of its 30s… ([#3479](https://github.com/thn-inc/claude-tweaks/issues/3479)) ([ef1a73f](https://github.com/thn-inc/claude-tweaks/commit/ef1a73f3d7dd58ae501d5a6985ca65cfec6db4c8))
 * wrap-up: spec-qualify the brief PR run comment under… ([#3333](https://github.com/thn-inc/claude-tweaks/issues/3333)) ([86e1738](https://github.com/thn-inc/claude-tweaks/commit/86e173849e02a4d5d5aa29ea28ee721e9aec1b27))
 
+### Highlights
+* Decided whether an `unattended` autonomy ceiling should extend to merge-authorization, closing the gap where a fully green, reviewed `/flow` run still stalls on a single manual merge click.
+* Let a reviewer running inside a dispatched build keep its second reader: nested lens agents are allowed at every review-effort tier, and the reviewer waits in-turn for each one or downgrades that lens to a logged single read.
+* Fixed a flow conformance test that failed on Windows because it compared a backslash file path with a forward-slash one.
+* Flow: a freshly minted run directory is no longer mistaken for an adoption because a sibling session's hook events landed in it first.
+* N/A (internal tooling correctness).
+* No user-visible change.
+* The stale-superpowers notice tells you how to update or remove an install recorded for a since-deleted worktree.
+
 ## [6.147.1](https://github.com/thn-inc/claude-tweaks/compare/v6.147.0...v6.147.1) (2026-10-19)
 
 
