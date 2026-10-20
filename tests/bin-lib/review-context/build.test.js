@@ -8,8 +8,11 @@ const { execFileSync } = require('node:child_process');
 const {
   resolveDir,
   buildContext,
+  realLsof,
+  MAX_BUFFER,
   PER_FILE_CAP_BYTES,
   isAlwaysStub,
+  isMarkdown,
   elideDiff,
 } = require('../../../plugin/bin/lib/review-context/build');
 
@@ -45,6 +48,7 @@ function repoDeps(repo) {
   return {
     git: (args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }),
     readFile: (p, enc) => fs.readFileSync(path.isAbsolute(p) ? p : path.join(repo, p), enc),
+    lsof: () => '',
   };
 }
 
@@ -138,6 +142,9 @@ test('CLI end-to-end: build from a fixture checkout writes the bundle and prints
   assert.deepStrictEqual(parsed.emptySections, ['doomed.txt']);
   // AC5.1: the printed line carries the new field.
   assert.ok(Array.isArray(parsed.oversizeSections));
+  // 3302: the baseline path is reported and the file is written into {ctx-dir}.
+  assert.strictEqual(parsed.baselinePath, path.join(dir, 'pre-dispatch-status.txt'));
+  assert.ok(fs.existsSync(parsed.baselinePath));
 });
 
 test('CLI end-to-end: build from a subdirectory of the checkout still reads real file content (#3017)', () => {
@@ -158,6 +165,100 @@ test('CLI end-to-end: build from a subdirectory of the checkout still reads real
   // Only the genuinely-deleted file is an empty section — not every file.
   assert.deepStrictEqual(parsed.emptySections, ['doomed.txt']);
   assert.strictEqual(parsed.files, 3);
+});
+
+test('3302: build writes the git status baseline into {ctx-dir} and reports baselinePath', () => {
+  const repo = makeFixtureRepo();
+  fs.writeFileSync(path.join(repo, 'scratch.txt'), 'x\n');
+  const dir = resolveDir({});
+  const result = buildContext({ base: 'main', branch: 'feature', dir, ...repoDeps(repo) });
+  assert.strictEqual(result.baselinePath, path.join(dir, 'pre-dispatch-status.txt'));
+  const status = fs.readFileSync(result.baselinePath, 'utf8');
+  assert.strictEqual(status, git(repo, ['status', '--porcelain', '--untracked-files=all']));
+  assert.match(status, /^\?\? scratch\.txt$/m);
+});
+
+test('3302: the status capture runs with cwd at the repo toplevel', () => {
+  const calls = [];
+  buildContext({
+    base: 'main',
+    branch: 'feature',
+    dir: resolveDir({}),
+    git: (args, opts) => {
+      calls.push({ args, opts });
+      if (args.includes('rev-parse')) return '/x\n';
+      return '';
+    },
+    readFile: () => '',
+    lsof: () => '',
+  });
+  const statusCall = calls.find((c) => c.args.includes('status'));
+  assert.deepStrictEqual(statusCall.args, ['--no-optional-locks', 'status', '--porcelain', '--untracked-files=all']);
+  assert.strictEqual(statusCall.opts.cwd, '/x');
+});
+
+test('3302: listener snapshot is written when lsof returns a listing, null when unavailable', () => {
+  const repo = makeFixtureRepo();
+  const listing = 'COMMAND PID\nnode 1 me TCP *:3000 (LISTEN)\n';
+
+  const listedDir = resolveDir({});
+  const listed = buildContext({ base: 'main', branch: 'feature', dir: listedDir, ...repoDeps(repo), lsof: () => listing });
+  assert.strictEqual(listed.listenersPath, path.join(listedDir, 'pre-dispatch-listeners.txt'));
+  assert.strictEqual(fs.readFileSync(listed.listenersPath, 'utf8'), listing);
+
+  const emptyDir = resolveDir({});
+  const empty = buildContext({ base: 'main', branch: 'feature', dir: emptyDir, ...repoDeps(repo), lsof: () => '' });
+  assert.ok(fs.existsSync(empty.listenersPath));
+  assert.strictEqual(fs.readFileSync(empty.listenersPath, 'utf8'), '');
+
+  const unavailableDir = resolveDir({});
+  const unavailable = buildContext({ base: 'main', branch: 'feature', dir: unavailableDir, ...repoDeps(repo), lsof: () => null });
+  assert.strictEqual(unavailable.listenersPath, null);
+  assert.ok(!fs.existsSync(path.join(unavailableDir, 'pre-dispatch-listeners.txt')));
+});
+
+test('3302: realLsof classifies lsof outcomes', () => {
+  const calls = [];
+  const listing = realLsof({
+    exec: (file, args, opts) => {
+      calls.push({ file, args, opts });
+      return 'L\n';
+    },
+  });
+  assert.strictEqual(listing, 'L\n');
+  assert.strictEqual(calls[0].file, 'lsof');
+  assert.deepStrictEqual(calls[0].args, ['+c', '0', '-nP', '-iTCP', '-sTCP:LISTEN']);
+  assert.deepStrictEqual(calls[0].opts, {
+    encoding: 'utf8',
+    maxBuffer: MAX_BUFFER,
+    timeout: 10000,
+    stdio: ['ignore', 'pipe', 'ignore'],
+    windowsHide: true,
+  });
+
+  const failing = (props) => () => {
+    throw Object.assign(new Error('lsof failed'), props);
+  };
+  assert.strictEqual(realLsof({ exec: failing({ code: 'ETIMEDOUT', status: null, signal: 'SIGTERM' }) }), null);
+  assert.strictEqual(realLsof({ exec: failing({ code: 'ENOENT' }) }), null);
+  assert.strictEqual(realLsof({ exec: failing({ status: 1, stdout: '' }) }), '');
+  assert.strictEqual(realLsof({ exec: failing({ status: 2, stdout: '' }) }), null);
+});
+
+test('3302 AC: build --run writes <run>/review-ctx/pre-dispatch-status.txt matching git status', () => {
+  const repo = makeFixtureRepo();
+  fs.writeFileSync(path.join(repo, 'scratch.txt'), 'x\n');
+  const run = fs.mkdtempSync(path.join(os.tmpdir(), 'review-ctx-run-cli-'));
+  const out = execFileSync('node', [CLI, 'build', '--base', 'main', '--branch', 'HEAD', '--run', run], {
+    cwd: repo,
+    encoding: 'utf8',
+  });
+  const parsed = JSON.parse(out);
+  assert.strictEqual(parsed.baselinePath, path.join(run, 'review-ctx', 'pre-dispatch-status.txt'));
+  assert.strictEqual(
+    fs.readFileSync(parsed.baselinePath, 'utf8'),
+    git(repo, ['status', '--porcelain', '--untracked-files=all']),
+  );
 });
 
 // --- Per-file cap (#3020) ---------------------------------------------------------------
@@ -388,6 +489,7 @@ test('F2: the git calls carry core.quotePath=false and explicit diff prefixes', 
       return args.includes('--name-only') ? 'a.txt\0dir/café b.txt\0' : '';
     },
     readFile: () => '',
+    lsof: () => '',
   });
   assert.strictEqual(result.files, 2, 'the git name list is split on NUL');
   const diffCall = calls.find((a) => a.includes('diff') && !a.includes('--name-only'));
@@ -533,6 +635,72 @@ test('isAlwaysStub: named lockfiles and .jsonl match on basename; near-misses do
   for (const f of ['package.json', 'x.json', 'jsonl.txt', 'my-yarn.lock', 'yarn.lock/readme.md']) {
     assert.strictEqual(isAlwaysStub(f), false, f);
   }
+});
+
+// --- Markdown sections (#3713) ----------------------------------------------------------
+
+test('isMarkdown: .md / .markdown match case-insensitively on the basename; near-misses do not', () => {
+  for (const f of ['a.md', 'docs/X.MD', 'notes.markdown', 'a\\b\\c.md', 'plugin/skills/flow/SKILL.md']) {
+    assert.strictEqual(isMarkdown(f), true, f);
+  }
+  for (const f of ['x.mdx', 'readme.md.txt', 'a.md/file.txt', 'md', 'x.txt']) {
+    assert.strictEqual(isMarkdown(f), false, f);
+  }
+});
+
+// Three ~40 KB shared markdown files, each modified on one early line — the #2734 shape.
+function makeMarkdownRepo() {
+  const repo = initRepo('review-ctx-md-');
+  fs.mkdirSync(path.join(repo, 'docs'));
+  for (const n of [1, 2, 3]) {
+    fs.writeFileSync(path.join(repo, 'docs', `shared-${n}.md`), shortLines(40 * 1024, `# Doc ${n}\n`, LATE_MARKER));
+  }
+  fs.writeFileSync(path.join(repo, 'gone.md'), 'bye\n');
+  startFeatureBranch(repo);
+  for (const n of [1, 2, 3]) {
+    fs.writeFileSync(path.join(repo, 'docs', `shared-${n}.md`), shortLines(40 * 1024, `# Doc ${n} (edited)\n`, LATE_MARKER));
+  }
+  fs.rmSync(path.join(repo, 'gone.md'));
+  commitAll(repo, 'edit docs');
+  return repo;
+}
+
+test('AC1.1: a diff touching large shared markdown files yields a bundle within 2x the diff size', () => {
+  const { result, bundle, diffPart } = buildFrom(makeMarkdownRepo());
+  assert.ok(!bundle.includes('DISTINCTIVE-LATE-LINE-MARKER'), 'no markdown file content is inlined');
+  assert.ok(result.bytes <= 2 * Buffer.byteLength(diffPart), `bundle ${result.bytes} B vs diff ${Buffer.byteLength(diffPart)} B`);
+});
+
+test('AC2.1: a markdown stub points at the live file, keeps its hunk, and is listed in oversizeSections', () => {
+  const { result, bundle, diffPart } = buildFrom(makeMarkdownRepo());
+  const bytes = 40 * 1024;
+  assert.strictEqual(
+    sectionOf(bundle, 'docs/shared-1.md'),
+    `[section omitted: docs/shared-1.md is ${bytes} bytes of markdown, not inlined; its change is in the diff above — read the live file for full content]\n`,
+  );
+  assert.match(diffPart, /^\+# Doc 1 \(edited\)$/m, 'the markdown hunk stays whole');
+  for (const n of [1, 2, 3]) assert.ok(result.oversizeSections.includes(`docs/shared-${n}.md`));
+});
+
+test('deleted markdown: stays an empty section, never a live-file stub', () => {
+  const { result, bundle } = buildFrom(makeMarkdownRepo());
+  assert.deepStrictEqual(result.emptySections, ['gone.md']);
+  assert.ok(!result.oversizeSections.includes('gone.md'));
+  assert.strictEqual(sectionOf(bundle, 'gone.md'), '');
+});
+
+test('added over-cap markdown: diff chunk elided, stub gives the git diff pointer, listed once', () => {
+  const repo = initRepo('review-ctx-mdbig-');
+  fs.writeFileSync(path.join(repo, 'seed.txt'), 'seed\n');
+  startFeatureBranch(repo);
+  fs.writeFileSync(path.join(repo, 'big.md'), `${'m'.repeat(PER_FILE_CAP_BYTES)}\n`);
+  commitAll(repo, 'add big doc');
+  const { result, bundle, diffPart } = buildFrom(repo);
+  assert.match(diffPart, /^\[\d+ bytes of diff elided for big\.md — see oversizeSections\]$/m);
+  const section = sectionOf(bundle, 'big.md');
+  assert.ok(section.startsWith(`[section omitted: big.md is ${PER_FILE_CAP_BYTES + 1} bytes of markdown, not inlined; its diff was elided too`), section);
+  assert.strictEqual(lineCount(section), 1);
+  assert.deepStrictEqual(result.oversizeSections, ['big.md']);
 });
 
 test('CLI: malformed invocations exit 2 with usage', () => {

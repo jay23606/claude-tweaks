@@ -10,7 +10,7 @@ files:
 **Persona:** the `/claude-tweaks:review` controller at Step 3 on an ordinary feature branch: a dozen-plus changed files, one of them a regenerated `package-lock.json` and another a captured-API `.jsonl` fixture. It has just built the shared context bundle and must decide whether to hand that one path to every lens agent. A dispatched lens agent then reads the bundle.
 **Goal:** get a bundle a lens agent can read in one or two calls, with every file that was left out named, so nobody has to drop the bundle and improvise a file-list hand-off.
 **Entry point:** `node "${CLAUDE_PLUGIN_ROOT}/bin/build-review-context.js" build --base <ref> --branch HEAD --run "$PIPELINE_RUN_DIR"`, as `step3-lens-dispatch.md` directs.
-**Success state:** the printed JSON line is `{dir, contextPath, bytes, files, emptySections, oversizeSections}`. `oversizeSections` names every file whose section was stubbed or whose diff hunk was elided, each listed once. The bundle at `contextPath` carries the diff with every modified hand-written file's hunks whole, then one section per file.
+**Success state:** the printed JSON line is `{dir, contextPath, bytes, files, emptySections, oversizeSections, baselinePath, listenersPath}`. `oversizeSections` names every file whose section was stubbed or whose diff hunk was elided, each listed once. The bundle at `contextPath` carries the diff with every modified hand-written file's hunks whole, then one section per file.
 
 ## Steps
 
@@ -19,7 +19,7 @@ files:
 - **Action:** Run the command and read the single JSON line it prints. Only that line enters the controller's thread.
 - **Should feel:** The same one command and one line as before, plus one field. Nothing to opt into, and no flag to remember.
 - **Should understand:**
-  - `bytes` is now bounded per file, not for the whole bundle. A huge rewrite of an existing hand-written file still inlines its whole hunk, because that hunk is what is being reviewed.
+  - `bytes` is now bounded per file, not for the whole bundle. A huge rewrite of an existing hand-written file still inlines its whole hunk, because that hunk is what is being reviewed. A readable markdown file's section is never inlined, whatever its size (#3713); its modified hunk stays whole in the diff.
   - `--files-from` is still the escape hatch for scoping the bundle down.
 - **Red flags:**
   - A `bytes` in the megabytes on a diff with no large modified source file.
@@ -34,7 +34,7 @@ files:
 
 ### 3. Lens agent meets a stubbed section
 - **URL:** `===== {file} =====` sections in `context.md`
-- **Action:** **Lens agent** reads a section that is a single line starting `[section omitted: {file} …`. It says "is {N} bytes, over the 65536-byte per-file cap" or "always stubbed (lockfile or .jsonl)", or, for a deleted file over the cap, gives no reason and goes straight to where to look. Every stub line ends with where to look.
+- **Action:** **Lens agent** reads a section that is a single line starting `[section omitted: {file} …`. It says "is {N} bytes, over the 65536-byte per-file cap", "always stubbed (lockfile or .jsonl)", "is {N} bytes of markdown, not inlined; …" (any readable `.md`/`.markdown` file, whatever its size), or, for a deleted file over the cap, gives no reason and goes straight to where to look. Every stub line ends with where to look.
 - **Should feel:** Clearly a marker, never mistakable for file content. Lens findings cite `Path:Line` from the live file, and a stub line has no line numbers to confuse that.
 - **Should understand:** The stub says exactly what is still available:
   - "its change is in the diff above": the hunk is still inline.
@@ -43,6 +43,7 @@ files:
 - **Red flags:**
   - A stub that points at "the diff above" when that file's hunk is itself the elision marker.
   - A lockfile or `.jsonl` file inlined in full.
+  - A markdown file's content inlined in a section.
 
 ### 4. Lens agent meets an elided diff hunk
 - **URL:** the diff part of `context.md`, before the first `=====` section

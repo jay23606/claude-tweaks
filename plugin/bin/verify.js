@@ -26,7 +26,7 @@ const {
   sniffFamily, extractFailingRegion, parseCounts, summaryLine, extractFailingFiles, stripAnsi, unattributedFailureCount,
 } = require('./lib/verify/extract');
 const { planRetry, runRetries, flakyCaveatLines } = require('./lib/verify/flaky');
-const { matchPreExisting } = require('./lib/verify/pre-existing');
+const { matchPreExisting, trackedFiles, newAndFixed } = require('./lib/verify/pre-existing');
 const { gitInfo, gitDir: resolveGitDir, composeReport, writeReportAtomic } = require('./lib/verify/report');
 const {
   readStamp: readCountStamp, detectRegression, caveatLine,
@@ -173,18 +173,21 @@ function stampStatus(parsed) {
 }
 
 // --changed-files (#1923): the read-only "what changed in this run" set the
-// skills consume — /claude-tweaks:test affected and the QA story filter read
+// skills consume — /claude-tweaks:test affected and qa affected read
 // this instead of hand-rolling `git diff --name-only` (empty for every
 // committed pipeline diff). Same base resolution as --scope: the checkout's
 // own stamp anchor when usable, else --base / --integration-branch; an
 // unresolvable base is exit 1 with a message, never an empty list.
+// --ignore-stamp (#3048) skips that stamp anchor, so a stamp written right
+// after the build's own commits cannot hide them.
 function changedFilesMode(parsed) {
   const ownGitDir = resolveGitDir();
   const priorStamp = ownGitDir ? readVerifyStamp(ownGitDir) : null;
+  const anchorStamp = parsed.ignoreStamp ? null : priorStamp;
   let base;
   try {
     base = resolveBase({
-      stamp: priorStamp, integrationBranch: parsed.integrationBranch, base: parsed.base, requireNonDegenerate: true,
+      stamp: anchorStamp, integrationBranch: parsed.integrationBranch, base: parsed.base, requireNonDegenerate: true,
     });
   } catch (err) {
     if (!(err instanceof ChangedFilesError)) throw err;
@@ -254,6 +257,10 @@ async function main() {
   }
   const jsonPath = parsed.json || path.join(logDir, 'report.json');
   const countStampPath = parsed.countStamp || (gitDir ? path.join(gitDir, 'claude-tweaks-test-count.json') : null);
+  // #3757: the commit this run verifies is the HEAD it starts on — taken before
+  // the --scope selection and runChecks, so selection, checks and stamp agree.
+  const startGit = gitInfo();
+  const startSha = startGit.sha;
 
   // --scope (#1922): declaration → changed files since the anchor → pure
   // selection → filtered check set. Without --scope every value below is
@@ -537,7 +544,6 @@ async function main() {
       : rest;
   });
   const retriedFiles = [...new Set(results.flatMap((c) => c.flakyRetried || []))];
-  const git = gitInfo();
 
   // Baseline adjudication (#3043): only a run with a raw failure and a
   // caller-supplied --baseline re-runs the failing files (at base in a scratch
@@ -568,6 +574,7 @@ async function main() {
           envOf,
           timeoutOf,
           git: bgit,
+          computeFixed: !parsed.noBaselineFixed,
         });
       }
     } catch (err) {
@@ -626,12 +633,33 @@ async function main() {
       preExistingAdjudicated = { declared: decl.preExisting, eligible: false, reason: refusal };
     } else {
       const verdict = matchPreExisting({ failingFiles: allFailingFiles, preExisting: decl.preExisting });
+      // #3313: report-only new/fixed beside the verdict — never read by the pass logic below.
+      // sel is set whenever decl is (both need --scope).
+      const split = newAndFixed({
+        verdict, failingFiles: allFailingFiles, preExisting: decl.preExisting, mode: sel.mode, allRan: results.every((c) => !c.skipped), listTracked: () => trackedFiles(logCwd),
+      });
       preExistingAdjudicated = verdict.eligible
-        ? { declared: decl.preExisting, matched: verdict.matched }
-        : { declared: decl.preExisting, eligible: false, reason: verdict.reason };
+        ? { declared: decl.preExisting, matched: verdict.matched, ...split }
+        : { declared: decl.preExisting, eligible: false, reason: verdict.reason, ...split };
     }
   }
   const preExistingPass = Boolean(preExistingAdjudicated && preExistingAdjudicated.matched);
+
+  // #3757: moved is sha-only on purpose — checks routinely leave untracked artifacts, and --stamp-status already refuses a dirty tree.
+  // Read after both adjudications: they re-run failing files, so a commit landing during them must count as moved.
+  const endGit = gitInfo();
+  const treeMoved = startSha !== null && endGit.sha !== startSha;
+  // The verified commit is the start sha; dirty is start OR end, so edits reverted mid-run still leave the stamp dirty.
+  // An unreadable status on either side stays null — one clean read never vouches for a read that failed.
+  let dirty;
+  if (startGit.dirty === true || endGit.dirty === true) {
+    dirty = true;
+  } else if (startGit.dirty === null || endGit.dirty === null) {
+    dirty = null;
+  } else {
+    dirty = false;
+  }
+  const git = { sha: startSha, dirty };
 
   // Suite-count regression stamp (#881, IL-84): the "tests" check's own
   // parsed count is compared against the previous run's persisted count.
@@ -837,9 +865,11 @@ async function main() {
   const emptyNonNoneRun = results.length === 0 && mode !== 'none';
   // An explicit --git-dir redirects logs and the count stamp only; the pass
   // stamp keys on the invoking cwd's HEAD, which may not be that repo's.
+  // #3757: a moved tree (treeMoved above) writes neither the JSON stamp nor the
+  // legacy twin — the checks cannot be credited to either snapshot.
   if (
     effectivePass && fullSet && !parsed.noStamp && gitDir && git.sha && !parsed.gitDir
-    && !unchangedHeadNoop && !emptyNonNoneRun
+    && !unchangedHeadNoop && !emptyNonNoneRun && !treeMoved
   ) {
     const suitesRun = results.filter((c) => c.name !== 'types' && c.name !== 'lint').map((c) => c.name);
     const stamp = composeStamp({
@@ -875,6 +905,9 @@ async function main() {
   }
 
   const lines = [];
+  if (treeMoved) {
+    lines.push(`tree moved during the run (HEAD ${String(startSha).slice(0, 9)} -> ${String(endGit.sha).slice(0, 9)}); no pass stamp written`);
+  }
   if (sel) {
     let suiteList = 'none';
     if (sel.suites === '*') suiteList = 'all';
@@ -938,6 +971,13 @@ async function main() {
     if (baselineAdjudicated.eligible) {
       const b = baselineAdjudicated;
       lines.push('', `Baseline: adjudicated against ${b.base} (${String(b.baseSha).slice(0, 9)}) — ${b.failingFiles.length} failing file(s): ${b.baselineFailing.length} also fail at base, ${b.flakyPassed.length} flaky (passed in isolation), ${b.attributable.length} attributable`);
+      // #3313: new/fixed counts; every eligible adjudication carries them.
+      if (b.fixed === null) {
+        lines.push(`Baseline: ${b.new.length} new, fixed not computed — ${b.fixedReason}`);
+      } else {
+        lines.push(`Baseline: ${b.new.length} new, ${b.fixed.length} fixed`);
+        for (const file of b.fixed) lines.push(`FIXED: ${file} — fails at base, passes at HEAD`);
+      }
       for (const file of b.attributable) {
         // #3063 AC2: a timed-out base/isolated run is no evidence either
         // way — the file stays attributable, but naming the timeout here
@@ -965,6 +1005,18 @@ async function main() {
       lines.push('', `Pre-existing: adjudicated — ${preExistingAdjudicated.matched.length} failing file(s) covered by the declared preExisting allowlist: ${preExistingAdjudicated.matched.join(', ')}`);
     } else {
       lines.push('', `Pre-existing: not adjudicated — ${preExistingAdjudicated.reason}`);
+    }
+    // #3313: new/fixed counts; absent on a refusal shape (no `new` key).
+    if (Array.isArray(preExistingAdjudicated.new)) {
+      const n = preExistingAdjudicated.new.length;
+      if (preExistingAdjudicated.fixed === null) {
+        lines.push(`Pre-existing: ${n} new, fixed not computed — ${preExistingAdjudicated.fixedReason}`);
+      } else {
+        lines.push(`Pre-existing: ${n} new, ${preExistingAdjudicated.fixed.length} fixed`);
+        for (const file of preExistingAdjudicated.fixed) {
+          lines.push(`FIXED: ${file} — allowlisted but did not fail this run; if its failure is not environment-specific, consider removing its entry`);
+        }
+      }
     }
   }
   lines.push('', `report: ${jsonPath}`);
