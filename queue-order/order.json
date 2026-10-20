@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T22:02:28.649Z",
+  "computedAt": "2026-10-20T23:11:04.141Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -20,7 +20,7 @@
       },
       {
         "number": 3768,
-        "updatedAt": "2026-10-20T17:38:23Z",
+        "updatedAt": "2026-10-20T22:50:17Z",
         "state": "OPEN"
       },
       {
@@ -230,7 +230,7 @@
       },
       {
         "number": 3276,
-        "updatedAt": "2026-10-17T09:03:20Z",
+        "updatedAt": "2026-10-20T22:04:28Z",
         "state": "OPEN"
       },
       {
@@ -261,90 +261,6 @@
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Verified-as-of: a7b41a727d09cac4d42b594b7c45fabc42aa70eb\n\nOrigin: Review Console residue audit 2026-10-20 — unconfirmed lens 3a finding from run 2026-10 record-3030, bulk-acknowledged unread\n\nDefer-reason: tangential\n\n## Current State\n\n`hooks.js check-sibling-sessions` (`plugin/bin/hooks.js:1395-1430`) passes `--record`'s value unchanged to both halves of the check.\n\n- `findLiveClaim` accepts `#77` and strips the `#` itself (`plugin/bin/lib/hooks/sibling-sessions.js:208-212`).\n- `findConflictingSession` → `matchesRecordRef` tokenizes on `[/-]` only (`:51`, `:70`). The needle `#77` never equals the branch token `77`, so a live worktree on `worktree-dispatch-record-77` reads as no conflict.\n\nThe check fails open by design, so the miss is silent. Documented callers (`dispatch/sibling-session-check.md:13`, `_shared/run-resume-freshness.md:121`) pass a bare number, so only a `#`-prefixed ref is affected. Checked on origin/main a7b41a727.\n\n## Deliverables\n\n- [ ] Normalize one leading `#` from a numeric record ref once, before both halves run (at the CLI entry or in `matchesRecordRef`), leaving slug refs untouched.\n- [ ] Test: with a locked, in-use worktree on branch `worktree-dispatch-record-77`, `--record \"#77\"` reports the worktree conflict.\n\n## Acceptance Criteria\n\n- [ ] `check-sibling-sessions --record \"#77\"` and `--record 77` report the same worktree conflict for the same worktree.\n- [ ] A slug ref (e.g. `spec-3412`) matches exactly as today.\n- [ ] The `#77` test goes red when the normalization is reverted.\n\n## Release Note\n\nThe sibling-session check now catches a live worktree when the record is written as #N.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/sibling-sessions.js` — normalize leading #\n- `plugin/bin/hooks.js` — check-sibling-sessions entry\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T17:31:13Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3768,
-        "state": "OPEN",
-        "title": "check-sibling-sessions --record \"#N\" silently skips the worktree half of the check",
-        "updatedAt": "2026-10-20T17:38:23Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "Verified-as-of: a7b41a727d09cac4d42b594b7c45fabc42aa70eb\n\nOrigin: Review Console residue audit 2026-10-20 — unconfirmed finding from run 2026-10-17 record-3118, bulk-acknowledged unread\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/dispatch.md:19` (Folded verification task, #3118): a plan step `/build` cannot run (no browser backend, no dev server, a manual check) is logged as `SKIP {time} — {plan task} step \"{step}\" (skipped): {condition} → not run by /build; surfaced for /review.` via `log-decision.js --status SKIP --section \"/build\"`.\n\nNothing under `plugin/skills/review/` reads `/build` SKIP or `(degraded)` lines from the run's `decisions.md`. They appear only in the end-of-run Review Console, so a verification step the plan required can go unrun without `/review` ever naming it. Checked on origin/main a7b41a727: the string is present in `build/dispatch.md`, and no reader of it exists in `review/`.\n\n## Deliverables\n\n- [ ] `/review` code mode reads `/build`-section `SKIP` and `(degraded)` lines from `$PIPELINE_RUN_DIR/decisions.md` and lists them in its summary under a \"Not run by /build\" section, naming each step and its condition.\n- [ ] `review/review-summary-template.md` gains that section with Include/Omit conditions: include when at least one such line exists, omit otherwise.\n- [ ] A test pins both the reader and the template section.\n\n## Acceptance Criteria\n\n- [ ] A run whose `decisions.md` holds a `/build` SKIP line produces a `/review` summary that names the skipped step and its condition.\n- [ ] A run with no such line renders no \"Not run by /build\" section.\n- [ ] The `surfaced for /review` wording in `build/dispatch.md` is now true: there is a reader that does what it says.\n\n## Release Note\n\nWhen /build can't run a verification step the plan asked for, /review now lists it in its summary instead of the skip appearing only at the end-of-run console.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/dispatch.md` — keep the promise text accurate\n- `plugin/skills/review/code-mode-steps.md` — read /build SKIP lines\n- `plugin/skills/review/review-summary-template.md` — new section\n\n_Filed by `capture` via specShapedBody._",
@@ -2421,84 +2337,6 @@
         "updatedAt": "2026-10-17T09:03:38Z",
         "facets": {
           "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\nVerified-as-of: 3e103acd7\n\nOrigin: endorsed by the #3052 continuous-security-scanning evaluation (PR #3275)\n\nDefer-reason: tangential\n\n## Current State\n\nNothing shipped can put `/claude-tweaks:code-health focus=security-hardening` on a schedule:\n\n- `plugin/skills/routine/fleet.md`'s composition table gives four code-health verticals a scheduled row each: `dead-code`, `test-hygiene`, `abstraction-police` and `experiment-cleanup` (rows 1-4). `security-hardening` has no row.\n- `plugin/skills/_shared/routine-template-schema.md` says the `focus` field is unset in every shipped template and is \"supplied at fleet-provisioning time\". `/claude-tweaks:routine create code-health` takes no focus argument. The fleet is therefore the only shipped way to schedule a focus vertical.\n- The daily generalist sweep (fleet row 5, or a standalone `routine create code-health`) never applies this criterion. `plugin/bin/lib/code-health/criteria.js` marks `security-hardening` as \"pinned directly by code-health's focus=security-hardening ... never selected via criteriaForArea\". The generalist applies `security-logic` and `iac-security` only, one rotated slice per firing.\n\nToday the criterion runs in only two places. `/claude-tweaks:review` Step 6.6 (`plugin/skills/review/focus-criterion-passes.md`) runs it diff-scoped and report-only, and only on reviews of pipeline-built work. Otherwise someone has to run `/claude-tweaks:code-health focus=security-hardening` by hand.\n\nA focus firing that finds nothing costs almost nothing. `plugin/skills/code-health/focus-mode.md` makes a firing with zero candidates a no-op, and dedup against open `by:code-health` issues keeps a repeat firing from filing the same finding twice. The generator (`plugin/bin/lib/code-health/candidates-security-hardening.js`) is shaped for app repos: client and route directory heuristics, AI SDK calls, JWT calls, upload handlers and webhooks. On a repo without those shapes, a daily firing ends at the no-op.\n\nOut of scope here: the other focus verticals without a fleet row (`agent-trust-scope`, `app-store-readiness`, `prelaunch`), any per-commit or diff-scoped firing mode, and any auto-prepared fixes. The #3052 evaluation recommends against the last two.\n\n## Deliverables\n\n1. Add a `security-hardening` row to `fleet.md`'s composition table: Vertical finder bucket, source `skills/code-health/routine-template.yml`, `focus` override `security-hardening`, PREFIXED_NAME `{REPO_SLUG}-code-health-security-hardening`. Give it a daily cron that keeps the stagger rationale true (finders before the 08:00 shaping unit; `0 7 * * *` is a candidate). Update the stagger-rationale paragraph to match.\n2. Migrate every literal that hardcodes the vertical-finder row range or the code-health instance count. That covers `fleet.md` (\"rows 1-4\", \"all five code-health instances (rows 1-5)\", \"Row 5\", \"rows 6-12\", \"row 5-12\", and the Step 6 and RECONCILE \"rows 1-4\" mentions) and `routine-template-schema.md`'s `focus` field row (\"rows 1-4\"). Prefer count-free phrasing (for example \"the Vertical finder rows\"), in line with fleet.md's own cardinality-drift rule.\n3. Update any test or code that pins the fleet composition. Candidates from a grep: `plugin/bin/lib/issues/fleet-counters.js`, `tests/routine-fleet-status-off.test.js`, `tests/routine-pause-resume.test.js`, `tests/routine-webhook-trigger.test.js`, `tests/backlog-refine-headless.test.js`, `tests/bin-lib/skill-audit/anti-patterns.test.js`.\n\n## Acceptance Criteria\n\n- `fleet.md`'s composition table has a Vertical finder row whose `focus` override is `security-hardening`. Its PREFIXED_NAME is `{REPO_SLUG}-code-health-security-hardening`, and its cron is distinct from every other row's.\n- `git grep -n -E \"rows 1-4|rows 1-5|rows 6-12|row 5-12|five code-health instances\" -- plugin/skills/routine plugin/skills/_shared/routine-template-schema.md` returns nothing.\n- `npm test` passes.\n\n## Release Note\n\n`/claude-tweaks:routine fleet on` now also schedules a daily `code-health focus=security-hardening` sweep, so the pre-launch security hardening checks run without a manual invocation.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-16T18:26:44Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3276,
-        "state": "OPEN",
-        "title": "Add a security-hardening vertical row to the routine fleet",
-        "updatedAt": "2026-10-17T09:03:20Z",
-        "facets": {
-          "origin": "capture",
           "risk": "low",
           "size": "low",
           "ceremony": null,
