@@ -80,4 +80,8 @@ test('fleet.md citers name composition-table rows by bucket/entry, never by numb
   const journey = read('docs/journeys/routine-fleet-on.md');
   assert.doesNotMatch(journey, /four focus-scoped|twelve separate/);
   assert.doesNotMatch(journey, /\b[Rr]ows? \d/);
+  for (const f of ['docs/journeys/code-health-focus-sweep.md', 'docs/getting-started.md']) {
+    assert.doesNotMatch(read(f), /(four|five) focus-scoped/, f);
+  }
+  assert.doesNotMatch(read('docs/journeys/code-health-focus-sweep.md'), /dead-code, test-hygiene, abstraction-police/);
 });
