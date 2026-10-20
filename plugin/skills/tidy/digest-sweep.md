@@ -43,12 +43,11 @@ read `createdAt` for the expiry timestamp fallback. Add this select to the comme
 select(.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR")
 ```
 
-and run this note filter alongside it — after `select(.body | contains("<!-- materiality-fingerprint:"))`,
-so only a skipped comment carrying a marker is named — to name each one in one line in the sweep
-report:
+and run this note filter alongside it — already prefixed with the marker select, so only a skipped
+comment carrying a marker is named — to name each one in one line in the sweep report:
 
 ```
-select((.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | not) | "skipped marker comment \(.url) by \(.author.login // "unknown") (\(.authorAssociation // "no association")) — not an owner, member, or collaborator"
+select(.body | contains("<!-- materiality-fingerprint:")) | select((.authorAssociation == "OWNER" or .authorAssociation == "MEMBER" or .authorAssociation == "COLLABORATOR") | not) | "skipped marker comment \(.url) by \(.author.login // "unknown") (\(.authorAssociation // "no association")) — not an owner, member, or collaborator"
 ```
 
 (Code callers get the same two filters from `trustedMaterialityTexts(comments)` in
