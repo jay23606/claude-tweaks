@@ -298,5 +298,9 @@
   "plugin/bin/lib/path-guard": {
     "lastSweptMs": 1792379299485,
     "lastHash": "455792bbd3039f7967a5cb91f8cd3fec3aba1ce3"
+  },
+  "plugin/bin/lib/run-artifact": {
+    "lastSweptMs": 1792465494683,
+    "lastHash": "898057426e6fe012ede9753ba7d651769f8d4074"
   }
 }
