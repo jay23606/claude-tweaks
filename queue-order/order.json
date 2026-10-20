@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T21:09:04.176Z",
+  "computedAt": "2026-10-20T21:11:46.311Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -60,7 +60,7 @@
       },
       {
         "number": 3670,
-        "updatedAt": "2026-10-20T07:07:58Z",
+        "updatedAt": "2026-10-20T21:11:25Z",
         "state": "OPEN"
       },
       {
@@ -871,90 +871,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #3562, #3563, #3565, #3587, #3574\n\nOrigin: #3562 Deliverable 4 (run 2026-10-19T212245-record-3562) — sibling files with the same CRLF read-plus-extract shape, kept out of #3562 by its own Gotchas\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#3562 fixed `tests/pipeline-run-dir-adoption-anchoring.test.js` for Windows checkouts: it read live skill markdown with a raw `fs.readFileSync(…, 'utf8')` and applied a bare-`\\n` fence regex, which matches nothing once `core.autocrlf=true` gives the doc `\\r\\n` endings. Its sibling grep (`git grep -lE '```(bash|sh|js|json|yaml|yml)?\\\\n' -- tests tools`), re-run on this record's build branch (base `4dbf60b8d`), finds ten more files with the same read-plus-extract shape that no open record claims (an open-issue search for each filename returns only #3562 itself, which names them as out of scope). Each reads governed markdown raw and extracts with a bare-`\\n` anchored regex:\n\n| File | Raw read | Extractor |\n|---|---|---|\n| `tests/bin-lib/issues/labels.test.js` | line 126 | line 127, `## Canonical LABELS_JSON[\\s\\S]*?```js\\n([\\s\\S]*?)\\n```` |\n| `tests/blast-radius-snippet.test.js` | line 17 | line 18, `is one CLI call[^\\n]*\\n[^\\n]*\\n\\n```bash\\n([^`]+)```` |\n| `tests/capture-native-branch-guard-shapes.test.js` | line 28 | line 25, ````bash\\n([\\s\\S]*?)```` |\n| `tests/harness-health-runaway-section.test.js` | line 13 | line 27, ````bash\\n\\s*node -e '…' ` |\n| `tests/init-port-isolation-conformance.test.js` | line 13 | line 90, an exact fenced `ports.js allocate` line |\n| `tests/plan-audit-check-e-prose.test.js` | line 17 | line 72, `## Invocation\\s+```bash\\n([^\\n]+)\\n```` |\n| `tests/tidy-release-note-repair-conformance.test.js` | line 10 | line 81, then runs it with `bash -c` (lines 85-86) |\n| `tests/dispatch-firing-exclusion.test.js` | line 24 | line 30, then runs it with `bash -c` (line 58) |\n| `tests/multispec-not-run-callsite.test.js` | line 22 | line 46, then runs it with `bash -c` (line 96) |\n| `tests/verify-expectations-writer-conformance.test.js` | line 16 | line 54, then runs it with `execFileSync('/bin/sh', …)` (line 66) |\n\nPer #3562's Current State, all ten fail on `windows-latest` with an extractor-not-found message. Four of them also run what they extract, so a second Windows layer can sit behind the CRLF one, as #3517, #3555, #3565 and #3587 found: `\\r` left in a captured snippet breaks `bash -c`; a native backslash `CLAUDE_PLUGIN_ROOT` interpolated into a heredoc turns into JS escapes; and a literal `/bin/sh` resolves to `<drive>:\\bin\\sh` on win32 and throws `ENOENT`. #3565's sweep records `verify-expectations-writer-conformance.test.js:66`'s `/bin/sh` spawn as masked behind the CRLF extraction failure, with no open record owning it.\n\n## Deliverables\n\n1. For each of the ten files above, read the governed markdown through `tests/helpers/read-skill.js`'s `readText()` instead of a raw `fs.readFileSync`. Leave every extraction regex as it is — `readText()` normalizes at the read, so an extracted snippet is LF and runnable on every checkout.\n2. For each file that runs what it extracts (`tidy-release-note-repair-conformance`, `dispatch-firing-exclusion`, `multispec-not-run-callsite`, `verify-expectations-writer-conformance`), check the second layer and fix it test-side: a forward-slash `CLAUDE_PLUGIN_ROOT` where one is interpolated into a script, and no literal `/bin/sh` spawn target (`verify-expectations-writer-conformance.test.js:66` — use `bash` from the inherited `PATH`, as the sibling `bash -c` suites that pass on `windows-latest` do).\n3. Add one CRLF control per extractor, built from the LF `readText()` value with `.replace(/\\n/g, '\\r\\n')` (assert `\\r\\n` present and no `\\r\\r\\n`), proving the read-plus-extract path returns the same result as for the LF text — the pattern #3562 added to `tests/pipeline-run-dir-adoption-anchoring.test.js`.\n4. Before opening the PR, re-run the sibling grep above and re-check open records; drop any file another record claims by then and record the grep output in the PR body.\n\n## Acceptance Criteria\n\n- [ ] Each of the ten files passes `node --test` on macOS/Linux with no test removed, skipped or weakened, plus its new CRLF control.\n- [ ] CRLF simulation on macOS/Linux: a scratch copy of `tests/` and `plugin/` with the governed docs converted to `\\r\\n` fails the pre-fix files with their extractor messages and passes the fixed files. Quote both runs' `# pass` / `# fail` lines in the PR body.\n- [ ] All ten files pass on `windows-latest`. Prove it before merge by dispatching `gh workflow run windows-regression.yml --ref {branch}` and quoting each file's per-test `ok` lines from the run's log, not the adjudication verdict alone (a dispatch baselines against `HEAD^1`, #3568). If the dispatch cannot run, say so explicitly.\n- [ ] Each new CRLF control discriminates: replacing its `readText(` with a raw `fs.readFileSync(…, 'utf8')` turns it red. Run each doctoring in the same command as its restore.\n- [ ] No file under `plugin/` changes.\n- [ ] `npm test` passes.\n\n## Release Note\n\nFixed ten skill-prose tests that failed only on Windows checkouts because of line endings.\n\n## Technical Approach\n\nTest-side only, following `.claude/skills/windows-checkout-test-parity/SKILL.md`'s \"Build CRLF inputs from the LF text\" pattern and its Anti-Patterns row \"Treating a CRLF fix as the whole Windows fix for a test that extracts and runs a skill's shell snippet\". `readText()` is the repo's single EOL-normalizing read for governed markdown; `skill-prose-conformance-tests` already requires it for every prose suite. Normalize at the read, not with a `\\r?\\n`-tolerant regex: a suite that runs its extracted snippet would still hand `bash -c` a snippet full of `\\r` (reproduced in #3562's scratch run).\n\n### Key Files\n\n- `tests/bin-lib/issues/labels.test.js`, `tests/blast-radius-snippet.test.js`, `tests/capture-native-branch-guard-shapes.test.js`, `tests/harness-health-runaway-section.test.js`, `tests/init-port-isolation-conformance.test.js`, `tests/plan-audit-check-e-prose.test.js` — read-only extract-and-compare suites: route the read through `readText()`, add a CRLF control\n- `tests/tidy-release-note-repair-conformance.test.js`, `tests/dispatch-firing-exclusion.test.js`, `tests/multispec-not-run-callsite.test.js`, `tests/verify-expectations-writer-conformance.test.js` — extract-and-run suites: `readText()` read, CRLF control, and the second Windows layer\n- `tests/helpers/read-skill.js` — read-only reference: `readText()`\n- `tests/pipeline-run-dir-adoption-anchoring.test.js` — read-only reference: #3562's CRLF control shape\n- `.claude/skills/windows-checkout-test-parity/SKILL.md` — read-only reference\n\n## Gotchas\n\n- Do not add a `.gitattributes` `eol=lf` rule for `tests/` or the skill files; the parity skill scopes it to the hashed upstream-drift fixtures on purpose.\n- Do not build a CRLF case from a raw read: on a Windows checkout that yields `\\r\\r\\n` (#3523). Build it from the `readText()` value.\n- The second-layer failures are inferred for most files, not observed: the CRLF extractor failure masks them on Windows today. Investigate whatever shape the dispatched Windows run shows; never add a win32 skip to turn a run green.\n- If this proves too large for one PR, split it along the read-only / extract-and-run line — the four extract-and-run files each need their own Windows proof.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T21:37:06Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3670,
-        "state": "OPEN",
-        "title": "Windows CRLF: ten skill-prose tests read governed markdown raw before bare-\\n fence extraction",
-        "updatedAt": "2026-10-20T07:07:58Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
