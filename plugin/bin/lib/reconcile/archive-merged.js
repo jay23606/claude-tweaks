@@ -322,6 +322,7 @@ function decideArchiveCore(prState, consoleState, hasStagedPending) {
   if (prState === 'gh-absent') return { action: 'skip', reason: 'gh-absent' };
   if (prState === 'network-failure') return { action: 'skip', reason: 'network-failure' };
   if (prState === 'invalid-arguments') return { action: 'skip', reason: 'invalid-arguments' };
+  if (prState === 'pr-not-found') return { action: 'skip', reason: 'pr-not-found' };
   if (!prState) return { action: 'skip', reason: 'no-pr' };
   if (prState.state !== 'MERGED') {
     return { action: 'skip', reason: prState.state === 'OPEN' ? 'pr-open' : 'pr-closed-unmerged' };
@@ -344,8 +345,13 @@ function decideArchiveCore(prState, consoleState, hasStagedPending) {
   // staged/ directory; only an explicit `false` unlocks the archive path, so
   // every existing 2-arg call site (and any caller that genuinely doesn't
   // know) keeps today's unconditional skip.
+  // #3297: a true `hasStagedPending` gets its own reason — the run has real
+  // pending items and no console will ever render, so only a human can
+  // converge it (STRUCTURALLY_STUCK_REASONS tracks it). Unknown (undefined)
+  // keeps the plain, untracked reason.
   if (consoleState === 'none') {
     if (hasStagedPending === false) return { action: 'archive' };
+    if (hasStagedPending === true) return { action: 'skip', reason: 'console-never-rendered-staged-pending' };
     return { action: 'skip', reason: 'console-never-rendered' };
   }
   return { action: 'archive' };
@@ -1415,16 +1421,24 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // deliberately excluded — each already has its own clear resolution path
 // (a human answering a console, a local fetch catching up) that doesn't
 // need this generic staleness backstop. 'console-never-rendered-pr-closed'
-// (#2231) is the one exception carved out of that exclusion: it fires only
+// (#2231) is one exception carved out of that exclusion: it fires only
 // when the by-number fallback below confirms the run's PR is CLOSED
 // (never merged) — at that point nothing drives the run's pipeline to
 // wrap-up anymore, so no console will ever render, and the plain
 // 'console-never-rendered' reason's "a human eventually answers it"
 // rationale does not apply. The MERGED sub-case of that same fallback
 // (and of the ordinary branch-joined path) archives when staged/ holds
-// nothing pending (#3249), and otherwise keeps plain, untracked
-// 'console-never-rendered' — real staged items still await a human.
-const STRUCTURALLY_STUCK_REASONS = new Set(['no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed']);
+// nothing pending (#3249). Plain, untracked 'console-never-rendered' stays
+// for unknown staged state. When a merged run's staged/ holds pending items,
+// the reason is 'console-never-rendered-staged-pending' (#3297), which is
+// tracked: the fast-lane short-circuit writes no console, so none will ever
+// render and only a human can converge it.
+// 'pr-not-found' (#3543) is also tracked: a stamped pr.number that GitHub
+// confirms names no PR will never resolve without a human (fix or clear the
+// stamp), and the by-number lookup deliberately never falls back to the
+// branch (#3416), so the skip would otherwise repeat silently forever.
+// 'network-failure' stays excluded — a long genuine outage must not page.
+const STRUCTURALLY_STUCK_REASONS = new Set(['no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'console-never-rendered-staged-pending', 'pr-not-found']);
 
 // #1732: thin wrapper — see isOrphanedMint's comment on the `kinds` scoping
 // pattern. Pure except for the one mtime stat classifyRunDir performs.
@@ -1628,7 +1642,8 @@ function finishArchiveAttempt(cacheTarget, repoSlug, dir, dryRun, runner, archiv
 // `gh pr list --head {branch}` can return a MERGED PR from an earlier run that
 // shared the name and archive a live run. The by-branch lookup is the fallback
 // only when no number is stamped (or the by-number probe returns null). Any
-// failure string from the by-number probe is returned as-is, never falling
+// failure string from the by-number probe (`'gh-absent'`, `'network-failure'`,
+// `'invalid-arguments'`, `'pr-not-found'`) is returned as-is, never falling
 // back to the branch: the branch lookup would reintroduce the same
 // misattribution on a transient gh failure.
 function resolveRunPrState(root, state, branch) {
@@ -1902,8 +1917,12 @@ function archiveMerged({
       // is resolved; a MERGED PR reaches the same archive path, but only
       // once `localHasMerge` confirms the local checkout has actually caught
       // up on its merge commit — mirroring the general merged-PR path below.
+      let skipReason = reason;
       if (state && state.pr && state.pr.number) {
         const byNumber = resolvePrStateByNumber(root, state.pr.number);
+        // #3543: a stamped pr.number GitHub confirms names no PR is a stale
+        // stamp, not an absent branch/worktree — report the real cause.
+        if (byNumber === 'pr-not-found') skipReason = 'pr-not-found';
         if (byNumber && typeof byNumber === 'object' && (byNumber.state === 'CLOSED' || byNumber.state === 'MERGED')) {
           if (byNumber.state === 'MERGED') {
             const hasMerge = localHasMerge(root, byNumber.mergeCommit, integration);
@@ -1939,10 +1958,10 @@ function archiveMerged({
             // genuinely dead-ended state escalates like no-branch/
             // no-worktree/no-pr, instead of silently freezing the
             // escalation cache the way plain 'console-never-rendered'
-            // does (that reason stays untracked for the MERGED case,
-            // reached here only when staged/ holds real pending items
-            // a human must still resolve).
-            const consoleReason = byNumber.state === 'CLOSED' ? 'console-never-rendered-pr-closed' : 'console-never-rendered';
+            // does. #3297: the MERGED sub-case reached here holds real
+            // pending staged/ items a human must still resolve, so it gets
+            // its own tracked reason too.
+            const consoleReason = byNumber.state === 'CLOSED' ? 'console-never-rendered-pr-closed' : 'console-never-rendered-staged-pending';
             skipped.push({ runDir: dir, reason: consoleReason });
             trackStuckSkip(cacheBatch, repoSlug, dir, consoleReason, { runner });
             continue;
@@ -1951,8 +1970,8 @@ function archiveMerged({
           continue;
         }
       }
-      skipped.push({ runDir: dir, reason });
-      trackStuckSkip(cacheBatch, repoSlug, dir, reason, { runner });
+      skipped.push({ runDir: dir, reason: skipReason });
+      trackStuckSkip(cacheBatch, repoSlug, dir, skipReason, { runner });
       continue;
     }
 
