@@ -51,6 +51,28 @@ test('AC1.2: its PREFIXED_NAME is {REPO_SLUG}-code-health-security-hardening and
   assert.deepStrictEqual(rows.map((r) => r.num), rows.map((_, i) => String(i + 1)));
 });
 
+test('existing rows keep their pre-#3276 PREFIXED_NAME -> cron pairs (a changed cron reads as drift on every provisioned fleet)', () => {
+  const pairs = Object.fromEntries(
+    compositionRows(fleet)
+      .filter((r) => r.focus !== 'security-hardening')
+      .map((r) => [r.name, r.cron]),
+  );
+  assert.deepStrictEqual(pairs, {
+    '{REPO_SLUG}-code-health-dead-code': '0 5 * * *',
+    '{REPO_SLUG}-code-health-test-hygiene': '15 5 * * *',
+    '{REPO_SLUG}-code-health-abstraction-police': '30 5 * * *',
+    '{REPO_SLUG}-code-health-experiment-cleanup': '45 5 * * *',
+    '{REPO_SLUG}-code-health-daily': '0 6 * * *',
+    '{REPO_SLUG}-docs-health-daily': '15 6 * * *',
+    '{REPO_SLUG}-journey-health-daily': '30 6 * * *',
+    '{REPO_SLUG}-harness-health-daily': '45 6 * * *',
+    '{REPO_SLUG}-specify-weekdays': '0 8 * * 1-5',
+    '{REPO_SLUG}-backlog-grant-weekdays': '0 9 * * 1-5',
+    '{REPO_SLUG}-dispatch-weekdays': '0 10 * * 1-5',
+    '{REPO_SLUG}-tidy-weekly': '0 11 * * 0',
+  });
+});
+
 function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }

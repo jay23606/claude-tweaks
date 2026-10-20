@@ -5,7 +5,7 @@
 // verbatim into backlog/refine-headless.md, SKILL.md's mode list narrowed to
 // refine/overview/attention with a `--source` presence switch, deprecated-
 // aliases.md documenting the forces-headless override, the routine-template
-// kickoff and fleet.md row 10 updated to match, and the permission matrix
+// kickoff and fleet.md's grant-unit summary row updated to match, and the permission matrix
 // merged into one `/backlog refine` row. Each assertion is a literal-string or
 // structural pin, not a re-derivation — per skill-prose-conformance-tests,
 // every discriminating assertion below was spot-checked against base commit
@@ -155,7 +155,7 @@ test('routine/fleet.md grant-unit summary row states the grant lane is withheld 
   const source = read(fleetPath);
   assert.ok(
     source.includes(
-      '| 11 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |',
+      '| {n} | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |',
     ),
     'expected the grant-unit summary row\'s new withheld wording naming the labeling lanes',
   );

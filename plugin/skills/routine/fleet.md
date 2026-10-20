@@ -133,9 +133,9 @@ One consolidated report, closing the Manifesto's begin-stop with an end-of-actio
 ### Routines
 | Row | Entry | Status | Schedule | Console URL |
 |---|---|---|---|---|
-| 1 | dead-code | Created | 05:00 UTC daily | {url} |
+| {n} | dead-code | Created | 05:00 UTC daily | {url} |
 | ... | ... | ... | ... | ... |
-| 11 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
+| {n} | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
 | — | (missing template) | Skipped — {skill} has no routine-template.yml | — | — |
 
 Status is one of: `Created`, `Updated (drift)`, `Reconciled, no drift`, `Withheld — {reason}`, `Collision — {PREFIXED_NAME} already exists, not tracked by any record`, `Skipped — {skill} has no routine-template.yml`, `BLOCKED — record exists upstream only, not in this checkout`.
