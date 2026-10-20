@@ -28,4 +28,4 @@ function ownedPlansFiles({ worktree, base, git }) {
   ]);
 }
 
-module.exports = { PLANS_PREFIX, plansFileNames, ownedPlansFiles };
+module.exports = { ownedPlansFiles };
