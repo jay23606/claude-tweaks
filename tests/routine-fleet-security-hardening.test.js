@@ -50,3 +50,34 @@ test('AC1.2: its PREFIXED_NAME is {REPO_SLUG}-code-health-security-hardening and
   // rows stay numbered 1..N with no gaps after the insert
   assert.deepStrictEqual(rows.map((r) => r.num), rows.map((_, i) => String(i + 1)));
 });
+
+function read(rel) {
+  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+}
+const routineDir = path.join(ROOT, 'plugin', 'skills', 'routine');
+const routineSkillFiles = fs
+  .readdirSync(routineDir)
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => path.join('plugin', 'skills', 'routine', f));
+const schemaPath = path.join('plugin', 'skills', '_shared', 'routine-template-schema.md');
+
+test('AC2.1: no hardcoded vertical-finder row range or code-health instance count in routine skills or the template schema', () => {
+  // mirrors the spec's: git grep -n -E "rows 1-4|rows 1-5|rows 6-12|row 5-12|five code-health instances" -- plugin/skills/routine plugin/skills/_shared/routine-template-schema.md
+  const re = /rows 1-4|rows 1-5|rows 6-12|row 5-12|five code-health instances/;
+  for (const f of [...routineSkillFiles, schemaPath]) assert.doesNotMatch(read(f), re, f);
+});
+
+test('fleet.md prose names composition-table rows by bucket/entry, never by number', () => {
+  assert.doesNotMatch(fleet, /\b[Rr]ows? \d/);
+  assert.doesNotMatch(fleet, /\b12 (rows|separate)\b|12x/);
+});
+
+test('fleet.md citers name composition-table rows by bucket/entry, never by number', () => {
+  for (const f of ['docs/skill-graph.md', 'plugin/skills/code-health/routine-template.yml', 'docs/journeys/routine-fleet-on.md']) {
+    assert.doesNotMatch(read(f), /composition table(?:'s)? rows? \d/, f);
+  }
+  assert.doesNotMatch(read('docs/skill-graph.md'), /instantiates it \*\*\w+ times\*\*/);
+  const journey = read('docs/journeys/routine-fleet-on.md');
+  assert.doesNotMatch(journey, /four focus-scoped|twelve separate/);
+  assert.doesNotMatch(journey, /\b[Rr]ows? \d/);
+});
