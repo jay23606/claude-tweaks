@@ -1,31 +1,11 @@
 {
-  "computedAt": "2026-10-20T00:55:20.515Z",
+  "computedAt": "2026-10-20T07:03:04.205Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
         "number": 3630,
-        "updatedAt": "2026-10-19T19:47:58Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3607,
-        "updatedAt": "2026-10-19T18:57:14Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3604,
-        "updatedAt": "2026-10-19T21:03:36Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3598,
-        "updatedAt": "2026-10-19T20:41:04Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3597,
-        "updatedAt": "2026-10-19T19:10:10Z",
+        "updatedAt": "2026-10-20T02:47:20Z",
         "state": "OPEN"
       },
       {
@@ -60,17 +40,7 @@
       },
       {
         "number": 3574,
-        "updatedAt": "2026-10-19T12:28:51Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3568,
-        "updatedAt": "2026-10-19T18:57:54Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3566,
-        "updatedAt": "2026-10-20T00:20:18Z",
+        "updatedAt": "2026-10-20T00:56:48Z",
         "state": "OPEN"
       },
       {
@@ -124,21 +94,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3513,
-        "updatedAt": "2026-10-19T19:42:05Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3512,
-        "updatedAt": "2026-10-19T23:48:13Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3511,
-        "updatedAt": "2026-10-19T19:48:44Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3510,
         "updatedAt": "2026-10-18T06:43:32Z",
         "state": "OPEN"
@@ -164,21 +119,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3498,
-        "updatedAt": "2026-10-19T20:05:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3496,
-        "updatedAt": "2026-10-19T20:00:14Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3495,
-        "updatedAt": "2026-10-19T23:21:16Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3494,
         "updatedAt": "2026-10-18T06:43:07Z",
         "state": "OPEN"
@@ -194,28 +134,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3490,
-        "updatedAt": "2026-10-19T19:01:18Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3488,
         "updatedAt": "2026-10-18T06:42:55Z",
         "state": "OPEN"
       },
       {
-        "number": 3483,
-        "updatedAt": "2026-10-19T20:38:52Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3480,
         "updatedAt": "2026-10-19T18:57:59Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3479,
-        "updatedAt": "2026-10-19T18:57:34Z",
         "state": "OPEN"
       },
       {
@@ -231,16 +156,6 @@
       {
         "number": 3475,
         "updatedAt": "2026-10-18T06:42:49Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3470,
-        "updatedAt": "2026-10-19T20:31:02Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3469,
-        "updatedAt": "2026-10-19T19:52:50Z",
         "state": "OPEN"
       },
       {
@@ -264,18 +179,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3457,
-        "updatedAt": "2026-10-19T18:57:40Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3456,
         "updatedAt": "2026-10-18T06:42:30Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3431,
-        "updatedAt": "2026-10-19T19:00:15Z",
         "state": "OPEN"
       },
       {
@@ -289,23 +194,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3363,
-        "updatedAt": "2026-10-19T20:41:16Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3353,
         "updatedAt": "2026-10-19T19:00:09Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3350,
-        "updatedAt": "2026-10-19T20:08:23Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3341,
-        "updatedAt": "2026-10-19T20:39:08Z",
         "state": "OPEN"
       },
       {
@@ -319,16 +209,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3338,
-        "updatedAt": "2026-10-19T22:27:11Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3333,
-        "updatedAt": "2026-10-19T21:18:24Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3329,
         "updatedAt": "2026-10-17T09:04:11Z",
         "state": "OPEN"
@@ -336,11 +216,6 @@
       {
         "number": 3328,
         "updatedAt": "2026-10-17T09:04:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3326,
-        "updatedAt": "2026-10-19T21:45:48Z",
         "state": "OPEN"
       },
       {
@@ -389,28 +264,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3297,
-        "updatedAt": "2026-10-19T21:09:55Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3291,
         "updatedAt": "2026-10-17T09:03:32Z",
         "state": "OPEN"
       },
       {
-        "number": 3290,
-        "updatedAt": "2026-10-19T20:59:42Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3289,
         "updatedAt": "2026-10-17T09:03:26Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3284,
-        "updatedAt": "2026-10-19T21:06:14Z",
         "state": "OPEN"
       },
       {
@@ -434,11 +294,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3079,
-        "updatedAt": "2026-10-19T20:23:36Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3056,
         "updatedAt": "2026-10-16T16:30:18Z",
         "state": "OPEN"
@@ -446,11 +301,6 @@
       {
         "number": 3048,
         "updatedAt": "2026-10-15T16:32:18Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3026,
-        "updatedAt": "2026-10-19T18:37:13Z",
         "state": "OPEN"
       },
       {
@@ -476,6 +326,11 @@
       {
         "number": 2799,
         "updatedAt": "2026-10-16T16:31:35Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 2734,
+        "updatedAt": "2026-10-20T05:59:10Z",
         "state": "OPEN"
       },
       {
@@ -531,79 +386,7 @@
         "number": 3630,
         "state": "OPEN",
         "title": "reconcile does not expand an explicit checks subset with the checks it depends on",
-        "updatedAt": "2026-10-19T19:47:58Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (#2986 wrap-up, item 12)\n\nDefer-reason: genuinely-larger\n\n**Related:** #3608\n\n## Current State\n\n`_shared/pr-first-merge.md` Step 2.5 reads `mergeStateStatus` but never routes `DIRTY` to its Conflict path. A PR whose branch conflicts with the integration branch gets no `pull_request` workflow runs, so its status-check rollup is empty and Step 2.5 reads it as pending: it watches for 15 minutes and parks the run as `checks-pending-timeout` instead of reaching the Conflict path. This is the #2986 symptom (a conflicting PR that looks like pending CI) at merge time. #2986's phase-exit check now catches the conflict early and catches the branch up in `auto`, but a run that reaches the merge decision with a conflicting PR (interactive/hybrid, an aborted catch-up, or a conflict that appeared after the last phase exit) still takes this path. Files: `plugin/skills/_shared/pr-first-merge.md` (Step 2.5 and the Conflict path), its conformance tests.\n\n## Deliverables\n\n- [ ] Step 2.5 reads `mergeStateStatus` before it classifies an empty rollup as pending, and routes `DIRTY` (or `mergeable: CONFLICTING`) to the Conflict path without the 15-minute watch.\n\n- [ ] A pin in the pr-first-merge conformance suite for that routing, proven red when the routing is removed.\n\n## Acceptance Criteria\n\n- [ ] A PR reporting `mergeStateStatus: DIRTY` with an empty rollup reaches the Conflict path at Step 2.5 and never parks as `checks-pending-timeout`.\n\n- [ ] A PR with an empty rollup and any other merge state keeps today's pending/watch behavior.\n\n- [ ] `npm test` passes.\n\n## Release Note\n\nA run whose draft PR conflicts with the base branch now reaches the conflict handling at the merge decision instead of waiting out a 15-minute CI watch.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-19T16:02:29Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3607,
-        "state": "OPEN",
-        "title": "pr-first-merge Step 2.5: route a DIRTY PR with an empty rollup to the Conflict path",
-        "updatedAt": "2026-10-19T18:57:14Z",
+        "updatedAt": "2026-10-20T02:47:20Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -989,84 +772,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (wrap-up of #3523, ledger item 1)\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3587, #3565, #3579\n\n## Current State\n\n- #3523 fixed `tests/wrap-up-multispec-defer-still-live.test.js`, whose CRLF test double-converted an already-CRLF raw read into `\\r\\r\\n` on a `core.autocrlf=true` Windows checkout.\n- While fixing it, a repo-wide grep of `tests/` found nine other test files that apply `split('\\n\\n')` or `indexOf('\\n\\n'` to a raw `fs.readFileSync` of a tracked markdown file. On a CRLF checkout the paragraph break reads `\\r\\n\\r\\n`, so the split finds no break and the index search returns -1. They are unchanged since the shaping base `7852fd8bf`, were out of #3523's scope, and are a latent Windows-only weakness (the `windows-checkout-test-parity` skill's Anti-Patterns table names the class).\n- Sites: `tests/review-vacuity-evidence-conformance.test.js:97`, `tests/working-approach-scope-discipline.test.js:88`, `tests/multi-agent-coordination.test.js:1316`, `tests/design-wrapper-review-surface-gate-prose.test.js:139`, `tests/ephemeral-server-handoff-conformance.test.js:53` and `:113`, `tests/flow-manifesto-ceremony-fallback-conformance.test.js:26`, `tests/try-it-contract-conformance.test.js:53`, `tests/skill-load-report-cli.test.js:217`, `tests/claim-mcp-projection-conformance.test.js:18`.\n- Not every site necessarily fails today: some may already read through `readText()` or normalize elsewhere in the file. Verify each against its own read before changing it.\n\n## Deliverables\n\n- [ ] For each site that reads a tracked file raw and then searches for `'\\n\\n'`, route the read through `tests/helpers/read-skill.js`'s `readText()` (preferred) or LF-normalize it once before the search. Leave the extractor logic unchanged.\n- [ ] For each changed test, keep (or add) a CRLF case built from the LF text, per the `windows-checkout-test-parity` skill's \"Build CRLF inputs from the LF text\" rule.\n- [ ] Dispatch `windows-regression.yml` on the branch and quote the result for the changed files.\n\n## Acceptance Criteria\n\n- [ ] No test under `tests/` searches a raw read of a tracked file for `'\\n\\n'` (re-run the sweep grep and record the result in the PR body).\n- [ ] Each changed test passes on macOS/Linux with no test skipped or removed.\n- [ ] The changed files pass on `windows-latest`, proven by a `windows-regression.yml` dispatch on the branch. An in-process CRLF simulation is not a Windows run.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-19T08:20:48Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3574,
-        "state": "OPEN",
-        "title": "Windows regression-proof 9 prose tests that split or index raw-read markdown on '\\n\\n'",
-        "updatedAt": "2026-10-19T12:28:51Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -4369,6 +4074,90 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": true
+        }
+      }
+    ],
+    [
+      {
+        "body": "Surface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n**Existing mechanism, found during shaping.** `_shared/autonomy-ceiling.md` already documents a *per-run* escape hatch, distinct from `consoleAutoResolve`: an explicit Manifesto `confirm`/`hybrid` override can set `merge-authorization` for that one run — \"always requiring a live answer... regardless of the project's ceiling setting,\" never settable via `policy.yml`. The same passage states plainly: \"an `unattended`-ceiling project still needs `consoleAutoResolve` (or this lever) to actually skip the terminal click — raising the ceiling alone does not, by itself, answer this lever.\" This confirms the gap precisely: `consoleAutoResolve` is granted automatically at `unattended` and resolves every *other* Review Console section with zero clicks, but `merge-authorization`'s `ask` default is either a deliberate carve-out `consoleAutoResolve` does not override, or (less likely, given how explicitly this is documented) a genuine implementation gap — Deliverable 1 below needs to settle which, since the doc reads as intentional design, not an oversight, but the actual session cost (a 7.5h stall) argues the design should be revisited regardless of original intent.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n3. `npm test` passes.\n\n## Technical Approach\n\nWhichever way Deliverable 1 resolves, the change site is `bin/lib/issues/autonomy.js`'s `bookkeepingPermissions(ceiling)` (the single source of truth `_shared/autonomy-ceiling.md`'s Bookkeeping capabilities table documents) plus `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution path — the same three places every existing `unattended`-only capability (`opsAckAutoAcknowledge`, `consoleAutoResolve`, `refineAutoApply`, `ledgerRouteRemainder`) already threads through, so a new `mergeAuthorizationAutoResolve`-shaped capability (if the decision favors extension) follows the identical pattern rather than inventing a new mechanism. If the decision instead favors the command-line opt-in flag (Deliverable 3's middle ground), that's a `/flow` argument-parsing change plus a one-line Manifesto lever override, independent of the `bookkeepingPermissions()` table.\n\n### Key Files\n\n- `plugin/skills/flow/manifesto.md` — the `merge-authorization: ask` default (line ~181) and the \"Never a `policy.yml` default\" rule\n- `plugin/skills/_shared/autonomy-ceiling.md` — `bookkeepingPermissions()`'s documented table, and the existing per-run confirm/hybrid override this record's investigation found (the \"this lever\" passage) — the natural place to add a new capability row if the decision favors extension\n- `plugin/bin/lib/issues/autonomy.js` — `bookkeepingPermissions(ceiling)`'s actual code, the source of truth the markdown table documents\n\n## Gotchas\n\n- The existing confirm/hybrid per-run override is a real, already-working mechanism for pre-authorizing one run's merge — don't present this record as \"there's no way to do this today\" in a build; the gap is specifically that `auto` mode + `unattended` ceiling can't reach the same outcome without reopening the whole Manifesto gate.\n- `_shared/autonomy-ceiling.md`'s own prose reads like the current `ask`-always default for merge-authorization was a deliberate, considered design choice (it's called out explicitly, not silently absent) — treat \"was this intentional\" as a real open question for Deliverable 1, not an assumed bug, even though the session cost (7.5h stall) argues for revisiting it.\n\n## Original request\n\nflow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall\n\nSurface: infra\n\n## Current State\n\n`manifesto.md`'s lever table states `merge-authorization`'s default is always `ask`, and explicitly: \"Never a `policy.yml` default — only a live `confirm`/`hybrid` override sets it.\" This means a default `auto`-mode `/flow` invocation (the documented common case — \"the everyday run has effectively one user-facing stop\") can never pre-authorize its own merge, regardless of how high the project's resolved `autonomy` ceiling is (`_shared/autonomy-ceiling.md`) — even at `unattended`, which already raises `review-auto-apply-ceiling` to `medium` and grants `consoleAutoResolve` for other bookkeeping.\n\nIn this session, the project's autonomy ceiling resolved to `unattended` for both `/flow` runs, yet the Wrap-Up Review Console's merge-approval question still required a live click each time. The second run's merge-approval `AskUserQuestion` sat unanswered for roughly 7.5 hours (the large majority of this session's ~8.6-hour wall-clock span) before the user answered — and when they did, it matched the pre-marked Recommended option, the same as all 3 of this session's `AskUserQuestion` stops (3-for-3 Recommended).\n\nThis is a real cost: a project that has already opted into `unattended` operation (accepting that ledger bookkeeping, queue writes, and ops-acks resolve without a click) still can't finish a fully green, tested, reviewed run without a human present to click one more button — turning what the project's own policy says should be hands-off into a multi-hour stall whenever nobody happens to be watching.\n\n## Deliverables\n\n- [ ] Decide whether a sufficiently high resolved `autonomy` ceiling (e.g. `unattended` + `consoleAutoResolve` granted) should be allowed to extend to `merge-authorization` directly — i.e., add this as a new bookkeeping capability alongside the ones `_shared/autonomy-ceiling.md` already lets `unattended` resolve without a click — or keep merge-authorization permanently `confirm`/`hybrid`-only by design (in which case, document explicitly why merge is excluded from every other `unattended` bookkeeping capability, so this isn't re-discovered as a fresh gap later).\n- [ ] If extending: implement the new capability path in `_shared/autonomy-ceiling.md`'s `bookkeepingPermissions()` and thread it through `manifesto.md`'s lever-default computation and the Review Console's terminal-decision resolution.\n- [ ] Alternative middle ground, if full extension seems too broad: a lightweight one-time opt-in flag on the `/flow` command line itself (distinct from `confirm`/`hybrid` mode, which reopens the whole Manifesto gate) that pre-authorizes just this run's merge — sparing a `confirm`-mode user from re-litigating every other lever just to unlock hands-off merge.\n\n## Acceptance Criteria\n\n1. A documented decision exists for whether/how `unattended` extends to merge-authorization.\n2. If implemented, a default-`auto` `/flow` run at `unattended` with `consoleAutoResolve` granted completes end-to-end (merge included) with zero required clicks, matching the behavior already true for every other bookkeeping capability at that ceiling.\n\n## Release Note\n\nDecided whether an `unattended` autonomy ceiling should extend to merge-authorization, closing the gap where a fully green, reviewed `/flow` run still stalls on a single manual merge click.\n",
+        "createdAt": "2026-09-21T04:53:20Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMTcg",
+            "name": "risk:high",
+            "description": "Scoring: high blast radius — human review required",
+            "color": "D93F0B"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
+            "name": "shaped:headless",
+            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
+            "color": "ededed"
+          }
+        ],
+        "number": 2734,
+        "state": "OPEN",
+        "title": "flow: merge-authorization can never be pre-authorized under default auto mode, even at unattended — caused a ~7.5h stall",
+        "updatedAt": "2026-10-20T05:59:10Z",
+        "facets": {
+          "origin": null,
+          "risk": "high",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
