@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-20T00:19:00.153Z",
+  "computedAt": "2026-10-20T00:55:20.515Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -70,7 +70,7 @@
       },
       {
         "number": 3566,
-        "updatedAt": "2026-10-19T12:28:59Z",
+        "updatedAt": "2026-10-20T00:20:18Z",
         "state": "OPEN"
       },
       {
@@ -1067,84 +1067,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\nOrigin: build (#2887 whole-branch review)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#2887 made `ledgerProbe` (`plugin/bin/lib/wrap-up/pack.js`) attribute `docs/plans/*-ledger.md` files to a run by branch ownership: a ledger counts only when `git diff --name-only {merge-base}` or `git ls-files --others` names it. Ledgers inherited from `main` are listed as `unattributedFiles` instead.\n\nTwo sibling resolvers still use the filename heuristic #2887 retired:\n\n- `resolveLedgerPath` in `plugin/bin/lib/wrap-up/ledger-write.js` (around `:47-56`) treats exactly one `docs/plans/*-ledger.md` candidate as this run's ledger, and returns `ambiguous` for two or more. Its callers are `hooks.js delete-ledger --run` (no `--ledger`), reached from `wrap-up/cleanup-procedures.md` row 2, and `wrap-up-engine.js finish-console`. With exactly one inherited ledger in the worktree, either can flip rows in, or delete, another run's committed ledger. With two or more inherited ledgers (this repo today: `docs/plans/` on `main` carries finished runs' ledgers), a run's own ledger becomes `ambiguous` and cannot be flipped or deleted without `--ledger`.\n\n- Wrap-up prose re-counts \"the ledger\" by glob after the residue sweep (`plugin/skills/wrap-up/SKILL.md:208`, `plugin/skills/wrap-up/residue-sweep.md` around `:62-66`), through `_shared/ledger-format.md`'s resolution fallback, so an agent's own re-count can pick up inherited ledgers again.\n\n## Deliverables\n\n1. `resolveLedgerPath` resolves the run's `docs/plans` ledger by the same ownership rule `ledgerProbe` uses (merge-base diff plus untracked files), sharing one helper rather than re-implementing it. An inherited ledger is never returned. `ambiguous` is returned only when two or more owned candidates remain.\n\n2. The wrap-up prose re-count after the residue sweep reads `pack.ledger` again (re-run the ledger probe), not a bare glob.\n\n3. Tests in `tests/bin-lib/wrap-up/` for: one inherited ledger only (not found), one owned plus inherited (owned path returned), two owned (ambiguous).\n\n## Acceptance Criteria\n\n- In a worktree whose only `docs/plans` ledger is inherited from the merge base, `resolveLedgerPath` returns not-found, and `hooks.js delete-ledger --run` deletes nothing.\n\n- In a worktree with one owned ledger plus inherited ledgers, `resolveLedgerPath` returns the owned ledger's path.\n\n- `npm test` passes in full.\n\n## Release Note\n\nFixed wrap-up flipping or deleting another run's ledger file when a worktree inherited one from the main branch.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T07:25:13Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3566,
-        "state": "OPEN",
-        "title": "wrap-up ledger-write.js resolveLedgerPath still treats a lone docs/plans ledger as this run's",
-        "updatedAt": "2026-10-19T12:28:59Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
