@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-19T185754-record-3353",
-  "sessionId": "2d4d7c82-8398-4eb3-a9d1-101f0a6c0552",
-  "claimedAt": "2026-10-19T18:59:53.596Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "superseded: shipped by aa161a91c (#3512); PR #3626 closed",
+  "releasedAt": "2026-10-20T07:53:15.631Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/commit/aa161a91c84e6de6fd8b0a6f87dcd6a075453f99"
 }
