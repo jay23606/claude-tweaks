@@ -268,6 +268,22 @@ test('review/step3-routing.md checks isMaterialityDuplicate before appending a d
   assert.ok(REVIEW_ROUTING.includes('isMaterialityDuplicate'));
 });
 
+test('materiality-floor.md Dedup passes comment objects and counts only trusted-author markers (#3766)', () => {
+  const dedup = FLOOR.slice(FLOOR.indexOf('### Dedup'), FLOOR.indexOf('### Direct-filing producers'));
+  assert.ok(dedup.includes('isMaterialityDuplicate(existingComments, candidate)'));
+  assert.ok(dedup.includes('authorAssociation'));
+  assert.ok(dedup.includes('bin/lib/issues/comment-trust.js'));
+  assert.ok(dedup.includes('Trusted authors'));
+  assert.ok(!dedup.includes('existingCommentBodies'));
+});
+
+test('materiality-floor.md race repair and digest-sweep.md read only trusted digest comments (#3766)', () => {
+  assert.ok(FLOOR.includes("merge the newer issue's trusted comments into the older"));
+  assert.ok(SWEEP.includes("merge the newer issue's trusted comments into the older"));
+  assert.ok(SWEEP.includes('trustedMaterialityTexts'));
+  assert.ok(SWEEP.includes('Trusted authors'));
+});
+
 // --- #1279: digest URL and count surfacing ---
 
 test('materiality-floor.md documents the digest URL and count surfacing convention', () => {
