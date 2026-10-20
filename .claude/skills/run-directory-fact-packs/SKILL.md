@@ -84,6 +84,13 @@ Read them before writing a fourth.
   whose ids belonged to an unrelated ledger while a second counted file also had rows 2-5. Qualify
   where the files are merged, keep the per-file parser returning bare ids, and pin it with a
   two-file fixture whose ids collide.
+- **A shared directory's "whose file is this" rule has one definition, used by the probe that reads
+  and the writer that mutates.** `docs/plans/` holds inherited ledgers beside the run's own;
+  `ledgerProbe` filtered by ownership (#2887) while `resolveLedgerPath` still treated a lone
+  `*-ledger.md` as the run's, so a flip or delete could hit another run's record (#3566).
+  `wrap-up/ledger-ownership.js`'s `ownedPlansFiles` is now the one definition, and the writer fails
+  closed (`unattributable`) when ownership cannot be computed. A new reader or writer of such a
+  directory imports it rather than re-deriving a filename heuristic.
 
 ## Every field owes a location, a freshness, and a phase — traced before it is written
 
