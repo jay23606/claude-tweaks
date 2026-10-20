@@ -223,5 +223,8 @@
   },
   "doc:decisions/0022-unattended-runs-keep-network-egress": {
     "lastAuditedMs": 1792217762275
+  },
+  "doc:decisions/0023-dispatch-groups-are-per-record-overlap-resolved-at-merge": {
+    "lastAuditedMs": 1792476913686
   }
 }
