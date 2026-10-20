@@ -1450,13 +1450,14 @@ test('reference-repairs check fails when Initiative-Fix commit diff touches a fi
   }));
   const fakeGit = (args) => {
     if (args[0] === 'log' && args.includes('--grep=Initiative-Fix:')) return 'def5678 Initiative-Fix: repair refs\n';
-    if (args[0] === 'diff-tree' && args.includes('--name-only')) return 'docs/a.md\ndocs/b.md\n';
+    if (args[0] === 'diff-tree' && args.includes('--name-only')) return 'docs/a.md\0docs/b.md\0';
     return '';
   };
   const result = runVerify({ runDir, base: 'main', deps: { git: fakeGit, gh: () => '' } });
   const row = result.rows.find((r) => r.check === 'reference-repairs');
   assert.strictEqual(row.result, 'fail');
-  assert.match(row.detail, /docs\/b\.md/);
+  // Exact: a '\n'-split parse would fold both NUL-separated paths into one token.
+  assert.strictEqual(row.detail, 'Initiative-Fix: commit touches unrelated file(s): docs/b.md');
 });
 
 // ---- reference-repairs: pr-first verification via the PR's own (pre-squash)
@@ -2495,15 +2496,20 @@ test('reference-repairs check runs git log and git diff-tree against the injecte
   const fakeGit = (args, callCwd) => {
     calls.push({ args, cwd: callCwd });
     if (args[0] === 'log' && args.includes('--grep=Initiative-Fix:')) return 'def5678 Initiative-Fix: repair refs\n';
-    if (args[0] === 'diff-tree' && args.includes('--name-only')) return 'docs/a.md\n';
+    if (args[0] === 'diff-tree' && args.includes('--name-only')) return 'docs/a.md\0';
     return '';
   };
   try {
-    runVerify({ runDir, base: 'main', repoRoot, cwd, deps: { git: fakeGit, gh: () => '' } });
+    const result = runVerify({ runDir, base: 'main', repoRoot, cwd, deps: { git: fakeGit, gh: () => '' } });
+    // The fake returns only the applied file, NUL-terminated: a pass proves the NUL parse (splitNul), not a '\n' split.
+    const row = result.rows.find((r) => r.check === 'reference-repairs');
+    assert.strictEqual(row.result, 'pass');
     const logCall = calls.find((c) => c.args[0] === 'log' && c.args.includes('--grep=Initiative-Fix:'));
     const diffCall = calls.find((c) => c.args[0] === 'diff-tree');
     assert.ok(logCall, 'expected a git log call');
     assert.ok(diffCall, 'expected a git diff-tree call');
+    // -z so a non-ASCII path is read raw (not C-quoted); the sha is the fake log's one line.
+    assert.deepStrictEqual(diffCall.args, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', '--end-of-options', 'def5678 Initiative-Fix: repair refs']);
     assert.strictEqual(logCall.cwd, cwd);
     assert.strictEqual(diffCall.cwd, cwd);
     assert.notStrictEqual(logCall.cwd, repoRoot);
