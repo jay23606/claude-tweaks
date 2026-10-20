@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-19T195013-record-3469",
-  "sessionId": "50541146-e7b9-49d6-b825-b1d08fab1a26",
-  "claimedAt": "2026-10-19T19:52:38.067Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "merged: reconciled from PR #3640",
+  "releasedAt": "2026-10-20T06:18:46.614Z"
 }
