@@ -2,3 +2,7 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | tests/backlog-refine-flagback-divergence.test.js tests 3-5: the pinned() go-red half probes PRE_TEMPLATES, which can never match prose-paragraph patterns, so that half is vacuous; real go-red is the RED run against pre-change files | deferred | SDD task review minor (deferred) — non-blocking test hygiene |
+| 2 | build | tests/backlog-refine-flagback-divergence.test.js tests 3 and 5 depend on [\s\S]{0,700}/{0,2200} proximity windows — brittle to harmless paragraph reflow | deferred | SDD task review minor (deferred) — non-blocking test hygiene |
+| 3 | build | SDD ruling — pulled review minors #1 (false needs-scoring example) and #2 (carve-out missing human-flagged re-authorize rows) into fix round 1 because fast-lane skips the whole-branch review: ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 4 | build | PRE_FLAGBACK_PARA full-paragraph go-red probe in tests/backlog-refine-flagback-divergence.test.js goes stale on any later edit to that paragraph | deferred | SDD re-review out-of-scope observation — non-blocking test hygiene |
