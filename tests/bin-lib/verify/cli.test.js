@@ -1457,7 +1457,7 @@ test('flaky retry: a TAP failure with no attributable file refuses retry even wh
   assert.strictEqual('flakyRetried' in report.checks.tests, false);
 });
 
-test('flaky retry: a summary-family failure refuses retry even when every named file is allowlisted, through the real CLI wiring (#3204)', async () => {
+test('flaky retry: a jest failure with a suite no test file accounts for refuses retry even when every named file is allowlisted, through the real CLI wiring (#3204, #3480)', async () => {
   // Same wiring as the #3066 TAP test above, on a jest summary log: the
   // allowlisted tests/flaky.test.js is named, and src/setup.js is a failing
   // suite no test file accounts for. Without an accounting guard for the
@@ -1488,10 +1488,37 @@ test('flaky retry: a summary-family failure refuses retry even when every named 
   assert.strictEqual(code, 1);
   assert.match(stdout, /\| tests \| fail \|/);
   assert.doesNotMatch(stdout, /flaky-retried/);
-  assert.ok(!fs.existsSync(path.join(r.repo, 'retry.marker')), 'no retry command may run without a failure-accounting guard');
+  assert.ok(!fs.existsSync(path.join(r.repo, 'retry.marker')), 'no retry command may run while a jest failure is unattributed');
   const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
-  assert.deepStrictEqual(report.checks.tests.retryDecision, { retry: false, reason: 'no-accounting-guard: summary' });
+  assert.deepStrictEqual(report.checks.tests.retryDecision, { retry: false, reason: 'unattributed-failures: 1' });
   assert.strictEqual('flakyRetried' in report.checks.tests, false);
+});
+
+test('flaky retry: a fully attributed jest log whose failing file is allowlisted retries it through the real CLI wiring (#3480 AC)', async () => {
+  // Same wiring as the refusal test above, on a real captured jest log whose
+  // only failure is the allowlisted file: the runner now retries it.
+  const r = tmpGitRepo();
+  const jest = fs.readFileSync(path.join(__dirname, '..', '..', 'fixtures', 'verify-dialects', 'jest-attributed.txt'), 'utf8');
+  fs.writeFileSync(path.join(r.repo, 'fail.js'), `process.stdout.write(${JSON.stringify(jest)} + '\\n'); process.exit(1);\n`);
+  fs.writeFileSync(path.join(r.repo, 'retry.js'), "require('fs').writeFileSync('retry.marker', process.argv[2]); process.exit(0);\n");
+  const decl = {
+    checks: { tests: 'node fail.js' },
+    retry: { tests: 'node retry.js {file}' },
+    rules: [{ match: 'src/**', suites: ['tests'], static: true }],
+    flaky: { files: ['tests/flaky.test.js'] },
+  };
+  fs.mkdirSync(path.join(r.repo, '.claude-tweaks'), { recursive: true });
+  fs.writeFileSync(path.join(r.repo, '.claude-tweaks', 'verify-scope.json'), JSON.stringify(decl));
+  r.git('add', '.');
+  r.git('commit', '-q', '-m', 'summary-family attributed fixture');
+  const branch = r.git('symbolic-ref', '--short', 'HEAD').trim();
+  const args = ['--scope', '.claude-tweaks/verify-scope.json', '--integration-branch', branch, '--cmd', 'tests=node fail.js'];
+  const { code, stdout } = await runCli(args, { cwd: r.repo });
+  assert.strictEqual(code, 0);
+  assert.strictEqual(fs.readFileSync(path.join(r.repo, 'retry.marker'), 'utf8'), 'tests/flaky.test.js');
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  assert.deepStrictEqual(report.checks.tests.retryDecision, { retry: true, files: ['tests/flaky.test.js'] });
+  assert.match(stdout, /flaky-retried: tests\/flaky\.test\.js/);
 });
 
 // Shared by the no-parse test below: writes a verify-scope.json declaring
@@ -1761,9 +1788,24 @@ test('AC1.2 preExisting: a TAP log whose named file is covered but which also ca
   await assertPreExistingRefused(log, 'unattributed-failures: 1');
 });
 
-test('AC2.1 preExisting: a summary-family log is never adjudicated through preExisting — no-accounting-guard: summary (#3481)', async () => {
-  const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
+test('AC2.1 preExisting: a pytest summary log is never adjudicated through preExisting — no-accounting-guard: summary (#3481, #3480)', async () => {
+  const log = ['FAILED tests/known-shallow.test.js::test_known - assert 1 == 2', '========================= 1 failed, 3 passed in 0.02s ========================='].join('\n');
   await assertPreExistingRefused(log, 'no-accounting-guard: summary');
+});
+
+test('preExisting: a jest log whose only failing file is covered but whose global teardown threw is refused — unattributed-failures: 1 (#3480)', async () => {
+  const log = fs.readFileSync(path.join(__dirname, '..', '..', 'fixtures', 'verify-dialects', 'jest-global-teardown.txt'), 'utf8')
+    .replaceAll('tests/known.test.js', 'tests/known-shallow.test.js');
+  await assertPreExistingRefused(log, 'unattributed-failures: 1');
+});
+
+test('preExisting: a fully attributed jest log covered by the allowlist is adjudicated (#3480)', async () => {
+  const log = ['FAIL tests/known-shallow.test.js', '  ● known › fails', 'Test Suites: 1 failed, 2 passed, 3 total', 'Tests:       1 failed, 3 passed, 4 total'].join('\n');
+  const r = preExistingRepo({ log });
+  const { code, stderr } = await runCli(r.args, { cwd: r.repo });
+  assert.strictEqual(code, 0, stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(r.gitDir, 'claude-tweaks-verify', 'report.json'), 'utf8'));
+  assert.deepStrictEqual(report.preExistingAdjudicated, { declared: ['tests/known-shallow.test.js'], matched: ['tests/known-shallow.test.js'] });
 });
 
 test('AC1.3 preExisting: unattributed failures sum across failing checks — types and lint with one each refuse as unattributed-failures: 2 (#3481)', async () => {
