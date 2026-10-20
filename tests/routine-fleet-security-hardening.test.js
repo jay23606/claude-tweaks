@@ -10,6 +10,12 @@ function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }
 const fleet = read(path.join('plugin', 'skills', 'routine', 'fleet.md'));
+const routineDir = path.join(ROOT, 'plugin', 'skills', 'routine');
+const routineSkillFiles = fs
+  .readdirSync(routineDir)
+  .filter((f) => f.endsWith('.md'))
+  .map((f) => path.join('plugin', 'skills', 'routine', f));
+const schemaPath = path.join('plugin', 'skills', '_shared', 'routine-template-schema.md');
 
 // Parses the Fleet composition table (under `## Fleet composition table`) into one
 // object per numbered row. Cell values are backtick-stripped.
@@ -23,7 +29,12 @@ function compositionRows(md) {
     if (/^## /.test(line)) break;
     if (!line.startsWith('| ')) continue;
     const cells = line.split('|').slice(1, -1).map((c) => c.trim().replace(/`/g, ''));
-    if (!/^\d+$/.test(cells[0])) continue;
+    if (!/^\d+$/.test(cells[0])) {
+      // The header row ("#") is the only legitimate non-numbered table line; anything else is a malformed row.
+      assert.strictEqual(cells[0], '#', `malformed composition-table row: ${line}`);
+      continue;
+    }
+    assert.strictEqual(cells.length, 7, `composition-table row ${cells[0]} has ${cells.length} cells, expected 7`);
     rows.push({
       num: cells[0],
       bucket: cells[1],
@@ -77,13 +88,6 @@ test('existing rows keep their pre-#3276 PREFIXED_NAME -> cron pairs (a changed 
   });
 });
 
-const routineDir = path.join(ROOT, 'plugin', 'skills', 'routine');
-const routineSkillFiles = fs
-  .readdirSync(routineDir)
-  .filter((f) => f.endsWith('.md'))
-  .map((f) => path.join('plugin', 'skills', 'routine', f));
-const schemaPath = path.join('plugin', 'skills', '_shared', 'routine-template-schema.md');
-
 test('AC2.1: no hardcoded vertical-finder row range or code-health instance count in routine skills or the template schema', () => {
   // mirrors the spec's: git grep -n -E "rows 1-4|rows 1-5|rows 6-12|row 5-12|five code-health instances" -- plugin/skills/routine plugin/skills/_shared/routine-template-schema.md
   const re = /rows 1-4|rows 1-5|rows 6-12|row 5-12|five code-health instances/;
@@ -104,7 +108,7 @@ test('fleet.md citers name composition-table rows by bucket/entry, never by numb
   assert.doesNotMatch(journey, /four focus-scoped|twelve separate/);
   assert.doesNotMatch(journey, /\b[Rr]ows? \d/);
   for (const f of ['docs/journeys/code-health-focus-sweep.md', 'docs/getting-started.md']) {
-    assert.doesNotMatch(read(f), /(four|five) focus-scoped/, f);
+    assert.doesNotMatch(read(f), /\b(?:two|three|four|five|six|seven|eight|nine|ten) focus-scoped/i, f);
   }
   assert.doesNotMatch(read('docs/journeys/code-health-focus-sweep.md'), /dead-code, test-hygiene, abstraction-police/);
 });
