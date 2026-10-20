@@ -1,7 +1,7 @@
 {
   "claude-md:CLAUDE": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792473277034
+    "lastAuditedMs": 1791868660880
   },
   "__gapScan": {
     "lastScannedSha": null,
@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792438853389
+    "lastAuditedMs": 1792480964574
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
