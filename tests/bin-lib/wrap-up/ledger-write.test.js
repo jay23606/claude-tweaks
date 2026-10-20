@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const {
   TERMINAL_STATUSES, resolveLedgerPath, parseLedgerTable, flipLedgerRow,
 } = require('../../../plugin/bin/lib/wrap-up/ledger-write');
+const { splitLedgerRow, ledgerRowCells } = require('../../../plugin/bin/lib/wrap-up/ledger-cells');
 
 const SAMPLE = [
   '# Open Items — Sample',
@@ -217,4 +218,35 @@ test('wrap-up prose re-counts the ledger via the ledger probe, not a glob (#3566
   const sweep = fs.readFileSync(path.join(__dirname, '../../../plugin/skills/wrap-up/residue-sweep.md'), 'utf8');
   assert.match(sweep, /pack\.ledger.{0,80}files/s);
   assert.match(sweep, /unattributedFiles/);
+});
+
+test('AC1.1: flipLedgerRow flips a row whose Item carries an escaped pipe, keeping the Item text intact', () => {
+  const text = SAMPLE.replace('| 1 | build | First item |', String.raw`| 1 | build | Ruling: a\|b |`);
+  const next = flipLedgerRow(text, { item: 1, status: 'accepted', resolution: 'ratified' });
+  assert.match(next, /\| 1 \| build \| Ruling: a\\\|b \| accepted \| ratified \|/);
+  const row = next.split('\n').find((l) => l.startsWith('| 1 |'));
+  assert.deepStrictEqual(ledgerRowCells(row), ['1', 'build', 'Ruling: a|b', 'accepted', 'ratified']);
+});
+
+test('flipLedgerRow escapes a pipe in the resolution text it writes', () => {
+  const next = flipLedgerRow(SAMPLE, { item: 2, status: 'accepted', resolution: 'ratified — x|y' });
+  const row = next.split('\n').find((l) => l.startsWith('| 2 |'));
+  assert.strictEqual(splitLedgerRow(row).length, 7);
+  assert.strictEqual(ledgerRowCells(row)[4], 'ratified — x|y');
+});
+
+test('flipLedgerRow collapses a newline in the resolution — the row stays on one line and a later flip still succeeds', () => {
+  const next = flipLedgerRow(SAMPLE, { item: 1, status: 'fixed', resolution: 'line1\nline2' });
+  const lines = next.split('\n');
+  const row = lines.find((l) => l.startsWith('| 1 |'));
+  assert.strictEqual(splitLedgerRow(row).length, 7);
+  assert.strictEqual(ledgerRowCells(row)[4], 'line1 line2');
+  assert.ok(!lines.includes('line2 |'), 'no continuation line');
+  const again = flipLedgerRow(next, { item: 2, status: 'accepted', resolution: 'ok' });
+  assert.ok(again.split('\n').some((l) => l.startsWith('| 2 |') && l.includes('accepted')));
+});
+
+test('flipLedgerRow still refuses a legacy row with a raw (unescaped) pipe, naming the \\| rule', () => {
+  const text = SAMPLE.replace('| 1 | build | First item |', '| 1 | build | First a|b item |');
+  assert.throws(() => flipLedgerRow(text, { item: 1, status: 'fixed', resolution: 'x' }), /5-column shape[\s\S]*\\\|[\s\S]*ledger-format\.md/);
 });

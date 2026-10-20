@@ -23,7 +23,7 @@ function ownedPlansFiles({ worktree, base, git }) {
   if (!base) throw new Error('merge base unavailable — cannot attribute docs/plans ledgers to this run');
   const gitOptions = { cwd: worktree };
   return new Set([
-    ...plansFileNames(git(['diff', '--name-only', '-z', '--relative', base, '--', PLANS_PREFIX], gitOptions)),
+    ...plansFileNames(git(['diff', '--name-only', '-z', '--relative', '--end-of-options', base, '--', PLANS_PREFIX], gitOptions)),
     ...plansFileNames(git(['ls-files', '--others', '--exclude-standard', '-z', '--', PLANS_PREFIX], gitOptions)),
   ]);
 }
