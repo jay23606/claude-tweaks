@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { checkFirstCallArtifacts } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
 const { execFileSync } = require('node:child_process');
+const { checkFirstCallArtifacts, checkFirstCallStamp } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
 const { claimFilePath } = require('../../../plugin/bin/lib/issues/claims');
 
 const REPO_SLUG = 'acme/widgets';
@@ -527,8 +527,8 @@ test('resolveFirstCallGate: OUTCOME already-shipped -> already-shipped; build-te
 });
 
 // ---- #3661: checkFirstCallStamp -- the first call's runner-written pass stamp at HEAD ----
-// The real verify.js is never spawned here: every case injects `stampStatus` / `exists`.
-const { checkFirstCallStamp } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
+// Every case injects `stampStatus` / `exists` except the last two, which exercise the real
+// default report check and the real verify.js spawn (its worktree cwd) against temp fixtures.
 
 const STAMP_REPORT = '/wt/.git/claude-tweaks-verify/report.json';
 
@@ -587,7 +587,7 @@ test('no worktree recorded never reads a stamp', () => {
   assert.deepEqual(noWorktree, { verified: false, reason: 'worktree-unrecorded', status: null });
 
   const noRunState = mkRunDir();
-  fs.mkdirSync(noRunState, { recursive: true });
+  writeRunDir(noRunState, {});
   const absent = checkFirstCallStamp({ runDir: noRunState }, { stampStatus: boom, exists: () => true });
   assert.deepEqual(absent, { verified: false, reason: 'worktree-unrecorded', status: null });
 });

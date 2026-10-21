@@ -311,11 +311,11 @@ function checkFirstCallStamp({ runDir }, deps = {}) {
   }
   if (worktree === null) return { verified: false, reason: 'worktree-unrecorded', status: null };
 
-  let status;
+  let status = null;
   try {
     status = stampStatus(worktree);
   } catch {
-    return { verified: false, reason: 'stamp-read-failed', status: null };
+    status = null;
   }
   if (!status || typeof status !== 'object' || Array.isArray(status)) {
     return { verified: false, reason: 'stamp-read-failed', status: null };
