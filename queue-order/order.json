@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T20:40:36.196Z",
+  "computedAt": "2026-10-21T21:57:57.293Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -179,13 +179,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3657,
-        "updatedAt": "2026-10-20T07:09:39Z",
+        "number": 3630,
+        "updatedAt": "2026-10-21T20:49:29Z",
         "state": "OPEN"
       },
       {
         "number": 3553,
-        "updatedAt": "2026-10-19T12:29:28Z",
+        "updatedAt": "2026-10-21T21:21:52Z",
         "state": "OPEN"
       },
       {
@@ -220,12 +220,12 @@
       },
       {
         "number": 3002,
-        "updatedAt": "2026-10-21T19:53:42Z",
+        "updatedAt": "2026-10-21T20:51:18Z",
         "state": "OPEN"
       },
       {
         "number": 2987,
-        "updatedAt": "2026-10-21T19:53:37Z",
+        "updatedAt": "2026-10-21T20:51:05Z",
         "state": "OPEN"
       },
       {
@@ -2272,8 +2272,8 @@
     ],
     [
       {
-        "body": "Origin: #3021 build — whole-branch review finding (Section D positional parse)\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3656, #3664\n\n## Current State\n\n`ephemeral-server.txt` is written as `printf '%s %s %s detached:%s\\n' \"$PID\" \"$PORT\" \"$WORKTREE_ROOT\" \"$DETACHED\"` (`_shared/dev-url-detection.md` item 4, `dispatch/task-prompt.md`). `plugin/skills/wrap-up/cleanup-procedures-execution.md` Section D step 2 (POSIX) says \"When the fourth field reads `detached:yes`, also kill the process group\". When the worktree root contains a space (e.g. `~/Code Workspaces/...`), the fourth whitespace field is a path fragment, never `detached:yes`, so the group kill is skipped and a detached dev command's children can outlive their leader, still holding the port.\n\n#3021 fixed the same parse for the worktree-root field in `review/step3-routing.md`'s Fix-wave server coordination (root = everything between the port and the trailing `detached:` token); Section D and any other reader of the record were left as they were.\n\n## Deliverables\n\n1. Section D reads the detach flag as the trailing `detached:` token, not a positional field.\n2. Audit every other reader of `ephemeral-server.txt` (`dispatch/task-prompt.md`'s liveness re-check, `wrap-up/standalone-fast-path.md`) for positional parsing and fix the same way.\n3. Conformance test pinning the trailing-token rule.\n\n## Acceptance Criteria\n\n- With a worktree root containing spaces and `detached:yes`, Section D kills the process group.\n- No reader of `ephemeral-server.txt` parses the worktree root or detach flag by whitespace position.\n- `npm test` passes in full.\n\n## Release Note\n\nPipeline cleanup fully stops its test server even when your project path contains spaces.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/cleanup-procedures-execution.md` — modify\n- `plugin/skills/dispatch/task-prompt.md` — modify\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T20:44:41Z",
+        "body": "Origin: reflect full from #3026\n\nDefer-reason: tangential\n\n## Current State\n\n`reconcile --checks` runs exactly the named subset, but `archive` silently depends on `mirror`: `archive-merged.js`'s `localHasMerge` needs the integration branch's merge commit to be an ancestor of `refs/heads/{integration}` or `origin/{integration}`, and only `mirror` (or `remote-prune`) runs the fetch that makes `origin/{integration}` current. A caller who names `archive` without `mirror` gets a silent `local-behind-merge` skip for any PR GitHub merged asynchronously.\n\nNothing in `plugin/bin/lib/reconcile/index.js` or `docs/reconcile-checks.md` declares this prerequisite. #3026's drain-termination call was specified as `--checks release,archive,reap`, which would have shipped the defect; it was caught only by the final whole-branch review and corrected to `mirror,release,archive,reap`. The only other scripted subset caller, `_shared/pr-first-merge-post-merge.md` Step 4.2, names `mirror` by hand.\n\n## Deliverables\n\n1. `plugin/bin/lib/reconcile/index.js` declares each check's prerequisite checks (`archive` needs `mirror`, and any other dependency the code shows) and expands an explicit `checks` subset with them before dispatch, preserving the existing dispatch order.\n\n2. `docs/reconcile-checks.md` documents the prerequisite table and that an explicit subset is expanded and runs without the hot-path time ceiling.\n\n3. `tests/reconcile.test.js` pins the expansion: a `checks: ['archive']` request runs `mirror` first; an unrelated subset is not widened.\n\n## Acceptance Criteria\n\n- `reconcile({ checks: ['archive'] })` runs `mirror` before `archive`, and `reconcile({ checks: ['reap'] })` runs only `reap`.\n\n- A dispatch-style call `--checks release,archive,reap` archives a run whose PR GitHub merged asynchronously, with no `local-behind-merge` skip caused by a missing fetch.\n\n- `node --test tests/reconcile.test.js` passes.\n\n## Release Note\n\nFixed reconcile so naming `archive` in an explicit check list also refreshes the integration branch it needs, instead of silently skipping asynchronously merged pull requests.\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-19T19:18:38Z",
         "labels": [
           {
             "id": "LA_kwDORUwzVM8AAAACruyqXw",
@@ -2282,22 +2282,10 @@
             "color": "2EA44F"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
           },
           {
             "id": "LA_kwDORUwzVM8AAAACry2nbg",
@@ -2312,97 +2300,31 @@
             "color": "F9D0C4"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
           }
         ],
-        "number": 3657,
+        "number": 3630,
         "state": "OPEN",
-        "title": "wrap-up Section D reads the detached flag as the \"fourth field\" of ephemeral-server.txt, which a worktree path with spaces breaks",
-        "updatedAt": "2026-10-20T07:09:39Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3497\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/flow/multispec-review-console.md`'s \"Re-entry after the parent session ended\" step 2 (#3497) runs the authoritative eligibility gate as a `node -e` snippet: `require('${CLAUDE_PLUGIN_ROOT}/bin/lib/flow/consolidated-pass.js').checkPassReentry(process.argv[1], { online: true, sessionId: … })`.\n\nIts first form inlined the run-dir path into the script text. Code review on #3497 caught the quoting hazard, and the fix (b728bc6f7) passes the path as `process.argv[1]` and adds a fail-closed rule for non-JSON output.\n\nThe house pattern for a prose-side run-dir check is a `hooks.js` verb taking an anchored `--run <dir>`: `check-resume-freshness`, `check-staged-inventory` and `check-session-residue` work this way (docs/hooks.md, \"An explicit `--run <dir>` must be *anchored*\"). A verb gets anchoring, exit-code semantics and a JSON contract for free.\n\n## Deliverables\n\n- `plugin/bin/hooks.js check-pass-reentry --run <dir> [--online]` prints `checkPassReentry`'s verdict JSON. It passes the caller's `CLAUDE_CODE_SESSION_ID` as `sessionId` and runs the same `--run` anchoring as the other verbs. It exits non-zero on an unanchored run dir.\n- `multispec-review-console.md`'s re-entry step 2 calls the verb instead of the `node -e` snippet. `docs/hooks.md`'s list of `--run`-accepting subcommands names it.\n\n## Acceptance Criteria\n\n- A test runs `hooks.js check-pass-reentry --run <fixture>` and gets the same verdict JSON as `checkPassReentry` for an eligible and an ineligible fixture. A test with an unanchored `--run` exits non-zero.\n- `tests/flow-pass-reentry-conformance.test.js` pins the verb invocation in the re-entry section, and no `node -e` remains in that section.\n\n## Release Note\n\nThe multi-spec review-console re-entry checks eligibility through a `hooks.js` verb instead of an inline script.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T05:36:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3553,
-        "state": "OPEN",
-        "title": "Add a hooks.js check-pass-reentry verb so the review-console re-entry check needs no node -e snippet",
-        "updatedAt": "2026-10-19T12:29:28Z",
+        "title": "reconcile does not expand an explicit checks subset with the checks it depends on",
+        "updatedAt": "2026-10-21T20:49:29Z",
         "facets": {
           "origin": null,
-          "risk": "low",
-          "size": "low",
+          "risk": "medium",
+          "size": "medium",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
           "needsDefinition": false,
-          "priority": "low",
+          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -2916,18 +2838,12 @@
             "name": "ceremony:standard",
             "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
             "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACyWQCQw",
-            "name": "needs:decision",
-            "description": "a headless unit proposed an action it may not take alone — see the newest decision comment",
-            "color": "BFDADC"
           }
         ],
         "number": 3002,
         "state": "OPEN",
         "title": "bin/verify.js: no way to compose a full pass stamp from chunked --no-stamp runs, so a suite longer than the 10-minute foreground cap never verifies HEAD",
-        "updatedAt": "2026-10-21T19:53:42Z",
+        "updatedAt": "2026-10-21T20:51:18Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -3006,18 +2922,12 @@
             "name": "ceremony:standard",
             "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
             "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACyWQCQw",
-            "name": "needs:decision",
-            "description": "a headless unit proposed an action it may not take alone — see the newest decision comment",
-            "color": "BFDADC"
           }
         ],
         "number": 2987,
         "state": "OPEN",
         "title": "bin/verify.js pass stamp: reads dirty when a check regenerates a tracked file",
-        "updatedAt": "2026-10-21T19:53:37Z",
+        "updatedAt": "2026-10-21T20:51:05Z",
         "facets": {
           "origin": null,
           "risk": "medium",
