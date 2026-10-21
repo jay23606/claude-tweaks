@@ -158,3 +158,59 @@ test('go-red control: assertRepairBranch fails on §2 with the repair line remov
   assert.throws(() => assertRepairBranch(s.split(REPAIR_LINE).join('')));
   assert.throws(() => assertRepairBranch(REPAIR_LINE + '\n' + s.split(REPAIR_LINE).join('')));
 });
+
+// #3661: a first call whose test phase bypassed /claude-tweaks:test leaves no runner pass stamp
+// for HEAD, so call 2 re-runs the full suite. Whenever call 2 is about to be dispatched -- a
+// { ok: true } artifact check or the repair branch -- the gate reads the first call's stamp
+// (checkFirstCallStamp) and logs a SKIP note when none verifies HEAD: a note, never a gate, with
+// call 2 dispatched unchanged. The paragraph sits AFTER the repair branch so both dispatch paths
+// precede it.
+const STAMP_LINE = "SKIP {time} — Artifact check stamp read (degraded): condition: no runner pass stamp verifies the first call's HEAD ({reason}) → fallback: call 2 dispatched unchanged; its review Step 1.5 re-verifies through the runner (#3661). Reversibility: n/a.";
+function assertStampNote(gate) {
+  assert.match(gate, /checkFirstCallStamp\(\{ runDir \}\)/);
+  assert.match(gate, /verify\.js --stamp-status/);
+  assert.match(gate, /verifiedHead/);
+  assert.ok(gate.includes('--status SKIP --step "Artifact check stamp read (degraded)"'), 'literal stamp-note log command');
+  assert.ok(gate.includes(STAMP_LINE), 'literal stamp-note logged line');
+  assert.match(gate, /call 2 dispatched unchanged/);
+  assert.match(gate, /#3661/);
+  assert.match(gate, /never a gate/);
+  const repair = gate.indexOf('**Repair branch: `missing-config`');
+  const stamp = gate.indexOf('**Stamp read, a note never a gate (#3661).**');
+  assert.ok(repair > -1 && stamp > repair, 'the stamp paragraph follows the repair branch, so both dispatch paths precede it');
+  const stampParagraph = gate.slice(stamp, gate.indexOf('\n\n', stamp));
+  assert.match(stampParagraph, /Whenever call 2 is about to be dispatched/);
+  assert.match(stampParagraph, /repair branch/);
+}
+test('AC1.1: two-call-gate.md §2 reads the first call\'s stamp before call 2 and logs the note posture', () => {
+  assertStampNote(gateSection());
+});
+test('AC2.1: a verifying stamp logs nothing and changes nothing', () => {
+  assert.match(gateSection(), /`verified: true`[\s\S]{0,200}?logs nothing/);
+});
+test('sequential-execution.md mirrors the stamp note and its widened trigger', () => {
+  const l = loopSection();
+  assert.match(l, /checkFirstCallStamp/);
+  assert.match(l, /never a gate/);
+  assert.match(l, /Whenever the second call is dispatched — a clean artifact check or the repair branch/);
+});
+test('go-red control: assertStampNote fails on §2 with the stamp paragraph removed', () => {
+  const paragraphs = gateSection().split(/\r?\n\r?\n/);
+  const at = paragraphs.findIndex((p) => p.includes('checkFirstCallStamp'));
+  assert.ok(at > -1, 'stamp paragraph not found — control cannot discriminate');
+  const kept = paragraphs.filter((_, i) => i !== at && i !== at + 1); // the paragraph and its literal log line
+  assert.throws(() => assertStampNote(kept.join('\n\n')));
+});
+test('go-red control: assertStampNote fails when the stamp paragraph is moved before the repair branch, or its trigger narrows to the clean artifact check', () => {
+  const g = gateSection();
+  const paragraphs = g.split(/\r?\n\r?\n/);
+  const at = paragraphs.findIndex((p) => p.includes('checkFirstCallStamp'));
+  const repairAt = paragraphs.findIndex((p) => p.startsWith('**Repair branch'));
+  assert.ok(at > repairAt && repairAt > -1, 'stamp paragraph not after the repair branch — control cannot discriminate');
+  const moved = paragraphs.filter((_, i) => i !== at && i !== at + 1);
+  moved.splice(repairAt, 0, paragraphs[at], paragraphs[at + 1]);
+  assert.throws(() => assertStampNote(moved.join('\n\n')));
+  const narrowed = g.replace('a `{ ok: true }` artifact check or the repair branch above', 'a `{ ok: true }` artifact check');
+  assert.notEqual(narrowed, g, 'narrowing did not change the gate section');
+  assert.throws(() => assertStampNote(narrowed));
+});

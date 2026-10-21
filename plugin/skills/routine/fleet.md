@@ -15,20 +15,21 @@ Buckets, named explicitly in the `Bucket` column below (never restated elsewhere
 | 2 | Vertical finder | test-hygiene | `skills/code-health/routine-template.yml` | `test-hygiene` | `15 5 * * *` | `{REPO_SLUG}-code-health-test-hygiene` |
 | 3 | Vertical finder | abstraction-police | `skills/code-health/routine-template.yml` | `abstraction-police` | `30 5 * * *` | `{REPO_SLUG}-code-health-abstraction-police` |
 | 4 | Vertical finder | experiment-cleanup | `skills/code-health/routine-template.yml` | `experiment-cleanup` | `45 5 * * *` | `{REPO_SLUG}-code-health-experiment-cleanup` |
-| 5 | Generalist sweep | code-health (generalist) | `skills/code-health/routine-template.yml` | none | `0 6 * * *` | `{REPO_SLUG}-code-health-daily` |
-| 6 | Generalist sweep | docs-health | `skills/docs-health/routine-template.yml` | n/a | `15 6 * * *` | `{REPO_SLUG}-docs-health-daily` |
-| 7 | Generalist sweep | journey-health | `skills/journey-health/routine-template.yml` | n/a | `30 6 * * *` | `{REPO_SLUG}-journey-health-daily` |
-| 8 | Generalist sweep | harness-health | `skills/harness-health/routine-template.yml` | n/a | `45 6 * * *` | `{REPO_SLUG}-harness-health-daily` |
-| 9 | Shaping unit | specify | `skills/specify/routine-template.yml` | n/a | `0 8 * * 1-5` | `{REPO_SLUG}-specify-weekdays` |
-| 10 | Grant unit (conditional) | backlog refine (routine) | `skills/backlog/routine-template.yml` | n/a | `0 9 * * 1-5` | `{REPO_SLUG}-backlog-grant-weekdays` |
-| 11 | Dispatch drain | dispatch | `skills/dispatch/routine-template.yml` | n/a | `0 10 * * 1-5` | `{REPO_SLUG}-dispatch-weekdays` |
-| 12 | Tidy | tidy weekly | `skills/tidy/routine-template.yml` | n/a | `0 11 * * 0` | `{REPO_SLUG}-tidy-weekly` |
+| 5 | Vertical finder | security-hardening | `skills/code-health/routine-template.yml` | `security-hardening` | `0 7 * * *` | `{REPO_SLUG}-code-health-security-hardening` |
+| 6 | Generalist sweep | code-health (generalist) | `skills/code-health/routine-template.yml` | none | `0 6 * * *` | `{REPO_SLUG}-code-health-daily` |
+| 7 | Generalist sweep | docs-health | `skills/docs-health/routine-template.yml` | n/a | `15 6 * * *` | `{REPO_SLUG}-docs-health-daily` |
+| 8 | Generalist sweep | journey-health | `skills/journey-health/routine-template.yml` | n/a | `30 6 * * *` | `{REPO_SLUG}-journey-health-daily` |
+| 9 | Generalist sweep | harness-health | `skills/harness-health/routine-template.yml` | n/a | `45 6 * * *` | `{REPO_SLUG}-harness-health-daily` |
+| 10 | Shaping unit | specify | `skills/specify/routine-template.yml` | n/a | `0 8 * * 1-5` | `{REPO_SLUG}-specify-weekdays` |
+| 11 | Grant unit (conditional) | backlog refine (routine) | `skills/backlog/routine-template.yml` | n/a | `0 9 * * 1-5` | `{REPO_SLUG}-backlog-grant-weekdays` |
+| 12 | Dispatch drain | dispatch | `skills/dispatch/routine-template.yml` | n/a | `0 10 * * 1-5` | `{REPO_SLUG}-dispatch-weekdays` |
+| 13 | Tidy | tidy weekly | `skills/tidy/routine-template.yml` | n/a | `0 11 * * 0` | `{REPO_SLUG}-tidy-weekly` |
 
 `{REPO_SLUG}` is `create-and-update.md` CREATE Step 2's own derivation (lowercased, non-`[a-z0-9]` runs collapsed to `-`, trimmed) — resolve it once per fleet run and reuse it across every row.
 
-**Stagger rationale (the exact defaults, settled here — not implementer-invented at some later point, per the parent record's Acceptance Criteria):** the vertical finders and generalist sweeps sit in the 05:00-07:00 UTC early-morning window at 15-minute offsets — cheap, read-only sweeps that don't compete with each other for the same repo state. The shaping unit sits at 08:00, after the finder window so overnight-filed records are visible to the firing, and before the grant unit so the one record each firing shapes is grantable the same morning. The grant unit sits at 09:00, after the shaping unit has had a chance to turn a record into `ready` but before the dispatch drain would otherwise claim records nobody has reviewed. The dispatch drain sits at 10:00, after the grant unit so freshly-granted `auto:build`/`auto:merge` records are visible to it the same morning. Tidy is weekly, Sunday 11:00, clear of every daily/weekday entry above.
+**Stagger rationale (the exact defaults, settled here — not implementer-invented at some later point, per the parent record's Acceptance Criteria):** the vertical finders and generalist sweeps sit in the 05:00-07:00 UTC early-morning window at 15-minute offsets — cheap, read-only sweeps that don't compete with each other for the same repo state. The security-hardening finder takes 07:00 rather than a slot among the other vertical finders: those slots are taken, and moving an existing row's cron would read as drift on every already-provisioned fleet's next reconcile (Step 4's cron comparison), so a new finder takes the next free offset in the window instead. The shaping unit sits at 08:00, after the finder window so overnight-filed records are visible to the firing, and before the grant unit so the one record each firing shapes is grantable the same morning. The grant unit sits at 09:00, after the shaping unit has had a chance to turn a record into `ready` but before the dispatch drain would otherwise claim records nobody has reviewed. The dispatch drain sits at 10:00, after the grant unit so freshly-granted `auto:build`/`auto:merge` records are visible to it the same morning. Tidy is weekly, Sunday 11:00, clear of every daily/weekday entry above.
 
-**Naming deviates from `create-and-update.md`'s standard `{REPO_SLUG}-{routine_name}` derivation for rows 1-4 only** — code-health's `routine_name` (`code-health-daily`) is fixed across all five code-health instances (rows 1-5), so reusing it verbatim would collide four times over. Rows 1-4 use `{REPO_SLUG}-code-health-{focus}` instead (dropping the `-daily` suffix, since a focus-scoped routine isn't the daily generalist). Row 5 (the generalist) keeps the standard derivation unchanged — `{REPO_SLUG}-code-health-daily` is exactly what a standalone `/claude-tweaks:routine create code-health` would also produce, so a project that already ran that command before ever running `fleet on` gets that routine *adopted into* the fleet on first reconcile (Idempotent reconcile, below), not duplicated. Rows 6-12 use the standard derivation unchanged, one instance per template.
+**Naming deviates from `create-and-update.md`'s standard `{REPO_SLUG}-{routine_name}` derivation for the Vertical finder rows only** — code-health's `routine_name` (`code-health-daily`) is fixed across every code-health instance (the Vertical finder rows and the generalist code-health row), so reusing it verbatim would collide once per vertical. The Vertical finder rows use `{REPO_SLUG}-code-health-{focus}` instead (dropping the `-daily` suffix, since a focus-scoped routine isn't the daily generalist). The generalist code-health row keeps the standard derivation unchanged — `{REPO_SLUG}-code-health-daily` is exactly what a standalone `/claude-tweaks:routine create code-health` would also produce, so a project that already ran that command before ever running `fleet on` gets that routine *adopted into* the fleet on first reconcile (Idempotent reconcile, below), not duplicated. Every other row uses the standard derivation unchanged, one instance per template.
 
 **Composition, not exhaustiveness.** A repo missing a template (e.g. a fork of this plugin that dropped `journey-health/`) gets a **partial fleet**: provision every row whose template exists, skip the rest, and name each skipped row plus the skill it belongs to in the summary — never a refusal, never silence (per this sub-issue's own Deliverables).
 
@@ -80,7 +81,7 @@ Fleet routines are scheduled Routines — the exact case CLAUDE.md's Cloud Parit
 
 ## Step 3 — Conditional grant-unit provisioning
 
-The grant unit (`backlog refine --source routine`) provisions **only when both** `autonomy: unattended` **and** `grant-origination-enabled: true` hold after Step 1 — "the unattended keys," exactly these two fields, no third, no paraphrase (per this sub-issue's own Deliverables wording). This conditional governs whether `fleet on` creates the row 10 record at all, not the grant chain's own per-firing ceiling gate — the routine's kickoff runs `refine`'s headless posture, whose labeling lanes (Priority/Related/Flag-back/Dependency-repair) apply regardless of ceiling once the routine exists; only its grant chain is gated by these two keys (`refine-headless.md` Step 0).
+The grant unit (`backlog refine --source routine`) provisions **only when both** `autonomy: unattended` **and** `grant-origination-enabled: true` hold after Step 1 — "the unattended keys," exactly these two fields, no third, no paraphrase (per this sub-issue's own Deliverables wording). This conditional governs whether `fleet on` creates the Grant unit row's record at all, not the grant chain's own per-firing ceiling gate — the routine's kickoff runs `refine`'s headless posture, whose labeling lanes (Priority/Related/Flag-back/Dependency-repair) apply regardless of ceiling once the routine exists; only its grant chain is gated by these two keys (`refine-headless.md` Step 0).
 
 - **Both set** → the grant unit provisions like every other row in Step 4's loop.
 - **Either unset** → skip the grant unit entirely; the summary states plainly that it was withheld and names which policy change(s) would enable it (e.g. "grant unit withheld — set `autonomy: unattended` and `grant-origination-enabled: true` in `.claude-tweaks/policy.yml` to enable").
@@ -90,7 +91,7 @@ The grant unit (`backlog refine --source routine`) provisions **only when both**
 
 For every row in the composition table whose source template exists on disk (Composition, not exhaustiveness — above), and that Step 3 didn't withhold:
 
-1. **Resolve `PREFIXED_NAME`** from the table (row 5-12 via `create-and-update.md` CREATE Step 2's standard derivation; rows 1-4 via this file's own `{REPO_SLUG}-code-health-{focus}` naming — both above).
+1. **Resolve `PREFIXED_NAME`** from the table (the Vertical finder rows via this file's own `{REPO_SLUG}-code-health-{focus}` naming; every other row via `create-and-update.md` CREATE Step 2's standard derivation — both above).
 2. **Idempotent reconcile marker check** (this is the loop's create-vs-update fork, and the "fleet marker" decision rule, fixed here): run `record-freshness.md` Steps F1-F2 for `{PREFIXED_NAME}.yml`, exactly as `create-and-update.md` CREATE Step 3 does.
    - `presence: none` (no local or upstream record) → before treating this as a fresh create, check for a **name collision**: call `RemoteTrigger {action: "list"}` once per fleet run (reuse across every row in this loop — don't re-list per row), filter to triggers whose `job_config.ccr.session_context.sources[].git_repository.url` matches this project's resolved repo URL (same filter as `create-and-update.md` CREATE Step 4 source (b)) **and** whose `name` equals this row's `PREFIXED_NAME`. A match here is a routine created by hand (or by a tool other than this skill) that happens to collide with the fleet's deterministic name — **detected and reported, never adopted or overwritten**: skip this row, note the collision in the summary ("`{PREFIXED_NAME}` already exists as a live routine not tracked by any record — rename it or remove it before re-running `fleet on`"), and move to the next row. No match → proceed to CREATE below.
 
@@ -99,10 +100,10 @@ For every row in the composition table whose source template exists on disk (Com
    - `presence: upstream-only` → same STOP as `create-and-update.md` CREATE Step 3 (BLOCKED — creating now would mint a duplicate live routine). Report it for this row and continue with the rest of the loop; do not abort the whole fleet run over one row.
 3. **CREATE** (no record, no collision): follow `create-and-update.md` CREATE Steps 4 (environment — resolves once, reused across every row in this loop, since one project has one environment) through 9, with two fleet-specific substitutions:
    - **Step 5 (schedule) is replaced entirely** by this row's own composition-table cron — never the template's `default_schedule.cron_expression`, and never the interactive picker (5b-5d). Fleet mode supplies its own coordinated stagger; asking per-row would re-introduce the collision risk staggering exists to avoid.
-   - **Step 6 (assemble body)**, for rows 1-4 only: append `focus=<value>` to the template's `kickoff` args (single-space join) before Step 6's kernel assembly splices it into the closing line, producing `Then: /claude-tweaks:routine-kickoff code-health focus=dead-code`, etc. — this is exactly the mechanism that field was reserved for.
+   - **Step 6 (assemble body)**, for the Vertical finder rows only: append `focus=<value>` to the template's `kickoff` args (single-space join) before Step 6's kernel assembly splices it into the closing line, producing `Then: /claude-tweaks:routine-kickoff code-health focus=dead-code`, etc. — this is exactly the mechanism that field was reserved for.
    - Step 7's preview/confirm collapses into the Manifesto's own confirm (Step 1 above) for a `fleet on` run — do not re-prompt per row; render each row's assembled preview as one line in a single batch table before Step 4's loop actually calls `RemoteTrigger create` for any row (batch-table convention, not N separate confirms).
    - Step 9 writes the instantiated record exactly as documented, using this row's `PREFIXED_NAME` as the record's filename.
-4. **RECONCILE** (a record exists): re-render `RESOLVED_PROMPT` fresh via CREATE Step 6's kernel assembly (current schema kernel + this run's resolved branch + the row's `kickoff`, with `focus=` appended for rows 1-4) — the exact same computation Step 3 above's CREATE path would produce for this row today. Call `RemoteTrigger {action: "get", trigger_id: record.routine_id}` and read the live prompt back off `job_config.ccr.session_context.events[].data.message.content` (or the equivalent field the `get` response actually returns — same field CREATE's body assembles into). Compare:
+4. **RECONCILE** (a record exists): re-render `RESOLVED_PROMPT` fresh via CREATE Step 6's kernel assembly (current schema kernel + this run's resolved branch + the row's `kickoff`, with `focus=` appended for the Vertical finder rows) — the exact same computation Step 3 above's CREATE path would produce for this row today. Call `RemoteTrigger {action: "get", trigger_id: record.routine_id}` and read the live prompt back off `job_config.ccr.session_context.events[].data.message.content` (or the equivalent field the `get` response actually returns — same field CREATE's body assembles into). Compare:
    - **Prompt differs, or the live `cron_expression` differs from this row's composition-table cron** → drift. Run `create-and-update.md` UPDATE Steps 4-7 (assemble, diff, confirm folded into the batch table below, call `RemoteTrigger update`, rewrite the record) for this row.
    - **Both match** → no drift. Nothing to do for this row; note it in the summary as "reconciled, no drift" (AC1's exact expected wording).
 
@@ -132,9 +133,9 @@ One consolidated report, closing the Manifesto's begin-stop with an end-of-actio
 ### Routines
 | Row | Entry | Status | Schedule | Console URL |
 |---|---|---|---|---|
-| 1 | dead-code | Created | 05:00 UTC daily | {url} |
+| {n} | dead-code | Created | 05:00 UTC daily | {url} |
 | ... | ... | ... | ... | ... |
-| 10 | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
+| {n} | backlog refine (routine) | Grant lane withheld — labeling lanes still run once provisioned; set autonomy: unattended + grant-origination-enabled: true to enable the grant chain | — | — |
 | — | (missing template) | Skipped — {skill} has no routine-template.yml | — | — |
 
 Status is one of: `Created`, `Updated (drift)`, `Reconciled, no drift`, `Withheld — {reason}`, `Collision — {PREFIXED_NAME} already exists, not tracked by any record`, `Skipped — {skill} has no routine-template.yml`, `BLOCKED — record exists upstream only, not in this checkout`.
@@ -153,7 +154,7 @@ records enumerated by `record-freshness.md` Steps F1-F2 (`compareRoutineRecords`
 authority copy — never a bare directory listing). A record whose filename matches no
 composition-table `PREFIXED_NAME` is **not** fleet-marked and is excluded from every table and
 counter below; a hand-created routine sharing a skill under a name outside the composition table
-is invisible here by construction. The deliberate exception is row 5: a pre-existing
+is invisible here by construction. The deliberate exception is the generalist code-health row: a pre-existing
 `{REPO_SLUG}-code-health-daily` created by standalone `/claude-tweaks:routine create code-health`
 matches that row's standard-derivation name exactly, so it **is** fleet-marked and gets adopted
 into the fleet on first reconcile (Naming deviates from `create-and-update.md`, above) — not
@@ -221,7 +222,7 @@ Pause-based shutdown that preserves all durable state — rotation cursors, wont
 suppressions, trust history, and every instantiated record survive. `fleet off`
 **never deletes anything** (`RemoteTrigger` has no delete API to call in the first place)
 and **never touches a routine that is not fleet-marked** — a hand-created routine sharing
-a skill under a name outside the composition table is untouched by construction. (Row 5's
+a skill under a name outside the composition table is untouched by construction. (The generalist code-health row's
 adoption exception applies here too — an adopted `{REPO_SLUG}-code-health-daily` is
 fleet-marked and *is* in scope for pausing, same as any other fleet member.)
 
@@ -256,13 +257,13 @@ fleet-marked and *is* in scope for pausing, same as any other fleet member.)
 
 | Pattern | Why It Fails |
 |---|---|
-| Re-deriving repo URL / `REPO_SLUG` / environment per row | `create-and-update.md` CREATE Steps 2 and 4 resolve these once per project, not per routine — a fleet with 12 rows makes 12x the `RemoteTrigger`/git calls for values that don't change across rows |
+| Re-deriving repo URL / `REPO_SLUG` / environment per row | `create-and-update.md` CREATE Steps 2 and 4 resolve these once per project, not per routine — a fleet repeats the same `RemoteTrigger`/git calls once per row for values that don't change across rows |
 | Comparing `template_version` to decide drift | IL-89 — a version string proves nothing about content. Re-render the prompt and compare bytes (Step 4's RECONCILE) |
 | Treating a `presence: none` + live-routine-name-match as "adopt it" | The routine wasn't created by this skill (no record exists) — adopting it silently could overwrite a hand-tuned prompt with no way to recover it (`RemoteTrigger` has no delete-and-restore). Report the collision; never touch it |
 | Provisioning the grant unit because `autonomy: unattended` alone is set | The reserved second opt-in (`grant-origination-enabled`) is deliberately a separate human decision — `_shared/autonomy-ceiling.md`'s whole point is that the ceiling alone never authorizes a machine-originated grant |
 | Silently deleting or pausing a downgraded grant-unit routine | Deletion has no undo (`RemoteTrigger` has no delete API to call in the first place, at claude.ai/code/routines this is a manual step) — pause when the verb exists, otherwise surface prominently, never act unprompted beyond what Step 3 documents |
-| Re-prompting per row for schedule/environment/confirm | Fleet mode's whole point is one deliberate action — the Manifesto (Step 1) and the batch preview (Step 4.3) are the only confirmation points; 12 separate `AskUserQuestion` calls would defeat "one-action provisioning" |
+| Re-prompting per row for schedule/environment/confirm | Fleet mode's whole point is one deliberate action — the Manifesto (Step 1) and the batch preview (Step 4.3) are the only confirmation points; one `AskUserQuestion` call per row would defeat "one-action provisioning" |
 | Treating a missing template as a fleet-wide failure | Composition, not exhaustiveness — provision what exists, name what's missing, never refuse the whole fleet over one absent template |
 | Deleting (or offering to delete) routines from `fleet off` | Deletion has no API and no undo — `fleet off` is pause-based precisely so durable state survives; deletion is a human act at claude.ai/code/routines (IL-69) |
-| Pausing a routine that is not fleet-marked | A hand-created routine sharing a skill under a name outside the composition table is someone else's infrastructure — membership is the composition-table `PREFIXED_NAME` intersection, never a skill-name match. (Row 5's standard-derivation name is the one deliberate exception — adopted, not treated as someone else's.) |
+| Pausing a routine that is not fleet-marked | A hand-created routine sharing a skill under a name outside the composition table is someone else's infrastructure — membership is the composition-table `PREFIXED_NAME` intersection, never a skill-name match. (The generalist code-health row's standard-derivation name is the one deliberate exception — adopted, not treated as someone else's.) |
 | Rendering grant counters on a supervised fleet | No grant unit exists to count — state the posture and why grant counters are absent instead of rendering zeros that imply a grant unit ran |
