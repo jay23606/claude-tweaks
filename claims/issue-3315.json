@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-21T041646-record-3315",
-  "sessionId": "82e55189-ed27-52ae-9292-18a21a421882",
-  "claimedAt": "2026-10-21T04:21:03.287Z",
-  "ttlHours": 72,
-  "host": "vm"
+  "reason": "failed: build-dispatch-unavailable",
+  "releasedAt": "2026-10-21T04:31:05.671Z"
 }
