@@ -93,6 +93,9 @@ function assertFirstCallStampArtifact(firstCallBlock) {
   assert.match(p, /\/claude-tweaks:test/);
   assert.match(p, /#3661/);
   assert.doesNotMatch(p, /test-output log this call's own `npm test` run wrote/);
+  // Stopping rule: one re-run through the runner, then DONE_WITH_CONCERNS -- never an unbounded loop.
+  assert.match(p, /\/claude-tweaks:test`\s+once\s+before\s+reporting/);
+  assert.match(p, /still\s+does\s+not\s+verify\s+HEAD[\s\S]{0,120}`STATUS: DONE_WITH_CONCERNS`/);
 }
 test("Deliverable 2: first call's CRITICAL artifact is the runner stamp plus report.json, never a raw npm test log", () => {
   const [firstCall] = fencedBlocks(fs.readFileSync(TASK_PROMPT, 'utf8'));
@@ -104,4 +107,14 @@ test('go-red control: assertFirstCallStampArtifact fails when the raw npm test l
   const doctored = firstCall.replace(p, `${p}\n${OLD_RAW_LOG_SENTENCE}`);
   assert.notEqual(doctored, firstCall, 'doctoring did not change the block');
   assert.throws(() => assertFirstCallStampArtifact(doctored));
+});
+test('go-red control: assertFirstCallStampArtifact fails when the once-then-DONE_WITH_CONCERNS stopping rule is dropped', () => {
+  const [firstCall] = fencedBlocks(fs.readFileSync(TASK_PROMPT, 'utf8'));
+  const p = criticalParagraph(firstCall);
+  const noOnce = firstCall.replace(p, p.replace(/\s+once\s+before\s+reporting/, ' before reporting'));
+  const noConcerns = firstCall.replace(p, p.replace('`STATUS: DONE_WITH_CONCERNS`', '`STATUS: BLOCKED`'));
+  assert.notEqual(noOnce, firstCall, 'doctoring did not change the block');
+  assert.notEqual(noConcerns, firstCall, 'doctoring did not change the block');
+  assert.throws(() => assertFirstCallStampArtifact(noOnce));
+  assert.throws(() => assertFirstCallStampArtifact(noConcerns));
 });

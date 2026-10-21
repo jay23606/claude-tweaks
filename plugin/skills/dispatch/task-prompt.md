@@ -221,7 +221,10 @@ reports `verifiedHead: true`) and its `report.json`, which exist only when the t
 through `/claude-tweaks:test`. A raw `npm test` log is not that artifact: it leaves no stamp, and
 the second call then re-runs the full suite (#3661). Never report a result from narrative or
 memory of an earlier pass in this same call -- if the stamp is absent or does not verify HEAD,
-re-run the test phase through `/claude-tweaks:test` before reporting.
+re-run the test phase through `/claude-tweaks:test` once before reporting. If the stamp still does
+not verify HEAD (a dirty tree never verifies), report `STATUS: DONE_WITH_CONCERNS` (the OUTCOME is
+unchanged by this alone), naming the stamp state -- the gate notes it, and the second call's
+review re-verifies through the runner.
 
 Bookends (every transport, #2912): before reporting `DONE`/`build-test-ok`, also run
 `node "{plugin-root}/bin/verify-run-bookends.js" --run "{minted-run-dir}" --targets {comma-joined issue numbers}`.
