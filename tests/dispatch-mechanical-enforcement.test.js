@@ -158,3 +158,38 @@ test('go-red control: assertRepairBranch fails on §2 with the repair line remov
   assert.throws(() => assertRepairBranch(s.split(REPAIR_LINE).join('')));
   assert.throws(() => assertRepairBranch(REPAIR_LINE + '\n' + s.split(REPAIR_LINE).join('')));
 });
+
+// #3661: a first call whose test phase bypassed /claude-tweaks:test leaves no runner pass stamp
+// for HEAD, so call 2 re-runs the full suite. Once the artifact check returns { ok: true }, the
+// gate reads the first call's stamp (checkFirstCallStamp) and logs a SKIP note when none
+// verifies HEAD -- a note, never a gate, with call 2 dispatched unchanged.
+function assertStampNote(gate) {
+  assert.match(gate, /checkFirstCallStamp\(\{ runDir \}\)/);
+  assert.match(gate, /verify\.js --stamp-status/);
+  assert.match(gate, /verifiedHead/);
+  assert.ok(gate.includes('--status SKIP --step "Artifact check (stamp)"'), 'literal stamp-note log command');
+  assert.match(gate, /call 2 dispatched unchanged/);
+  assert.match(gate, /#3661/);
+  assert.match(gate, /never a gate/);
+  const artifact = gate.indexOf('Artifact check, gated alongside STATUS/OUTCOME');
+  const stamp = gate.indexOf('checkFirstCallStamp({ runDir })');
+  assert.ok(artifact > -1 && stamp > artifact, 'the stamp read runs only after the artifact check returned { ok: true }');
+}
+test('AC1.1: two-call-gate.md §2 reads the first call\'s stamp before call 2 and logs the note posture', () => {
+  assertStampNote(gateSection());
+});
+test('AC2.1: a verifying stamp logs nothing and changes nothing', () => {
+  assert.match(gateSection(), /`verified: true`[\s\S]{0,200}?logs nothing/);
+});
+test('sequential-execution.md mirrors the stamp note', () => {
+  const l = loopSection();
+  assert.match(l, /checkFirstCallStamp/);
+  assert.match(l, /never a gate/);
+});
+test('go-red control: assertStampNote fails on §2 with the stamp paragraph removed', () => {
+  const paragraphs = gateSection().split(/\r?\n\r?\n/);
+  const at = paragraphs.findIndex((p) => p.includes('checkFirstCallStamp'));
+  assert.ok(at > -1, 'stamp paragraph not found — control cannot discriminate');
+  const kept = paragraphs.filter((_, i) => i !== at && i !== at + 1); // the paragraph and its literal log line
+  assert.throws(() => assertStampNote(kept.join('\n\n')));
+});
