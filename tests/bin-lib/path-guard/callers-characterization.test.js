@@ -283,3 +283,30 @@ test('#3642 pre-tool-use: the pipelines dir itself is still not a shadow (strict
   const wt = linkedWorktreeOf(gitRepo());
   assert.equal(shadowPipelineRunDir(path.join(wt, '.claude-tweaks', 'pipelines')), null);
 });
+
+const { resolveSafe } = require('../../../plugin/bin/lib/visual-decide/server');
+const { runVerify } = require('../../../plugin/bin/lib/wrap-up/engine-verify');
+const { parseComposeCallLine } = require('../../../plugin/bin/lib/skill-audit/context-cost');
+
+test('#3642 AC2.1 visual-decide: resolveSafe serves a child directory named ..foo (was rejected as an escape)', () => {
+  const root = fresh();
+  assert.equal(resolveSafe(root, '/..foo/a.txt'), path.join(root, '..foo', 'a.txt'));
+});
+
+test('#3642 AC2.1 engine-verify: a run dir under archive/..foo is the archived copy (was read as the still-present original)', () => {
+  const repoRoot = fresh();
+  const archived = path.join(repoRoot, '.claude-tweaks', 'pipelines', 'archive', '..foo-run');
+  fs.mkdirSync(archived, { recursive: true });
+  const result = runVerify({ runDir: archived, originalRunDir: archived, base: 'main', repoRoot, cwd: fresh(), deps: { git: () => '', gh: () => '' } });
+  assert.equal(result.rows.find((r) => r.check === 'run-dir-archived').result, 'pass');
+});
+
+const composeLine = (src) => `node "\${CLAUDE_PLUGIN_ROOT}/bin/compose-context.js" --run "$PIPELINE_RUN_DIR" --step merge "\${CLAUDE_PLUGIN_ROOT}/${src}"`;
+
+test('#3642 AC2.1 context-cost: a source under a ..foo directory is contained (was an escapes-the-plugin-root row)', () => {
+  assert.deepEqual(parseComposeCallLine(composeLine('..foo/a.md'), '/r/plugin').sources, [path.resolve('/r/plugin', '..foo/a.md')]);
+});
+
+test('#3642 context-cost: a source resolving to the plugin root itself still escapes (strictness kept)', () => {
+  assert.equal(parseComposeCallLine(composeLine(''), '/r/plugin').unparsed, true);
+});
