@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T05:56:54.538Z",
+  "computedAt": "2026-10-21T07:21:00.871Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -60,7 +60,7 @@
       },
       {
         "number": 3554,
-        "updatedAt": "2026-10-19T12:29:24Z",
+        "updatedAt": "2026-10-21T06:00:18Z",
         "state": "OPEN"
       },
       {
@@ -105,7 +105,7 @@
       },
       {
         "number": 3460,
-        "updatedAt": "2026-10-18T06:42:41Z",
+        "updatedAt": "2026-10-21T05:59:14Z",
         "state": "OPEN"
       },
       {
@@ -115,7 +115,7 @@
       },
       {
         "number": 3456,
-        "updatedAt": "2026-10-18T06:42:30Z",
+        "updatedAt": "2026-10-21T06:53:11Z",
         "state": "OPEN"
       },
       {
@@ -166,11 +166,6 @@
       {
         "number": 2805,
         "updatedAt": "2026-10-15T16:08:18Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2799,
-        "updatedAt": "2026-10-20T21:41:16Z",
         "state": "OPEN"
       }
     ]
@@ -672,78 +667,6 @@
         "state": "OPEN",
         "title": "Add four Windows test-parity anti-patterns to the windows-checkout-test-parity skill",
         "updatedAt": "2026-10-19T12:28:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate — #3497 run ledger row 14 (SDD final review M4)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/session-residue.js`'s `collectStaleRuns` (#3497) appends ` — consolidated pass never ran: PIPELINE_RUN_DIR=\"{dir}\" /claude-tweaks:flow #{ids} review-console` to an eligible multi-spec run's banner line, always with the `#` sigil.\n\nUnder `work-backend: local-files` the record-reference grammar drops the sigil (`_shared/record-batch-input.md`; `plugin/skills/flow/SKILL.md`'s Input table), so the pasted command names records the backend does not resolve as written.\n\nThe banner path cannot read the backend without a third copy of the CLAUDE.md `work-backend:` parser. `WORK_BACKEND_RE` and its reader already exist twice: `plugin/bin/lib/hooks/pre-tool-use.js:77` (`readWorkBackendValue`) and `plugin/bin/lib/wrap-up/pack.js:51`. #3497's SDD final review raised this as M4, and ledger row 14 ruled it out of that record's scope.\n\n## Deliverables\n\n- One shared, read-only `work-backend` reader under `plugin/bin/lib/` (CLAUDE.md `work-backend:` line → value or null, never throws). `pre-tool-use.js` and `wrap-up/pack.js` migrate to it, and their local regex copies are removed.\n- `collectStaleRuns` uses it: under `local-files` the re-entry suffix lists bare ids (`11,12`), and under any other or unreadable backend it keeps `#11,#12`.\n\n## Acceptance Criteria\n\n- A session-residue test with a `local-files` CLAUDE.md fixture shows the suffix as `/claude-tweaks:flow 11,12 review-console`. The existing `github-issues` fixture keeps `#11,#12`.\n- `git grep -n 'work-backend:\\s' -- plugin/bin` finds the pattern only in the new shared reader, and the existing pre-tool-use and wrap-up pack tests still pass.\n\n## Release Note\n\nThe session-start re-entry command for an unfinished multi-spec run uses bare record ids in projects that keep records as local files.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-19T05:36:14Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3554,
-        "state": "OPEN",
-        "title": "Re-entry banner uses the # sigil under work-backend: local-files — share one work-backend reader",
-        "updatedAt": "2026-10-19T12:29:24Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -1300,78 +1223,6 @@
     ],
     [
       {
-        "body": "Origin: #3309 final whole-branch review (ledger row 36)\n\nDefer-reason: out-of-scope\n\n## Current State\n\n#3309 ships `plugin/bin/skill-load-report.js` and harness-health's Skill-load check. The check files a `by:harness-health` record when a skill's measured per-invocation load exceeds its static closure from `plugin/bin/lib/skill-audit/load.js` (`overClosure = max > closure`, the spec's literal contract). On real data that comparison cannot fire, for two reasons:\n- Every plugin skill's closure is transitive and runs 1.20–1.96 MB (even `claude-tweaks:capture` is 1.96 MB, out of a ~5.95 MB corpus). The largest measured max over 20 sessions plus 510 subagent transcripts is 236,519 B, a ratio of 0.01–0.13.\n- harness-health invokes the CLI with only `--plugin-root \"${CLAUDE_PLUGIN_ROOT}\"`, so project-local `.claude/skills` always get `closure: null`. That is the only place over-closure actually showed up when the reviewer passed `.claude` explicitly (`node-test-output-evidence`, max 52,872 B against closure 15,187 B).\n\nThe spec's stated purpose is to find skills whose sessions read prose their citations never reach. `readSkillLoads` already records each invocation's `readPaths`, but the CLI discards them after summing bytes.\n\n## Deliverables\n\n- In `skill-load-report.js`, compare each invocation's skill-file `readPaths` against the matching entry's closure `files` (from `entryPointLoads`, normalized to the same path form). Report per skill the count and list of read files outside the closure (`outsideClosure`). Make that the filing trigger, replacing or alongside `max > closure`.\n- Decide how project-local roots reach the harness-health command. One option is passing `--plugin-root .claude` when `.claude/skills/` exists. A root with no `skills/` makes the CLI exit 2 today, so the command needs a guard.\n- Update harness-health's Skill-load check paragraph and its prose-pin test to match.\n\n## Acceptance Criteria\n\n1. A fixture invocation that reads a skill file outside its closure's `files` is reported with that path in `outsideClosure` and triggers filing. Reading only closure files does not.\n2. On this repo's real transcripts, the report names at least one skill with `outsideClosure` non-empty, or the PR states why none exists.\n3. A project-local skill invoked from a worktree joins its `.claude/skills` closure under the harness-health command as written.\n\n## Release Note\n\nHealth checks now flag skills whose sessions read skill files their own instructions never point to.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:28Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3460,
-        "state": "OPEN",
-        "title": "Detect skill reads the static closure cannot see — compare file sets, not byte totals",
-        "updatedAt": "2026-10-18T06:42:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: #3310 whole-branch review (final review Minor 5)\n\nDefer-reason: out-of-scope\n\n## Current State\n\n`plugin/bin/lib/plan-audit/checks.js`'s `headroomCheck` measures each governed `.md` file with the raw `fs.statSync(abs).size`, which counts `when:` marker lines and CRLF line endings. Since #3310 it compares that raw figure to `RAIL_BYTES` (52,500 B).\n\nThe Read rail measures differently. `rail.js`'s `skillFileRailViolations` goes through `context-cost.js`'s `measureSkills`/`measureSubFiles`, which strip marker lines and normalize CRLF to LF. `plugin/skills/build/plan-audit.md` now says the rail strips only the marker lines.\n\nRaw bytes are always greater than or equal to measured bytes, so plan-audit never misses a breach. The cost is a false positive: a marker-heavy file, or any file in a Windows CRLF checkout, sitting slightly over `RAIL_BYTES` raw gets a blocking plan-audit stop that the `rail:` tests would pass. The raw basis predates #3310; #3310 only retargeted the number.\n\n## Deliverables\n\n- `headroomCheck` measures per-file bytes through `context-cost.js`'s marker-stripped, CRLF-normalized measurement, the same function the rail uses. It reuses that function rather than re-implementing the stripping.\n- `tests/bin-lib/plan-audit/checks.test.js` gains a fixture that is over `RAIL_BYTES` raw but under it once marker lines are stripped. That fixture reports no breach. A CRLF variant does the same.\n\n## Acceptance Criteria\n\n1. A governed fixture file whose raw size is `RAIL_BYTES + 100`, carrying more than 100 B of `<!-- when: … -->` marker lines, reports no `breaches` entry.\n2. The same file with its marker lines removed, and its body padded so it stays over `RAIL_BYTES`, still reports a breach.\n3. A CRLF copy of a file at exactly `RAIL_BYTES` LF bytes reports no breach.\n4. `npm test` passes.\n\n## Release Note\n\nPlan audits measure a skill file's size the same way the Read-limit check does, so marker lines and Windows line endings no longer trigger a false stop.\n\n_Filed by `build (whole-branch review)` via specShapedBody._\n",
         "createdAt": "2026-10-17T20:09:24Z",
         "labels": [
@@ -1435,78 +1286,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (#3307 wrap-up, ledger row 19)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/bin/load-delta.js` `renderText` prints one table row per changed skill entry point. In this corpus the closure is saturated: every `plugin` entry's closure is 1.19–2.11 MB and 88 files sit in every closure, so a one-row edit to any widely cited `_shared/*.md` file yields a 39-row table whose rows differ only in the Entry and absolute columns — ΔFloor 0 and the same ΔClosure on every row.\n\nObserved live during #3307's own review (step 3j on its branch): 38 of 39 rows read `ΔFloor 0 · ΔClosure +347` from one added row in `_shared/integration-branch.md`; only `plugin:review` differed. The review summary carries the whole table verbatim (`plugin/skills/review/step3-skill-load-delta.md`).\n\n## Deliverables\n\n- `renderText` collapses rows that share identical (ΔFloor, ΔClosure, new-unresolved) into one row naming the entry count and listing the entries (or the first few plus a count), keeping rows that differ as individual rows.\n- `--json` output is unchanged (consumers such as #3309/#3310 read per-entry rows).\n- `plugin/skills/review/step3-skill-load-delta.md` and its verbatim-quote test updated for the grouped row shape.\n\n## Acceptance Criteria\n\n- A fixture where one `_shared/*.md` edit moves N ≥ 3 entries by the same ΔClosure renders those N entries as one row; an entry with a different delta stays its own row.\n- `node plugin/bin/load-delta.js --json` output is byte-identical before and after the change on the same fixture.\n- `tests/load-delta-cli.test.js`'s outcome-line quote test passes against the updated step file.\n\n## Release Note\n\nThe review skill load delta collapses entries that moved by the same amount into one row, so a shared-file edit no longer produces a wall of identical rows.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3456,
-        "state": "OPEN",
-        "title": "Group identical fan-out rows in the skill load delta table",
-        "updatedAt": "2026-10-18T06:42:30Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
