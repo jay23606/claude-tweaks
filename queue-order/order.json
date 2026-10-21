@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-21T00:04:52.818Z",
-  "runId": "2026-10-21T000323-dispatch-standalone",
+  "computedAt": "2026-10-21T04:21:45.217Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -40,7 +40,7 @@
       },
       {
         "number": 3674,
-        "updatedAt": "2026-10-20T07:09:42Z",
+        "updatedAt": "2026-10-21T00:07:04Z",
         "state": "OPEN"
       },
       {
@@ -70,7 +70,7 @@
       },
       {
         "number": 3658,
-        "updatedAt": "2026-10-20T07:08:25Z",
+        "updatedAt": "2026-10-21T01:18:52Z",
         "state": "OPEN"
       },
       {
@@ -200,7 +200,7 @@
       },
       {
         "number": 3315,
-        "updatedAt": "2026-10-17T09:02:56Z",
+        "updatedAt": "2026-10-21T04:21:28Z",
         "state": "OPEN"
       },
       {
@@ -215,7 +215,7 @@
       },
       {
         "number": 3301,
-        "updatedAt": "2026-10-17T09:03:38Z",
+        "updatedAt": "2026-10-21T02:26:19Z",
         "state": "OPEN"
       },
       {
@@ -230,7 +230,7 @@
       },
       {
         "number": 3056,
-        "updatedAt": "2026-10-16T16:30:18Z",
+        "updatedAt": "2026-10-21T00:41:34Z",
         "state": "OPEN"
       },
       {
@@ -393,78 +393,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3480\n\nDefer-reason: tangential\n\n**Related:** #3676\n\n## Current State\n\nAfter #3480, `summaryUnattributedCount` (`plugin/bin/lib/verify/extract.js`) accounts a jest or vitest log by enumerating failure channels: `UNATTRIBUTED_LINE_RES` plus the vitest banners. That list was incomplete three times in one build: the spec named three shapes, the SDD final review added obsolete snapshots, global hooks and bail, and the review phase added the `Unhandled Rejection` and `Source Errors` banners, each found only by reading runner source or capturing a real log. Any channel not yet enumerated reads as fully accounted (a false 0), the unsafe direction for a flaky retry or a preExisting waiver.\n\n## Deliverables\n\n- [ ] Add a positive-recognition guard for jest: a log whose last non-empty line is not the runner's normal `Ran all test suites…` trailer is unattributed, since a crash after or instead of the summary leaves a stack or other text there.\n\n- [ ] Decide, with a captured vitest log per case, whether vitest has an equally stable closing marker; if it has none, record that and keep its enumerated list.\n\n- [ ] Keep every existing fixture row in `DIALECT_ROWS` green and add one captured log of an unenumerated post-summary crash for jest that only the trailer guard refuses.\n\n- [ ] Update the three prose sites (`plugin/skills/test/verification.md` Flake handling, `docs/journeys/run-a-deterministic-verification-check.md` Step 10, `.claude/skills/node-test-output-evidence/SKILL.md`) to name the guard.\n\n## Acceptance Criteria\n\n- [ ] A jest log whose final line is not the `Ran all test suites` trailer refuses with `unattributed-failures: {N}` even when no enumerated channel matches.\n\n- [ ] A fully attributed jest log (`jest-attributed.txt`) still retries.\n\n- [ ] The new guard's test goes red when the guard is removed.\n\n## Release Note\n\nRunner-owned flaky retry for jest refuses any log that does not end the way a normal jest run does, closing the class of crashes the enumerated failure list cannot name in advance.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/verify/extract.js` — modify\n- `tests/bin-lib/verify/extract.test.js` — modify\n\n_Filed by `reflect`. Close to resolve; label `wontfix` to suppress future reports of this finding._",
-        "createdAt": "2026-10-19T21:57:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3674,
-        "state": "OPEN",
-        "title": "Fail closed on a jest log that does not end with the runner's trailer",
-        "updatedAt": "2026-10-20T07:09:42Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -672,78 +600,6 @@
           "origin": null,
           "risk": "low",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate\n\nOrigin: ledger resolve gate\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n#3469 routed the wrap-up pack's `pr` probe, `dispatch/settle-parked.md`'s CI column and `_shared/github-pr-scan.md` item 9's arm filter through `bin/pr-checks.js --pr`, so a green rollup over a head run still in progress reads pending. Two display-only readers in the same file still summarize CI from `gh pr checks` (the rollup alone): `_shared/github-pr-scan.md` `current-pr` item 3 (feeds /help's Current PR section) and `repo-wide` item 1 (feeds /tidy's awaiting-review rows and its CI failing/pending finding), so a partial run still reads passing there. Item 1 runs once per open PR (up to 100), and `pr-checks.js --pr` costs two to three `gh` calls per PR, so routing it needs a call-budget decision (batching, a candidate pre-filter such as item 9's rollup narrowing, or accepting the cost).\n\n## Deliverables\n\nRoute `_shared/github-pr-scan.md` current-pr item 3 through `node \"${CLAUDE_PLUGIN_ROOT}/bin/pr-checks.js\" --pr {number}` and map its `state` to the failing / pending / passing counts the Current PR rows render.\n\nRoute repo-wide item 1's CI status the same way, narrowing to PRs whose rollup already reads green before the per-PR call so the call count stays bounded.\n\nPin each reader with a conformance test sliced to the procedure it performs.\n\n## Acceptance Criteria\n\nA green rollup with a not-yet-completed head run shows as pending in /help's Current PR row and in /tidy's awaiting-review and CI findings, not as passing.\n\n## Release Note\n\nThe Current PR dashboard row and the tidy PR scan show a partly reported CI run as pending, not passing.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/github-pr-scan.md` — modify\n- `plugin/bin/pr-checks.js` — reuse --pr\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-19T20:52:37Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3658,
-        "state": "OPEN",
-        "title": "Route github-pr-scan current-pr item 3 and repo-wide item 1 through pr-checks.js --pr",
-        "updatedAt": "2026-10-20T07:08:25Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -2113,252 +1969,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #2767\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3314 #3316 #3317 #3318\n\n## Current State\n\n#2767's static class map (docs/superpowers/plans/2026-10-16-windows-path-separator-class-2767.md, Class map) found Windows path faults that no failing test pins yet:\n- `plugin/bin/lib/code-health/scope.js` `splitOversized` key mismatch: native-path keys compared against `/` keys.\n- `plugin/bin/lib/residue/probes/worktrees.js`: a domain `includes` check on a native path.\n- `plugin/bin/lib/timing/transcript.js`: the `isProcedurePath` input separator.\n- `cloud-setup-drift-check` joins `PATH` with `:` instead of `path.delimiter`, and its fixtures run shell-script stubs.\n- plan-audit and findability display inconsistencies.\n\n`archive-merged` needs a real Windows run before it can be classified.\n\n## Deliverables\n\n- [ ] For each listed site, write a test that pins its win32 behaviour on a POSIX host (inject `path.win32` / `path.win32.delimiter` at the seam, never stub `process.platform`), then fix the site or record why it is correct.\n- [ ] Replace `cloud-setup-drift-check`'s `:` with `path.delimiter`. Its shell-stub fixtures need a Windows-runnable equivalent or an explicit win32 skip with a reason.\n\n## Acceptance Criteria\n\nEach listed site has a committed test that fails with the fix reverted and passes with it (or a recorded not-a-bug verdict).\n\n`npm test` stays green on ubuntu.\n\n## Release Note\n\nFixes several tools mis-handling Windows paths and PATH separators.\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
-        "createdAt": "2026-10-16T21:08:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3315,
-        "state": "OPEN",
-        "title": "Fix latent Windows path producers found by the #2767 class map",
-        "updatedAt": "2026-10-17T09:02:56Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect hindsight from #2783\n\nDefer-reason: tangential\n\n## Current State\n\n#2783 added `plugin/bin/lib/hooks/post-tool-use-failure.js`, registered in `plugin/hooks/hooks.json` with matcher `Bash` only. It records Claude Code's worktree-isolation refusal of a **Bash** command as a `wd-guard-refusal` event (`HARNESS_ISOLATION_REFUSAL_RE` = \"This session is isolated in the worktree … Refusing to run it\").\n\nThe same harness guard also refuses **Write/Edit** calls aimed at a shared-checkout path, with different wording: \"This session is isolated in the worktree <path>. Edit the worktree copy of this file instead of the shared-checkout path.\" That refusal fired during #2783's own review (a Write to `.claude-tweaks/pipelines/<run>/review-ctx/pre-dispatch-status.txt`). Neither the Bash matcher nor the regex captures it, so `/claude-tweaks:reflect`'s Friction Lens never sees this class of isolation friction.\n\nNot yet measured: whether a Write/Edit isolation refusal fires `PostToolUseFailure` at all, and if it does, what the payload's `error` field holds. #2783's probe measured the Bash refusal only.\n\n## Deliverables\n\n1. Probe empirically (headless `claude -p`, as #2783 did for Bash) whether the harness fires `PostToolUseFailure` for a Write/Edit isolation refusal, and record the payload shape (`tool_name`, `error`).\n\n2. If it fires, widen the `hooks.json` matcher to Write|Edit and teach `post-tool-use-failure.js` the Write/Edit refusal wording. Log `wd-guard-refusal` with `tool: <Write|Edit>`, `reason: harness-worktree-isolation` and the target `file_path` (not file content), via the same `resolveDenialRunDir`. `bash-prefilter.js` needs no change: it already passes every non-Bash payload through (its `tool_name !== 'Bash'` early return).\n\n3. If it does not fire, document that limit in `plugin/skills/reflect/full-mode.md`'s Friction Lens section, beside the existing ad-hoc-session Known-limitation clause.\n\n## Acceptance Criteria\n\n- A Write or Edit refused by the worktree-isolation guard appears in `node plugin/bin/friction-events.js --run <dir>` output as a `wd-guard-refusal` event naming the tool, OR `reflect/full-mode.md` states explicitly that this refusal class is not observable.\n\n- An ordinary Write/Edit failure (e.g. a stale-read rejection) is not logged as a guard refusal.\n\n- `npm test` passes.\n\n## Release Note\n\nFriction logging now also covers worktree-isolation refusals of file edits, not just shell commands.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-16T20:46:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
-            "name": "bug",
-            "description": "Something isn't working",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxTu0eA",
-            "name": "by:reflect",
-            "description": "Origin: filed via /reflect (wrap-up Phase 1)",
-            "color": "ededed"
-          }
-        ],
-        "number": 3301,
-        "state": "OPEN",
-        "title": "friction-events: worktree-isolation refusals of Write/Edit calls are never logged (only Bash refusals are)",
-        "updatedAt": "2026-10-17T09:03:38Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nClaude Code 2.1.283+ ships a built-in `/prompt-audit` command. It reads CLAUDE.md files, skills, agents, and custom commands, and flags instructions written for older models, stale paths, and contradictory rules (source in the original request below).\n\nWhat claude-tweaks already has in this space:\n\n- `/claude-tweaks:harness-health` (`plugin/skills/harness-health/SKILL.md`) audits `.claude/skills/*.md`, `.claude/rules/*.md` and CLAUDE.md against the codebase, a template, and best practice, one target per firing. It then files `by:harness-health` issues. Its stated scope is the project's own `.claude/` tree (this repo has 17 files under `.claude/skills/`), not the 39 shipped `plugin/skills/*/SKILL.md` files. Its target discovery reads only `<root>/.claude/skills` (`plugin/bin/lib/harness-health/scope.js:198`).\n- `docs/skill-authoring.md`'s \"Model-version prompting notes\" section (line 215) is a manual checklist to re-run whenever a new Claude model ships. It covers model-version deltas and a verification/self-check instruction audit against `docs/reference/claude-quality-levers.md`. That is the \"instructions written for older models\" concern, done by hand.\n\nSo the open question has two parts: what `/prompt-audit` catches that neither harness-health nor the manual model-version checklist catches, and whether it reaches the shipped `plugin/skills/` library at all.\n\n## Deliverables\n\n1. Run `/prompt-audit` once against this repo's CLAUDE.md, `.claude/skills/`, `plugin/skills/`, and `plugin/agents/`, and keep its raw output.\n2. A comparison, posted as a comment on this record, that sorts each finding into one of three buckets:\n   - already covered by harness-health (name the harness-health check);\n   - already covered by the model-version prompting checklist in `docs/skill-authoring.md`;\n   - genuinely new.\n3. For each genuinely new finding, take exactly one of two routes:\n   - a backlog record via `/claude-tweaks:capture` with a spec-shaped body, either fixing the flagged instruction or extending harness-health or the checklist to catch that class;\n   - a stated reason, in the comment, why it is not worth acting on.\n\n## Acceptance Criteria\n\n- `/prompt-audit` has been run once over the targets in Deliverable 1. The comment states the Claude Code version used and the target set actually covered.\n- Every finding in the run's output appears in the comparison comment under exactly one of the three buckets.\n- Every genuinely new finding has either a linked filed backlog record or a stated reason for no action; none is left unrouted.\n- The comment states whether `/prompt-audit` reached the `plugin/skills/` library, since harness-health does not.\n\n## Release Note\n\nNo user-facing change. This produces an internal comparison of Claude Code's `/prompt-audit` against claude-tweaks' own harness-health audit.\n\n## Technical Approach\n\nRun `/prompt-audit` from an interactive session at the repo root. Then work through its findings against two references: harness-health's analysis criteria (`plugin/skills/_shared/harness-health-analysis.md`, the shared judge procedure) and the model-version checklist. Fixes to individual skills are not made in this record; they are filed as follow-ups so each lands with its own conformance-test run.\n\n### Key Files\n\n- `plugin/skills/harness-health/SKILL.md` — the existing audit whose coverage is compared\n- `plugin/skills/_shared/harness-health-analysis.md` — harness-health's shared judge procedure\n- `docs/skill-authoring.md` — the manual model-version prompting checklist (line 215)\n- `docs/reference/claude-quality-levers.md` — the levers that checklist audits against\n\n## Gotchas\n\n- ASSUMPTION — verify at build: `/prompt-audit` can be run on demand in this environment and accepts the `plugin/` subtree as a target. It is a built-in slash command, so a headless agent may not be able to invoke it the same way. Confirm before relying on an unattended run.\n- Fixing a flagged skill instruction here would touch shipped prose that conformance tests pin repo-wide (`tests/` byte-pins skill text). That is why fixes go to follow-up records, each with its own full-suite run.\n- harness-health's own scope is `.claude/` by design. A finding that it misses on `plugin/skills/` is a scope question, not automatically a harness-health defect.\n\n## Original request\n\nRun /prompt-audit against claude-tweaks' own CLAUDE.md and skills\n\nCurrent State:\n- Claude Code's /prompt-audit (v2.1.283+) reads CLAUDE.md files, skills, agents, and custom commands, flagging instructions written for older models, stale paths, and contradictory rules.\n- claude-tweaks ships a large skill library that has not been audited against the new Opus 5.5 / Sonnet 5.5 models this way.\n- claude-tweaks' own harness-health skill does a related but not identical audit.\n\nDeliverables:\n- Run /prompt-audit prompt-audit against claude-tweaks' own repo.\n- Compare its findings against what harness-health already catches; fold in anything harness-health misses.\n\nAcceptance Criteria:\n- /prompt-audit run once with findings reviewed.\n- Any genuinely new findings (not already covered by harness-health) turned into follow-up fixes or a harness-health improvement.\n\nSource: https://code.claude.com/docs/en/changelog#2-1-283\n",
-        "createdAt": "2026-10-09T03:34:52Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3056,
-        "state": "OPEN",
-        "title": "Run /prompt-audit against claude-tweaks' own CLAUDE.md and skills",
-        "updatedAt": "2026-10-16T16:30:18Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
         }
       }
     ],
