@@ -6,6 +6,8 @@
 // pre-migration code AND the migrated code; the one intended difference is
 // the only #3417 test that is red before migration. The `isPolicyFile (#3495)`
 // tests are the exception: they pin the case-canonical behavior #3495 added.
+// The #3642 cases are the same kind of exception: each pins an intended
+// behavior change and is red before migration.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -263,4 +265,21 @@ test('installed-plugins: without deps.readFile only exact paths match, in file o
   assert.equal(selectEntry([outer, inner], '/work/app', deps), inner);
   assert.equal(selectEntry([outer], '/work/app', deps), null, 'an ancestor projectPath no longer applies');
   assert.equal(canonicalGitRoot('/work', deps), null, 'no readFile -> no git root');
+});
+
+// ---- #3642: path.relative re-derivations migrated to isPathContained -------
+const { gitRepo, linkedWorktreeOf } = require('../../helpers/git-fixtures');
+const { canonicalRealpath } = require('../../../plugin/bin/lib/path-guard');
+const { shadowPipelineRunDir } = require('../../../plugin/bin/lib/hooks/pre-tool-use');
+
+test('#3642 AC2.1 pre-tool-use: a new run dir named ..foo inside a linked worktree is a shadow (was treated as outside pipelines/)', () => {
+  const wt = linkedWorktreeOf(gitRepo());
+  const out = shadowPipelineRunDir(path.join(wt, '.claude-tweaks', 'pipelines', '..foo', 'decisions.md'));
+  assert.ok(out, 'expected a shadow verdict');
+  assert.equal(out.runDirCandidate, path.join(canonicalRealpath(wt), '.claude-tweaks', 'pipelines', '..foo'));
+});
+
+test('#3642 pre-tool-use: the pipelines dir itself is still not a shadow (strictness kept)', () => {
+  const wt = linkedWorktreeOf(gitRepo());
+  assert.equal(shadowPipelineRunDir(path.join(wt, '.claude-tweaks', 'pipelines')), null);
 });
