@@ -135,6 +135,22 @@ test('wrap-up cleanup applicability tests the server record', () => {
   assert.ok(intro.includes('reads the server record'), 'cleanup-procedures.md intro line must read the server record');
 });
 
+test('AC2.2: parallel-wave merge-back stops a member\'s spec-{N}/ record, and members still get no MULTISPEC_PARENT_DIR', () => {
+  const waves = flat(read('flow', 'multispec-parallel-waves.md'));
+  const stop = waves.indexOf('stop its dev server');
+  assert.notEqual(stop, -1, 'merge-back must stop each returned member\'s dev server');
+  const bullet = waves.slice(stop, stop + 900);
+  for (const needle of ['{parent}/spec-{N}/ephemeral-server.txt', 'Section D steps 2-4', 'Do not pass `MULTISPEC_PARENT_DIR` to members']) {
+    assert.ok(bullet.includes(needle), `merge-back stop bullet must include: ${needle}`);
+  }
+  // The stop precedes the first worktree removal, so no member worktree vanishes under a live server.
+  assert.ok(stop < waves.indexOf('git worktree remove {worktreePath}'), 'the stop must come before any worktree removal');
+  // Members' run commands carry no MULTISPEC_PARENT_DIR (it would make concurrent members share one record).
+  for (const l of read('flow', 'multispec-parallel-waves.md').split('\n').filter((x) => x.startsWith('PIPELINE_RUN_DIR="{parent}/spec-{N}"'))) {
+    assert.ok(!l.includes('MULTISPEC_PARENT_DIR'), `member invocation must not set MULTISPEC_PARENT_DIR: ${l}`);
+  }
+});
+
 // Every skill file that names a run-dir-relative record path must also name the server record.
 function scanServerRecordAgreement(files) {
   const violations = [];
