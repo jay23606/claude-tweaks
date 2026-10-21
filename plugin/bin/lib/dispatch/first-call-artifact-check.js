@@ -24,7 +24,8 @@ const { execFileSync } = require('child_process');
 const { readClaimBlob, defaultGhApi } = require('../issues/claim-store');
 const { classifyClaimBlob } = require('../issues/claims');
 const { resolvePolicyKeys, resolvePolicyConfig } = require('../policy-schema');
-const { GH_TIMEOUT_MS } = require('../shared-primitives');
+const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../shared-primitives');
+const { lstatType } = require('../path-guard');
 const { worktreeMirror } = require('../wrap-up/pack');
 const { hasCanonicalClaimLogFor } = require('../log-decision/claim-log');
 
@@ -268,9 +269,14 @@ const VERIFY_JS = path.resolve(__dirname, '..', '..', 'verify.js');
 // means the read itself failed (spawn error, timeout, non-JSON output).
 function defaultStampStatus(worktree) {
   const out = execFileSync(process.execPath, [VERIFY_JS, '--stamp-status'], {
-    cwd: worktree, encoding: 'utf8', timeout: GH_TIMEOUT_MS, windowsHide: true,
+    cwd: worktree, encoding: 'utf8', timeout: GIT_TIMEOUT_MS, windowsHide: true,
   });
   return JSON.parse(out);
+}
+
+// A directory (or symlink) named report.json is not the artifact -- only a regular file counts.
+function defaultReportExists(p) {
+  return lstatType(p).type === 'file';
 }
 
 // checkFirstCallStamp({ runDir }, deps?)
@@ -293,7 +299,7 @@ function checkFirstCallStamp({ runDir }, deps = {}) {
   const {
     readFile = defaultReadFile,
     stampStatus = defaultStampStatus,
-    exists = fs.existsSync,
+    exists = defaultReportExists,
   } = deps;
 
   let worktree = null;
