@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T09:12:02.464Z",
+  "computedAt": "2026-10-21T15:41:25.343Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -19,16 +19,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3672,
-        "updatedAt": "2026-10-21T05:04:22Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3666,
-        "updatedAt": "2026-10-21T05:07:17Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3661,
         "updatedAt": "2026-10-20T07:08:17Z",
         "state": "OPEN"
@@ -39,28 +29,18 @@
         "state": "OPEN"
       },
       {
-        "number": 3656,
-        "updatedAt": "2026-10-20T07:09:38Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3642,
         "updatedAt": "2026-10-20T07:09:36Z",
         "state": "OPEN"
       },
       {
-        "number": 3592,
-        "updatedAt": "2026-10-21T05:38:39Z",
+        "number": 3630,
+        "updatedAt": "2026-10-21T15:33:40Z",
         "state": "OPEN"
       },
       {
         "number": 3579,
         "updatedAt": "2026-10-19T12:28:39Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3554,
-        "updatedAt": "2026-10-21T06:00:18Z",
         "state": "OPEN"
       },
       {
@@ -79,18 +59,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3510,
-        "updatedAt": "2026-10-20T21:06:17Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3504,
         "updatedAt": "2026-10-18T06:43:15Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3493,
-        "updatedAt": "2026-10-18T06:43:04Z",
         "state": "OPEN"
       },
       {
@@ -100,22 +70,7 @@
       },
       {
         "number": 3488,
-        "updatedAt": "2026-10-18T06:42:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3460,
-        "updatedAt": "2026-10-21T05:59:14Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3459,
-        "updatedAt": "2026-10-18T06:42:38Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3456,
-        "updatedAt": "2026-10-21T06:53:11Z",
+        "updatedAt": "2026-10-21T14:42:37Z",
         "state": "OPEN"
       },
       {
@@ -124,18 +79,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3317,
-        "updatedAt": "2026-10-21T08:30:43Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3315,
         "updatedAt": "2026-10-21T07:26:08Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3312,
-        "updatedAt": "2026-10-20T18:43:22Z",
         "state": "OPEN"
       },
       {
@@ -146,11 +91,6 @@
       {
         "number": 3276,
         "updatedAt": "2026-10-20T22:04:28Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3056,
-        "updatedAt": "2026-10-21T00:41:34Z",
         "state": "OPEN"
       },
       {
@@ -473,84 +413,6 @@
     ],
     [
       {
-        "body": "Origin: #3021 build — whole-branch review finding (multi-spec record location)\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3657, #3664\n\n## Current State\n\nIn a multi-spec `/claude-tweaks:flow` run each spec's `PIPELINE_RUN_DIR` is `{parent}/spec-{N}/` (`plugin/skills/flow/multi-spec.md`). `_shared/dev-url-detection.md`'s Ephemeral server start writes `{run-dir}/ephemeral-server.txt`, so the record lands in whichever spec first started the server; later specs reuse that server by port probe without a record of their own.\n\n- `review/step3-routing.md`'s Fix-wave server coordination (#3021) reads `{run-dir}/ephemeral-server.txt`; from the second spec on it finds no file and skips the stop, so that spec's fix-wave re-verify can rebuild the app under the still-live shared server — the #3021 defect, for every spec after the first.\n- `flow/multispec-review-console.md` step 1 and `flow/multispec-console-template.md` row 15 tear down `{parent-run-dir}/ephemeral-server.txt`, a path nothing writes, so the shared server is likely left running at the end of a multi-spec run.\n\n## Deliverables\n\n1. Pick one record location for a multi-spec run (the parent run dir, via `MULTISPEC_PARENT_DIR`) and make every writer (`dev-url-detection.md` item 4, `dispatch/task-prompt.md`'s detached-start record) and reader (`review/step3-routing.md`'s coordination, `wrap-up/cleanup-procedures-execution.md` Section D, `flow/multispec-review-console.md` step 1) resolve it.\n2. Conformance test pinning that a multi-spec run's writer and readers name the same path.\n\n## Acceptance Criteria\n\n- In a multi-spec run, a later spec's review fix wave stops the server an earlier spec started.\n- The consolidated teardown kills the recorded shared server; no ephemeral server outlives the run.\n- Single-spec runs behave exactly as today.\n- `npm test` passes in full.\n\n## Release Note\n\nMulti-spec pipeline runs now stop and clean up their shared test server correctly instead of leaving it running or rebuilding under it.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/dev-url-detection.md` — modify\n- `plugin/skills/review/step3-routing.md` — modify\n- `plugin/skills/flow/multispec-review-console.md` — modify\n- `plugin/skills/wrap-up/cleanup-procedures-execution.md` — modify\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-19T20:44:38Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3656,
-        "state": "OPEN",
-        "title": "flow multi-spec: ephemeral-server.txt is written per spec, so later specs' review fix waves and the consolidated teardown miss the shared server",
-        "updatedAt": "2026-10-20T07:09:38Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: build final-review follow-up from #3498\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3682\n\n## Current State\n\n#3498 made `plugin/bin/lib/path-guard`'s `isAncestorOrSelf` the one lexical containment implementation (`shared-primitives.js`'s `isPathContained` is now its strict/`orEqual` wrapper) and removed every `startsWith(root + path.sep)` copy under `plugin/bin`. Its final whole-branch review found five more containment checks that re-derive the answer from `path.relative` output with `rel.startsWith('..')`: `plugin/bin/hooks.js:256`, `plugin/bin/lib/hooks/pre-tool-use.js:685`, `plugin/bin/lib/visual-decide/server.js:48`, `plugin/bin/lib/wrap-up/engine-verify.js:332` and `plugin/bin/lib/skill-audit/context-cost.js:271` (line numbers as of #3498's branch). `rel.startsWith('..')` treats a child component named like `..foo` as outside the root, which is the defect `isAncestorOrSelf` was built to fix (#3417). It errs toward rejecting, so it fails closed. These five sites fell outside #3498's literal AC grep, and its `tests/path-containment-conformance.test.js` scan only matches the `startsWith(... path.sep)` idiom.\n\n## Deliverables\n\n- [ ] Migrate each of the five `rel.startsWith('..')` containment checks to `isPathContained` (or `isAncestorOrSelf` where equality is admitted), keeping each site's strictness and its existing suite unmodified.\n\n- [ ] Add a characterization case per site whose behavior changes (a `..foo` child now contained), the way `tests/bin-lib/path-guard/callers-characterization.test.js` records #3417's.\n\n- [ ] Widen `tests/path-containment-conformance.test.js`'s scan to flag a `path.relative`-derived `startsWith('..')` containment test.\n\n## Acceptance Criteria\n\n- [ ] `git grep -n -E \"startsWith\\('\\.\\.'\" -- plugin/bin` shows no containment test outside `plugin/bin/lib/path-guard/`.\n\n- [ ] Every migrated site's existing suite passes unmodified, and a characterization case pins each `..foo` behavior change.\n\n- [ ] `tests/path-containment-conformance.test.js` fails on a planted `rel.startsWith('..')` containment check.\n\n## Release Note\n\nInternal hardening: the remaining plugin path-containment checks use the shared helper, so a folder named like `..foo` is no longer mistaken for one outside its parent.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — modify\n- `plugin/bin/lib/hooks/pre-tool-use.js` — modify\n- `plugin/bin/lib/visual-decide/server.js` — modify\n- `plugin/bin/lib/wrap-up/engine-verify.js` — modify\n- `plugin/bin/lib/skill-audit/context-cost.js` — modify\n- `tests/path-containment-conformance.test.js` — modify\n\n_Filed by `build` final-review follow-up via specShapedBody._",
         "createdAt": "2026-10-19T19:59:40Z",
         "labels": [
@@ -604,6 +466,78 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: reflect full from #3026\n\nDefer-reason: tangential\n\n## Current State\n\n`reconcile --checks` runs exactly the named subset, but `archive` silently depends on `mirror`: `archive-merged.js`'s `localHasMerge` needs the integration branch's merge commit to be an ancestor of `refs/heads/{integration}` or `origin/{integration}`, and only `mirror` (or `remote-prune`) runs the fetch that makes `origin/{integration}` current. A caller who names `archive` without `mirror` gets a silent `local-behind-merge` skip for any PR GitHub merged asynchronously.\n\nNothing in `plugin/bin/lib/reconcile/index.js` or `docs/reconcile-checks.md` declares this prerequisite. #3026's drain-termination call was specified as `--checks release,archive,reap`, which would have shipped the defect; it was caught only by the final whole-branch review and corrected to `mirror,release,archive,reap`. The only other scripted subset caller, `_shared/pr-first-merge-post-merge.md` Step 4.2, names `mirror` by hand.\n\n## Deliverables\n\n1. `plugin/bin/lib/reconcile/index.js` declares each check's prerequisite checks (`archive` needs `mirror`, and any other dependency the code shows) and expands an explicit `checks` subset with them before dispatch, preserving the existing dispatch order.\n\n2. `docs/reconcile-checks.md` documents the prerequisite table and that an explicit subset is expanded and runs without the hot-path time ceiling.\n\n3. `tests/reconcile.test.js` pins the expansion: a `checks: ['archive']` request runs `mirror` first; an unrelated subset is not widened.\n\n## Acceptance Criteria\n\n- `reconcile({ checks: ['archive'] })` runs `mirror` before `archive`, and `reconcile({ checks: ['reap'] })` runs only `reap`.\n\n- A dispatch-style call `--checks release,archive,reap` archives a run whose PR GitHub merged asynchronously, with no `local-behind-merge` skip caused by a missing fetch.\n\n- `node --test tests/reconcile.test.js` passes.\n\n## Release Note\n\nFixed reconcile so naming `archive` in an explicit check list also refreshes the integration branch it needs, instead of silently skipping asynchronously merged pull requests.\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-19T19:18:38Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 3630,
+        "state": "OPEN",
+        "title": "reconcile does not expand an explicit checks subset with the checks it depends on",
+        "updatedAt": "2026-10-21T15:33:40Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -989,90 +923,6 @@
     ],
     [
       {
-        "body": "Origin: build of #3417 (shared path-guard helper), conformance-lint audit and review\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nCheck A in `plugin/bin/lib/plan-audit/checks.js` treats `fs.existsSync` as proof that a Create/Test bullet's parent is a directory. Three sites do this: the nearest-existing-ancestor loop (line 46), and `existsSync(parentAbs)` / `existsSync(grandparentAbs)` (lines 62 and 74). A plan that creates a file under a path that is currently a regular file therefore passes the audit and fails only at write time. `tests/path-guard-conformance.test.js` (#3417) allowlists this file with an `UNSAFE —` reason. #3417 forbade fixing call sites, so the gap stayed open.\n\n## Deliverables\n\n- Route the three parent checks through `plugin/bin/lib/path-guard`'s `lstatType()`, requiring `type === 'directory'` for a parent.\n\n- Add a Check A regression test where the bullet's parent path is a regular file, shown red against the current code.\n\n- Update the `lib/plan-audit/checks.js` entry in `tests/path-guard-conformance.test.js`: drop the `UNSAFE —` prefix and adjust the token count.\n\n## Acceptance Criteria\n\n- [ ] A plan whose Create bullet names a file under a path that is a regular file is reported in `checkA.missing`.\n\n- [ ] The `lib/plan-audit/checks.js` allowlist entry no longer carries `UNSAFE —`, and `npm test` passes.\n\n## Release Note\n\nplan-audit no longer accepts a regular file as the parent directory of a planned new file.\n\n_Filed by `capture` via specShapedBody._\n\nhttps://claude.ai/code/session_01QGrWbAJ6KVbLkyCLrrphEx\n",
-        "createdAt": "2026-10-17T22:36:35Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3493,
-        "state": "OPEN",
-        "title": "plan-audit Check A accepts a regular file as a Create/Test bullet's parent directory",
-        "updatedAt": "2026-10-18T06:43:04Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: reflect full from #3412\n\nDefer-reason: tangential\n\n## Current State\n\n`docs/plugin-structure.md:67` states that wall-clock timing budgets live in `perf/` (run by `npm run test:perf`) and never in the default `npm test` suite, because they flake under sibling-suite load. Nothing enforces that convention: #3412's build landed a `performance.now()` `< 200ms` assertion in `tests/bin-lib/reconcile/release-merged.test.js` to prove regex linearity, and it reached review before anyone noticed (open-items ledger row 23; the removal is `staged/review-1.patch` in run `2026-10-17T192303-spec-3412`). The same run hit two unrelated timing-test flakes under a load average above 200, which is the exact failure the convention exists to prevent.\n\nEvidence: `grep -rl performance.now tests/` returns only the #3412 test file today, so the convention has held by habit alone; the repo already pins prose conventions with conformance tests (`tests/*-conformance.test.js`), so the enforcement shape exists.\n\nCost this session: one review finding, one staged patch, one Review Console row; no rework.\n\n## Deliverables\n\nA conformance test under `tests/` that scans every `tests/**/*.test.js` for a wall-clock assertion shape (`performance.now()`, `Date.now()`, or `process.hrtime` compared against a numeric budget in the same test body) and fails naming the file and line.\n\nThe test cites `docs/plugin-structure.md`'s perf/ rule in its failure message so the fix direction (move the budget to `perf/`) is on the failing line.\n\nAn allow-list mechanism for a deliberate exception, with a required one-line reason, so the gate can be bypassed visibly rather than by deleting the test.\n\n## Acceptance Criteria\n\nAdding a `performance.now()` budget assertion to any file under `tests/` makes `npm test` fail with the offending `file:line` and the perf/ pointer.\n\nA budget assertion under `perf/` does not trip the test.\n\nThe existing suite passes with the test in place (zero current offenders once `staged/review-1.patch` from #3412 lands, or the one offender it names is the #3412 test and the patch is applied first).\n\n## Release Note\n\nTest suite: a conformance check fails any wall-clock timing budget placed under `tests/` and points at `perf/`, so timing budgets can no longer flake the default `npm test` run.\n\n_Filed by `reflect` via specShapedBody._\n",
         "createdAt": "2026-10-17T22:20:28Z",
         "labels": [
@@ -1194,157 +1044,7 @@
         "number": 3488,
         "state": "OPEN",
         "title": "Map or exempt every staged-id producer so stage-item.js's unmapped-prefix warning is true for each of them",
-        "updatedAt": "2026-10-18T06:42:55Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: #3310 whole-branch review (final review Minor 5)\n\nDefer-reason: out-of-scope\n\n## Current State\n\n`plugin/bin/lib/plan-audit/checks.js`'s `headroomCheck` measures each governed `.md` file with the raw `fs.statSync(abs).size`, which counts `when:` marker lines and CRLF line endings. Since #3310 it compares that raw figure to `RAIL_BYTES` (52,500 B).\n\nThe Read rail measures differently. `rail.js`'s `skillFileRailViolations` goes through `context-cost.js`'s `measureSkills`/`measureSubFiles`, which strip marker lines and normalize CRLF to LF. `plugin/skills/build/plan-audit.md` now says the rail strips only the marker lines.\n\nRaw bytes are always greater than or equal to measured bytes, so plan-audit never misses a breach. The cost is a false positive: a marker-heavy file, or any file in a Windows CRLF checkout, sitting slightly over `RAIL_BYTES` raw gets a blocking plan-audit stop that the `rail:` tests would pass. The raw basis predates #3310; #3310 only retargeted the number.\n\n## Deliverables\n\n- `headroomCheck` measures per-file bytes through `context-cost.js`'s marker-stripped, CRLF-normalized measurement, the same function the rail uses. It reuses that function rather than re-implementing the stripping.\n- `tests/bin-lib/plan-audit/checks.test.js` gains a fixture that is over `RAIL_BYTES` raw but under it once marker lines are stripped. That fixture reports no breach. A CRLF variant does the same.\n\n## Acceptance Criteria\n\n1. A governed fixture file whose raw size is `RAIL_BYTES + 100`, carrying more than 100 B of `<!-- when: … -->` marker lines, reports no `breaches` entry.\n2. The same file with its marker lines removed, and its body padded so it stays over `RAIL_BYTES`, still reports a breach.\n3. A CRLF copy of a file at exactly `RAIL_BYTES` LF bytes reports no breach.\n4. `npm test` passes.\n\n## Release Note\n\nPlan audits measure a skill file's size the same way the Read-limit check does, so marker lines and Windows line endings no longer trigger a false stop.\n\n_Filed by `build (whole-branch review)` via specShapedBody._\n",
-        "createdAt": "2026-10-17T20:09:24Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3459,
-        "state": "OPEN",
-        "title": "Measure plan-audit headroom the way the Read rail does — marker-stripped, CRLF-normalized bytes",
-        "updatedAt": "2026-10-18T06:42:38Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #2767\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3314 #3315 #3316 #3318\n\n## Current State\n\n#2767 (PR #3294) added `toPosix(p, sep = path.sep)` to `plugin/bin/lib/shared-primitives.js` as the one repo-display separator conversion.\nNineteen inline copies remain in `plugin/bin`, in two forms:\n- `split(path.sep).join('/')`: plan-audit/checks.js:432, docs-health.js:283, docs-health/scope.js:57,129, findability.js:75, preflight.js:105, harness-health/scope.js:295, journey-health/scope.js:215, candidates-test-hygiene.js:176-177.\n- `.replace(/\\\\/g, '/')`: init/verify-scope-starter.js:96,219, verify/baseline.js:219,314, design-detect/index.js:165, design-detect/surface-lines.js:64, and others.\n\n`plugin/bin/lib/hooks/pre-tool-use.js` also defines its own local `toPosix`.\n\n## Deliverables\n\n- [ ] Replace each inline repo-display separator conversion in `plugin/bin` with `toPosix` from `shared-primitives.js`.\n- [ ] Replace `pre-tool-use.js`'s local `toPosix` with the shared one, after confirming both behave the same (or note why it must differ).\n- [ ] Leave every conversion whose result is later opened with fs native, and list any site deliberately kept.\n\n## Acceptance Criteria\n\n`grep -rnE \"split\\(path\\.sep\\)\\.join\\('/'\\)|replace\\(/\\\\\\\\\\\\\\\\/g, '/'\\)\" plugin/bin` returns only the sites the record lists as deliberately kept.\n\n`npm test` stays green.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
-        "createdAt": "2026-10-16T21:08:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3317,
-        "state": "OPEN",
-        "title": "Migrate inline separator conversions in plugin/bin to the shared toPosix",
-        "updatedAt": "2026-10-21T08:30:43Z",
+        "updatedAt": "2026-10-21T14:42:37Z",
         "facets": {
           "origin": null,
           "risk": "low",
