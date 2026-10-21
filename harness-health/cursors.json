@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792624880392
+    "lastAuditedMs": 1792626334604
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
@@ -210,5 +210,9 @@
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792606223898
+  },
+  "skill:hooks-js-verb-registration": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792626336598
   }
 }
