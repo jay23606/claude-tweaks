@@ -15,7 +15,7 @@ const flatten = (text) => text.replace(/\s+/g, ' ');
 const SKILL = read('SKILL.md');
 const TEMPLATE = read('summary-template.md');
 const EXEC = read('execution-and-verification.md');
-const POINTER_FILES = ['review-console.md', 'review-console-interactive.md', 'review-console-appendix.md', 'standalone-fast-path.md'];
+const POINTER_FILES = ['SKILL.md', 'review-console.md','review-console-interactive.md', 'review-console-appendix.md', 'standalone-fast-path.md'];
 
 const ORDER = '**Order (#3672).**';
 const PLAN_H = '### Plan cleanup actions';
@@ -81,7 +81,7 @@ function assertExecBlocked(text) {
 }
 
 function assertPointer(name, text) {
-  assert.doesNotMatch(flatten(text), /(?<!not )proceed (directly )?to the phase-trace report/i,
+  assert.doesNotMatch(flatten(text), /(?<!not )proceed (directly )?to the (phase-trace )?report/i,
     `${name}: a console hand-off proceeds to Phase 4's execution step, never straight to the report`);
 }
 
@@ -121,4 +121,9 @@ test('go-red control: the old step-14 hand-off fails the pointer pin', () => {
   const original = read('review-console.md');
   const reverted = assertMutated(original, original.replace("14. Proceed to Phase 4's execution step, then the phase-trace report", '14. Proceed to the phase-trace report'));
   assert.throws(() => assertPointer('review-console.md', reverted), /never straight to the report/);
+});
+
+test('go-red control: the old SKILL.md fast-path hand-off fails the pointer pin', () => {
+  const reverted = assertMutated(SKILL, SKILL.replace("skip the console entirely and proceed to Phase 4's execution step", 'skip the console entirely and proceed to the report'));
+  assert.throws(() => assertPointer('SKILL.md', reverted), /never straight to the report/);
 });
