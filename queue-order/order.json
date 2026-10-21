@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T15:41:25.343Z",
+  "computedAt": "2026-10-21T15:52:06.333Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -20,7 +20,7 @@
       },
       {
         "number": 3661,
-        "updatedAt": "2026-10-20T07:08:17Z",
+        "updatedAt": "2026-10-21T15:44:02Z",
         "state": "OPEN"
       },
       {
@@ -74,18 +74,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3378,
-        "updatedAt": "2026-10-20T20:33:17Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3315,
         "updatedAt": "2026-10-21T07:26:08Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3301,
-        "updatedAt": "2026-10-21T02:26:19Z",
         "state": "OPEN"
       },
       {
@@ -248,78 +238,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: #3284 wrap-up (run 2026-10-19T202749-record-3284), ledger item 1\n\nDefer-reason: tangential\n\n## Current State\n\nA dispatched group's first call (`/flow {target} build,test`) can finish its test phase by running raw `npm test` instead of `/claude-tweaks:test`, and still report `build-test-ok`. That leaves no runner-written `verify.js` pass stamp, so the second call's review Step 1.5 reads `verify.js --stamp-status` as `present: false` and re-runs the full suite (the exact shape of #3034's ~117s re-run).\n\n#3284 closed `/claude-tweaks:test`'s own stamp gaps (the Skip-if-recent Mismatch skip in `plugin/skills/test/verification.md`, the failed-checks-only re-run in `plugin/skills/test/fix-mode.md`). It did not touch the dispatch gate: `checkFirstCallArtifacts` in `plugin/bin/lib/dispatch/first-call-artifact-check.js` and `plugin/bin/verify-run-bookends.js` never read `--stamp-status`, and `plugin/skills/dispatch/task-prompt.md` (the CRITICAL self-check paragraph near line 176) still accepts a raw test-output log as call 1's self-check artifact.\n\n## Deliverables\n\n1. Add a stamp-at-HEAD read (`verifiedHead` from `verify.js --stamp-status`) to the first-call artifact gate, with a stated posture for an absent or stale stamp (block, repair by re-running through the runner, or note) chosen and documented.\n\n2. Drop the raw test-output-log alternative from `task-prompt.md`'s first-call self-check so the artifact a first call must produce is the runner's stamp plus its `report.json`.\n\n## Acceptance Criteria\n\nA first call whose test phase bypassed the runner (no stamp matching HEAD) is detected at the two-call gate before call 2 dispatches, with the chosen posture applied and logged.\n\nA first call that ran `/claude-tweaks:test` (stamp present, `verifiedHead: true`) passes the gate unchanged.\n\n## Release Note\n\nNo user-visible change — internal dispatch-gate fix so a first call that skipped the stamping runner is caught before the second call re-runs the full suite.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-19T21:04:46Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3661,
-        "state": "OPEN",
-        "title": "dispatch's first-call artifact gate never reads verify.js --stamp-status, so a raw npm test first call leaves no stamp for call 2",
-        "updatedAt": "2026-10-20T07:08:17Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
