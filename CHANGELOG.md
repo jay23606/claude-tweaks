@@ -76,6 +76,16 @@ Three conventions follow from how this repo works, and all are visible below:
 * Resumed /build with a valid plan skips Common Steps… ([#3666](https://github.com/thn-inc/claude-tweaks/issues/3666)) ([cb7c605](https://github.com/thn-inc/claude-tweaks/commit/cb7c60519e5e607dceec7e6281aa91372cebcc33))
 * verify report.js git calls omit windowsHide, and the… ([#3854](https://github.com/thn-inc/claude-tweaks/issues/3854)) ([70dc35c](https://github.com/thn-inc/claude-tweaks/commit/70dc35ca6e4c9c1b73cd60133fb5ecab99cff237))
 
+### Highlights
+* No user-visible change.
+* Added optional per-task role and review-risk markers to build plans so mechanical tasks run on cheaper model tiers while high-risk tasks keep a top-tier review.
+* Friction logging now also covers worktree-isolation refusals of file edits, not just shell commands.
+* No user-visible change.
+* No user-facing change. This produces an internal comparison of Claude Code's `/prompt-audit` against claude-tweaks' own harness-health audit.
+* Build: SDD ruling and build-deviation carry-forwards now stage through one CLI call, so a failed staging can no longer leave a ledger row pointing at a file that was never written.
+* Agent-trust-scope sweeps and reviews stop re-reporting a dimension your project has formally accepted in an ADR, and show it as an accepted risk instead.
+* plan-audit no longer accepts a regular file as the parent directory of a planned new file.
+
 ## [6.150.1](https://github.com/thn-inc/claude-tweaks/compare/v6.150.0...v6.150.1) (2026-10-21)
 
 
