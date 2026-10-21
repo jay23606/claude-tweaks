@@ -216,6 +216,12 @@ git add tests/path-containment-conformance.test.js
 git commit -m "Widen the path-containment conformance scan to startsWith('..') — a planted re-derivation now fails it, refs #3642"
 ```
 
+## Build additions (architecture alignment, #3642)
+
+The final whole-branch review's fix wave (66aaabd84) added files beyond the Key Files list. They are kept as Beneficial:
+- `docs/donts.md` `[IL-161]`, `.claude/skills/bin-source-scan-conformance/SKILL.md` and `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` now name the `startsWith('..')` ban and the `visual-decide/server.js` builtins-only exception, so the convention docs match the widened scan.
+- `tests/bin-lib/path-guard/callers-characterization.test.js` gained a pin comparing `resolveSafe` with `isAncestorOrSelf`.
+
 ## Spec coverage
 
 | AC clause | Covered by |
