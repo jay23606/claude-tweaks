@@ -6,8 +6,9 @@
 // pre-migration code AND the migrated code; the one intended difference is
 // the only #3417 test that is red before migration. The `isPolicyFile (#3495)`
 // tests are the exception: they pin the case-canonical behavior #3495 added.
-// The #3642 cases are the same kind of exception: each pins an intended
-// behavior change and is red before migration.
+// The #3642 cases are the same kind of exception: each `..foo` case pins an
+// intended behavior change and is red before migration; the "strictness kept"
+// cases pin behavior the migration preserves and pass before and after.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');

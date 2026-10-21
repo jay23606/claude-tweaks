@@ -86,15 +86,16 @@ test('AC1.1: no plugin/bin JS file hand-rolls a startsWith(... path.sep) contain
   assert.deepEqual(hits, []);
 });
 
-test('#3642 scanRelDotDot flags a bare startsWith(\'..\') in either quote style, but not \'...\', \'../\' or a comment', () => {
+test('#3642 scanRelDotDot flags a bare startsWith(\'..\') in any quote style, but not \'...\', \'../\' or a comment', () => {
   const src = [
     "if (rel.startsWith('..')) return null;",
     'const out = r.startsWith("..");',
+    'const tpl = r.startsWith(`..`);',
     "if (e.startsWith('...')) continue;",
     "const esc = p.startsWith('../');",
     "// rel.startsWith('..') in a comment",
   ].join('\n');
-  assert.deepEqual(scanRelDotDot(src, 'f.js'), ['f.js:1', 'f.js:2']);
+  assert.deepEqual(scanRelDotDot(src, 'f.js'), ['f.js:1', 'f.js:2', 'f.js:3']);
 });
 
 test('#3642 AC1.1: no plugin/bin JS file outside lib/path-guard/ tests containment with startsWith(\'..\')', () => {
