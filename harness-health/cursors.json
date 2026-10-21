@@ -1,7 +1,7 @@
 {
   "claude-md:CLAUDE": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792559905386
+    "lastAuditedMs": 1791868660880
   },
   "__gapScan": {
     "lastScannedSha": null,
@@ -61,7 +61,7 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792558824567
+    "lastAuditedMs": 1792560823231
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
