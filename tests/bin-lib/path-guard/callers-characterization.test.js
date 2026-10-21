@@ -269,7 +269,7 @@ test('installed-plugins: without deps.readFile only exact paths match, in file o
 
 // ---- #3642: path.relative re-derivations migrated to isPathContained -------
 const { gitRepo, linkedWorktreeOf } = require('../../helpers/git-fixtures');
-const { canonicalRealpath } = require('../../../plugin/bin/lib/path-guard');
+const { canonicalRealpath, isAncestorOrSelf } = require('../../../plugin/bin/lib/path-guard');
 const { shadowPipelineRunDir } = require('../../../plugin/bin/lib/hooks/pre-tool-use');
 
 test('#3642 AC2.1 pre-tool-use: a new run dir named ..foo inside a linked worktree is a shadow (was treated as outside pipelines/)', () => {
@@ -314,7 +314,6 @@ test('#3642 context-cost: a source resolving to the plugin root itself still esc
 // visual-decide/server.js keeps a builtins-only copy of the containment check
 // (#1202 AC 8 bars non-builtin imports there); this pins it to the shared
 // primitive's accept/reject verdict on this host.
-const { isAncestorOrSelf } = require('../../../plugin/bin/lib/path-guard');
 
 test("#3642 visual-decide: resolveSafe's builtins-only segment check agrees with isAncestorOrSelf", () => {
   const root = fresh();

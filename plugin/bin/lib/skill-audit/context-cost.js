@@ -265,8 +265,7 @@ function parseComposeCallLine(line, repoRoot) {
   // Contained means strictly beneath `root` — the shared isPathContained
   // helper's answer: `root` itself (a bare `${CLAUDE_PLUGIN_ROOT}/`), a `..`
   // walk up out of it, and (win32) a cross-drive path all escape.
-  const escapesRoot = (source) => !isPathContained(source, root);
-  const escaped = sources.find(escapesRoot);
+  const escaped = sources.find((source) => !isPathContained(source, root));
   if (escaped) return { unparsed: true, reason: `source path escapes the plugin root: ${escaped}` };
   return { step, sources };
 }
