@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T07:21:00.871Z",
+  "computedAt": "2026-10-21T09:12:02.464Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -125,12 +125,12 @@
       },
       {
         "number": 3317,
-        "updatedAt": "2026-10-17T09:03:53Z",
+        "updatedAt": "2026-10-21T08:30:43Z",
         "state": "OPEN"
       },
       {
         "number": 3315,
-        "updatedAt": "2026-10-21T04:31:56Z",
+        "updatedAt": "2026-10-21T07:26:08Z",
         "state": "OPEN"
       },
       {
@@ -1344,7 +1344,7 @@
         "number": 3317,
         "state": "OPEN",
         "title": "Migrate inline separator conversions in plugin/bin to the shared toPosix",
-        "updatedAt": "2026-10-17T09:03:53Z",
+        "updatedAt": "2026-10-21T08:30:43Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -1407,12 +1407,6 @@
             "color": "F9D0C4"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
             "id": "LA_kwDORUwzVM8AAAACsXHcvg",
             "name": "priority:low",
             "description": "Priority: dispatch picks last among prioritized records",
@@ -1422,7 +1416,7 @@
         "number": 3315,
         "state": "OPEN",
         "title": "Fix latent Windows path producers found by the #2767 class map",
-        "updatedAt": "2026-10-21T04:31:56Z",
+        "updatedAt": "2026-10-21T07:26:08Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -1435,7 +1429,7 @@
           "stage": "ready",
           "grants": {
             "build": true,
-            "merge": true
+            "merge": false
           },
           "bot": {
             "inProgress": false,
