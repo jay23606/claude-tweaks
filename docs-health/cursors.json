@@ -226,5 +226,8 @@
   },
   "doc:decisions/0023-dispatch-groups-are-per-record-overlap-resolved-at-merge": {
     "lastAuditedMs": 1792476913686
+  },
+  "doc:decisions/0023-windows-regression-guard-runs-post-merge-only": {
+    "lastAuditedMs": 1792563342656
   }
 }
