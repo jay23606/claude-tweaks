@@ -1,5 +1,6 @@
 // plugin/bin/lib/plan-audit/checks.js — Checks A/B/C/D, the headroom check,
-// and the warn-only Checks E (#3099) and F (#3602) for bin/plan-audit.js (#903).
+// the warn-only Checks E (#3099) and F (#3602), and the warn-only per-task
+// marker check (checkTaskMarkers, #3378) for bin/plan-audit.js (#903).
 // Mechanizes plan-audit.md's prose checks; policy handling (scope-creep, scope-keywords-required) stays at the skill
 // layer — this module only reports facts.
 'use strict';
@@ -13,7 +14,7 @@ const { RAIL_BYTES } = require('../skill-audit/budgets');
 const { toPosix } = require('../shared-primitives');
 const {
   extractAcceptanceClauses, extractCoverageSources, extractSpecPaths, extractPathWaivers,
-  extractFileEntries, normalizeRepoPath,
+  extractFileEntries, normalizeRepoPath, extractTaskMarkers, TASK_MARKER_ROLES, TASK_MARKER_RISKS,
 } = require('./parser');
 
 const WALK_EXCLUDES = new Set(['.git', 'node_modules', '.claude', '.claude-tweaks']);
@@ -650,6 +651,30 @@ function checkE(specText, planText) {
   };
 }
 
+// ── Check: unknown per-task marker value (#3378) ───────────────────────────
+// Warn-only, like Check E: `ok` reports whether any finding exists, but
+// `--task-markers` (bin/plan-audit.js) never turns this into an exit-code
+// failure — a mistyped `**Role:**`/`**Review risk:**` value is a
+// plan-authoring nit, not a build-blocking structural defect. A recognised
+// key (the line is present) with a value outside the closed set
+// (`TASK_MARKER_ROLES`/`TASK_MARKER_RISKS`, parser.js) is a finding; a
+// misspelled key is not detectable here at all (extractTaskMarkers never
+// matched the line, so the task is simply unmarked) and is correctly never
+// reported.
+function checkTaskMarkers(text) {
+  const { tasks } = extractTaskMarkers(text);
+  const findings = [];
+  for (const t of tasks) {
+    if (t.roleRaw !== null && !TASK_MARKER_ROLES.includes(t.roleRaw)) {
+      findings.push({ taskIndex: t.index, title: t.title, field: 'Role', value: t.roleRaw });
+    }
+    if (t.riskRaw !== null && !TASK_MARKER_RISKS.includes(t.riskRaw)) {
+      findings.push({ taskIndex: t.index, title: t.title, field: 'Review risk', value: t.riskRaw });
+    }
+  }
+  return { ok: findings.length === 0, findings };
+}
+
 // ── Check F — Spec-named path coverage (#3602) ──────────────────────────────
 // Reports repo paths the spec's Technical Approach / Gotchas sections name
 // that no plan task's `Files:` block lists and no `Waived <path>: <reason>`
@@ -700,5 +725,5 @@ function checkF(specText, planText) {
 
 module.exports = {
   checkA, checkB, checkC, checkD, checkE, checkF, headroomCheck, looksPassing, isGovernedMdPath,
-  refusedVcsMutation, commandSegments, checkPremiseRefs,
+  refusedVcsMutation, commandSegments, checkPremiseRefs, checkTaskMarkers,
 };
