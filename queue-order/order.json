@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-21T21:57:57.293Z",
+  "computedAt": "2026-10-21T22:01:02.449Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -30,7 +30,7 @@
       },
       {
         "number": 3887,
-        "updatedAt": "2026-10-21T20:30:33Z",
+        "updatedAt": "2026-10-21T22:00:50Z",
         "state": "OPEN"
       },
       {
@@ -433,78 +433,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: overnight dispatch-fleet coordination session, 2026-10-21\n\nDefer-reason: tangential\n\n## Current State\n\nWhen a dispatched attempt fails after `/build` has pushed (a plan commit, say) and its PR is closed, the remote branch `worktree-dispatch-record-{N}` stays on origin. The retry creates a fresh worktree branch with the same name from `origin/main`. `build/adopted-branch-collision-check.md` then classifies origin's tip as `foreign` and stops with `adopted-branch-collision` before any work starts. Auto mode can't silence that HARD-GATE, so the retry is spent.\n\nSeen on 2026-10-20 and 2026-10-21:\n- #3630: attempt 1's PR #3689 was closed with the branch tip at `6a9d5ff`. Attempt 2 collided, and the retry ceiling then applied `bot:blocked` and revoked `auto:build`.\n- #3315: attempt 1's PR #3851 was closed with the branch at `9342f0653`, holding only the plan commit `docs/superpowers/plans/2026-10-21-windows-path-producers-3315.md`. Attempt 2 collided.\n- #3488 is set up to repeat it. Attempt 1's PR #3885 closed on `failed: build`, and branch `worktree-dispatch-record-3488` sits at `04948b858` with a plan commit its failure comment says is kept \"for the retry\".\n\nEach time, someone had to delete the branch by hand before the record could build. The failure comment promises the retry will use the committed plan, but the retry can never adopt that branch.\n\n## Deliverables\n\n- Make a retry of a record whose earlier attempt failed after pushing proceed instead of stopping on its own leftover branch. Do one of the following, and state which and why:\n  - (a) On the dispatched attempt's failure path (dispatch Settle, or `two-call-gate.md`'s terminal path), delete the record's own remote branch once its PR is closed, and record any plan commit's sha in the failure comment so the retry can read it.\n  - (b) In the collision check, recognize origin's branch as this record's own prior attempt (a closed PR whose head is that branch, for the same record number) and adopt or reset it instead of stopping.\n- Either honor or remove the \"plan committed for the retry\" wording in the failure comment, so it never promises something the retry can't do.\n\n## Acceptance Criteria\n\n- A record whose attempt 1 fails after pushing, and whose PR is closed, is retried by the next dispatch without hitting `adopted-branch-collision`.\n- A same-name branch whose PR belongs to a different record, or that has no closed dispatch PR (for example a human's branch), still stops as `foreign`.\n- The failure comment's plan-for-retry claim matches what the retry actually does.\n- A unit test covers the own-prior-attempt vs foreign distinction, and goes red when that distinction is removed.\n\n## Release Note\n\nFix dispatched records failing on every retry because their first failed attempt left a branch behind on origin.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/adopted-branch-collision-check.md` — own-prior-attempt classification or reference to failure-path cleanup\n- `plugin/bin/lib/worktree/remote-branch-collision.js` — classify own prior attempt vs foreign\n- `plugin/skills/dispatch/settle-and-merge.md` — failure-path remote branch handling\n- `plugin/skills/dispatch/two-call-gate.md` — terminal-path remote branch handling\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-21T15:33:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3887,
-        "state": "OPEN",
-        "title": "Dispatch retry collides with the remote branch its own failed first attempt left behind",
-        "updatedAt": "2026-10-21T20:30:33Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
