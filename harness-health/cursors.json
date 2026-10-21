@@ -61,7 +61,7 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792611831568
+    "lastAuditedMs": 1792616865152
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -113,7 +113,7 @@
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792611833299
+    "lastAuditedMs": 1792616873728
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
