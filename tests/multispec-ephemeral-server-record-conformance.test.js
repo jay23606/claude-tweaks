@@ -108,6 +108,8 @@ test('AC2.1/AC2.2: consolidated teardown kills the recorded shared server, so no
   for (const [name, line] of [['multispec-review-console step 1', step1], ['multispec-console-template row 15', row15]]) {
     assert.ok(line.includes('`$MULTISPEC_PARENT_DIR/ephemeral-server.txt`'), `${name} must name the parent server record`);
   }
+  // Section D's step 1 skips the whole section under MULTISPEC_REVIEW_DEFER=1 (set here), so the kill cites steps 2-4.
+  assert.ok(step1.includes('Section D steps 2-4'), 'step 1 must cite Section D steps 2-4, past the defer check');
 });
 
 test('AC2.1: Section D reads the server record', () => {
@@ -119,9 +121,9 @@ test('AC2.1: Section D reads the server record', () => {
 
 test('wrap-up cleanup applicability tests the server record', () => {
   const skill = flat(read('wrap-up', 'SKILL.md'));
-  assert.ok(skill.includes('the server record exists (6)'), 'wrap-up/SKILL.md condition list must test the server record');
-  const line7 = read('wrap-up', 'cleanup-procedures.md').split('\n')[6];
-  assert.ok(line7.includes('reads the server record'), 'cleanup-procedures.md line 7 must read the server record');
+  assert.ok(skill.includes('the server record (`$MULTISPEC_PARENT_DIR/ephemeral-server.txt` in a multi-spec run, else `${RUN_DIR}/ephemeral-server.txt`) exists (6)'), 'wrap-up/SKILL.md condition list must test the server record');
+  const intro = lineStarting(read('wrap-up', 'cleanup-procedures.md'), 'Eight cleanup actions');
+  assert.ok(intro.includes('reads the server record'), 'cleanup-procedures.md intro line must read the server record');
 });
 
 // Every skill file that names a run-dir-relative record path must also name the server record.

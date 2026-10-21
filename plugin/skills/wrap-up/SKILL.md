@@ -232,7 +232,7 @@ This step **plans** the cleanup — it does not execute. Actual deletions and ar
 
 Cleanup enumerates the items below, in canonical order: execution plans, ledger, design caches, worktree, record/spec lifecycle, ephemeral dev server, issue claim release, pipeline run dir (always last — see the canonical list's ordering rule).
 
-First check whether **any** of the following conditions holds for this run — record-based work (items 1, 5, 7), a ledger exists (2), the design wrapper was active (3), a worktree strategy was used (4), the server record exists (6) (`$MULTISPEC_PARENT_DIR/ephemeral-server.txt` in a multi-spec run, else `${RUN_DIR}/ephemeral-server.txt`), or a pipeline run directory exists (8):
+First check whether **any** of the following conditions holds for this run — record-based work (items 1, 5, 7), a ledger exists (2), the design wrapper was active (3), a worktree strategy was used (4), the server record (`$MULTISPEC_PARENT_DIR/ephemeral-server.txt` in a multi-spec run, else `${RUN_DIR}/ephemeral-server.txt`) exists (6), or a pipeline run directory exists (8):
 
 - **At least one holds** → read `cleanup-procedures.md` in this skill's directory for the canonical cleanup list, filter it to rows whose Condition holds for this run (e.g., skip the worktree row when no worktree strategy was used), and carry the filtered list forward into the report and the execution step. That file's own text names a fast-path fragment for the common no-record/no-worktree/non-multi-spec case (#797) — read it there, not restated here.
 - **None holds** → report "No cleanup actions apply" and skip this step entirely; do not read the file.
