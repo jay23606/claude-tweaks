@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { lstatType, resolveLeaf } = require('../path-guard');
-const { composedBytesReport } = require('../skill-audit/context-cost');
+const { composedBytesReport, measuredBytes } = require('../skill-audit/context-cost');
 const { RAIL_BYTES } = require('../skill-audit/budgets');
 const {
   extractAcceptanceClauses, extractCoverageSources, extractSpecPaths, extractPathWaivers,
@@ -495,6 +495,9 @@ function composedHeadroom(governedPaths, repoRoot, { report = composedBytesRepor
 // `nearCeiling` and `composedNearCeiling` keep their pre-rail names because
 // they are JSON-envelope keys plan-audit's consumers read (#3310); both now
 // mean "within 10% of RAIL_BYTES, not over it".
+// Per-file bytes come from context-cost.js's `measuredBytes` — CRLF-normalized,
+// `when:` marker lines stripped — the same measurement the Read rail (`rail.js`)
+// uses, so plan-audit never stops on a file the `rail:` tests would pass (#3459).
 function headroomCheck(entries, repoRoot, deps = {}) {
   const nearCeiling = [];
   const breaches = [];
@@ -509,7 +512,7 @@ function headroomCheck(entries, repoRoot, deps = {}) {
     const abs = path.resolve(repoRoot, relPath);
     let bytes;
     try {
-      bytes = fs.statSync(abs).size;
+      bytes = measuredBytes(abs).bytes;
     } catch {
       continue; // Check A already reports this path as missing
     }

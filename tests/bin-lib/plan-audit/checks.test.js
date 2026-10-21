@@ -783,6 +783,51 @@ test('headroomCheck measures against the Read-limit rail: breach above RAIL_BYTE
   }
 });
 
+// #3459 — headroomCheck measures like the Read rail (context-cost.js's
+// measuredBytes): `when:` marker lines stripped, CRLF normalized to LF.
+const MARKER_PAIR = '<!-- when: mode=auto -->\n<!-- /when -->\n';
+
+function headroomFor(content) {
+  const repo = makeTmpRepo();
+  const rel = 'plugin/skills/demo/measured.md';
+  const abs = path.join(repo, rel);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, content);
+  try {
+    return { raw: fs.statSync(abs).size, result: headroomCheck([{ type: 'Modify', path: rel }], repo) };
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+test('AC1.1: a file RAIL_BYTES + 100 raw, carrying > 100 B of when-marker lines, reports no breach (#3459)', () => {
+  const markers = MARKER_PAIR.repeat(4);
+  assert.ok(Buffer.byteLength(markers) > 100);
+  const { raw, result } = headroomFor(markers + 'x'.repeat(RAIL_BYTES + 100 - Buffer.byteLength(markers)));
+  assert.strictEqual(raw, RAIL_BYTES + 100);
+  assert.deepStrictEqual(result.breaches, []);
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.nearCeiling[0].bytes, RAIL_BYTES + 100 - Buffer.byteLength(markers));
+});
+
+test('AC2.1: the same file with its marker lines removed, padded to stay over RAIL_BYTES, still breaches (#3459)', () => {
+  const { result } = headroomFor('x'.repeat(RAIL_BYTES + 100));
+  assert.strictEqual(result.breaches.length, 1);
+  assert.strictEqual(result.breaches[0].bytes, RAIL_BYTES + 100);
+  assert.strictEqual(result.ok, false);
+});
+
+test('AC3.1: a CRLF copy of a file at exactly RAIL_BYTES LF bytes reports no breach (#3459)', () => {
+  let lf = ('x'.repeat(99) + '\n').repeat(Math.floor(RAIL_BYTES / 100));
+  lf += 'x'.repeat(RAIL_BYTES - Buffer.byteLength(lf));
+  assert.strictEqual(Buffer.byteLength(lf), RAIL_BYTES);
+  const { raw, result } = headroomFor(lf.replace(/\n/g, '\r\n'));
+  assert.ok(raw > RAIL_BYTES, 'CRLF fixture must be over the rail raw');
+  assert.deepStrictEqual(result.breaches, []);
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.nearCeiling[0].bytes, RAIL_BYTES);
+});
+
 test('a clean plan (no missing paths, no scope keywords, no FAIL findings, no headroom issues) passes every check', () => {
   const repo = makeTmpRepo();
   const rel = 'plugin/skills/build/plan-audit.md';
