@@ -90,8 +90,14 @@ test('dispatch templates write and re-check the bundle parent, never a spec-{N}/
   blocks.forEach((block, i) => {
     const para = flat(paragraph(block, markers[i]));
     // Bare path: template 1 names it inside the printf redirect's quotes, template 2 in backticks.
-    assert.ok(para.includes('{minted-run-dir}/ephemeral-server.txt'),`template ${i + 1} paragraph must name the minted run dir's record`);
-    assert.ok(para.includes('never a `spec-{N}/` subdirectory'), `template ${i + 1} paragraph must exclude spec-{N}/ subdirectories`);
+    assert.ok(
+      para.includes('{minted-run-dir}/ephemeral-server.txt'),
+      `template ${i + 1} paragraph must name the minted run dir's record`,
+    );
+    assert.ok(
+      para.includes('never a `spec-{N}/` subdirectory'),
+      `template ${i + 1} paragraph must exclude spec-{N}/ subdirectories`,
+    );
   });
 });
 
@@ -121,7 +127,10 @@ test('AC2.1: Section D reads the server record', () => {
 
 test('wrap-up cleanup applicability tests the server record', () => {
   const skill = flat(read('wrap-up', 'SKILL.md'));
-  assert.ok(skill.includes('the server record (`$MULTISPEC_PARENT_DIR/ephemeral-server.txt` in a multi-spec run, else `${RUN_DIR}/ephemeral-server.txt`) exists (6)'), 'wrap-up/SKILL.md condition list must test the server record');
+  assert.ok(
+    skill.includes('the server record (`$MULTISPEC_PARENT_DIR/ephemeral-server.txt` in a multi-spec run, else `${RUN_DIR}/ephemeral-server.txt`) exists (6)'),
+    'wrap-up/SKILL.md condition list must test the server record',
+  );
   const intro = lineStarting(read('wrap-up', 'cleanup-procedures.md'), 'Eight cleanup actions');
   assert.ok(intro.includes('reads the server record'), 'cleanup-procedures.md intro line must read the server record');
 });
@@ -154,7 +163,10 @@ test('writer and readers agree repo-wide on the server record path', () => {
   const files = skillMarkdown();
   // standalone-fast-path.md is never multi-spec: its own precondition says so.
   const EXEMPT = path.join('wrap-up', 'standalone-fast-path.md');
-  assert.ok(flat(files[EXEMPT]).includes('`MULTISPEC_REVIEW_DEFER`/`MULTISPEC_PARENT_DIR` are unset'), 'the exemption precondition must still be stated');
+  assert.ok(
+    flat(files[EXEMPT]).includes('`MULTISPEC_REVIEW_DEFER`/`MULTISPEC_PARENT_DIR` are unset'),
+    'the exemption precondition must still be stated',
+  );
   const scanned = { ...files };
   delete scanned[EXEMPT];
   assert.deepEqual(scanServerRecordAgreement(scanned), []);
