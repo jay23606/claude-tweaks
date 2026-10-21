@@ -1,28 +1,8 @@
 {
-  "computedAt": "2026-10-21T04:21:45.217Z",
+  "computedAt": "2026-10-21T05:56:54.538Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
-      {
-        "number": 3772,
-        "updatedAt": "2026-10-20T19:09:47Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3771,
-        "updatedAt": "2026-10-20T21:22:30Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3769,
-        "updatedAt": "2026-10-20T21:53:58Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3767,
-        "updatedAt": "2026-10-20T23:19:54Z",
-        "state": "OPEN"
-      },
       {
         "number": 3766,
         "updatedAt": "2026-10-20T20:21:13Z",
@@ -39,38 +19,18 @@
         "state": "OPEN"
       },
       {
-        "number": 3674,
-        "updatedAt": "2026-10-21T00:07:04Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3672,
-        "updatedAt": "2026-10-20T07:07:51Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3670,
-        "updatedAt": "2026-10-20T21:11:25Z",
+        "updatedAt": "2026-10-21T05:04:22Z",
         "state": "OPEN"
       },
       {
         "number": 3666,
-        "updatedAt": "2026-10-20T07:08:06Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3665,
-        "updatedAt": "2026-10-20T20:08:17Z",
+        "updatedAt": "2026-10-21T05:07:17Z",
         "state": "OPEN"
       },
       {
         "number": 3661,
         "updatedAt": "2026-10-20T07:08:17Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3658,
-        "updatedAt": "2026-10-21T01:18:52Z",
         "state": "OPEN"
       },
       {
@@ -90,7 +50,7 @@
       },
       {
         "number": 3592,
-        "updatedAt": "2026-10-19T12:28:22Z",
+        "updatedAt": "2026-10-21T05:38:39Z",
         "state": "OPEN"
       },
       {
@@ -129,11 +89,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3494,
-        "updatedAt": "2026-10-20T23:17:42Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3493,
         "updatedAt": "2026-10-18T06:43:04Z",
         "state": "OPEN"
@@ -146,11 +101,6 @@
       {
         "number": 3488,
         "updatedAt": "2026-10-18T06:42:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3461,
-        "updatedAt": "2026-10-20T19:21:33Z",
         "state": "OPEN"
       },
       {
@@ -174,33 +124,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3340,
-        "updatedAt": "2026-10-20T20:15:44Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3339,
-        "updatedAt": "2026-10-20T20:06:11Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3329,
-        "updatedAt": "2026-10-20T22:00:36Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3328,
-        "updatedAt": "2026-10-20T18:39:06Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3317,
         "updatedAt": "2026-10-17T09:03:53Z",
         "state": "OPEN"
       },
       {
         "number": 3315,
-        "updatedAt": "2026-10-21T04:21:28Z",
+        "updatedAt": "2026-10-21T04:31:56Z",
         "state": "OPEN"
       },
       {
@@ -209,18 +139,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3304,
-        "updatedAt": "2026-10-20T19:53:56Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3301,
         "updatedAt": "2026-10-21T02:26:19Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3291,
-        "updatedAt": "2026-10-20T20:18:51Z",
         "state": "OPEN"
       },
       {
@@ -393,150 +313,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #3483\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nwrap-up/SKILL.md lists \"The phase-trace report\" (Phase 4) before \"Execute approved actions\", yet the report's Verdict is specified to name facts the execute step logs: the leave-open mergeability outcome (#3483), and the #2550 carve-out presumes the report renders after worktree removal. Read literally, the Verdict renders before the execute step has logged anything, so it says \"mergeability not re-checked\" for a run whose re-check ran a moment later. #3483's final review and wrap-up both noticed it; the flow resume-to-merge row still reads the line after wrap-up returns, so the summary names it either way.\n\n## Deliverables\n\n- [ ] Decide and state the order in wrap-up/SKILL.md: either render the phase-trace report after Execute approved actions and Verify execution, or split the Verdict facts that execution produces into a second render pass.\n\n- [ ] Align summary-template.md's Verdict rules (the #2550 carve-out and the #3483 leave-open rule) with that order.\n\n## Acceptance Criteria\n\n- wrap-up/SKILL.md states one order for the report and the execute step, and every Verdict rule that reads a decisions.md line logged by execution is consistent with it.\n\n- A conformance test pins the order sentence and the two Verdict rules that depend on it.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/SKILL.md` — state the report/execute order\n- `plugin/skills/wrap-up/summary-template.md` — align the Verdict rules\n\n_Filed by `wrap-up` via specShapedBody._\n",
-        "createdAt": "2026-10-19T21:37:54Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3672,
-        "state": "OPEN",
-        "title": "wrap-up: state whether the phase-trace report renders before or after the execute step so Verdict facts logged by execution are visible",
-        "updatedAt": "2026-10-20T07:07:51Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #3377\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/build/SKILL.md` Spec Step 2 says \"If the plan is still valid and work remains, skip to Common Step 2\" (line 84, and again at line 151). Common Steps 1.5 (plan audit), 1.6 (plan review, added by #3377) and 1.7 (design pre-build) sit between Spec Step 3 and Common Step 2, so a resumed build whose plan is still valid never runs any of them. Found at #3377's final review; it predates that record, which only added the 1.6 instance of it.\n\n## Deliverables\n\n- [ ] Decide, per skipped step, whether a resumed build with a valid plan should run it (plan audit and design pre-build are idempotent re-checks; the plan review is a once-per-plan gate that a resume has probably already passed).\n- [ ] Make the Spec Step 2 resume branch state which of Common Steps 1.5-1.7 it runs, skips, or conditionally re-runs (for example when the spec or plan changed since the last run), instead of jumping to Common Step 2 unconditionally.\n- [ ] Pin the chosen behaviour in the build conformance suite.\n\n## Acceptance Criteria\n\n1. The Spec Step 2 resume branch names Common Steps 1.5, 1.6 and 1.7 and what a resumed build does with each.\n2. A conformance test fails if the resume branch goes back to an unconditional skip to Common Step 2.\n3. npm test passes.\n\n## Release Note\n\nA resumed build with a still-valid plan now says which pre-execution checks it re-runs, so a plan or spec that changed between runs is audited again.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/SKILL.md` — Spec Step 2 resume branch (lines ~84 and ~151)\n- `plugin/skills/build/plan-review.md` — state whether a resumed build re-runs the plan review\n\n_Filed by `wrap-up leftover routing`. Close to resolve; label `wontfix` to suppress future reports of this finding._",
-        "createdAt": "2026-10-19T21:26:28Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3666,
-        "state": "OPEN",
-        "title": "Resumed /build with a valid plan skips Common Steps 1.5-1.7 unconditionally",
-        "updatedAt": "2026-10-20T07:08:06Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -828,78 +604,6 @@
           "origin": null,
           "risk": "medium",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect light from #3572\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/plan-authoring-checks.md`'s **Derived-value probe check** has an author run a pinned command with the value the code's resolver actually returns on this machine. Nothing asks for a probe with that resolver's degenerate output: an empty string, a missing value, a detached-HEAD branch name.\n\n#3572's plan probed `gh pr list --head {current-branch} --state merged` on three real branches (a squash-merged one returned 1, open ones 0) and its git check on five refs. None of them was empty. On a detached HEAD `{current-branch}` is empty, and `gh pr list --head \"\" --state merged --json number --jq length` prints `30` with exit 0: an empty `--head` drops the filter, so a clean detached worktree read as merged. The SDD task review missed it too. Only review lens 3c caught it, and it was fixed in a review round (373ae7a00).\n\n## Deliverables\n\n- Add an \"Empty-value probe check (extends the Derived-value probe check)\" paragraph to `plugin/skills/build/plan-authoring-checks.md`: one bold lead, the rule, one clause of why, and #3572 as the incident. When a plan has an agent substitute a runtime-resolved value into a command (a branch name, a ref, a path, an id), run that command once with the value the resolver returns in its degenerate case — empty or unset — and record what it does; a filter that silently drops on an empty value widens the query instead of failing.\n\n- Pin the paragraph with a small prose test that follows `tests/absence-grep-control-check-prose.test.js`, read through `readText`.\n\n## Acceptance Criteria\n\n- `grep -nF \"Empty-value probe check\" plugin/skills/build/plan-authoring-checks.md` prints exactly one line, and that paragraph names #3572.\n\n- The new pin fails against the pre-change file and passes after.\n\n- `npm test` passes in full.\n\n## Release Note\n\nPlan authoring now asks for one probe of each substituted command with an empty value, so a filter that drops on an empty input is caught before build.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T11:27:53Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3592,
-        "state": "OPEN",
-        "title": "Add an empty-value probe check to plan authoring — run every substituted command once with its resolver's empty value",
-        "updatedAt": "2026-10-19T12:28:22Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -1347,90 +1051,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: build of #3417 (shared path-guard helper), conformance-lint audit and review\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`stripComments` in `tests/windows-hide-spawn-conformance.test.js` runs two regexes in sequence: block comments first, then line comments. A `/*` that appears inside a `//` comment (for example `// work/*-spec.md`) therefore opens a phantom block comment that runs to the next `*/`, blanking live code in between. Any `child_process` call in that span is invisible to the windowsHide rule, which is a silent false negative. #3417's path-guard lint found the same defect when it copied this helper. Its copy undercounted `hooks.js`, `load-delta.js`, `lib/journey-health/scope.js` and `sweep-stray-run-dirs.js`, so #3417 replaced it with a single-pass stripper in `tests/path-guard-conformance.test.js`.\n\n## Deliverables\n\n- Replace `stripComments` in `tests/windows-hide-spawn-conformance.test.js` with a single-pass, string-aware stripper. Reuse the one in `tests/path-guard-conformance.test.js`, or move both into a shared test helper.\n\n- Add a scanner fixture where a `//` comment containing `/*` precedes an unhidden spawn, and assert that the spawn is flagged.\n\n## Acceptance Criteria\n\n- [ ] The new fixture is flagged by `unhiddenCalls`, and that fixture is shown red against the current two-regex stripper.\n\n- [ ] The live-tree test still passes. Any newly visible unhidden call it surfaces is fixed or reported.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `capture` via specShapedBody._\n\nhttps://claude.ai/code/session_01QGrWbAJ6KVbLkyCLrrphEx\n",
-        "createdAt": "2026-10-17T22:36:38Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3494,
-        "state": "OPEN",
-        "title": "windows-hide-spawn-conformance stripComments blanks live code after a /* inside a // comment",
-        "updatedAt": "2026-10-20T23:17:42Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -1959,6 +1579,84 @@
           "grants": {
             "build": true,
             "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: wrap-up leftover from #2767\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3314 #3316 #3317 #3318\n\n## Current State\n\n#2767's static class map (docs/superpowers/plans/2026-10-16-windows-path-separator-class-2767.md, Class map) found Windows path faults that no failing test pins yet:\n- `plugin/bin/lib/code-health/scope.js` `splitOversized` key mismatch: native-path keys compared against `/` keys.\n- `plugin/bin/lib/residue/probes/worktrees.js`: a domain `includes` check on a native path.\n- `plugin/bin/lib/timing/transcript.js`: the `isProcedurePath` input separator.\n- `cloud-setup-drift-check` joins `PATH` with `:` instead of `path.delimiter`, and its fixtures run shell-script stubs.\n- plan-audit and findability display inconsistencies.\n\n`archive-merged` needs a real Windows run before it can be classified.\n\n## Deliverables\n\n- [ ] For each listed site, write a test that pins its win32 behaviour on a POSIX host (inject `path.win32` / `path.win32.delimiter` at the seam, never stub `process.platform`), then fix the site or record why it is correct.\n- [ ] Replace `cloud-setup-drift-check`'s `:` with `path.delimiter`. Its shell-stub fixtures need a Windows-runnable equivalent or an explicit win32 skip with a reason.\n\n## Acceptance Criteria\n\nEach listed site has a committed test that fails with the fix reverted and passes with it (or a recorded not-a-bug verdict).\n\n`npm test` stays green on ubuntu.\n\n## Release Note\n\nFixes several tools mis-handling Windows paths and PATH separators.\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
+        "createdAt": "2026-10-16T21:08:21Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 3315,
+        "state": "OPEN",
+        "title": "Fix latent Windows path producers found by the #2767 class map",
+        "updatedAt": "2026-10-21T04:31:56Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
           },
           "bot": {
             "inProgress": false,
