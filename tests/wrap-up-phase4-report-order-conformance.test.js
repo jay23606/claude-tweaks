@@ -15,7 +15,7 @@ const flatten = (text) => text.replace(/\s+/g, ' ');
 const SKILL = read('SKILL.md');
 const TEMPLATE = read('summary-template.md');
 const EXEC = read('execution-and-verification.md');
-const POINTER_FILES = ['SKILL.md', 'review-console.md','review-console-interactive.md', 'review-console-appendix.md', 'standalone-fast-path.md'];
+const POINTER_FILES = ['SKILL.md', 'review-console.md', 'review-console-interactive.md', 'review-console-appendix.md', 'standalone-fast-path.md'];
 
 const ORDER = '**Order (#3672).**';
 const PLAN_H = '### Plan cleanup actions';
