@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-21T072126-record-3315",
-  "sessionId": "d88fc2a2-9cd9-461b-8303-d352271d91cb",
-  "claimedAt": "2026-10-21T07:22:53.594Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "failed: adopted-branch-collision",
+  "releasedAt": "2026-10-21T07:25:04.562Z"
 }
