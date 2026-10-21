@@ -2,8 +2,8 @@
 
 Canonical for every merge site under `integration-model: pr-first` (`_shared/integration-model.md`):
 `dispatch/settle-and-merge.md`'s Auto-merge gate, `wrap-up/review-console.md`'s Auto-merge
-short-circuit, `flow/worktree-merge.md`'s reconciliation, and `release/execute.md`
-Step 5. Supersedes and closes
+short-circuit, `wrap-up/merge-mode.md`, `flow/worktree-merge.md`'s reconciliation, and
+`release/execute.md` Step 5. Supersedes and closes
 #335 (the two independently-authored auto-merge implementations these three files carried) and
 #299 (the fast-lane `git -C "$RUN_DIR"` worktree/branch anchoring defect — obsolete once merge
 needs no checkout at all).
@@ -451,6 +451,9 @@ git -C "{worktree-path}" merge origin/{integration-branch}
   explaining the conflict, and report outcome `pending-review`. A human resolves it the ordinary
   way — check out the branch, resolve, push — no scratch-worktree ceremony needed, since the
   conflict already surfaced inside the run's own real worktree, not a throwaway one.
+- **Attended branch (merge mode only).** A human-confirmed merge (`/claude-tweaks:wrap-up #{n} merge`)
+  resolves instead of stopping — procedure in `wrap-up/merge-mode.md`'s `## Conflict`. Every other
+  caller keeps the stop-at-markers bullet above.
 
 **Sequential multi-branch merges** (`flow/worktree-merge.md`'s reconciliation): the invoking
 session serializes them one at a time. Each later branch's own single update-from-base attempt
