@@ -7,7 +7,7 @@ kickoff: code-health
 # Optional: `focus: <vertical>` (e.g. `dead-code`) appends `focus=<vertical>` to this
 # template's `kickoff` value when a per-vertical routine is instantiated from this same
 # generalist template — live today via /claude-tweaks:routine fleet on (see
-# skills/routine/fleet.md's composition table rows 1-4, plus
+# skills/routine/fleet.md's composition-table Vertical finder rows, plus
 # skills/_shared/routine-template-schema.md's field table and
 # skills/code-health/focus-mode.md). Unset here: this shipped copy stays the
 # generalist routine; focus values are supplied at fleet-provisioning time.
