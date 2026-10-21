@@ -18,7 +18,7 @@ When **all** of the following hold, render the compact block below instead of th
 
 **Review effort:** {tier} ({derivation source, same format as the full template's Review effort line})
 **Status:** Spec compliance {met | skipped — fast-lane | n/a — no spec} · Tests pass · QA {status} · Findings 0 · Hindsight clean · Simplification none needed · Visual {status, one word} · Design Quality {skipped ({reason}) | 0 findings} · Fan-out leftovers 0
-{only when 3j printed a table:} **Skill load delta:** {N} entry point(s) moved — largest ΔClosure {signed bytes} on {entry}
+{only when 3j printed a table:} **Skill load delta:** {N} entry point(s) moved (a grouped `{count} entries:` row counts as {count}) — largest ΔClosure {signed bytes} on {entry, or a grouped row's first name and "+{count−1} more"}
 
 ### Key Learnings
 {1-3 insights, or "No key learnings — straightforward review."}
@@ -147,7 +147,7 @@ These challenge the project's DESIGN.md, not the diff — the wrapper never edit
 
 ### Agent Trust Scope (from Step 6.65, code-health's `focus=agent-trust-scope`)
 
-{Include when Step 6.65's pre-check found `.claude/settings.json` or `.claude-tweaks/policy.yml` in scope and at least one candidate survived judgment. Omit when the pre-check skipped (neither config file in the diff scope), when the result was `notApplicable: true` (no `.claude-tweaks/policy.yml`), when zero candidates came back (note in the summary footer instead: "Agent Trust Scope pass ran clean."), or when candidates were found but none survived judgment (note in the summary footer instead: "Agent Trust Scope pass ran — no actionable findings.").}
+{Include when Step 6.65's pre-check found `.claude/settings.json` or `.claude-tweaks/policy.yml` in scope and at least one candidate survived judgment. Omit when the pre-check skipped (neither config file in the diff scope), when the result was `notApplicable: true` (no `.claude-tweaks/policy.yml`), when zero candidates came back (note in the summary footer instead: "Agent Trust Scope pass ran clean."), or when candidates were found but none survived judgment (note in the summary footer instead: "Agent Trust Scope pass ran — no actionable findings."); whenever an accepted-risk ADR applies, also add the summary footer note: "Agent Trust Scope: accepted risk — ADR NNNN ({kind})." — in place of the "no actionable findings" note when nothing else survived judgment}
 
 | File | Dimension | Severity | Finding |
 |------|-----------|----------|---------|

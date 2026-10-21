@@ -39,6 +39,7 @@ const {
   composeQaStamp, decideQaSkip, readQaStamp, writeQaStamp, QA_STAMP_NAME,
 } = require('./lib/verify/qa-stamp');
 const { gitInfo, gitDir } = require('./lib/verify/report');
+const { toPosix } = require('./lib/shared-primitives');
 
 const USAGE = 'usage: qa-stamp.js --write --report <RUN_DIR/report.json> [--stories-dir <dir>]\n'
   + '       qa-stamp.js --check --stories <id=file,...> [--stories-dir <dir>]\n'
@@ -75,7 +76,7 @@ function parseArgs(argv) {
 // clean (dirty !== false blocks the stamp the same as a real dirty tree).
 function computeDirty(execImpl = execFileSync, cwd = process.cwd()) {
   try {
-    const out = String(execImpl('git', ['--no-optional-locks', 'status', '--porcelain', '--', '.', ':(exclude).claude-tweaks/artifacts'], { encoding: 'utf8', cwd })).trim(); // git-path-read: not a path list (emptiness only)
+    const out = String(execImpl('git', ['--no-optional-locks', 'status', '--porcelain', '--', '.', ':(exclude).claude-tweaks/artifacts'], { encoding: 'utf8', cwd, windowsHide: true })).trim(); // git-path-read: not a path list (emptiness only)
     return out !== '';
   } catch {
     return null;
@@ -103,7 +104,7 @@ function hashFile(p) {
 // anywhere (composing the stamp, comparing it, or resolving story paths).
 function normalizeStoriesDir(dir, cwd) {
   const rel = path.relative(cwd, path.resolve(cwd, dir));
-  return (rel === '' ? '.' : rel).split(path.sep).join('/');
+  return toPosix(rel === '' ? '.' : rel);
 }
 
 function emit(deps, body) {

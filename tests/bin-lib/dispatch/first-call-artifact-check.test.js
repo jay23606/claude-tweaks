@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { checkFirstCallArtifacts } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
+const { execFileSync } = require('node:child_process');
+const { checkFirstCallArtifacts, checkFirstCallStamp } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
 const { claimFilePath } = require('../../../plugin/bin/lib/issues/claims');
 
 const REPO_SLUG = 'acme/widgets';
@@ -523,4 +524,119 @@ test('resolveFirstCallGate: OUTCOME already-shipped -> already-shipped; build-te
   assert.equal(resolveFirstCallGate({ reply: 'STATUS: DONE\n', artifact: { ok: true } }), 'blocked');
   // absent artifact on an otherwise clean reply fails closed
   assert.equal(resolveFirstCallGate({ reply: gateReply('STATUS: DONE'), artifact: undefined }), 'artifact-failed');
+});
+
+// ---- #3661: checkFirstCallStamp -- the first call's runner-written pass stamp at HEAD ----
+// Every case injects `stampStatus` / `exists` except the last two, which exercise the real
+// default report check and the real verify.js spawn (its worktree cwd) against temp fixtures.
+
+const STAMP_REPORT = '/wt/.git/claude-tweaks-verify/report.json';
+
+function stampRun(runState) {
+  const runDir = mkRunDir();
+  writeRunDir(runDir, { runState });
+  return runDir;
+}
+
+function stampStub(status) {
+  const calls = [];
+  return { calls, fn: (worktree) => { calls.push(worktree); return status; } };
+}
+
+test('AC2.1: a stamp verifying HEAD with its report.json present passes unchanged', () => {
+  const status = { present: true, verifiedHead: true, reportPath: STAMP_REPORT };
+  const stub = stampStub(status);
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: '/wt' }) }, {
+    stampStatus: stub.fn,
+    exists: (p) => p === STAMP_REPORT,
+  });
+  assert.deepEqual(result, { verified: true, reason: null, status });
+  assert.deepEqual(stub.calls, ['/wt']);
+});
+
+test('AC1.1: no stamp at all (raw npm test first call) is detected as stamp-absent', () => {
+  const status = { present: false, verifiedHead: false, reportPath: null };
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: '/wt' }) }, {
+    stampStatus: stampStub(status).fn,
+    exists: () => true,
+  });
+  assert.deepEqual(result, { verified: false, reason: 'stamp-absent', status });
+});
+
+test('AC1.1: a stamp that does not verify HEAD is stamp-not-head', () => {
+  const status = { present: true, verifiedHead: false, reportPath: '/r.json' };
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: '/wt' }) }, {
+    stampStatus: stampStub(status).fn,
+    exists: () => true,
+  });
+  assert.deepEqual(result, { verified: false, reason: 'stamp-not-head', status });
+});
+
+test('report.json missing behind a verifying stamp is report-missing', () => {
+  const status = { present: true, verifiedHead: true, reportPath: STAMP_REPORT };
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: '/wt' }) }, {
+    stampStatus: stampStub(status).fn,
+    exists: () => false,
+  });
+  assert.deepEqual(result, { verified: false, reason: 'report-missing', status });
+});
+
+test('no worktree recorded never reads a stamp', () => {
+  const boom = () => { throw new Error('stampStatus must not be called without a recorded worktree'); };
+  const noWorktree = checkFirstCallStamp({ runDir: stampRun({}) }, { stampStatus: boom, exists: () => true });
+  assert.deepEqual(noWorktree, { verified: false, reason: 'worktree-unrecorded', status: null });
+
+  const noRunState = mkRunDir();
+  writeRunDir(noRunState, {});
+  const absent = checkFirstCallStamp({ runDir: noRunState }, { stampStatus: boom, exists: () => true });
+  assert.deepEqual(absent, { verified: false, reason: 'worktree-unrecorded', status: null });
+});
+
+test('an unreadable stamp read is stamp-read-failed, never a throw', () => {
+  const runDir = stampRun({ worktree: '/wt' });
+  const thrown = checkFirstCallStamp({ runDir }, {
+    stampStatus: () => { throw new Error('verify.js exited 1'); },
+    exists: () => true,
+  });
+  assert.deepEqual(thrown, { verified: false, reason: 'stamp-read-failed', status: null });
+
+  const nonObject = checkFirstCallStamp({ runDir }, { stampStatus: () => null, exists: () => true });
+  assert.deepEqual(nonObject, { verified: false, reason: 'stamp-read-failed', status: null });
+});
+
+test('a verifying stamp with no reportPath string is report-missing, never a pass', () => {
+  const status = { present: true, verifiedHead: true, reportPath: null };
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: '/wt' }) }, {
+    stampStatus: stampStub(status).fn,
+    exists: () => true,
+  });
+  assert.deepEqual(result, { verified: false, reason: 'report-missing', status });
+});
+
+test('the default report check passes only a regular file -- a directory named report.json is report-missing', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-stamp-report-'));
+  const asFile = path.join(dir, 'file-report.json');
+  fs.writeFileSync(asFile, '{}');
+  const asDir = path.join(dir, 'dir-report.json');
+  fs.mkdirSync(asDir);
+  const runDir = stampRun({ worktree: '/wt' });
+  const verifies = (reportPath) => checkFirstCallStamp({ runDir }, {
+    stampStatus: () => ({ present: true, verifiedHead: true, reportPath }),
+  });
+  assert.equal(verifies(asFile).verified, true);
+  assert.equal(verifies(asDir).reason, 'report-missing');
+  assert.equal(verifies(path.join(dir, 'absent.json')).reason, 'report-missing');
+});
+
+test('the default stampStatus spawns verify.js with the recorded worktree as cwd, not the test process cwd', () => {
+  const git = (args, cwd) => execFileSync('git', args, { cwd, encoding: 'utf8', windowsHide: true }).trim();
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-stamp-repo-'));
+  git(['init', '-q'], repo);
+  git(['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'init'], repo);
+  const head = git(['rev-parse', 'HEAD'], repo);
+  const result = checkFirstCallStamp({ runDir: stampRun({ worktree: repo }) });
+  assert.equal(result.reason, 'stamp-absent');
+  assert.equal(result.verified, false);
+  assert.equal(result.status.head, head);
+  assert.notEqual(git(['rev-parse', 'HEAD'], process.cwd()), head, 'control: the test process cwd is a different repo');
 });

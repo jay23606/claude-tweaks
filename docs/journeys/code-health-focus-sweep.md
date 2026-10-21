@@ -11,7 +11,7 @@ files:
 
 **Persona:** Developer maintaining the claude-tweaks plugin who wants a dedicated pass over dead code across the whole repository, not whatever directory the generalist sweep's rotation cursor happens to land on today.
 **Goal:** Run a `focus=dead-code` code-health sweep and get genuine dead-code findings filed as deduplicated GitHub issues.
-**Entry point:** Typing `/claude-tweaks:code-health focus=dead-code` in a session, or a scheduled Routine firing with the same argument — `/claude-tweaks:routine fleet on` provisions four focus-scoped routines (dead-code, test-hygiene, abstraction-police, experiment-cleanup) exactly this way (`plugin/skills/routine/fleet.md`'s composition table).
+**Entry point:** Typing `/claude-tweaks:code-health focus=dead-code` in a session, or a scheduled Routine firing with the same argument — `/claude-tweaks:routine fleet on` provisions one focus-scoped routine per Vertical finder row exactly this way (`plugin/skills/routine/fleet.md`'s composition table).
 **Success state:** Either the sweep reports "no candidates this firing" honestly (with scanned/skipped counts, so a silent skip is distinguishable from a genuinely clean repo), or genuine dead-code findings reach the judge and get filed.
 
 ## Steps

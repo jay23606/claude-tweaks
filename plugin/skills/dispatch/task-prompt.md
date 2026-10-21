@@ -177,7 +177,10 @@ line (`detached:yes`/`detached:no`). Write this record via a plain Bash redirect
 %s %s detached:%s\n' "$PID" "$PORT" "$WORKTREE_ROOT" "$DETACHED" > "{minted-run-dir}/ephemeral-server.txt"`),
 never the Edit/Write tool -- the run dir is anchored under the main checkout, and this worktree
 session's Edit/Write attempt against it is refused by the harness's own cross-checkout
-write-pinning, while a plain Bash write into `.claude-tweaks/pipelines/` is not. Never delete `ephemeral-server.txt` at the end of this call, whether or not the server is still alive -- the record belongs to the run, not to this call, and the second call's own liveness re-check depends
+write-pinning, while a plain Bash write into `.claude-tweaks/pipelines/` is not.
+`{minted-run-dir}` is the run's server-record location for a bundle too -- the parent run dir
+`/flow` exports as `MULTISPEC_PARENT_DIR`, never a `spec-{N}/` subdirectory.
+Never delete `ephemeral-server.txt` at the end of this call, whether or not the server is still alive -- the record belongs to the run, not to this call, and the second call's own liveness re-check depends
 on it still being there.
 
 If the build or test step hits a HARD-GATE, handle it per
@@ -213,11 +216,15 @@ own work aside, make a temporary WIP commit instead.
 CRITICAL: before reporting `DONE`/`build-test-ok`, confirm your own claim against the artifact
 you just produced -- this call is the producer, not a second call distrusting someone else's
 prior claim, so there is no earlier report to check here, only your own freshly written result.
-The actual artifact is the test-output log this call's own `npm test` run wrote, or a
-runner-written pass stamp matching HEAD (`verify.js --stamp-status`) and its `report.json` (the
-shape `bin/lib/dispatch/artifact-verdict.js`'s `deriveTestVerdict` pins). Never report a result
-from narrative or memory of an earlier pass in this same call -- if the artifact does not exist
-or does not match HEAD, re-run the check before reporting.
+The actual artifact is the runner-written pass stamp verifying HEAD (`verify.js --stamp-status`
+reports `verifiedHead: true`) and its `report.json`, which exist only when the test phase runs
+through `/claude-tweaks:test`. A raw `npm test` log is not that artifact: it leaves no stamp, and
+the second call then re-runs the full suite (#3661). Never report a result from narrative or
+memory of an earlier pass in this same call -- if the stamp is absent or does not verify HEAD,
+re-run the test phase through `/claude-tweaks:test` once before reporting. If the stamp still does
+not verify HEAD (a dirty tree never verifies), report `STATUS: DONE_WITH_CONCERNS` (the OUTCOME is
+unchanged by this alone), naming the stamp state -- the gate notes it, and the second call's
+review re-verifies through the runner.
 
 Bookends (every transport, #2912): before reporting `DONE`/`build-test-ok`, also run
 `node "{plugin-root}/bin/verify-run-bookends.js" --run "{minted-run-dir}" --targets {comma-joined issue numbers}`.
@@ -336,7 +343,9 @@ reachable), rewrite `ephemeral-server.txt` via a plain Bash redirect (never the 
 same reason as the first call's own record write: this run dir is anchored under the main
 checkout, and Edit/Write against it is refused by the harness's cross-checkout write-pinning),
 and log `AUTO {time} -- ephemeral server restarted:
-recorded pid {old} dead, new pid {new} on port {port}`.
+recorded pid {old} dead, new pid {new} on port {port}`. `{minted-run-dir}` is the run's
+server-record location for a bundle too -- the parent run dir `/flow` exports as
+`MULTISPEC_PARENT_DIR`, never a `spec-{N}/` subdirectory.
 
 CRITICAL: your review step must re-derive its verdict from raw artifacts -- the actual diff,
 the actual test-output log in the run directory -- never from a prior claim, whether that

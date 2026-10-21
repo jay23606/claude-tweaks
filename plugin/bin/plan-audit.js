@@ -6,7 +6,9 @@
 // run only with `--spec`. Exit 0 iff every gating check is ok (a `nearCeiling`
 // headroom flag, or any Check E or Check F entry, alone does not fail).
 // `--count-tasks` (#1926) is a read-only verb printing `{tasks, batched}` for /build's
-// single-task fast-lane condition — it never runs the checks.
+// single-task fast-lane condition — it never runs the checks. `--task-markers`
+// (#3378) is the same kind of read-only verb, printing each task's per-task
+// Role/Review-risk markers for dispatch.md's tier forwarding.
 'use strict';
 
 const fs = require('node:fs');
@@ -16,9 +18,10 @@ const { execFileSync } = require('node:child_process');
 const { parseArgs, UsageError, USAGE } = require('./lib/plan-audit/args');
 const {
   extractFileEntries, extractScopeKeywords, extractPremiseRefs, extractVerificationChecks, extractUnparseableStep2s, countTasks,
+  extractTaskMarkers,
 } = require('./lib/plan-audit/parser');
 const {
-  checkA, checkB, checkC, checkD, checkE, checkF, headroomCheck, checkPremiseRefs,
+  checkA, checkB, checkC, checkD, checkE, checkF, headroomCheck, checkPremiseRefs, checkTaskMarkers,
 } = require('./lib/plan-audit/checks');
 
 function resolveRepoRoot(explicit, cwd) {
@@ -97,6 +100,29 @@ function main() {
       return;
     }
     process.stdout.write(`{"tasks": ${tasks}, "batched": ${batched}}\n`);
+    return;
+  }
+
+  // #3378: --task-markers reads this plan's per-task Role/Review-risk
+  // markers (dispatch.md's forwarded-tier input) — a single-purpose,
+  // read-only verb in the same family as --count-tasks, never running the
+  // gating checks above. An unknown marker value is reported inline as a
+  // `findings` entry (checkTaskMarkers, warn-only like Check E) rather than
+  // failing the exit code — never a build-blocking defect on its own.
+  if (parsed.taskMarkers) {
+    const { markers, tasks } = extractTaskMarkers(text);
+    if (tasks.length === 0) {
+      process.stderr.write(`plan-audit.js: ${parsed.planFile} has no parseable tasks (no "### Task N:" heading)\n`);
+      process.exitCode = 2;
+      return;
+    }
+    const { findings } = checkTaskMarkers(text);
+    const output = {
+      markers,
+      tasks: tasks.map((t) => ({ index: t.index, title: t.title, role: t.role, risk: t.risk })),
+    };
+    if (findings.length) output.findings = findings;
+    process.stdout.write(`${JSON.stringify(output)}\n`);
     return;
   }
 
