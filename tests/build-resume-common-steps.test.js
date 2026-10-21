@@ -38,7 +38,7 @@ function designResumeSection(skill) {
   return skill.slice(start, end);
 }
 
-const SPEC_ANCHORS = ['**Common Step 1.5 (plan audit):**', '**Common Step 1.6 (plan review):**', '**Common Step 1.7 (design pre-build):**', 'decisions.md', 'changed after it'];
+const SPEC_ANCHORS = ['**Common Step 1.5 (plan audit):**', '**Common Step 1.6 (plan review):**', '**Common Step 1.7 (design pre-build):**', 'decisions.md', 'changed after it', 're-run under its own skip gate', 're-run under its own skip conditions', 'resumed build: plan already reviewed this run, spec and plan unchanged since'];
 const DESIGN_ANCHORS = ['Common Steps 1.5 and 1.7', 'Spec Mode only'];
 // A resume branch problem: the unconditional skip line, plus each missing anchor.
 function resumeProblems(section, anchors) {
@@ -49,7 +49,7 @@ function resumeProblems(section, anchors) {
   return problems;
 }
 
-const REVIEW_ANCHORS = ['resumed build: plan already reviewed this run'];
+const REVIEW_ANCHORS = ['resumed build: plan already reviewed this run', '**A resumed build**'];
 const AUDIT_ANCHORS = ['Resumed build exception (#3666)'];
 const anchorProblems = (text, anchors) => anchors.filter((a) => !norm(text).includes(a));
 

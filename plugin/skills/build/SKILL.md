@@ -82,8 +82,8 @@ Search `docs/superpowers/plans/` for a plan matching this spec (by number, topic
 - Read it and compare against the spec — has the spec evolved since the plan was written?
 - Check what's already implemented (search codebase for files, routes, tests referenced in the plan)
 - If the plan is still valid and work remains, resume at Common Step 1.5, not Common Step 2 (#3666) — each pre-execution step is re-decided, never jumped:
-  - **Common Step 1.5 (plan audit):** re-run under its own skip gate — a cheap, read-only re-check of the plan against today's repo. A Check C finding on a task this step found already implemented is expected, not a stop (`plan-audit.md`).
-  - **Common Step 1.6 (plan review):** skip, with a `SKIP` entry, only when this run's `decisions.md` already records a completed review of this plan (an `AUTO` or `SCANNED` Common Step 1.6 entry) and neither the plan nor the worktree's `work/{n}-spec.md` changed after it; otherwise re-run it under its own skip gate.
+  - **Common Step 1.5 (plan audit):** re-run under its own skip gate — a cheap, read-only re-check of the plan against today's repo. A Check C finding on a task this step found already implemented (its commits in `git log`) is expected, not a stop (`plan-audit.md`).
+  - **Common Step 1.6 (plan review):** skip only when this run's `decisions.md` already records a completed review of this plan (an `AUTO` or `SCANNED` Common Step 1.6 entry) and neither the plan nor the worktree's `work/{n}-spec.md` changed after it — no commit to either since that entry (`git log -1` on each); log that skip as `SKIP` with condition `resumed build: plan already reviewed this run, spec and plan unchanged since`; otherwise re-run it under its own skip gate.
   - **Common Step 1.7 (design pre-build):** re-run under its own skip conditions — the references it loads live in implementer prompts a resumed session no longer holds.
 
   Then run Common Step 2 from the next incomplete task.
