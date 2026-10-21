@@ -22,23 +22,27 @@ const UNCONDITIONAL = 'unconditional skip to Common Step 2';
 
 // --- pin sets ---
 
-function specResumeSection(skill) {
-  const start = skill.indexOf('#### If a plan exists:');
-  assert.notStrictEqual(start, -1, 'SKILL.md lacks "#### If a plan exists:"');
-  const end = skill.indexOf('#### If no plan exists:', start);
-  assert.notStrictEqual(end, -1, 'SKILL.md lacks "#### If no plan exists:" after the resume branch');
+function sectionBetween(skill, startMarker, endMarker) {
+  const start = skill.indexOf(startMarker);
+  assert.notStrictEqual(start, -1, `SKILL.md lacks "${startMarker}"`);
+  const end = skill.indexOf(endMarker, start);
+  assert.notStrictEqual(end, -1, `SKILL.md lacks "${endMarker}" after "${startMarker}"`);
   return skill.slice(start, end);
 }
 
-function designResumeSection(skill) {
-  const start = skill.indexOf('### Design Step 2: Check for Existing Plan');
-  assert.notStrictEqual(start, -1, 'SKILL.md lacks "### Design Step 2: Check for Existing Plan"');
-  const end = skill.indexOf('### Design Step 3', start);
-  assert.notStrictEqual(end, -1, 'SKILL.md lacks "### Design Step 3" after Design Step 2');
-  return skill.slice(start, end);
-}
+const specResumeSection = (skill) => sectionBetween(skill, '#### If a plan exists:', '#### If no plan exists:');
+const designResumeSection = (skill) => sectionBetween(skill, '### Design Step 2: Check for Existing Plan', '### Design Step 3');
 
-const SPEC_ANCHORS = ['**Common Step 1.5 (plan audit):**', '**Common Step 1.6 (plan review):**', '**Common Step 1.7 (design pre-build):**', 'decisions.md', 'changed after it', 're-run under its own skip gate', 're-run under its own skip conditions', 'resumed build: plan already reviewed this run, spec and plan unchanged since'];
+const SPEC_ANCHORS = [
+  '**Common Step 1.5 (plan audit):**',
+  '**Common Step 1.6 (plan review):**',
+  '**Common Step 1.7 (design pre-build):**',
+  'decisions.md',
+  'changed after it',
+  're-run under its own skip gate',
+  're-run under its own skip conditions',
+  'resumed build: plan already reviewed this run, spec and plan unchanged since',
+];
 const DESIGN_ANCHORS = ['Common Steps 1.5 and 1.7', 'Spec Mode only'];
 // A resume branch problem: the unconditional skip line, plus each missing anchor.
 function resumeProblems(section, anchors) {
