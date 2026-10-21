@@ -94,3 +94,72 @@ test('dispatch templates write and re-check the bundle parent, never a spec-{N}/
     assert.ok(para.includes('never a `spec-{N}/` subdirectory'), `template ${i + 1} paragraph must exclude spec-{N}/ subdirectories`);
   });
 });
+
+test('AC1.1: a later spec\'s fix wave reads the server record', () => {
+  const sec = flat(section(read('review', 'step3-routing.md'), '## Fix-wave server coordination (pipeline runs)'));
+  for (const needle of ['read the server record', '`$MULTISPEC_PARENT_DIR/ephemeral-server.txt`', 'rewrites the server record']) {
+    assert.ok(sec.includes(needle), `Fix-wave server coordination must include: ${needle}`);
+  }
+});
+
+test('AC2.1/AC2.2: consolidated teardown kills the recorded shared server, so none outlives the run', () => {
+  const step1 = lineStarting(read('flow', 'multispec-review-console.md'), '1. **Tear down the shared ephemeral dev server**');
+  const row15 = lineStarting(read('flow', 'multispec-console-template.md'), '| 15 |');
+  for (const [name, line] of [['multispec-review-console step 1', step1], ['multispec-console-template row 15', row15]]) {
+    assert.ok(line.includes('`$MULTISPEC_PARENT_DIR/ephemeral-server.txt`'), `${name} must name the parent server record`);
+  }
+});
+
+test('AC2.1: Section D reads the server record', () => {
+  const d = section(read('wrap-up', 'cleanup-procedures-execution.md'), '## D. Ephemeral dev server');
+  assert.ok(d.includes('server record'), 'Section D must name the server record');
+  assert.ok(d.includes('`$MULTISPEC_PARENT_DIR/ephemeral-server.txt`'), 'Section D must name the parent server record');
+  lineStarting(d, '2. Read the server record');
+});
+
+test('wrap-up cleanup applicability tests the server record', () => {
+  const skill = flat(read('wrap-up', 'SKILL.md'));
+  assert.ok(skill.includes('the server record exists (6)'), 'wrap-up/SKILL.md condition list must test the server record');
+  const line7 = read('wrap-up', 'cleanup-procedures.md').split('\n')[6];
+  assert.ok(line7.includes('reads the server record'), 'cleanup-procedures.md line 7 must read the server record');
+});
+
+// Every skill file that names a run-dir-relative record path must also name the server record.
+function scanServerRecordAgreement(files) {
+  const violations = [];
+  for (const [rel, text] of Object.entries(files)) {
+    if (text.includes('{parent-run-dir}/ephemeral-server.txt')) {
+      violations.push(`${rel}: names {parent-run-dir}/ephemeral-server.txt (the writer's path is $MULTISPEC_PARENT_DIR/ephemeral-server.txt)`);
+    }
+    const naked = text.includes('{run-dir}/ephemeral-server.txt') || text.includes('${RUN_DIR}/ephemeral-server.txt');
+    if (naked && !text.includes('$MULTISPEC_PARENT_DIR/ephemeral-server.txt') && !text.includes('server record')) {
+      violations.push(`${rel}: names a run-dir ephemeral-server.txt without the server record`);
+    }
+  }
+  return violations;
+}
+
+function skillMarkdown(dir = SKILLS, base = SKILLS, out = {}) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) skillMarkdown(p, base, out);
+    else if (e.name.endsWith('.md')) out[path.relative(base, p)] = fs.readFileSync(p, 'utf8');
+  }
+  return out;
+}
+
+test('writer and readers agree repo-wide on the server record path', () => {
+  const files = skillMarkdown();
+  // standalone-fast-path.md is never multi-spec: its own precondition says so.
+  const EXEMPT = path.join('wrap-up', 'standalone-fast-path.md');
+  assert.ok(flat(files[EXEMPT]).includes('`MULTISPEC_REVIEW_DEFER`/`MULTISPEC_PARENT_DIR` are unset'), 'the exemption precondition must still be stated');
+  const scanned = { ...files };
+  delete scanned[EXEMPT];
+  assert.deepEqual(scanServerRecordAgreement(scanned), []);
+});
+
+test('go-red: the agreement scan reports a stale parent path and a bare run-dir path', () => {
+  assert.equal(scanServerRecordAgreement({ 'x.md': 'read `{parent-run-dir}/ephemeral-server.txt`' }).length, 1);
+  assert.equal(scanServerRecordAgreement({ 'y.md': 'read `{run-dir}/ephemeral-server.txt`' }).length, 1);
+  assert.deepEqual(scanServerRecordAgreement({ 'z.md': 'read the server record, else `{run-dir}/ephemeral-server.txt`' }), []);
+});
