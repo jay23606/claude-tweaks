@@ -77,6 +77,28 @@ Three conventions follow from how this repo works, and all are visible below:
 * Widen the claim-log-only class so degraded Step 2.8 mints… ([#3665](https://github.com/thn-inc/claude-tweaks/issues/3665)) ([f872d39](https://github.com/thn-inc/claude-tweaks/commit/f872d392e1b101a928085181124ea358aa5f6015))
 * Windows CRLF: ten skill-prose tests read governed… ([#3670](https://github.com/thn-inc/claude-tweaks/issues/3670)) ([b07e3f7](https://github.com/thn-inc/claude-tweaks/commit/b07e3f7ee23f6d2b1ea4e4db0dfef80b528c577b))
 
+### Highlights
+* Fixed ten skill-prose tests that failed only on Windows checkouts because of line endings.
+* `/claude-tweaks:tidy` now states how it routes release tag/CHANGELOG mismatches at each aggressiveness level, and never auto-tags released history.
+* The Current PR dashboard row and the tidy PR scan show a partly reported CI run as pending, not passing.
+* Runner-owned flaky retry for jest refuses any log that does not end the way a normal jest run does, closing the class of crashes the enumerated failure list cannot name in advance.
+* A local-merge auto-merge that cannot complete now leaves its run protected and assigned to its worktree, instead of closing it before the failure was known.
+* No user-visible change; internal cleanup of transcript readers.
+* Pointing `verify.js --cwd` at a different repository is now refused, instead of quietly recording a pass for the checkout you ran it from.
+* When /build can't run a verification step the plan asked for, /review now lists it in its summary instead of the skip appearing only at the end-of-run console.
+* Worktree-removal protection now also holds on macOS when the path is typed with different letter case.
+* A standalone /review no longer shows /test's own next-step suggestions in the middle of its report after re-running QA stories.
+* The end-of-run Review Console and the session-start reminder no longer list review findings the run already confirmed, or staged items whose files are gone, as waiting for a human.
+* Review's reproduction-pair handling gains a cheap ground-truth check for mechanically-falsifiable "code is missing" disagreements, reducing false BLOCKED verdicts reaching the Review Console.
+* A run that hit a degraded Step 2.8 claim path no longer absorbs other sessions' hook events or gets misread as an in-flight run at preflight.
+* QA runs now always leave a machine-written report.json.
+* Made the worktree Bash refusal catalog a single current-state table instead of a chain of dated addenda.
+* Friction logging now warns when Claude Code changes the refusal wording it depends on.
+* Let /claude-tweaks:tidy skip its scratch worktree when every approved action is a GitHub write.
+* Wrap-up now removes a run's open-items ledger before the PR merges, shares one closing-keyword pattern, and states which config a multi-spec ceremony downgrade updates.
+* The sibling-session check now catches a live worktree when the record is written as #N.
+* No user-visible change.
+
 ## [6.149.0](https://github.com/thn-inc/claude-tweaks/compare/v6.148.0...v6.149.0) (2026-10-20)
 
 
