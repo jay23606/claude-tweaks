@@ -2,3 +2,11 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | SDD minor: `{server-record}` placeholder in dev-url-detection item 4's printf example is not introduced by name | accepted | Final whole-branch review triage: the preceding sentence defines "the server record" unambiguously |
+| 2 | build | SDD minor: task-prompt test's first needle `{minted-run-dir}/ephemeral-server.txt` pre-existed in template 1 | accepted | Final review triage: the `spec-{N}/` needle discriminates (confirmed red at base 13dbd0453) |
+| 3 | build | SDD minor: template-2 bundle-parent sentence placed at paragraph end rather than right after the "(only if … exists)" parenthetical | accepted | Final review triage: placement does not change meaning; test slices the whole paragraph |
+| 4 | build | SDD minor: `scanServerRecordAgreement` is per-file, so one correct mention can mask a stale one in the same file | accepted | Final review triage: per-reader tests (AC1.1, AC2.x, Section D, applicability) pin every current reader; the scan guards new files |
+| 5 | build | SDD minor: repo-wide scan does not flag the `{run-id}/ephemeral-server.txt` spelling | accepted | Final review triage: no such spelling remains in plugin/ after this branch (grep-confirmed by reviewer) |
+| 6 | build | SDD minor: Section D's bare `ephemeral-server.txt` mentions (step 4 / closing lines) rely on the intro's server-record definition | accepted | Final review triage: Section D intro defines the record and step 2 reads "the server record" |
+| 7 | build | SDD ruling — multispec-review-console.md's plan +10 B cap relaxed so step 1 can cite "Section D steps 2-4" (file now 48,887 B, ~93% of the 52,500 B rail): ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 8 | build | SDD ruling — parallel-wave members (flow/multispec-parallel-waves.md) record their ephemeral server under `{parent}/spec-{N}/`, which nothing reads after merge-back; kept out of this branch (pre-existing, outside Key Files) and routed to wrap-up for a capture record — fix belongs in merge-back (stop any spec-{N}/ record before removing the member worktree), NOT by passing MULTISPEC_PARENT_DIR to concurrent members: ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
