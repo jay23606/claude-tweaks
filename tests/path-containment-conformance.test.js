@@ -10,8 +10,9 @@ const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('.
 // path-guard's `isAncestorOrSelf` (#3498). A hand-rolled
 // `x.startsWith(root + path.sep)` test re-derives it without the win32
 // casing/drive semantics, so none may remain under plugin/bin/. The scan also
-// rejects a `path.relative`-derived `startsWith('..')` test (#3642), outside
-// lib/path-guard/; other re-derivations are out of scope.
+// flags any literal `startsWith('..')` under plugin/bin outside lib/path-guard/
+// (#3642), since such a test is the `path.relative`-derived containment idiom;
+// other re-derivations are out of scope.
 const ROOT = path.join(__dirname, '..');
 const BIN_ROOT = path.join(ROOT, 'plugin', 'bin');
 

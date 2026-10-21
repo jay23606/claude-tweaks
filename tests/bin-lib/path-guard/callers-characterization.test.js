@@ -310,3 +310,19 @@ test('#3642 AC2.1 context-cost: a source under a ..foo directory is contained (w
 test('#3642 context-cost: a source resolving to the plugin root itself still escapes (strictness kept)', () => {
   assert.equal(parseComposeCallLine(composeLine(''), '/r/plugin').unparsed, true);
 });
+
+// visual-decide/server.js keeps a builtins-only copy of the containment check
+// (#1202 AC 8 bars non-builtin imports there); this pins it to the shared
+// primitive's accept/reject verdict on this host.
+const { isAncestorOrSelf } = require('../../../plugin/bin/lib/path-guard');
+
+test("#3642 visual-decide: resolveSafe's builtins-only segment check agrees with isAncestorOrSelf", () => {
+  const root = fresh();
+  for (const rel of ['', 'a.txt', 'sub/a.txt', '..foo', '..foo/a.txt', '..', '../x', 'sub/../a.txt', 'sub/../../x']) {
+    assert.equal(
+      resolveSafe(root, '/' + rel) !== null,
+      isAncestorOrSelf(root, path.join(root, rel)),
+      `resolveSafe and isAncestorOrSelf disagree on ${JSON.stringify(rel)}`,
+    );
+  }
+});

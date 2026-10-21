@@ -139,6 +139,7 @@ Expected: FAIL after Step 1 — 3 failures (visual-decide `null`, engine-verify 
 - [ ] **Step 3: Migrate the three sites**
 
 - server.js `resolveSafe`: after computing `full`, `return isPathContained(full, rootDir, { orEqual: true }) ? full : null;` — drop the `rel` lines; reword the comment above to say containment is decided by the shared helper rather than `path.relative` string checks.
+  > **Build ruling (#3642):** server.js stays Node-builtins-only (#1202 AC 8) and so does not import `isPathContained`; it keeps a builtins-only whole-segment check (`rel.split(path.sep)[0] === '..' || path.isAbsolute(rel)`) that mirrors `isAncestorOrSelf` with `orEqual`. The ruling is recorded in the run's decisions and the SDD ledger.
 - engine-verify.js `isUnderArchiveRoot`: `return isPathContained(candidate, pipelinesArchiveRoot(repoRoot));`
 - context-cost.js: `const escapesRoot = (source) => !isPathContained(source, root);` — reword the comment above to say strict containment (the root itself, a `..` walk and a cross-drive path all escape) is the shared helper's answer.
 

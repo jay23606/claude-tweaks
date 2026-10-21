@@ -13,7 +13,7 @@ Several conventions for `plugin/bin` code are enforced by a test that walks the 
 - `tests/git-status-optional-locks.test.js`: every read-only `git status` passes `--no-optional-locks`.
 - `tests/bin-lib/exit-code-conformance.test.js`: an entry point (a `require.main === module` guard, or a guard-less, export-less whole-script file) sets `process.exitCode` and never calls `process.exit(`; a guard-less file that exports is a library and is skipped.
 - `tests/path-guard-conformance.test.js`: no bare `realpathSync`/`existsSync` outside the per-file allowlist.
-- `tests/path-containment-conformance.test.js`: no hand-rolled `startsWith(… path.sep)` containment test; use `isPathContained`.
+- `tests/path-containment-conformance.test.js`: no hand-rolled `startsWith(… path.sep)` containment test and no bare `startsWith('..')` on a `path.relative` result (a child named `..foo` is contained, not outside); use `isPathContained`. `visual-decide/server.js` is the one exception: it keeps a builtins-only whole-segment copy (`rel.split(path.sep)[0] === '..'`) because #1202 AC 8 bars non-builtin imports there.
 
 Each one is a hand-written parser over JavaScript. The comment stripper, the call-shape regex and the file walk can each fail in the direction that hides code. When that happens, the scan reports zero offenders over less code than it claims to cover.
 
