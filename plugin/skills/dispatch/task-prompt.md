@@ -216,11 +216,15 @@ own work aside, make a temporary WIP commit instead.
 CRITICAL: before reporting `DONE`/`build-test-ok`, confirm your own claim against the artifact
 you just produced -- this call is the producer, not a second call distrusting someone else's
 prior claim, so there is no earlier report to check here, only your own freshly written result.
-The actual artifact is the test-output log this call's own `npm test` run wrote, or a
-runner-written pass stamp matching HEAD (`verify.js --stamp-status`) and its `report.json` (the
-shape `bin/lib/dispatch/artifact-verdict.js`'s `deriveTestVerdict` pins). Never report a result
-from narrative or memory of an earlier pass in this same call -- if the artifact does not exist
-or does not match HEAD, re-run the check before reporting.
+The actual artifact is the runner-written pass stamp verifying HEAD (`verify.js --stamp-status`
+reports `verifiedHead: true`) and its `report.json`, which exist only when the test phase runs
+through `/claude-tweaks:test`. A raw `npm test` log is not that artifact: it leaves no stamp, and
+the second call then re-runs the full suite (#3661). Never report a result from narrative or
+memory of an earlier pass in this same call -- if the stamp is absent or does not verify HEAD,
+re-run the test phase through `/claude-tweaks:test` once before reporting. If the stamp still does
+not verify HEAD (a dirty tree never verifies), report `STATUS: DONE_WITH_CONCERNS` (the OUTCOME is
+unchanged by this alone), naming the stamp state -- the gate notes it, and the second call's
+review re-verifies through the runner.
 
 Bookends (every transport, #2912): before reporting `DONE`/`build-test-ok`, also run
 `node "{plugin-root}/bin/verify-run-bookends.js" --run "{minted-run-dir}" --targets {comma-joined issue numbers}`.
