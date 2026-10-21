@@ -113,3 +113,10 @@ Expected: PASS, `# fail 0`. Then `wc -c plugin/skills/dispatch/task-prompt.md` m
 git add plugin/skills/dispatch/two-call-gate.md plugin/skills/dispatch/sequential-execution.md plugin/skills/dispatch/task-prompt.md docs/skill-graph.md tests/dispatch-mechanical-enforcement.test.js tests/dispatch-rederive-from-artifacts-conformance.test.js
 git commit -m "Gate call 2 on the first call's runner stamp as a note — drop the raw npm test log as the first call's artifact (refs #3661)"
 ```
+
+## Build deviations (Common Step 4.5, classified Beneficial)
+
+1. **First-call stopping rule.** The spec dropped the raw-log alternative but set no bound on re-running. As built, `task-prompt.md` re-runs `/claude-tweaks:test` once, then reports `STATUS: DONE_WITH_CONCERNS` naming the stamp state. This keeps call 1 from turning the note into a gate (a dirty tree never verifies). From the whole-branch review's Important 3, fixed in 386fd2381.
+2. **The stamp read covers the repair branch.** The plan ran it only after `{ ok: true }`. As built, it runs before every call-2 dispatch, including the `missing-config`/`repairable` repair branch, so AC1's detection covers every path that dispatches call 2 (386fd2381).
+3. **The report check is file-only.** The plan used `fs.existsSync`. As built, the check is path-guard `lstatType(...).type === 'file'`, so a directory named `report.json` is not the artifact. This also satisfies `tests/path-guard-conformance.test.js` (991016f42).
+4. **Timeout.** The plan used `GH_TIMEOUT_MS`. As built, the local node+git spawn uses `GIT_TIMEOUT_MS` (991016f42).
