@@ -44,18 +44,16 @@ const SPEC_ANCHORS = [
   'resumed build: plan already reviewed this run, spec and plan unchanged since',
 ];
 const DESIGN_ANCHORS = ['Common Steps 1.5 and 1.7', 'Spec Mode only'];
+const anchorProblems = (text, anchors) => anchors.filter((a) => !norm(text).includes(a));
+
 // A resume branch problem: the unconditional skip line, plus each missing anchor.
 function resumeProblems(section, anchors) {
-  const flat = norm(section);
-  const problems = [];
-  if (/skip to Common Step 2/i.test(flat)) problems.push(UNCONDITIONAL);
-  for (const anchor of anchors) if (!flat.includes(anchor)) problems.push(anchor);
-  return problems;
+  const missing = anchorProblems(section, anchors);
+  return /skip to Common Step 2/i.test(norm(section)) ? [UNCONDITIONAL, ...missing] : missing;
 }
 
 const REVIEW_ANCHORS = ['resumed build: plan already reviewed this run', '**A resumed build**'];
 const AUDIT_ANCHORS = ['Resumed build exception (#3666)'];
-const anchorProblems = (text, anchors) => anchors.filter((a) => !norm(text).includes(a));
 
 // --- tests ---
 
