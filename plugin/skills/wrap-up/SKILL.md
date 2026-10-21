@@ -225,6 +225,8 @@ Informational only — feeds Phase 4's Next Actions, never gates or delays the w
 
 ## Phase 4: CLOSE — decide, execute, hand off
 
+**Order (#3672).** Phase 4's steps run in the order below: plan cleanup, the Wrap-Up Review Console, Execute approved actions (its Verify execution included), then the phase-trace report. The report renders last because its Verdict names facts only execution produces — the Leave-open mergeability re-check's `mergeability:` line in `decisions.md`, and the `wrap-up-engine.js verify` rows the #2550 carve-out reads — so a report rendered earlier would call a re-checked PR "mergeability not re-checked". A verify exit 3 still renders the report, its Verdict reading `BLOCKED`; only the closure line is withheld.
+
 ### Plan cleanup actions (formerly Step 5)
 
 This step **plans** the cleanup — it does not execute. Actual deletions and archival run at execution time *after* the nothing-left-behind gate and the Review Console approve them.
@@ -253,6 +255,12 @@ Empty-console fast path: skip the console entirely and proceed to the report whe
 
 The second condition exists because the **Auto-merge short-circuit**'s applicability check lives in `review-console.md`, not in this file — it is not part of the console rendering it precedes. Without it, a run that qualified for the empty-console fast path would silently skip its authorized auto-merge. In practice the fast path cannot fire on such a run — it requires "no cleanup actions apply," and a run with a materialized header is a pipeline run whose worktree row always applies — so this is a belt-and-braces guard against a latent ordering hazard, not a live bug. The full procedure itself is a further lazy-load, one level deeper: `review-console.md`'s Auto-merge short-circuit heading only points at `auto-merge-short-circuit.md` — that file loads only for the run that actually clears the condition above, not for every run that clears the fast path.
 
+### Execute approved actions (formerly Step 10)
+
+Execute the cleanup planned above (canonical list in `cleanup-procedures.md`, filtered by Condition) plus the configuration, documentation, skill, and acceptance-labeling actions approved at the Review Console — then verify each one landed before the closure line is emitted.
+
+**Gate the read.** Read `execution-and-verification.md` in this skill's directory — the `--dry-run` preview branch, the `MULTISPEC_REVIEW_DEFER` skip list, the full apply list (documentation, CLAUDE.md/rules, new docs, docs-health restructural filings, ADRs, skill updates, and acceptance labeling with its own gated read of `verification-brief.md`), the closing-keyword carrier commit, and the Verify-execution checklist — when at least one approved action exists: a cleanup row surviving the Condition filter, an approved configuration / documentation / skill update, an approved memory write or upstream filing, or record-mode acceptance labeling. When cleanup planning reported "No cleanup actions apply" and nothing else was approved, report "No actions to execute" and skip the read — there is nothing to commit or verify.
+
 ### The phase-trace report (formerly Step 9)
 
 Render the report as the engine's own trace of this run, never as prose composed by hand:
@@ -268,12 +276,6 @@ Insert that output verbatim as the Phase 2 table. `--strict` prints the table fi
 **Read the template.** Read `summary-template.md` in this skill's directory for the report's full shape and its conversation-mode variant. This read is unconditional — the report renders on every run.
 
 Next Actions are rendered as a top-level `## Next Actions` section after execution — see the section near the end of this file.
-
-### Execute approved actions (formerly Step 10)
-
-Execute the cleanup planned above (canonical list in `cleanup-procedures.md`, filtered by Condition) plus the configuration, documentation, skill, and acceptance-labeling actions approved at the Review Console — then verify each one landed before the closure line is emitted.
-
-**Gate the read.** Read `execution-and-verification.md` in this skill's directory — the `--dry-run` preview branch, the `MULTISPEC_REVIEW_DEFER` skip list, the full apply list (documentation, CLAUDE.md/rules, new docs, docs-health restructural filings, ADRs, skill updates, and acceptance labeling with its own gated read of `verification-brief.md`), the closing-keyword carrier commit, and the Verify-execution checklist — when at least one approved action exists: a cleanup row surviving the Condition filter, an approved configuration / documentation / skill update, an approved memory write or upstream filing, or record-mode acceptance labeling. When cleanup planning reported "No cleanup actions apply" and nothing else was approved, report "No actions to execute" and skip the read — there is nothing to commit or verify.
 
 ## Important Notes
 
