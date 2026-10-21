@@ -9,6 +9,9 @@
 // "re-derive from raw artifacts, never a self-report" posture `artifact-verdict.js` (this
 // directory) already applies to the test-output claim.
 //
+// #3661 adds `checkFirstCallStamp`, a sibling read of the first call's runner-written
+// verification pass stamp -- reported as a note, never folded into the gate result below.
+//
 // Injectable-runner seam per the gh-api-module-pattern skill: `gitRunner` is the throwing
 // argv-array seam (`(args) => stdout`, a non-zero exit throws); `ghApi` is claim-store.js's
 // non-throwing `(args) => {stdout, failure, status}` seam, used only as readClaimBlob's
@@ -258,6 +261,68 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
   return { ok: true };
 }
 
+const VERIFY_JS = path.resolve(__dirname, '..', '..', 'verify.js');
+
+// The default stamp read: `verify.js --stamp-status` run with the worktree as cwd (it reads
+// that checkout's own stamp and live HEAD). Status is data -- exit 0 always -- so a throw here
+// means the read itself failed (spawn error, timeout, non-JSON output).
+function defaultStampStatus(worktree) {
+  const out = execFileSync(process.execPath, [VERIFY_JS, '--stamp-status'], {
+    cwd: worktree, encoding: 'utf8', timeout: GH_TIMEOUT_MS, windowsHide: true,
+  });
+  return JSON.parse(out);
+}
+
+// checkFirstCallStamp({ runDir }, deps?)
+//   -> { verified: boolean, reason: null | 'worktree-unrecorded' | 'stamp-read-failed'
+//        | 'stamp-absent' | 'stamp-not-head' | 'report-missing', status: object | null }
+//
+// #3661: whether the first call's runner (`verify.js`) left a pass stamp that verifies the
+// worktree's HEAD, with its `report.json` still on disk. Reads `run-state.json`'s `worktree`
+// (written by `hooks.js record-worktree`), then `verify.js --stamp-status` there. First match
+// wins, in the order listed: no recorded worktree -> worktree-unrecorded (no stamp read);
+// a throwing or non-object stamp read -> stamp-read-failed; `present !== true` -> stamp-absent;
+// `verifiedHead !== true` -> stamp-not-head; a `reportPath` that is not a string or does not
+// exist -> report-missing. `status` is the parsed stamp-status object whenever one was read.
+//
+// Note posture, never a gate result: this is NOT a `checkFirstCallArtifacts` check and
+// `resolveFirstCallGate` never sees it. An unverified first call is surfaced as a note only,
+// because call 2's review Step 1.5 re-verifies an unstamped HEAD through the runner -- the
+// missing stamp costs a re-run, not correctness, so it must not block the dispatch.
+function checkFirstCallStamp({ runDir }, deps = {}) {
+  const {
+    readFile = defaultReadFile,
+    stampStatus = defaultStampStatus,
+    exists = fs.existsSync,
+  } = deps;
+
+  let worktree = null;
+  try {
+    const parsed = JSON.parse(readFile(path.join(runDir, 'run-state.json')));
+    worktree = parsed && typeof parsed.worktree === 'string' && parsed.worktree.length > 0 ? parsed.worktree : null;
+  } catch {
+    worktree = null;
+  }
+  if (worktree === null) return { verified: false, reason: 'worktree-unrecorded', status: null };
+
+  let status;
+  try {
+    status = stampStatus(worktree);
+  } catch {
+    return { verified: false, reason: 'stamp-read-failed', status: null };
+  }
+  if (!status || typeof status !== 'object' || Array.isArray(status)) {
+    return { verified: false, reason: 'stamp-read-failed', status: null };
+  }
+
+  if (status.present !== true) return { verified: false, reason: 'stamp-absent', status };
+  if (status.verifiedHead !== true) return { verified: false, reason: 'stamp-not-head', status };
+  if (typeof status.reportPath !== 'string' || !exists(status.reportPath)) {
+    return { verified: false, reason: 'report-missing', status };
+  }
+  return { verified: true, reason: null, status };
+}
+
 // resolveFirstCallGate({ reply, artifact })
 //   -> 'blocked' | 'already-shipped' | 'artifact-failed' | 'repair' | 'dispatch'
 //
@@ -285,4 +350,4 @@ function resolveFirstCallGate({ reply, artifact }) {
   return 'artifact-failed';
 }
 
-module.exports = { checkFirstCallArtifacts, resolveFirstCallGate, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
+module.exports = { checkFirstCallArtifacts, checkFirstCallStamp, resolveFirstCallGate, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
