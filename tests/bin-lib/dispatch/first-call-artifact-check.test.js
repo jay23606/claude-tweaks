@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { checkFirstCallArtifacts, checkFirstCallStamp } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
+const { checkFirstCallArtifacts, checkFirstCallStamp, hasMaterializedHeader } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
 const { claimFilePath } = require('../../../plugin/bin/lib/issues/claims');
 
 const REPO_SLUG = 'acme/widgets';
@@ -214,6 +214,69 @@ test('a header whose record: line names a different number does not count (#2775
   const result = checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps);
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'materialized-header-missing');
+});
+
+test('characterization (#3974): hasMaterializedHeader reads the bases it is given, a record: mismatch or an unreadable file is not a header', () => {
+  const header = (rec) => `---\nrecord: ${rec}\n---\n`;
+  const reads = { [path.join('b1', 'work', '7-spec.md')]: header(9), [path.join('b2', 'spec-7', 'work', '7-spec.md')]: header(7) };
+  const readFile = (p) => { if (p in reads) return reads[p]; throw new Error('ENOENT'); };
+  assert.equal(hasMaterializedHeader(readFile, ['b1'], 7), false, 'record: names another number');
+  assert.equal(hasMaterializedHeader(readFile, ['b1', 'b2'], 7), true, 'falls through to the next base');
+  assert.equal(hasMaterializedHeader(readFile, ['b3'], 7), false, 'unreadable is absent');
+});
+
+// ---- #3974: check 5 finds a header archived under pipelines/archive/{run-id}/ ----
+
+// A checkout whose live run dir sits where the run-header resolver expects it.
+function archiveRun() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-first-call-archive-'));
+  const pipelines = path.join(root, '.claude-tweaks', 'pipelines');
+  const runDir = path.join(pipelines, RUN_ID);
+  const deps = localMergeGroup(runDir, [2806]);
+  writeClaimLog(runDir, [2806]);
+  return { root, runDir, archivedRunDir: path.join(pipelines, 'archive', RUN_ID), deps };
+}
+
+test('passes when the header is only archived, flat (#3974)', () => {
+  const { runDir, archivedRunDir, deps } = archiveRun();
+  writeHeader(archivedRunDir, 'work', 2806);
+  assert.deepEqual(checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps), { ok: true });
+});
+
+test('passes when the header is only archived under spec-{n}/work/ (#3974)', () => {
+  const { runDir, archivedRunDir, deps } = archiveRun();
+  writeHeader(archivedRunDir, path.join('spec-2806', 'work'), 2806);
+  assert.deepEqual(checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps), { ok: true });
+});
+
+test('a stale live header naming another record falls through to the correct archived copy (#3974)', () => {
+  const { runDir, archivedRunDir, deps } = archiveRun();
+  writeHeader(runDir, 'work', 2806, 'record: 9999');
+  writeHeader(archivedRunDir, 'work', 2806);
+  assert.deepEqual(checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps), { ok: true });
+});
+
+test('a live work/ dir without this record\'s file does not hide the archived header (#3974)', () => {
+  const { runDir, archivedRunDir, deps } = archiveRun();
+  writeHeader(runDir, 'work', 2807);
+  writeHeader(archivedRunDir, 'work', 2806);
+  assert.deepEqual(checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps), { ok: true });
+});
+
+test('an archived header whose record: names another number still fails (#3974)', () => {
+  const { runDir, archivedRunDir, deps } = archiveRun();
+  writeHeader(archivedRunDir, 'work', 2806, 'record: 9999');
+  const result = checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps);
+  assert.equal(result.reason, 'materialized-header-missing');
+});
+
+test('passes when the header is only in the worktree\'s archive (#3974)', () => {
+  const { root, runDir } = archiveRun();
+  const worktree = path.join(root, 'wt');
+  writeRunDir(runDir, { runState: { worktree }, config: 'integration-model: local-merge\n' });
+  writeHeader(path.join(worktree, '.claude-tweaks', 'pipelines', 'archive', RUN_ID), 'work', 2806);
+  const deps = { ghApi: fakeGhApi({ 2806: liveClaimContent(RUN_ID) }), now: NOW };
+  assert.deepEqual(checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps), { ok: true });
 });
 
 // ---- #3577: check 6 -- the canonical Step 2.8 claim line in decisions.md ----

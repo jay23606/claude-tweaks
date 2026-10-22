@@ -27,6 +27,7 @@ const { resolvePolicyKeys, resolvePolicyConfig } = require('../policy-schema');
 const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../shared-primitives');
 const { lstatType } = require('../path-guard');
 const { worktreeMirror } = require('../wrap-up/pack');
+const { runIdentity, checkoutRootOf, findHeaderFiles } = require('../run-header');
 const { hasCanonicalClaimLogFor } = require('../log-decision/claim-log');
 
 function defaultReadFile(p) {
@@ -69,7 +70,8 @@ function resolveIntegrationModel(configRaw) {
 //      `pr.number` is recorded AND `pr.branch` exists on `origin`.
 //   5. Every member of `issueNumbers` has a materialized header (#2775): a readable
 //      `{n}-spec.md` at `work/{n}-spec.md` or `spec-{n}/work/{n}-spec.md`, in the run
-//      dir or its worktree mirror -- the same two shapes and mirror rule
+//      dir or its worktree mirror, live or archived under `pipelines/archive/{run-id}/`
+//      (#3974, via `run-header.js`) -- the same two shapes and mirror rule
 //      `wrap-up/pack.js`'s resolveRecords ladder reads, so a group that clears this
 //      gate never reaches its second call with records unresolved. A header whose
 //      `record:` line names another number does not count. A group mixing `work/` and
@@ -107,14 +109,35 @@ function headerBases(runDir, runState) {
   return bases;
 }
 
-function hasMaterializedHeader(readFile, bases, n) {
+// The run-header resolver's lookup (#3974): the checkout roots a header may sit
+// under (the run dir's, then the worktree's) and the run's identity, so a header
+// archived under `.claude-tweaks/pipelines/archive/{run-id}/` is found. Null
+// when the run dir carries no identity -- only `bases` is read then.
+function headerLookup(runDir, runState) {
+  const identity = runIdentity(runDir);
+  if (!identity) return null;
+  const roots = [checkoutRootOf(runDir), runState && runState.worktree]
+    .filter((root, i, all) => typeof root === 'string' && root !== '' && all.indexOf(root) === i);
+  return { roots, runId: identity.runId, specN: identity.specN };
+}
+
+// Whether any candidate header for `n` names `n` (or names nothing): every
+// `bases` entry's `work/` and `spec-{n}/work/`, then -- when `lookup` is given --
+// every live and archived header the resolver finds. A copy whose `record:` line
+// names another number falls through to the next candidate.
+function hasMaterializedHeader(readFile, bases, n, lookup = null) {
+  const candidates = [];
   for (const base of bases) {
     for (const rel of [path.join('work', `${n}-spec.md`), path.join(`spec-${n}`, 'work', `${n}-spec.md`)]) {
-      let text;
-      try { text = readFile(path.join(base, rel)); } catch { continue; }
-      const rec = /^record:\s*(\d+)\s*$/m.exec(text);
-      if (!rec || Number(rec[1]) === n) return true;
+      candidates.push(path.join(base, rel));
     }
+  }
+  if (lookup) candidates.push(...findHeaderFiles(lookup.roots, lookup.runId, n, { specN: lookup.specN }));
+  for (const file of new Set(candidates)) {
+    let text;
+    try { text = readFile(file); } catch { continue; }
+    const rec = /^record:\s*(\d+)\s*$/m.exec(text);
+    if (!rec || Number(rec[1]) === n) return true;
   }
   return false;
 }
@@ -244,8 +267,9 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
   }
 
   const bases = headerBases(runDir, parsedRunState);
+  const lookup = headerLookup(runDir, parsedRunState);
   for (const issueNumber of issueNumbers) {
-    if (!hasMaterializedHeader(readFile, bases, Number(issueNumber))) {
+    if (!hasMaterializedHeader(readFile, bases, Number(issueNumber), lookup)) {
       return fail('materialized-header-missing', `no materialized header for issue #${issueNumber} under ${bases.join(' or ')} (work/ or spec-${issueNumber}/work/)`);
     }
   }
