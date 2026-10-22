@@ -119,27 +119,31 @@ function withTempDirs(fn) {
   }
 }
 
-test('deps: findOnPath finds an executable on PATH', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
+test('deps: findOnPath finds an executable in a later PATH entry', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
   withTempDirs(({ fs, path, dir, cwd }) => {
     const file = path.join(dir, 'playwright-cli');
     fs.writeFileSync(file, '#!/bin/sh\n');
     fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
+    const PATH = [path.join(cwd, 'missing-bin'), dir].join(path.delimiter);
     assert.strictEqual(
-      deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd }),
+      deps.findOnPath('playwright-cli', { env: { PATH }, platform: 'darwin', cwd }),
       file,
     );
   });
 });
 
 test('deps: findOnPath finds a project-local node_modules/.bin install first', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
-  withTempDirs(({ fs, path, cwd }) => {
+  withTempDirs(({ fs, path, dir, cwd }) => {
     const binDir = path.join(cwd, 'node_modules', '.bin');
     fs.mkdirSync(binDir, { recursive: true });
     const file = path.join(binDir, 'playwright-cli');
-    fs.writeFileSync(file, '#!/bin/sh\n');
-    fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
+    const onPath = path.join(dir, 'playwright-cli');
+    for (const f of [file, onPath]) {
+      fs.writeFileSync(f, '#!/bin/sh\n');
+      fs.chmodSync(f, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
+    }
     assert.strictEqual(
-      deps.findOnPath('playwright-cli', { env: { PATH: '' }, platform: 'darwin', cwd }),
+      deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd }),
       file,
     );
   });
@@ -202,11 +206,15 @@ test('deps: playwrightCliMessage still answers from PATH when the cwd was delete
       process.chdir(cwd);
       fs.rmSync(cwd, { recursive: true });
       assert.throws(() => process.cwd(), 'the fixture must have produced a deleted cwd');
+      const shim = path.join(dir, 'playwright-cli');
+      fs.writeFileSync(shim, '#!/bin/sh\n');
+      fs.chmodSync(shim, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
       process.env.PATH = dir;
-      assert.match(deps.playwrightCliMessage(), /Install: npm install -g @playwright\/cli/);
+      assert.strictEqual(deps.playwrightCliMessage(), null);
     } finally {
       process.chdir(origCwd);
-      process.env.PATH = origPath;
+      if (origPath === undefined) delete process.env.PATH;
+      else process.env.PATH = origPath;
     }
   });
 });
@@ -229,7 +237,8 @@ test('deps: playwrightCliMessage reports installed vs missing from the real PATH
       assert.strictEqual(deps.playwrightCliMessage(), null);
     } finally {
       process.chdir(origCwd);
-      process.env.PATH = origPath;
+      if (origPath === undefined) delete process.env.PATH;
+      else process.env.PATH = origPath;
     }
   });
 });

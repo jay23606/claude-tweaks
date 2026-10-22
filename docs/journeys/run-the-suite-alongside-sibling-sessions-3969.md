@@ -33,7 +33,7 @@ files:
 - **Should understand:** The line reads `run-tests.js: waiting for a test-suite slot — held by pid N (cwd …) since …; set CT_TEST_SUITE_SLOTS to raise the limit`, followed by the lock path. The run starts on its own once the holder finishes. A `verify.js --cmd-timeout` counts the wait against its bound.
 - **Red flags:**
   - Two full suites running at once with the default settings.
-  - A wait that never ends while the named pid is gone. A dead holder's lock is reclaimed on the next 2-second poll.
+  - A wait that never ends while the named pid is gone. A holder already dead when the run starts loses its lock at once; one that dies mid-wait loses it on the next 2-second poll.
 
 ### 3. Stop a run early
 - **URL:** the terminal, or a CI cancel or `timeout` wrapper.

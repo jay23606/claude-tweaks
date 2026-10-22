@@ -52,9 +52,9 @@ function detectVersionManager() {
   // process.execPath is the currently-running node binary's own path — no
   // subprocess needed, unlike shelling out to `which node` to re-derive
   // the same answer this process already has for free.
-  const path = process.execPath;
-  if (path.includes('/.nvm/') || path.includes('/.fnm/') || path.includes('/.volta/') || path.includes('/.n/')) {
-    return path.includes('.nvm') ? 'nvm' : path.includes('.fnm') ? 'fnm' : path.includes('.volta') ? 'volta' : 'n';
+  const execPath = process.execPath;
+  if (execPath.includes('/.nvm/') || execPath.includes('/.fnm/') || execPath.includes('/.volta/') || execPath.includes('/.n/')) {
+    return execPath.includes('.nvm') ? 'nvm' : execPath.includes('.fnm') ? 'fnm' : execPath.includes('.volta') ? 'volta' : 'n';
   }
   return null;
 }

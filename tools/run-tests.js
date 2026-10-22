@@ -153,9 +153,14 @@ function createLock(lockPath, pid, cwd, now) {
   }
   try {
     fs.writeSync(fd, JSON.stringify({ pid, startedAt: new Date(now()).toISOString(), cwd }));
-  } finally {
+  } catch (err) {
+    // An empty lock left behind would read as a live unknown holder and stall every other run
+    // for `staleUnparseableMs`, so a failed write removes the file before surfacing the error.
     fs.closeSync(fd);
+    unlinkQuiet(lockPath);
+    throw err;
   }
+  fs.closeSync(fd);
   return true;
 }
 
@@ -241,6 +246,19 @@ function reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, sta
   }
 }
 
+// Creates `dir` if needed and refuses it unless it is a real directory owned by this user. The slot
+// and run-root parents sit at fixed names under the tmpdir; where that is a shared, world-writable
+// /tmp (multi-user Linux), another user could pre-create either — a symlink steering the sweep's
+// deletes, or a directory of theirs holding a lock that blocks every run. Throws on a mismatch.
+function ensureOwnDir(dir) {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const st = fs.lstatSync(dir);
+  const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+  if (!st.isDirectory() || (uid !== null && st.uid !== uid)) {
+    throw new Error(`${dir} is not a directory owned by this user — remove it and re-run.`);
+  }
+}
+
 // Takes one of `slots` cross-process suite slots (`slot-<i>.lock` in `dir`) and returns the lock
 // path, polling every `pollMs` until one frees up (#3969). A lock held by a dead pid is reclaimed
 // immediately, so a crashed run never wedges the queue. The wait message is logged once per call.
@@ -249,7 +267,7 @@ function reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, sta
 // OS then reused for this one — so it is reclaimed rather than waited on forever.
 function acquireSlot({ dir, slots, pid, cwd, isAlive: isPidLive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000, staleReclaimMs = 30000 }) {
   const isAlive = (holderPid) => holderPid !== pid && isPidLive(holderPid);
-  fs.mkdirSync(dir, { recursive: true });
+  ensureOwnDir(dir);
   let logged = false;
   for (;;) {
     let blocker = null;
@@ -323,7 +341,7 @@ function sweepStaleRoots({ dir, isAlive }) {
 
 module.exports = {
   listTestFiles, buildTestArgs, resolveConcurrency, resolveSlots,
-  isPidAlive, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
+  isPidAlive, ensureOwnDir, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
 };
 
 if (require.main === module) {
@@ -361,7 +379,7 @@ if (require.main === module) {
   // Run roots live under one dedicated parent, so the startup sweep reads a directory that only
   // ever holds run roots instead of scanning the whole real tmpdir.
   const runsDir = path.join(os.tmpdir(), 'ct-test-runs');
-  fs.mkdirSync(runsDir, { recursive: true });
+  ensureOwnDir(runsDir);
   sweepStaleRoots({ dir: runsDir, isAlive: isPidAlive });
 
   // A nested run (a test that itself runs this script) inherits CT_TEST_SUITE_SLOT_HELD=1 from

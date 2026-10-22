@@ -16,7 +16,7 @@ const { spawn, spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const {
   resolveConcurrency, resolveSlots, listTestFiles, buildTestArgs,
-  isPidAlive, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
+  isPidAlive, ensureOwnDir, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
 } = require(path.join(ROOT, 'tools', 'run-tests.js'));
 
 test('resolveConcurrency defaults to half the cores, at least 1', () => {
@@ -294,6 +294,39 @@ test('sweepStaleRoots removes dead-pid roots and keeps live ones', () => {
   });
 });
 
+test('ensureOwnDir creates a missing directory and refuses a symlink in its place', {
+  skip: process.platform === 'win32' && 'win32: creating a symlink needs extra privileges',
+}, () => {
+  withTempDir((dir) => {
+    const fresh = path.join(dir, 'fresh');
+    ensureOwnDir(fresh);
+    assert.ok(fs.lstatSync(fresh).isDirectory());
+    const target = path.join(dir, 'elsewhere');
+    fs.mkdirSync(target);
+    const link = path.join(dir, 'link');
+    fs.symlinkSync(target, link);
+    assert.throws(() => ensureOwnDir(link), /not a directory owned by this user/);
+  });
+});
+
+test('acquireSlot leaves no empty lock behind when writing its identity fails', () => {
+  withTempDir((dir) => {
+    const origWrite = fs.writeSync;
+    fs.writeSync = () => {
+      throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+    };
+    try {
+      assert.throws(
+        () => acquireSlot({ dir, slots: 1, pid: 4242, cwd: '/x', isAlive: () => true, now: Date.now, sleep: () => {}, log: () => {} }),
+        /no space left/,
+      );
+    } finally {
+      fs.writeSync = origWrite;
+    }
+    assert.deepStrictEqual(fs.readdirSync(dir), []);
+  });
+});
+
 test('isPidAlive is true for this process and false for an exited child', () => {
   assert.strictEqual(isPidAlive(process.pid), true);
   // pid 0 / negative would probe a process group, not a process — never "alive".
@@ -369,6 +402,27 @@ test('run-tests.js holds the suite slot for the runner pid while the suite runs,
   });
 });
 
+test('a failing suite makes run-tests.js exit non-zero, and it still frees its slot and run root', async () => {
+  await withSandbox('fail-probe.fixture.js', 'fail.test.js', (sb) => {
+    const result = runRunner(sb, { timeout: 120000 });
+    assert.strictEqual(result.status, 1, result.stdout + result.stderr);
+    assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
+    assert.deepStrictEqual(fs.readdirSync(path.join(sb.childTmp, 'ct-test-runs')), []);
+  });
+});
+
+test('run-tests.js sweeps a run root left by a dead pid before it runs', async () => {
+  await withSandbox(...PROBE, (sb) => {
+    const dead = spawnSync(process.execPath, ['-e', '0']);
+    const orphan = path.join(sb.childTmp, 'ct-test-runs', `ct-testrun-${dead.pid}-orphan`);
+    fs.mkdirSync(orphan, { recursive: true });
+    fs.writeFileSync(path.join(orphan, 'leaked'), 'x');
+    const result = runRunner(sb, { timeout: 120000 });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.strictEqual(fs.existsSync(orphan), false);
+  });
+});
+
 test('a nested run with CT_TEST_SUITE_SLOT_HELD=1 skips the slot', async () => {
   await withSandbox(...PROBE, (sb) => {
     // A live holder (this process) would block a run that tried to take the only slot.
@@ -438,7 +492,7 @@ const SIGNAL_SKIP = { skip: process.platform === 'win32' && 'win32: signals term
 // A signal to the runner pid alone (not its group) must reach the suite and free everything the
 // runner holds. The fixture sleeps 60s, so a runner that waited for it could not exit inside the
 // 30s `until` bound; the timeout rejecting is the failure signal, not a clock comparison.
-for (const [signal, expectedCode] of [['SIGTERM', 143], ['SIGHUP', 129]]) {
+for (const [signal, expectedCode] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) {
   test(`a ${signal} to the runner alone is forwarded: it exits ${expectedCode} promptly and frees its run root, slot and test worker`, SIGNAL_SKIP, async () => {
     await withSandbox('sleep-probe.fixture.js', 'sleep.test.js', async (sb) => {
       const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: 'ignore' });
@@ -455,7 +509,7 @@ for (const [signal, expectedCode] of [['SIGTERM', 143], ['SIGHUP', 129]]) {
         assert.strictEqual(outcome.code, expectedCode);
         assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
         const runsDir = path.join(sb.childTmp, 'ct-test-runs');
-        assert.deepStrictEqual(fs.existsSync(runsDir) ? fs.readdirSync(runsDir) : [], []);
+        assert.deepStrictEqual(fs.readdirSync(runsDir), []);
         await until(() => !isPidAlive(workerPid), 30000, 'the sleeping test worker to be gone');
       } finally {
         child.kill('SIGKILL');
