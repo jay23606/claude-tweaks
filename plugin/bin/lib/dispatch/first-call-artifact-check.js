@@ -26,8 +26,7 @@ const { classifyClaimBlob } = require('../issues/claims');
 const { resolvePolicyKeys, resolvePolicyConfig } = require('../policy-schema');
 const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../shared-primitives');
 const { lstatType } = require('../path-guard');
-const { worktreeMirror } = require('../wrap-up/pack');
-const { runIdentity, checkoutRootOf, findHeaderFiles } = require('../run-header');
+const { runIdentity, checkoutRootOf, headerCandidates, findHeaderFiles } = require('../run-header');
 const { hasCanonicalClaimLogFor } = require('../log-decision/claim-log');
 
 function defaultReadFile(p) {
@@ -101,14 +100,6 @@ function resolveIntegrationModel(configRaw) {
 // invalid value never repairs. Any failure to read it, or any throw while classifying,
 // means `repairable: false`.
 
-// The run dir plus its worktree mirror (pack.js's worktreeMirror), deduplicated.
-function headerBases(runDir, runState) {
-  const bases = [runDir];
-  const mirror = worktreeMirror(runDir, runState && runState.worktree);
-  if (mirror && path.resolve(mirror) !== path.resolve(runDir)) bases.push(mirror);
-  return bases;
-}
-
 // The run-header resolver's lookup (#3974): the checkout roots a header may sit
 // under (the run dir's, then the worktree's), the run's identity, and the run
 // dir itself (read directly when it sits outside any pipelines tree). Null when
@@ -119,6 +110,13 @@ function headerLookup(runDir, runState) {
   const roots = [checkoutRootOf(runDir), runState && runState.worktree]
     .filter((root, i, all) => typeof root === 'string' && root !== '' && all.indexOf(root) === i);
   return { roots, runId: identity.runId, specN: identity.specN, runDir };
+}
+
+// Every location the lookup searches for `n`, live and archived, as the resolver
+// lists them -- the paths the "no header" failure names.
+function searchedHeaderPaths(lookup, n) {
+  if (!lookup) return [];
+  return headerCandidates(lookup.roots, lookup.runId, n, { specN: lookup.specN, runDir: lookup.runDir });
 }
 
 // Whether any live or archived header the resolver finds for `n` names `n` (or
@@ -260,11 +258,11 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
     if (prFail) return prFail;
   }
 
-  const bases = headerBases(runDir, parsedRunState);
   const lookup = headerLookup(runDir, parsedRunState);
   for (const issueNumber of issueNumbers) {
     if (!hasMaterializedHeader(readFile, lookup, Number(issueNumber))) {
-      return fail('materialized-header-missing', `no materialized header for issue #${issueNumber} under ${bases.join(' or ')} (work/ or spec-${issueNumber}/work/)`);
+      const searched = searchedHeaderPaths(lookup, Number(issueNumber));
+      return fail('materialized-header-missing', `no materialized header for issue #${issueNumber}; searched ${searched.length ? searched.join(', ') : `nothing (no run identity for ${runDir})`}`);
     }
   }
 
@@ -374,4 +372,4 @@ function resolveFirstCallGate({ reply, artifact }) {
   return 'artifact-failed';
 }
 
-module.exports = { checkFirstCallArtifacts, checkFirstCallStamp, resolveFirstCallGate, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
+module.exports = { checkFirstCallArtifacts, checkFirstCallStamp, resolveFirstCallGate, resolveIntegrationModel, hasMaterializedHeader, defaultReadFile };

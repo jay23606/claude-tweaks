@@ -122,28 +122,30 @@ function bareRunDir(runDir) {
   return typeof runDir === 'string' && runDir !== '' && checkoutRootOf(runDir) === null ? runDir : null;
 }
 
-// Absolute native paths of the header candidates that exist as regular files,
-// root by root (each root is a checkout root), in precedence order.
+// Absolute native paths of every header location a lookup for `n` searches,
+// whether or not a file sits there, in precedence order: root by root (each
+// root is a checkout root), live before archived. `findHeaderFiles` filters
+// this list, and a "not found" message names it, so the two cannot drift.
 // `opts.runDir`: see bareRunDir -- a root-less run dir's own `work/{n}-spec.md`
 // (and, unless `specN` is set, `spec-{n}/work/{n}-spec.md`) come first.
-function findHeaderFiles(roots, runId, n, opts = {}) {
+function headerCandidates(roots, runId, n, opts = {}) {
   const rels = headerRelPaths(runId, n, opts);
   const out = [];
   const bare = bareRunDir(opts.runDir);
   if (bare !== null) {
     const file = `${n}-spec.md`;
-    const candidates = [];
-    if (opts.shape !== 'nested') candidates.push(path.join(bare, 'work', file));
-    if (opts.specN == null) candidates.push(path.join(bare, `spec-${n}`, 'work', file));
-    for (const abs of candidates) if (lstatType(abs).type === 'file') out.push(abs);
+    if (opts.shape !== 'nested') out.push(path.join(bare, 'work', file));
+    if (opts.specN == null) out.push(path.join(bare, `spec-${n}`, 'work', file));
   }
   for (const root of validRoots(roots)) {
-    for (const rel of rels) {
-      const abs = nativeJoin(root, rel);
-      if (lstatType(abs).type === 'file') out.push(abs);
-    }
+    for (const rel of rels) out.push(nativeJoin(root, rel));
   }
   return out;
+}
+
+// The candidates of `headerCandidates` that exist as regular files.
+function findHeaderFiles(roots, runId, n, opts = {}) {
+  return headerCandidates(roots, runId, n, opts).filter((abs) => lstatType(abs).type === 'file');
 }
 
 function compareNames(a, b) {
@@ -218,6 +220,7 @@ module.exports = {
   headerRelPaths,
   headerPathspecs,
   headerTreeDirs,
+  headerCandidates,
   findHeaderFiles,
   listHeaderDirs,
 };

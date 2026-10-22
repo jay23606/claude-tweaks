@@ -164,6 +164,27 @@ test('fails materialized-header-missing when a member has no header anywhere (#2
   assert.match(result.message, /#2806/);
 });
 
+test('the materialized-header-missing message names every searched location, archived and worktree-mirror ones included (#3974)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-first-call-searched-'));
+  const main = path.join(root, 'main');
+  const worktree = path.join(root, 'wt');
+  const runDir = path.join(main, '.claude-tweaks', 'pipelines', RUN_ID);
+  const deps = localMergeGroup(runDir, [2806], { worktree });
+  const result = checkFirstCallArtifacts({ runDir, issueNumbers: [2806], repoSlug: REPO_SLUG }, deps);
+  assert.equal(result.reason, 'materialized-header-missing');
+  const pipelines = path.join('.claude-tweaks', 'pipelines');
+  for (const base of [main, worktree]) {
+    for (const rel of [
+      path.join(pipelines, RUN_ID, 'work', '2806-spec.md'),
+      path.join(pipelines, RUN_ID, 'spec-2806', 'work', '2806-spec.md'),
+      path.join(pipelines, 'archive', RUN_ID, 'work', '2806-spec.md'),
+      path.join(pipelines, 'archive', RUN_ID, 'spec-2806', 'work', '2806-spec.md'),
+    ]) {
+      assert.ok(result.message.includes(path.join(base, rel)), `message names ${path.join(base, rel)}: ${result.message}`);
+    }
+  }
+});
+
 test('passes for a multi-record group whose headers live under spec-{n}/work/ (#2775)', () => {
   const runDir = mkRunDir();
   const deps = localMergeGroup(runDir, [2806, 2807]);
