@@ -21,6 +21,7 @@ const {
   findHeaderFiles,
   listHeaderDirs,
 } = require('../plugin/bin/lib/run-header');
+const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('./helpers/strip-comments');
 
 const P = '.claude-tweaks/pipelines';
 
@@ -350,4 +351,273 @@ test('checkoutRootOf: null without a .claude-tweaks/pipelines pair', () => {
   assert.strictEqual(checkoutRootOf(path.join('/a', '.claude-tweaks', 'policy.yml')), null);
   assert.strictEqual(checkoutRootOf(''), null);
   assert.strictEqual(checkoutRootOf(undefined), null);
+});
+
+// ---------------------------------------------------------------------------
+// Source scan (#3974): the spec-header location rule lives in run-header.js.
+//
+// Two pins over plugin/bin, comments stripped by the shared helper
+// (tests/helpers/strip-comments.js; see .claude/skills/bin-source-scan-conformance):
+//   1. the six header READERS name neither the archive segment literal nor
+//      `pipelines/archive` -- archived headers resolve through run-header.js;
+//   2. no string or template literal outside the allowlist holds a header
+//      filename (`${n}-spec.md`, `work/{n}-spec.md`, `work/*-spec.md`) -- a
+//      reader that rebuilds the location rule on its own has to spell one.
+//      `[}*\d]-spec\.md` is the filename shape; the prefix class keeps
+//      `multi-spec.md` doc references out.
+// ---------------------------------------------------------------------------
+
+const BIN_ROOT = path.join(__dirname, '..', 'plugin', 'bin');
+
+const READER_FILES = [
+  'verify-run-bookends.js',
+  'lib/flow/preflight.js',
+  'lib/hooks/pre-tool-use.js',
+  'lib/pr-bookkeeping/precondition.js',
+  'lib/wrap-up/pack.js',
+  'lib/dispatch/first-call-artifact-check.js',
+];
+
+// An allowlist entry that matches no site is stale and fails; `lines` keys an
+// entry to the source lines (by substring) it covers, any other site in that
+// file stays an offender.
+const HEADER_ALLOWLIST = {
+  'lib/run-header.js': { reason: 'the resolver: it owns the header filename and the live/archived location rule.' },
+  'materialize.js': { reason: 'the header writer: it creates work/{n}-spec.md, it does not locate an existing header.' },
+  'lib/issues/blast-radius.js': { reason: 'classifier glob over changed files, not a header read path; it already matches the archived location.' },
+  'verify-run-bookends.js': {
+    reason: 'user-facing text (usage line and materialize remedy message), not a read path.',
+    lines: ['a committed work/{n}-spec.md', 'then commit work/${n}-spec.md'],
+  },
+};
+
+const HEADER_FILENAME_RE = /[}*\d]-spec\.md/g;
+
+// End index (exclusive) of the string or template literal opening at `i` in
+// `blank` (stripComments with literals: 'blank': bodies are spaces, delimiters
+// and template `${…}` code stay).
+function literalEnd(blank, i) {
+  const q = blank[i];
+  if (q !== '`') {
+    let j = i + 1;
+    while (j < blank.length && blank[j] !== q && blank[j] !== '\n') {
+      j += blank[j] === '\\' ? 2 : 1; // a kept `\` is a line continuation
+    }
+    return blank[j] === q ? j + 1 : j;
+  }
+  let j = i + 1;
+  while (j < blank.length) {
+    if (blank[j] === '`') return j + 1;
+    if (blank[j] === '$' && blank[j + 1] === '{') {
+      j += 2;
+      for (let depth = 0; j < blank.length; ) {
+        const c = blank[j];
+        if (c === "'" || c === '"' || c === '`') j = literalEnd(blank, j);
+        else if (c === '{') { depth++; j++; }
+        else if (c === '}') { j++; if (depth === 0) break; depth--; }
+        else j++;
+      }
+    } else j++;
+  }
+  return j;
+}
+
+// Top-level string/template literal spans [start, end). A regex literal is not
+// one: its body is blanked, so a quote inside it never opens a span.
+function literalSpans(blank) {
+  const spans = [];
+  for (let i = 0; i < blank.length; ) {
+    const c = blank[i];
+    if (c === "'" || c === '"' || c === '`') {
+      const end = literalEnd(blank, i);
+      spans.push([i, end]);
+      i = end;
+    } else i++;
+  }
+  return spans;
+}
+
+// -> { sites: [{ line, text }], verdictOffender: string|null } for one file.
+function headerSites(src) {
+  const keep = stripComments(src);
+  const blank = stripComments(src, { literals: 'blank' });
+  for (const stripped of [keep, blank]) {
+    const verdict = stripperVerdict(src, stripped);
+    if (verdict !== 'ok') return { sites: [], verdictOffender: STRIPPER_VERDICT_MESSAGES[verdict] };
+  }
+  const lines = src.split('\n');
+  const sites = [];
+  for (const [start, end] of literalSpans(blank)) {
+    for (const m of keep.slice(start, end).matchAll(HEADER_FILENAME_RE)) {
+      const line = keep.slice(0, start + m.index).split('\n').length;
+      sites.push({ line, text: lines[line - 1].trim() });
+    }
+  }
+  return { sites, verdictOffender: null };
+}
+
+// files: { relPosixPath: source }; allowlist as HEADER_ALLOWLIST ->
+// { offenders, allowed } (allowed = matched sites that sit on the allowlist).
+function evaluateHeaderScan(files, allowlist) {
+  const offenders = [];
+  const allowed = [];
+  const hitsByFile = {};
+  const usedKeys = {};
+  for (const [rel, entry] of Object.entries(allowlist)) {
+    if (!entry || typeof entry.reason !== 'string' || entry.reason.trim() === '') {
+      offenders.push(`${rel}: allowlist entry has no reason`);
+    }
+  }
+  for (const [rel, src] of Object.entries(files)) {
+    const { sites, verdictOffender } = headerSites(src);
+    if (verdictOffender) {
+      offenders.push(`${rel}: ${verdictOffender}`);
+      continue;
+    }
+    for (const site of sites) {
+      const entry = allowlist[rel];
+      const key = entry && (entry.lines ? entry.lines.find((k) => site.text.includes(k)) : true);
+      if (!key) {
+        offenders.push(`${rel}:${site.line}: header filename literal outside the allowlist -- resolve the header through plugin/bin/lib/run-header.js: ${site.text}`);
+        continue;
+      }
+      allowed.push({ rel, ...site });
+      hitsByFile[rel] = (hitsByFile[rel] || 0) + 1;
+      if (key !== true) (usedKeys[rel] = usedKeys[rel] || new Set()).add(key);
+    }
+  }
+  for (const [rel, entry] of Object.entries(allowlist)) {
+    if (!(rel in files)) offenders.push(`${rel}: stale allowlist entry -- no such file under plugin/bin/`);
+    else if (!hitsByFile[rel]) offenders.push(`${rel}: stale allowlist entry -- no header filename literal matches`);
+    for (const k of entry.lines || []) {
+      if (rel in files && !(usedKeys[rel] && usedKeys[rel].has(k))) offenders.push(`${rel}: stale allowlist line key -- matches nothing: ${k}`);
+    }
+  }
+  return { offenders, allowed };
+}
+
+// -> offender strings for one reader file: an `'archive'`/`"archive"` literal or
+// the text `pipelines/archive`, comments excluded.
+function readerOffenders(rel, src) {
+  const stripped = stripComments(src);
+  const verdict = stripperVerdict(src, stripped);
+  if (verdict !== 'ok') return [`${rel}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`];
+  const out = [];
+  stripped.split('\n').forEach((text, i) => {
+    if (/(['"])archive\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
+  });
+  return out;
+}
+
+function readBinTree(root = BIN_ROOT) {
+  const files = {};
+  (function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.js')) files[path.relative(root, full).replace(/\\/g, '/')] = fs.readFileSync(full, 'utf8');
+    }
+  })(root);
+  return files;
+}
+
+test('header scan matcher: flags a path.join with a literal work segment and a header filename template', () => {
+  const src = "const p = path.join(dir, 'work', `${n}-spec.md`);\n";
+  assert.deepStrictEqual(headerSites(src).sites, [{ line: 1, text: src.trim() }]);
+});
+
+test('header scan matcher: flags a filename template with no work segment in the same call (materialize.js shape)', () => {
+  const src = 'const f = path.join(workDir, `${n}-spec.md`);\n';
+  assert.deepStrictEqual(headerSites(src).sites, [{ line: 1, text: src.trim() }]);
+});
+
+test('header scan matcher: flags work/{n}-spec.md and work/*-spec.md text in plain strings, with exact lines', () => {
+  const src = ["const a = 'x';", "const u = 'a committed work/{n}-spec.md';", 'const g = ".claude-tweaks/pipelines/**/work/*-spec.md";'].join('\n');
+  assert.deepStrictEqual(headerSites(src).sites.map((s) => s.line), [2, 3]);
+});
+
+test('header scan matcher: the same text in a // or /* comment is not flagged', () => {
+  const src = [
+    "// const p = path.join(dir, 'work', `${n}-spec.md`);",
+    "/* const q = path.join(dir, 'work', `${n}-spec.md`); */",
+    'const ok = 1;',
+  ].join('\n');
+  assert.deepStrictEqual(headerSites(src).sites, []);
+});
+
+test('header scan matcher: a regex literal is not a string, and code after it is still scanned', () => {
+  const re = '/work[/\\\\]\\d+-spec\\.md/';
+  assert.deepStrictEqual(headerSites(`const re = ${re};\n`).sites, []);
+  // A quote inside a regex must not open a fake string that swallows the next line.
+  const src = ['const re = /[`"\']/;', 'const f = `${n}-spec.md`;'].join('\n');
+  assert.deepStrictEqual(headerSites(src).sites.map((s) => s.line), [2]);
+});
+
+test('header scan matcher: multi-spec.md doc references and nested template code are handled', () => {
+  assert.deepStrictEqual(headerSites("const d = 'see multi-spec.md for the shape';\n").sites, []);
+  // One site for a template whose ${} code holds its own string; code after it is still seen.
+  const src = ["const t = `${a ? 'x' : 'y'}/work/${n}-spec.md`;", "const u = '1-spec.md';"].join('\n');
+  assert.deepStrictEqual(headerSites(src).sites.map((s) => s.line), [1, 2]);
+});
+
+test('header scan: a comment-stripper mis-parse is reported as an offender, not a clean file', () => {
+  const src = 'if (b) /"/.test(b); const c = "//"; const f = `${n}-spec.md`;';
+  assert.deepStrictEqual(evaluateHeaderScan({ 'lib/x.js': src }, {}).offenders, [`lib/x.js: ${STRIPPER_VERDICT_MESSAGES.misparsed}`]);
+});
+
+test('header scan: a site outside the allowlist is an offender; a keyed file allows only its keyed lines', () => {
+  const lone = { 'lib/new-reader.js': 'const f = path.join(workDir, `${n}-spec.md`);\n' };
+  const res = evaluateHeaderScan(lone, {});
+  assert.strictEqual(res.offenders.length, 1);
+  assert.match(res.offenders[0], /^lib\/new-reader\.js:1: header filename literal outside the allowlist/);
+  assert.strictEqual(evaluateHeaderScan(lone, { 'lib/new-reader.js': { reason: 'x' } }).offenders.length, 0);
+
+  const keyed = { 'v.js': ["const u = 'a committed work/{n}-spec.md';", 'const p = `work/${n}-spec.md`;'].join('\n') };
+  const entry = { reason: 'x', lines: ['a committed work/{n}-spec.md'] };
+  const out = evaluateHeaderScan(keyed, { 'v.js': entry }).offenders;
+  assert.strictEqual(out.length, 1);
+  assert.match(out[0], /^v\.js:2: header filename literal outside the allowlist/);
+});
+
+test('header scan: a stale allowlist file, zero-match file, line key or missing reason is an offender', () => {
+  const files = { 'a.js': "const x = 'nothing here';\n", 'b.js': "const u = 'work/{n}-spec.md';\n" };
+  const offenders = evaluateHeaderScan(files, {
+    'gone.js': { reason: 'x' },
+    'a.js': { reason: 'x' },
+    'b.js': { reason: 'x', lines: ['work/{n}-spec.md', 'a key that matches nothing'] },
+  }).offenders;
+  assert.deepStrictEqual(offenders, [
+    'gone.js: stale allowlist entry -- no such file under plugin/bin/',
+    'a.js: stale allowlist entry -- no header filename literal matches',
+    'b.js: stale allowlist line key -- matches nothing: a key that matches nothing',
+  ]);
+  assert.deepStrictEqual(evaluateHeaderScan({ 'b.js': files['b.js'] }, { 'b.js': { reason: ' ' } }).offenders, ['b.js: allowlist entry has no reason']);
+});
+
+test('reader scan matcher: an archive literal or pipelines/archive in code is flagged; in a comment it is not', () => {
+  assert.deepStrictEqual(readerOffenders('r.js', "const a = path.join(d, 'archive', id);\n"), ["r.js:1: const a = path.join(d, 'archive', id);"]);
+  assert.deepStrictEqual(readerOffenders('r.js', 'const a = "archive";\n'), ['r.js:1: const a = "archive";']);
+  assert.deepStrictEqual(readerOffenders('r.js', 'const a = `.claude-tweaks/pipelines/archive/${id}`;\n'), ['r.js:1: const a = `.claude-tweaks/pipelines/archive/${id}`;']);
+  assert.deepStrictEqual(readerOffenders('r.js', "// the 'archive' dir, pipelines/archive\n/* \"archive\" */\nconst ok = 1;\n"), []);
+  assert.deepStrictEqual(readerOffenders('r.js', 'if (b) /"/.test(b); const c = "//";'), [`r.js: ${STRIPPER_VERDICT_MESSAGES.misparsed}`]);
+});
+
+test('AC 8: the six header readers name neither the archive segment nor pipelines/archive (comments excluded)', () => {
+  const files = readBinTree();
+  const offenders = [];
+  for (const rel of READER_FILES) {
+    if (!(rel in files)) offenders.push(`${rel}: reader file not found under plugin/bin/`);
+    else offenders.push(...readerOffenders(rel, files[rel]));
+  }
+  assert.deepStrictEqual(offenders, [], 'a header reader spells the archive location itself -- resolve it through plugin/bin/lib/run-header.js');
+});
+
+test('AC 8: no header filename literal in plugin/bin outside run-header.js and the allowlist', () => {
+  const { offenders, allowed } = evaluateHeaderScan(readBinTree(), HEADER_ALLOWLIST);
+  assert.deepStrictEqual(offenders, [], 'a header filename literal outside the allowlist rebuilds the location rule -- use plugin/bin/lib/run-header.js, or allowlist it here with a reason');
+  // Observed 6 when the scan landed: verify-run-bookends x2, materialize x1,
+  // run-header x2, blast-radius x1. Fewer means the matcher stopped matching,
+  // not that the sites went away. Raise on additions; never lower to go green.
+  assert.ok(allowed.length >= 6, `matched ${allowed.length} allowlisted header-filename sites, expected at least 6 -- the matcher has stopped matching`);
 });
