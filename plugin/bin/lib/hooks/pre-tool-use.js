@@ -1345,9 +1345,10 @@ function hasPrEarlyStep1LineFor(body, branch) {
 }
 
 // #2526: this run's own materialized record numbers, read straight off the
-// live worktree filesystem (work/{n}-spec.md, or its multi-record
-// spec-{slug}/work/{n}-spec.md form — the same two shapes
-// hasMaterializeCommit's own pathspec covers) rather than git history: what
+// worktree filesystem (work/{n}-spec.md, or its multi-record
+// spec-{slug}/work/{n}-spec.md form, live or archived — run-header.js's
+// listHeaderDirs, the same locations hasMaterializeCommit's pathspecs
+// cover, #3974) rather than git history: what
 // the claim-stamp branch below needs is "which numbers must have a claim
 // logged", a question about the current tree, not "did a commit land" (that
 // is hasMaterializeCommit's own, already-passed precondition by the time

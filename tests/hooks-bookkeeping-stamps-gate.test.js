@@ -2056,7 +2056,7 @@ test('bookkeeping-stamps gate (#3974): a per-spec runDir whose claim is logged o
   assert.ok(!readEvents(childRun).some((e) => e.type === 'bookkeeping-stamp-deny' && e.stamp === 'claim-log'));
 });
 
-test('bookkeeping-stamps gate (#3974): a per-spec runDir with the claim in neither its own nor the parent decisions.md still denies at the claim branch', () => {
+test('bookkeeping-stamps gate (#3974): a per-spec runDir with the claim in neither its own nor the parent decisions.md denies at the claim branch (newly armed: it never armed for a per-spec run before)', () => {
   const { out, childRun } = perSpecClaimFixture(null);
   assert.ok(out.json, 'expected a deny result');
   assert.match(out.json.hookSpecificOutput.permissionDecisionReason, /Step 2\.8/);

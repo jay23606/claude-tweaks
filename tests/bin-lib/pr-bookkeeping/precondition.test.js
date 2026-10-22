@@ -265,7 +265,7 @@ test('checkPrBookkeepingPrecondition (#2664): a per-spec runDir honors a PR-earl
 test('checkPrBookkeepingPrecondition (#2664): a spec-* dir whose parent is NOT run-id-shaped does not inherit that parent\'s stamps', () => {
   const main = gitRepoWithCommit();
   const wt = linkedWorktreeOf(main);
-  // Not a multi-spec child (same rule as pre-tool-use.js's perSpecPathspec),
+  // Not a multi-spec child (same rule as run-header.js's runIdentity),
   // so its materialize path is the ordinary single-record one rooted at spec-7.
   commitMaterializeFile(wt, 'spec-7');
   const notARun = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-prbk-notarun-'));
