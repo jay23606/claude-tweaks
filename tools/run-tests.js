@@ -15,6 +15,14 @@
 //
 // Elsewhere the explicit file list goes to `node --test`; on Windows (Node >= 22) the root globs
 // go instead, because ~780 paths overflow the 32,767-char command line (#3316).
+//
+// Running the suite also bounds its load on the machine (#3969): concurrent suites from sibling
+// worktrees and fixtures leaked into the shared temp dir made the dev machine unusable. Each run
+// takes a cross-process slot, runs `node --test` with a bounded `--test-concurrency` and a private
+// TMPDIR (removed on exit; roots orphaned by a killed run are swept on the next one). Env knobs:
+// CT_TEST_SUITE_SLOTS (simultaneous suites, default 1), CT_TEST_CONCURRENCY (files at once,
+// default half the cores), CT_TEST_SUITE_SLOT_DIR (where the slot locks live, default under the
+// real tmpdir), CT_TEST_SUITE_SLOT_HELD (=1 set for the child so a nested run skips the slot).
 
 const fs = require('fs');
 const os = require('os');
@@ -334,15 +342,61 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  const result = spawnSync(process.execPath, testArgs, {
-    cwd: REPO_ROOT,
-    stdio: 'inherit',
-    env: process.env,
-  });
+  const realTmp = os.tmpdir();
+  sweepStaleRoots({ dir: realTmp, isAlive: isPidAlive });
 
-  if (result.error) {
-    throw result.error;
+  // A nested run (a test that itself runs this script) inherits CT_TEST_SUITE_SLOT_HELD=1 from
+  // the suite that already holds the slot, and must not wait on it.
+  let lockPath = null;
+  if (process.env.CT_TEST_SUITE_SLOT_HELD !== '1') {
+    lockPath = acquireSlot({
+      dir: process.env.CT_TEST_SUITE_SLOT_DIR || path.join(realTmp, 'ct-test-suite-slots'),
+      slots: resolveSlots(process.env, console.error),
+      pid: process.pid,
+      cwd: REPO_ROOT,
+      isAlive: isPidAlive,
+      now: Date.now,
+      sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms),
+      log: console.error,
+    });
   }
 
-  process.exit(result.status === null ? 1 : result.status);
+  let runRoot;
+  let signalName = null;
+  let result;
+  try {
+    runRoot = createRunRoot(realTmp, process.pid);
+    // spawnSync blocks the event loop, so a handler can only run once the child is done: it
+    // records the signal (instead of the default instant death) so the `finally` below still
+    // removes the run root and frees the slot, then the exit code (decided in the setImmediate
+    // below, once the handler has had its turn) reports the signal.
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => { signalName = sig; });
+    result = spawnSync(process.execPath, testArgs, {
+      cwd: REPO_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, TMPDIR: runRoot, TMP: runRoot, TEMP: runRoot, CT_TEST_SUITE_SLOT_HELD: '1' },
+    });
+  } finally {
+    if (runRoot) {
+      try {
+        fs.rmSync(runRoot, { recursive: true, force: true });
+      } catch (err) {
+        console.error(`run-tests.js: could not remove ${runRoot}: ${err.message}`);
+      }
+    }
+    if (lockPath) releaseSlot(lockPath, process.pid);
+  }
+
+  // One event-loop turn so a signal that arrived while spawnSync blocked has run its handler.
+  setImmediate(() => {
+    if (signalName) {
+      process.exit(128 + os.constants.signals[signalName]);
+    }
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    process.exit(result.status === null ? 1 : result.status);
+  });
 }

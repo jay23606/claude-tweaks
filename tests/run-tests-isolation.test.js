@@ -286,3 +286,70 @@ test('isPidAlive is true for this process and false for an exited child', () => 
   assert.ok(child.pid > 0);
   assert.strictEqual(isPidAlive(child.pid), false);
 });
+
+// Runs tools/run-tests.js as a real child over a throwaway root holding only the probe fixture
+// (copied in as probe.test.js — the fixture's own name is not collected by the real suite), with a
+// private slot dir. `inspect({ result, probeOut, slotDir })` runs before the temp dirs go; every
+// temp dir is removed in `finally`. `CT_TEST_SUITE_SLOT_HELD` is cleared first: the suite this test
+// runs inside has it set to 1.
+function runProbe({ env: extraEnv = {}, timeout = 120000, setup, inspect }) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'run-tests-probe-'));
+  try {
+    const suiteRoot = path.join(tmp, 'suite');
+    const slotDir = path.join(tmp, 'slots');
+    const probeOut = path.join(tmp, 'probe-out.json');
+    fs.mkdirSync(suiteRoot);
+    fs.mkdirSync(slotDir);
+    fs.copyFileSync(
+      path.join(ROOT, 'tests', 'fixtures', 'run-tests', 'tmpdir-probe.fixture.js'),
+      path.join(suiteRoot, 'probe.test.js'),
+    );
+    if (setup) setup({ slotDir });
+    // A private tmpdir for the child: its startup sweep scans `os.tmpdir()`, and on a machine with
+    // years of leaked fixtures in the real one (millions of entries) that scan alone outlasts the
+    // spawn timeout. The sweep itself is pinned directly above.
+    const childTmp = path.join(tmp, 'tmp');
+    fs.mkdirSync(childTmp);
+    const env = { ...process.env, CT_PROBE_OUT: probeOut, CT_TEST_SUITE_SLOT_DIR: slotDir, TMPDIR: childTmp, TMP: childTmp, TEMP: childTmp };
+    delete env.CT_TEST_SUITE_SLOT_HELD;
+    // Set by the `node --test` this test runs under: left in, the child's own `node --test` would
+    // act as a nested worker and run nothing.
+    delete env.NODE_TEST_CONTEXT;
+    Object.assign(env, extraEnv);
+    const result = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'run-tests.js'), suiteRoot], {
+      cwd: ROOT, env, encoding: 'utf8', timeout,
+    });
+    inspect({ result, probeOut, slotDir });
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+test('run-tests.js runs the suite under a ct-testrun-* TMPDIR it removes on exit', () => {
+  runProbe({
+    inspect({ result, probeOut, slotDir }) {
+      assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+      const recorded = JSON.parse(fs.readFileSync(probeOut, 'utf8'));
+      assert.match(path.basename(recorded.tmpdir), /^ct-testrun-\d+-/);
+      assert.strictEqual(fs.existsSync(recorded.tmpdir), false);
+      assert.strictEqual(recorded.held, '1');
+      assert.deepStrictEqual(fs.readdirSync(slotDir).filter((n) => /^slot-.*\.lock$/.test(n)), []);
+    },
+  });
+});
+
+test('a nested run with CT_TEST_SUITE_SLOT_HELD=1 skips the slot', () => {
+  // A live holder (this process) would block a run that tried to take the only slot.
+  const lockText = JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: ROOT });
+  runProbe({
+    env: { CT_TEST_SUITE_SLOT_HELD: '1' },
+    timeout: 60000,
+    setup({ slotDir }) {
+      fs.writeFileSync(path.join(slotDir, 'slot-0.lock'), lockText);
+    },
+    inspect({ result, slotDir }) {
+      assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+      assert.strictEqual(fs.readFileSync(path.join(slotDir, 'slot-0.lock'), 'utf8'), lockText);
+    },
+  });
+});
