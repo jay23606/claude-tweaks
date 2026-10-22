@@ -23,7 +23,7 @@
 // from that directory on the next one), and forwards SIGINT/SIGTERM/SIGHUP to the child so a
 // signalled runner frees its slot and root promptly instead of after the suite. Env knobs:
 // CT_TEST_SUITE_SLOTS (simultaneous suites, default 1), CT_TEST_CONCURRENCY (files at once,
-// default half the cores), CT_TEST_SUITE_SLOT_DIR (where the slot locks live, default under the
+// default half the cores, or cores - 1 when CI is set), CT_TEST_SUITE_SLOT_DIR (where the slot locks live, default under the
 // real tmpdir), CT_TEST_SUITE_SLOT_HELD (=1 set for the child so a nested run skips the slot).
 
 const fs = require('fs');
@@ -80,12 +80,15 @@ function listTestFiles(cwd, roots) {
 const POSITIVE_INT = /^[1-9]\d*$/;
 
 // How many test files `node --test` runs at once. Half the cores (at least 1) by default so one
-// suite leaves the machine usable for sibling worktrees (#3969); `CT_TEST_CONCURRENCY` overrides
-// with a positive integer, and an invalid value is ignored rather than failing the run.
+// suite leaves the machine usable for sibling worktrees (#3969), except when `CI` is set (any
+// non-empty value): a CI runner is single-tenant, so halving only slows it and the default is
+// node's own, cores - 1 (at least 1). `CT_TEST_CONCURRENCY` overrides either with a positive
+// integer, and an invalid value is ignored rather than failing the run.
 // Pure: `env` and `cpus` are parameters, never read from `process`/`os`.
 function resolveConcurrency(env, cpus) {
   const raw = env.CT_TEST_CONCURRENCY;
   if (typeof raw === 'string' && POSITIVE_INT.test(raw)) return Number(raw);
+  if (typeof env.CI === 'string' && env.CI !== '') return Math.max(1, cpus - 1);
   return Math.max(1, Math.floor(cpus / 2));
 }
 
@@ -236,7 +239,10 @@ function createMutex(mutex) {
 // path, polling every `pollMs` until one frees up (#3969). A lock held by a dead pid is reclaimed
 // immediately, so a crashed run never wedges the queue. The wait message is logged once per call.
 // `isAlive`, `now`, `sleep` and `log` are parameters so tests never touch real processes or time.
-function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000, staleReclaimMs = 30000 }) {
+// A lock naming our own `pid` is stale by definition — a prior run that crashed and whose pid the
+// OS then reused for this one — so it is reclaimed rather than waited on forever.
+function acquireSlot({ dir, slots, pid, cwd, isAlive: isPidLive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000, staleReclaimMs = 30000 }) {
+  const isAlive = (holderPid) => holderPid !== pid && isPidLive(holderPid);
   fs.mkdirSync(dir, { recursive: true });
   let logged = false;
   for (;;) {
@@ -248,16 +254,18 @@ function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 
       if (holder === null || holder.stale) {
         if (reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, staleReclaimMs })) return lockPath;
         // Someone else is reclaiming this slot or won it: it is held now, so keep scanning.
-        if (!blocker) blocker = { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
+        if (!blocker) blocker = { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown', lockPath };
         continue;
       }
-      if (!blocker || blocker.pid === 'unknown') blocker = holder;
+      if (!blocker || blocker.pid === 'unknown') blocker = { ...holder, lockPath };
     }
     if (!logged) {
       logged = true;
+      // The lock path is named so a maintainer can delete a lock whose pid was reused by an
+      // unrelated long-lived process (isAlive cannot tell it from the run that took the slot).
       log(
         `run-tests.js: waiting for a test-suite slot — held by pid ${blocker.pid} (cwd ${blocker.cwd}) ` +
-          `since ${blocker.startedAt}; set CT_TEST_SUITE_SLOTS to raise the limit`,
+          `since ${blocker.startedAt}; set CT_TEST_SUITE_SLOTS to raise the limit (lock: ${blocker.lockPath})`,
       );
     }
     sleep(pollMs);
@@ -372,10 +380,13 @@ if (require.main === module) {
   // exists is applied as soon as it does.
   let child = null;
   let forwarded = null;
+  // `node --test` dies on SIGHUP by default, orphaning its workers, but shuts them down on SIGTERM —
+  // so SIGHUP reaches the child as SIGTERM. The runner's own exit code still follows `forwarded`.
+  const childSignal = (sig) => (sig === 'SIGHUP' ? 'SIGTERM' : sig);
   for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
     process.on(sig, () => {
       forwarded = sig;
-      if (child) child.kill(sig);
+      if (child) child.kill(childSignal(sig));
     });
   }
 
@@ -406,7 +417,7 @@ if (require.main === module) {
     cleanup();
     throw err;
   }
-  if (forwarded) child.kill(forwarded);
+  if (forwarded) child.kill(childSignal(forwarded));
 
   // A spawn failure emits 'error' (and no 'exit'): clean up, then surface it as an uncaught throw.
   child.on('error', (err) => {

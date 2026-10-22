@@ -178,8 +178,8 @@ test('buildTestArgs throws on win32 with Node < 22, naming the running major', (
 
 test('run-tests.js\'s main block turns a buildTestArgs throw into exit 1 and one stderr line, starting no test run', () => {
   // The only process-level test of the main block: the preload fakes win32 + Node 20 and
-  // replaces spawnSync with a tripwire, so the error path runs for real and a regression
-  // past it prints a marker instead of launching the suite. Error path only, by design.
+  // replaces spawnSync and spawn with tripwires, so the error path runs for real and a
+  // regression past it prints a marker instead of launching the suite. Error path only, by design.
   const { spawnSync } = require('child_process');
   const preload = path.join(ROOT, 'tests', 'fixtures', 'run-tests', 'win32-node20-preload.js');
   const r = spawnSync(process.execPath, ['-r', preload, path.join('tools', 'run-tests.js')], { cwd: ROOT, encoding: 'utf8' });

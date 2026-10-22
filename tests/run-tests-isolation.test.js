@@ -29,6 +29,15 @@ test('resolveConcurrency honors a positive-integer CT_TEST_CONCURRENCY', () => {
   assert.strictEqual(resolveConcurrency({ CT_TEST_CONCURRENCY: '3' }, 12), 3);
 });
 
+test('resolveConcurrency under CI defaults to cores - 1 (at least 1); CT_TEST_CONCURRENCY still wins', () => {
+  assert.strictEqual(resolveConcurrency({ CI: 'true' }, 12), 11);
+  assert.strictEqual(resolveConcurrency({ CI: '1' }, 4), 3);
+  assert.strictEqual(resolveConcurrency({ CI: 'true' }, 1), 1);
+  assert.strictEqual(resolveConcurrency({ CI: 'true', CT_TEST_CONCURRENCY: '3' }, 12), 3);
+  // An empty CI is not CI: the half-the-cores default stands.
+  assert.strictEqual(resolveConcurrency({ CI: '' }, 12), 6);
+});
+
 test('resolveConcurrency ignores an invalid CT_TEST_CONCURRENCY', () => {
   for (const bad of ['0', '-2', 'abc', '2.5']) {
     assert.strictEqual(resolveConcurrency({ CT_TEST_CONCURRENCY: bad }, 12), 6, bad);
@@ -221,8 +230,19 @@ test('acquireSlot waits for a live holder, logs once, then acquires', () => {
     assert.strictEqual(lines.length, 1);
     assert.strictEqual(
       lines[0],
-      'run-tests.js: waiting for a test-suite slot — held by pid 333 (cwd /work/other) since 2026-01-01T00:00:00.000Z; set CT_TEST_SUITE_SLOTS to raise the limit',
+      'run-tests.js: waiting for a test-suite slot — held by pid 333 (cwd /work/other) since 2026-01-01T00:00:00.000Z; set CT_TEST_SUITE_SLOTS to raise the limit (lock: ' + p + ')',
     );
+  });
+});
+
+// A lock naming our own pid can only be left by a crashed run whose pid the OS reused for this
+// one, and isAlive says yes (it is us): waiting on it would wait on ourselves forever.
+test('acquireSlot reclaims a lock naming its own pid without sleeping, even when isAlive says it is live', () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 111);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep, isAlive: () => true })), p);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
   });
 });
 
@@ -404,28 +424,59 @@ test('run-tests.js waits for a slot held by a live pid, naming the holder', asyn
   });
 });
 
-test('a SIGTERM to the runner alone is forwarded: it exits 143 promptly and frees its run root and slot', async () => {
-  await withSandbox('sleep-probe.fixture.js', 'sleep.test.js', async (sb) => {
-    const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: 'ignore' });
-    try {
-      const exited = new Promise((resolve) => child.on('exit', (code, signal) => resolve({ code, signal })));
-      await until(() => fs.existsSync(sb.probeOut), 60000, 'the fixture to start');
-      assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), ['slot-0.lock']);
-      const sentAt = Date.now();
-      child.kill('SIGTERM'); // the runner pid only, not its group
-      const { code, signal } = await Promise.race([
-        exited,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('runner still running 8s after SIGTERM')), 8000)),
-      ]);
-      assert.strictEqual(signal, null);
-      assert.strictEqual(code, 143);
-      assert.ok(Date.now() - sentAt < 8000);
-      assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
-      const runsDir = path.join(sb.childTmp, 'ct-test-runs');
-      assert.deepStrictEqual(fs.existsSync(runsDir) ? fs.readdirSync(runsDir) : [], []);
-    } finally {
-      child.kill('SIGKILL');
-    }
-  });
-});
+// The fixture records its own pid once started (written whole, so an empty read means not yet).
+function fixturePid(sb) {
+  try {
+    const n = Number(fs.readFileSync(sb.probeOut, 'utf8'));
+    return Number.isInteger(n) && n > 0 ? n : null;
+  } catch (_) {
+    return null;
+  }
+}
 
+// POSIX only: on win32 `child.kill(signal)` terminates the runner outright, so no handler runs.
+const SIGNAL_SKIP = { skip: process.platform === 'win32' && 'win32: signals terminate the process; no handler runs' };
+
+// A signal to the runner pid alone (not its group) must reach the suite and free everything the
+// runner holds. The fixture sleeps 60s, so a runner that waited for it could not exit inside the
+// 30s race bound; the race rejecting is the failure signal, not a clock comparison.
+for (const [signal, expectedCode] of [['SIGTERM', 143], ['SIGHUP', 129]]) {
+  test(`a ${signal} to the runner alone is forwarded: it exits ${expectedCode} promptly and frees its run root, slot and test worker`, SIGNAL_SKIP, async () => {
+    await withSandbox('sleep-probe.fixture.js', 'sleep.test.js', async (sb) => {
+      const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: 'ignore' });
+      let workerPid = null;
+      try {
+        const exited = new Promise((resolve) => child.on('exit', (code, sig) => resolve({ code, sig })));
+        await until(() => fixturePid(sb) !== null, 60000, 'the fixture to start');
+        workerPid = fixturePid(sb);
+        assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), ['slot-0.lock']);
+        child.kill(signal);
+        let timer;
+        const bound = new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`runner still running 30s after ${signal}`)), 30000);
+        });
+        let outcome;
+        try {
+          outcome = await Promise.race([exited, bound]);
+        } finally {
+          clearTimeout(timer);
+        }
+        assert.strictEqual(outcome.sig, null);
+        assert.strictEqual(outcome.code, expectedCode);
+        assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
+        const runsDir = path.join(sb.childTmp, 'ct-test-runs');
+        assert.deepStrictEqual(fs.existsSync(runsDir) ? fs.readdirSync(runsDir) : [], []);
+        await until(() => !isPidAlive(workerPid), 30000, 'the sleeping test worker to be gone');
+      } finally {
+        child.kill('SIGKILL');
+        if (workerPid) {
+          try {
+            process.kill(workerPid, 'SIGKILL');
+          } catch (_) {
+            // already gone
+          }
+        }
+      }
+    });
+  });
+}
