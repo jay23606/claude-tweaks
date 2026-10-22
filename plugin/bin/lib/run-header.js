@@ -122,7 +122,10 @@ function findHeaderFiles(roots, runId, n, opts = {}) {
   return out;
 }
 
-// `spec-{N}` children of `dir`, ascending N, as [N, name] pairs.
+// Every child of `dir` whose name starts with `spec-`, as [N, name] pairs — the
+// same breadth the `spec-*/work/*` git pathspec and the pre-existing readers
+// accept. N is a number only when the suffix is all digits, else null. Order:
+// numeric `spec-N` ascending first, then non-numeric names in lexical order.
 function specChildren(dir) {
   let names;
   try {
@@ -130,17 +133,23 @@ function specChildren(dir) {
   } catch (_err) {
     return [];
   }
-  const found = [];
+  const numeric = [];
+  const other = [];
   for (const name of names) {
+    if (!name.startsWith('spec-')) continue;
     const m = SPEC_DIR_RE.exec(name);
-    if (m) found.push([Number(m[1]), name]);
+    if (m) numeric.push([Number(m[1]), name]);
+    else other.push([null, name]);
   }
-  return found.sort((a, b) => a[0] - b[0]);
+  numeric.sort((a, b) => a[0] - b[0]);
+  other.sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
+  return [...numeric, ...other];
 }
 
 // Existing header directories, root by root: live `work/`, live
-// `spec-*/work/` (ascending N), archived `work/`, archived `spec-*/work/`. A
-// per-spec run lists only its own `spec-{N}/work/` at both locations.
+// `spec-*/work/` (numeric N ascending, then non-numeric names lexically),
+// archived `work/`, archived `spec-*/work/` in the same order. A per-spec run
+// lists only its own `spec-{N}/work/` at both locations.
 function listHeaderDirs(roots, runId, { specN = null } = {}) {
   const out = [];
   for (const root of validRoots(roots)) {

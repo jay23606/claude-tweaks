@@ -211,6 +211,26 @@ test('listHeaderDirs: flat live work dir comes before nested ones; archived nest
   }
 });
 
+test('listHeaderDirs: any spec-* dir is listed — numeric spec-N ascending first (specN a number), then non-numeric names lexically (specN null)', () => {
+  const root = tmp();
+  try {
+    put(root, `${P}/R/spec-991-995/work/991-spec.md`);
+    put(root, `${P}/R/spec-10/work/10-spec.md`);
+    put(root, `${P}/R/spec-alpha/work/1-spec.md`);
+    put(root, `${P}/R/spec-2/work/2-spec.md`);
+    put(root, `${P}/R/notspec/work/3-spec.md`); // not spec-*: not listed
+    const got = listHeaderDirs([root], 'R').map((e) => [path.basename(path.dirname(e.dir)), e.specN]);
+    assert.deepStrictEqual(got, [
+      ['spec-2', 2],
+      ['spec-10', 10],
+      ['spec-991-995', null],
+      ['spec-alpha', null],
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('listHeaderDirs: a per-spec run lists only its own spec-N/work at both locations', () => {
   const root = tmp();
   try {
