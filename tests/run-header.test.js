@@ -363,7 +363,9 @@ test('checkoutRootOf: null without a .claude-tweaks/pipelines pair', () => {
 //   2. no string or template literal outside the allowlist holds a header
 //      filename (`${n}-spec.md`, `work/{n}-spec.md`, `work/*-spec.md`) -- a
 //      reader that rebuilds the location rule on its own has to spell one.
-//      `[}*\d]-spec\.md` is the filename shape; the prefix class keeps
+//      `[}*\d'"`]-spec\.md` is the filename shape: the prefix class covers an
+//      interpolation, a glob or a number before it, and a quote before it (a
+//      literal that starts with the suffix, `n + '-spec.md'`); it keeps
 //      `multi-spec.md` doc references out.
 // ---------------------------------------------------------------------------
 
@@ -391,7 +393,7 @@ const HEADER_ALLOWLIST = {
   },
 };
 
-const HEADER_FILENAME_RE = /[}*\d]-spec\.md/g;
+const HEADER_FILENAME_RE = /[}*\d'"`]-spec\.md/g;
 
 // End index (exclusive) of the string or template literal opening at `i` in
 // `blank` (stripComments with literals: 'blank': bodies are spaces, delimiters
@@ -496,7 +498,7 @@ function evaluateHeaderScan(files, allowlist) {
   return { offenders, allowed };
 }
 
-// -> offender strings for one reader file: an `'archive'`/`"archive"` literal or
+// -> offender strings for one reader file: an `'archive'`/`"archive"`/backtick literal or
 // the text `pipelines/archive`, comments excluded.
 function readerOffenders(rel, src) {
   const stripped = stripComments(src);
@@ -504,7 +506,7 @@ function readerOffenders(rel, src) {
   if (verdict !== 'ok') return [`${rel}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`];
   const out = [];
   stripped.split('\n').forEach((text, i) => {
-    if (/(['"])archive\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
+    if (/(['"`])archive\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
   });
   return out;
 }
@@ -554,7 +556,13 @@ test('header scan matcher: a regex literal is not a string, and code after it is
   assert.deepStrictEqual(headerSites(src).sites.map((s) => s.line), [2]);
 });
 
+test('header scan matcher: flags a literal that starts with the suffix (concatenated header name)', () => {
+  const src = ["const f = path.join(dir, n + '-spec.md');", 'const g = String(n) + "-spec.md";', 'const h = n + `-spec.md`;'].join('\n');
+  assert.deepStrictEqual(headerSites(src).sites.map((s) => s.line), [1, 2, 3]);
+});
+
 test('header scan matcher: multi-spec.md doc references and nested template code are handled', () => {
+  assert.deepStrictEqual(headerSites("const d = 'multi-spec.md';\n").sites, []);
   assert.deepStrictEqual(headerSites("const d = 'see multi-spec.md for the shape';\n").sites, []);
   // One site for a template whose ${} code holds its own string; code after it is still seen.
   const src = ["const t = `${a ? 'x' : 'y'}/work/${n}-spec.md`;", "const u = '1-spec.md';"].join('\n');
@@ -598,6 +606,7 @@ test('header scan: a stale allowlist file, zero-match file, line key or missing 
 test('reader scan matcher: an archive literal or pipelines/archive in code is flagged; in a comment it is not', () => {
   assert.deepStrictEqual(readerOffenders('r.js', "const a = path.join(d, 'archive', id);\n"), ["r.js:1: const a = path.join(d, 'archive', id);"]);
   assert.deepStrictEqual(readerOffenders('r.js', 'const a = "archive";\n'), ['r.js:1: const a = "archive";']);
+  assert.deepStrictEqual(readerOffenders('r.js', 'const a = `archive`;\n'), ['r.js:1: const a = `archive`;']);
   assert.deepStrictEqual(readerOffenders('r.js', 'const a = `.claude-tweaks/pipelines/archive/${id}`;\n'), ['r.js:1: const a = `.claude-tweaks/pipelines/archive/${id}`;']);
   assert.deepStrictEqual(readerOffenders('r.js', "// the 'archive' dir, pipelines/archive\n/* \"archive\" */\nconst ok = 1;\n"), []);
   assert.deepStrictEqual(readerOffenders('r.js', 'if (b) /"/.test(b); const c = "//";'), [`r.js: ${STRIPPER_VERDICT_MESSAGES.misparsed}`]);
