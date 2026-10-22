@@ -74,6 +74,35 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows regression: 1 test file(s) newly failing after… ([#3890](https://github.com/thn-inc/claude-tweaks/issues/3890)) ([b49538b](https://github.com/thn-inc/claude-tweaks/commit/b49538bff138d701742645c6eede0b5c79557455)), closes [#3894](https://github.com/thn-inc/claude-tweaks/issues/3894)
 * wrap-up Section D reads the detached flag as the "fourth… ([#3657](https://github.com/thn-inc/claude-tweaks/issues/3657)) ([4338865](https://github.com/thn-inc/claude-tweaks/commit/4338865198e64832d1285484f1e9e112fc35c41c))
 
+### Highlights
+* Session start no longer launches npx to check for playwright-cli, and no longer probes brew/apt/winget unless node or git is missing, so starting a Claude session is faster, especially on a busy machine.
+* Ledger readers outside wrap-up resolve this run's ledger through one command instead of per-skill instructions.
+* Fix worktree detection in claude-tweaks hooks on Windows, so a session that enters a worktree, or is denied by a gate, is recorded against the right worktree.
+* Running a nested Claude Code command from inside a pipeline session no longer marks the running pipeline as interrupted.
+* Re-entering a record's run no longer picks up a different record whose number starts with the same digits.
+* Worktree ownership checks and the friction report now also recognise a worktree path typed with different letter case on macOS.
+* A merged run's directory no longer reappears under .claude-tweaks/pipelines after it has been archived.
+* Internal hardening: the shadow-sweep run-dir check uses the shared path-containment helper.
+* The staging-time warning for an unmapped Review Console prefix now prints only where it is true: every producer's id either maps to a console section or is exempt with a stated reason.
+* Fixed reconcile so naming `archive` in an explicit check list also refreshes the integration branch it needs, instead of silently skipping asynchronously merged pull requests.
+* Pipeline verification no longer blames a branch for a test that was already failing where the branch started.
+* Fix: resolving a ledger item at the Review Console can no longer silently drop a second row that shares its number.
+* The ledger-reader conformance test now catches reintroduced ledger globs however they are spelled.
+* No user-visible change.
+* Decision-log entries can carry a short reversibility note, such as "low (divergence persists)", as the skill templates already show.
+* Test suite: a conformance check fails any wall-clock timing budget placed under `tests/` and points at `perf/`, so timing budgets can no longer flake the default `npm test` run.
+* Skill argument hints list only the flags a person types; producer-only flags live in each skill's Input table.
+* Internal: skill fences that name session-tmp files stay correct when the temp directory path contains a space.
+* Fix dispatched records failing on every retry because their first failed attempt left a branch behind on origin.
+* Fix a Windows-only failure in the review-console header conformance test caused by CRLF line endings.
+* No user-visible change.
+* Fix a Windows-only failure in the routine fleet security-hardening test caused by CRLF line endings.
+* Fix a Windows-only failure in the display CI-reader test that spliced an unescaped Windows path into a script.
+* No user-visible change.
+* The multi-spec review-console re-entry checks eligibility through a `hooks.js` verb instead of an inline script.
+* Pipeline cleanup fully stops its test server even when your project path contains spaces.
+* Ledger readers outside wrap-up no longer pick up another run's ledger inherited from the integration branch.
+
 ## [6.151.0](https://github.com/thn-inc/claude-tweaks/compare/v6.150.1...v6.151.0) (2026-10-21)
 
 
