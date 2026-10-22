@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-22T04:28:14.475Z",
-  "runId": "2026-10-22T042648-dispatch-standalone",
+  "computedAt": "2026-10-22T08:21:32.779Z",
+  "runId": "2026-10-22T082043-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "number": 3880,
-        "updatedAt": "2026-10-21T20:30:24Z",
+        "updatedAt": "2026-10-22T06:26:10Z",
         "state": "OPEN"
       },
       {
@@ -85,7 +85,7 @@
       },
       {
         "number": 3836,
-        "updatedAt": "2026-10-21T20:29:24Z",
+        "updatedAt": "2026-10-22T06:41:21Z",
         "state": "OPEN"
       },
       {
@@ -120,7 +120,7 @@
       },
       {
         "number": 3812,
-        "updatedAt": "2026-10-21T23:31:50Z",
+        "updatedAt": "2026-10-22T06:21:39Z",
         "state": "OPEN"
       },
       {
@@ -145,12 +145,12 @@
       },
       {
         "number": 3504,
-        "updatedAt": "2026-10-18T06:43:15Z",
+        "updatedAt": "2026-10-22T06:08:54Z",
         "state": "OPEN"
       },
       {
         "number": 3491,
-        "updatedAt": "2026-10-18T06:43:00Z",
+        "updatedAt": "2026-10-22T06:15:27Z",
         "state": "OPEN"
       },
       {
@@ -378,72 +378,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3656\n\nDefer-reason: tangential\n\n## Current State\n\n`build/dispatch.md` copies every SDD `Ruling:` line into the open-items ledger and stages it as `staged/sdd-ruling-{N}.md` for ratify or reverse at the Review Console. SDD writes the bare `Ruling:` form where it decided in lieu of a human, including rulings that defer work (\"pre-existing, outside the diff, routed to a follow-up record\"). Nothing in that path runs `_shared/deferral-gate.md`'s fix-now test or requires a `Defer-reason:` on the staged ruling.\n\nAt `autonomy: unattended` the console's `console-resolve.js --policy console-auto` resolves an `sdd-ruling-*` item as ratify, so a deferral that failed no criterion is filed as a follow-up record instead of fixed.\n\nEvidence: #3656's `sdd-ruling-2` (parallel-wave member servers recorded under `spec-{N}/`) deferred a one-file fix that met every fix-now criterion and fell under AC2's literal text (\"no ephemeral server outlives the run\"). It was caught and fixed at wrap-up only because the wrap-up agent ran the gate by hand against the ruling.\n\n## Deliverables\n\n1. `build/dispatch.md`'s `Ruling:` carry-forward: for a ruling whose one-liner defers work, run `_shared/deferral-gate.md`'s fix-now criteria against the record's acceptance criteria (literal text) before staging. A ruling that qualifies for fix-now is fixed in the build and not staged; one that fails carries a valid `Defer-reason:` header line in its `staged/sdd-ruling-{N}.md`.\n2. `console-resolve.js`'s `console-auto` policy: an `sdd-ruling-*` item that defers work and carries no valid `Defer-reason:` resolves `pending` (needs a human) instead of ratify; `wrap-up/review-console-appendix.md`'s `sdd-ruling-*` bullet states the rule.\n3. Conformance test pinning both halves.\n\n## Acceptance Criteria\n\n- A deferral-type SDD ruling that meets the fix-now criteria is fixed during build and does not reach the Review Console.\n- A deferral-type `sdd-ruling-*` staged file always carries a valid `Defer-reason:` line.\n- Under `console-auto`, a deferral-type ruling with no valid `Defer-reason:` is left pending, never auto-ratified.\n- A non-deferral ruling (a settled design decision) resolves exactly as today.\n- `npm test` passes in full.\n\n## Release Note\n\nSubagent-driven builds now fix a deferred review finding that qualifies for an immediate fix instead of handing it to the console as a follow-up.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/dispatch.md` — modify\n- `plugin/skills/wrap-up/review-console-appendix.md` — modify\n- `plugin/bin/lib/console/resolve.js` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T09:56:17Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3880,
-        "state": "OPEN",
-        "title": "SDD deferral rulings skip the fix-now test and are auto-ratified at unattended",
-        "updatedAt": "2026-10-21T20:30:24Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -1185,78 +1119,6 @@
     ],
     [
       {
-        "body": "Origin: wrap-up leftover from #3769 (SDD ruling ratified at the Review Console)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nRecord #3769 made `findRunByWorktreePath` (`plugin/bin/lib/hooks/context.js`) case-canonical: both sides of its comparison now resolve through path-guard's `.native` `canonicalRealpath`, so a mis-cased `git worktree remove` target of an assigned worktree is denied. `worktreeMatches` gained an optional 4th `canonical` argument for that; with it omitted, the default branch still compares with the JS `fs.realpathSync`, which keeps the input's letter case on a case-insensitive volume (macOS APFS).\n\nTwo callers still use that default branch:\n\n- `classifyOwnership` (`context.js`, the `worktreeMatches({ worktree: binding }, info.repoRoot, info.repoRoot)` call). A same-session `ExitWorktree(remove)` whose recorded binding differs in letter case from git's toplevel classifies as `'foreign'`, so the call is allowed with a warning that wrongly says \"recorded by a different session\", instead of denied.\n- `findRunsByWorktreePath` (the reflect Friction Lens ad-hoc fallback). A mis-cased worktree path misses its ad-hoc run dirs, so friction events drop out of a report. Not a safety decision.\n\nNeither is a regression: before #3769 the assigned-run lookup missed outright. #3769's SDD whole-branch review ruled both out of its acceptance criteria (AC1 covers `git worktree remove` through `findRunByWorktreePath` only); the ruling was ratified at the Review Console.\n\n**Related:** #3736, #3811\n\n## Deliverables\n\n- [ ] Reproduce first: a test on the case-insensitive fake (`tests/helpers/case-insensitive-fs.js`) showing a mis-cased recorded binding makes `classifyOwnership` return `'foreign'` today, and a mis-cased path makes `findRunsByWorktreePath` miss its ad-hoc run dir. If either already holds the right answer, say so and drop that half.\n- [ ] Migrate `worktreeMatches`'s default branch (or both callers) to `canonicalRealpath`, threading `fsImpl` the way `findRunByWorktreePath` does.\n- [ ] Update `tests/path-guard-conformance.test.js`'s `lib/hooks/context.js` ALLOWLIST count and reason, and the `pre-tool-use-gate-exemptions` skill row that names which comparisons are still JS-form.\n\n## Acceptance Criteria\n\n- [ ] A same-session `ExitWorktree(remove)` whose recorded binding differs only in letter case from git's toplevel classifies as `'mine'` and is denied/handled exactly like the exact-case binding.\n- [ ] `findRunsByWorktreePath` returns the ad-hoc run dirs for a mis-cased worktree path exactly as it does for the correctly-cased one.\n- [ ] Each new test goes red with its resolver change reverted; the existing `tests/teardown-gate.test.js` and pre-tool-use suites stay green.\n\n## Release Note\n\nWorktree ownership checks and the friction report now also recognise a worktree path typed with different letter case on macOS.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/context.js` — migrate worktreeMatches default branch used by classifyOwnership and findRunsByWorktreePath\n- `tests/teardown-gate.test.js` — case-insensitive fake tests for both callers\n- `tests/path-guard-conformance.test.js` — context.js ALLOWLIST count and reason\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
-        "createdAt": "2026-10-20T22:43:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3836,
-        "state": "OPEN",
-        "title": "classifyOwnership and findRunsByWorktreePath still compare worktree paths with the JS-form realpath on a case-insensitive volume",
-        "updatedAt": "2026-10-21T20:29:24Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (#3510 final whole-branch review, I3 follow-up)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/wrap-up/ledger-write.js`'s `parseLedgerTable` keys rows by item number in a `Map`, so a ledger table holding two rows with the same number collapses them on parse. `serializeLedgerTable` then writes only the survivor back. `flipLedgerRow` (used by `finish-console` and `delete-ledger`) therefore silently drops a duplicate-numbered row the next time it flips any row in that ledger. #3510's `stage-item.js --ledger` refuses to append to such a ledger (`LEDGER_UNSAFE`), but the pre-existing write-back path still loses the row.\n\n## Deliverables\n\n- [ ] Make `parseLedgerTable`/`serializeLedgerTable` (or `flipLedgerRow`) preserve duplicate-numbered rows, or refuse the write-back with a logged degrade instead of dropping a row.\n- [ ] Add a test with a two-row `| 1 |` fixture proving no row is lost across a `flipLedgerRow` round-trip.\n\n## Acceptance Criteria\n\nA `flipLedgerRow` call on a ledger with two rows numbered `1` either keeps both rows byte-for-byte or fails loudly without writing; the new test fails when the fix is reverted.\n\n## Release Note\n\nFix: resolving a ledger item at the Review Console can no longer silently drop a second row that shares its number.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/wrap-up/ledger-write.js` — preserve or refuse duplicate-numbered rows on write-back\n\n_Filed by `ledger resolve gate` via specShapedBody._",
         "createdAt": "2026-10-20T22:08:50Z",
         "labels": [
@@ -1692,162 +1554,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: #2964 open-items ledger row 1 (docs/plans/2026-10-18-capture-argument-hint-producer-flags-ledger.md), merged in PR #3487; the SDD controller deliberately scoped the migration out of #2964 (ledger row 9).\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nPR #3487 (record #2964) recorded the argument-hint rule in `docs/skill-authoring.md` permissively: a flag only a producer skill or an agent passes MAY be left out of `argument-hint` when its `## Input` row is marked `(producer-only)`, and `tests/argument-hint-input.test.js`'s `undocumentedHintFlags` check exempts marked rows. `capture` and `routine` follow it.\n\nFive skills still carry caller-only flags in their hints: `visual-review`, `design-wrapper` and `visualize` (`--source`), `tidy` (`--source sweep`) and `specify` (`--source sweep`, `--chained`). Their `## Input` rows are unmarked, so the corpus states the rule two ways, and nothing checks the inverse direction (a marked row must not appear in the hint).\n\n## Deliverables\n\n- Remove the caller-only flags from the five skills' `argument-hint` frontmatter and from every mirror surface that restates the hint (`plugin/skills/help/reference-card.md` and any other listing `tests/argument-hint-input.test.js` already pins), and mark the corresponding `## Input` rows `(producer-only)`.\n\n- Tighten the rule in `docs/skill-authoring.md` (and its restatement in `plugin/skills/build/plan-authoring-checks.md`) from \"may be left out\" to \"stays out\".\n\n- Add the inverse check to `tests/argument-hint-input.test.js`: a `(producer-only)` row's flag must not appear in that skill's hint, asserted per skill across the corpus.\n\n## Acceptance Criteria\n\n- AC1: no `argument-hint` line in `plugin/skills/*/SKILL.md` contains `--source`, `--source sweep`, or `--chained`.\n\n- AC2: `node --test tests/argument-hint-input.test.js` passes, and reverting one hint migration (re-adding `--source` to `visualize`'s hint) makes the new inverse check red naming that skill.\n\n- AC3: `docs/skill-authoring.md` states the producer-only flag stays out of the hint; the permissive \"may be left out\" wording is gone from both it and `plan-authoring-checks.md`.\n\n## Release Note\n\nSkill argument hints list only the flags a person types; producer-only flags live in each skill's Input table.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-18T06:00:28Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3504,
-        "state": "OPEN",
-        "title": "Converge caller-only flags out of argument-hint corpus-wide — visual-review, design-wrapper, visualize, tidy, specify",
-        "updatedAt": "2026-10-18T06:43:15Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3412\n\nDefer-reason: tangential\n\n## Current State\n\n`docs/plugin-structure.md:67` states that wall-clock timing budgets live in `perf/` (run by `npm run test:perf`) and never in the default `npm test` suite, because they flake under sibling-suite load. Nothing enforces that convention: #3412's build landed a `performance.now()` `< 200ms` assertion in `tests/bin-lib/reconcile/release-merged.test.js` to prove regex linearity, and it reached review before anyone noticed (open-items ledger row 23; the removal is `staged/review-1.patch` in run `2026-10-17T192303-spec-3412`). The same run hit two unrelated timing-test flakes under a load average above 200, which is the exact failure the convention exists to prevent.\n\nEvidence: `grep -rl performance.now tests/` returns only the #3412 test file today, so the convention has held by habit alone; the repo already pins prose conventions with conformance tests (`tests/*-conformance.test.js`), so the enforcement shape exists.\n\nCost this session: one review finding, one staged patch, one Review Console row; no rework.\n\n## Deliverables\n\nA conformance test under `tests/` that scans every `tests/**/*.test.js` for a wall-clock assertion shape (`performance.now()`, `Date.now()`, or `process.hrtime` compared against a numeric budget in the same test body) and fails naming the file and line.\n\nThe test cites `docs/plugin-structure.md`'s perf/ rule in its failure message so the fix direction (move the budget to `perf/`) is on the failing line.\n\nAn allow-list mechanism for a deliberate exception, with a required one-line reason, so the gate can be bypassed visibly rather than by deleting the test.\n\n## Acceptance Criteria\n\nAdding a `performance.now()` budget assertion to any file under `tests/` makes `npm test` fail with the offending `file:line` and the perf/ pointer.\n\nA budget assertion under `perf/` does not trip the test.\n\nThe existing suite passes with the test in place (zero current offenders once `staged/review-1.patch` from #3412 lands, or the one offender it names is the #3412 test and the patch is applied first).\n\n## Release Note\n\nTest suite: a conformance check fails any wall-clock timing budget placed under `tests/` and points at `perf/`, so timing budgets can no longer flake the default `npm test` run.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-17T22:20:28Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3491,
-        "state": "OPEN",
-        "title": "Pin the no-wall-clock-budgets-in-tests/ convention with a conformance test",
-        "updatedAt": "2026-10-18T06:43:00Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
