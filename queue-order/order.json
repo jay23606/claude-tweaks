@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-22T03:37:58.332Z",
-  "runId": null,
+  "computedAt": "2026-10-22T04:28:14.475Z",
+  "runId": "2026-10-22T042648-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
@@ -16,11 +16,6 @@
       {
         "number": 3892,
         "updatedAt": "2026-10-21T20:30:41Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3887,
-        "updatedAt": "2026-10-21T22:00:50Z",
         "state": "OPEN"
       },
       {
@@ -75,7 +70,7 @@
       },
       {
         "number": 3845,
-        "updatedAt": "2026-10-21T20:29:36Z",
+        "updatedAt": "2026-10-22T03:44:01Z",
         "state": "OPEN"
       },
       {
@@ -145,7 +140,7 @@
       },
       {
         "number": 3544,
-        "updatedAt": "2026-10-22T00:27:45Z",
+        "updatedAt": "2026-10-22T04:19:51Z",
         "state": "OPEN"
       },
       {
@@ -1010,78 +1005,6 @@
           "origin": "capture",
           "risk": "low",
           "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3056 (the build that hit this)\n\nOrigin: #3056 /prompt-audit comparison (run 2026-10-21T001740-record-3056)\n\nDefer-reason: tangential\n\n## Current State\n\nDuring #3056's build (run `2026-10-21T001740-record-3056`), the dispatched agent ran `claude -p \"/doctor prompt-audit\"` twice (plus one probe) from inside its own pipeline worktree session. Each nested session ended with a SessionEnd hook event carrying the **parent's** session id (`events.jsonl`: three `session-end` lines, `sessionId` equal to the run's owner), and `plugin/bin/lib/hooks/session-end.js` stamped `run-state.json` `status: interrupted`, `lastEvent: session-end` on the parent's still-running run. The nested session's SessionStart banner then listed the live run as interrupted.\n\n`session-end.js` stamps `interrupted` on `ctx.ownedRun` whenever its attribution is not `fallback`. Ownership resolves by session id, so a child process that runs under the parent's `CLAUDE_CODE_SESSION_ID` is indistinguishable from the owner ending. The run recovered only because the agent noticed and re-ran the idempotent `hooks.js record-worktree` restamp; an unnoticed stamp would mislead `check-resume-freshness` and the reconciler.\n\n## Deliverables\n\n1. Reproduce: from a session owning an active run, run a short `claude -p` and confirm the parent run's status flips to `interrupted`.\n2. Fix at the source: either have the SessionEnd path distinguish a nested/child session from the owner (e.g. the hook input's own session id vs the inherited env, or a parent-pid marker), or document and enforce that nested `claude -p` runs inside a pipeline session must clear `CLAUDE_CODE_SESSION_ID` or pass `--bare`-style hook isolation — choose one and record why.\n3. Add a regression test in the `tests/hooks-*` suites covering a child SessionEnd against a parent-owned active run.\n\n## Acceptance Criteria\n\n- A nested `claude -p` session ending inside an owning session leaves the parent run's `status` unchanged.\n- A genuine owner SessionEnd still stamps `interrupted` (existing behaviour preserved).\n- The new regression test fails before the fix and passes after; `npm test` passes.\n\n## Release Note\n\nRunning a nested Claude Code command from inside a pipeline session no longer marks the running pipeline as interrupted.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/session-end.js` — owner vs nested-session distinction\n- `plugin/bin/lib/hooks/context.js` — ownedRun attribution, if the fix lands there\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-21T00:38:36Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3845,
-        "state": "OPEN",
-        "title": "A nested `claude -p` inside a pipeline session marks the parent's run interrupted at its SessionEnd",
-        "updatedAt": "2026-10-21T20:29:36Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
