@@ -1,16 +1,11 @@
 {
-  "computedAt": "2026-10-22T10:09:17.087Z",
+  "computedAt": "2026-10-22T14:08:28.615Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
         "number": 3897,
-        "updatedAt": "2026-10-21T20:30:54Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3896,
-        "updatedAt": "2026-10-21T20:30:49Z",
+        "updatedAt": "2026-10-22T12:24:11Z",
         "state": "OPEN"
       },
       {
@@ -25,17 +20,12 @@
       },
       {
         "number": 3877,
-        "updatedAt": "2026-10-21T20:30:21Z",
+        "updatedAt": "2026-10-22T13:58:57Z",
         "state": "OPEN"
       },
       {
         "number": 3876,
-        "updatedAt": "2026-10-21T20:31:32Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3870,
-        "updatedAt": "2026-10-22T09:35:09Z",
+        "updatedAt": "2026-10-22T12:14:57Z",
         "state": "OPEN"
       },
       {
@@ -51,11 +41,6 @@
       {
         "number": 3859,
         "updatedAt": "2026-10-21T20:29:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3856,
-        "updatedAt": "2026-10-22T09:44:18Z",
         "state": "OPEN"
       },
       {
@@ -89,11 +74,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3834,
-        "updatedAt": "2026-10-21T20:29:20Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3829,
         "updatedAt": "2026-10-22T10:05:05Z",
         "state": "OPEN"
@@ -110,12 +90,12 @@
       },
       {
         "number": 3820,
-        "updatedAt": "2026-10-21T20:29:05Z",
+        "updatedAt": "2026-10-22T13:18:18Z",
         "state": "OPEN"
       },
       {
         "number": 3817,
-        "updatedAt": "2026-10-21T20:29:01Z",
+        "updatedAt": "2026-10-22T11:17:13Z",
         "state": "OPEN"
       },
       {
@@ -136,21 +116,6 @@
       {
         "number": 3630,
         "updatedAt": "2026-10-21T23:02:53Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3544,
-        "updatedAt": "2026-10-22T04:19:51Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3504,
-        "updatedAt": "2026-10-22T06:08:54Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3491,
-        "updatedAt": "2026-10-22T06:15:27Z",
         "state": "OPEN"
       },
       {
@@ -181,144 +146,6 @@
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Origin: reflect full from #3687\nDefer-reason: tangential\n\n## Current State\n\n#3687 moved every ledger reader outside wrap-up onto `_shared/ledger-format.md`'s resolution rule: run `wrap-up-pack.js --print ledger --json {run-dir}/wrap-up-pack-ledger.json`, read `value.files`, treat `value.unattributedFiles` as other runs' ledgers, and take a glob fallback only for a reader with no probe result. Deletion already has a verb (`hooks.js delete-ledger`, resolving through `resolveLedgerPath`), so the delete path inherited ownership and fail-closed behaviour for free, while each reader carries a prose copy of the rule and its edge cases. The build and review of #3687 found six such edge cases in prose (probe failing with `records unresolved` while a run-dir `ledger.md` exists, `unattributedFiles` absent on the run-dir path, append versus flip behaviour on a probe failure, a stale Input table), and the conformance test can only scan sentences for the bare glob, with known escapes (`ALLOWED_RE`, other glob spellings). Evidence: review ledger rows 16-22 and the 3c/3f lens findings on `plugin/skills/ledger/SKILL.md` and `plugin/skills/_shared/ledger-format.md`. Cost this session: one review fix round plus a full-suite rerun.\n\n## Deliverables\n\n- [ ] Add a read-side verb (for example `hooks.js resolve-ledger --run <dir>`) that resolves through `bin/lib/wrap-up/ledger-write.js`'s `resolveLedgerPath` and prints this run's ledger path(s), the other runs' ledgers, and a closed set of reports (`found`, `none`, `ambiguous`, `unattributable`), exit 0 like `delete-ledger`\n- [ ] Repoint `ledger/SKILL.md`, `review/code-mode-steps.md`, and `_shared/ledger-format.md`'s resolution rule at the verb, keeping the rule's one-paragraph statement and dropping the per-reader edge-case prose\n- [ ] Extend `tests/ledger-reader-ownership-conformance.test.js` to pin that a this-run lookup names the verb, replacing the sentence-level glob scan where the verb now decides\n\n## Acceptance Criteria\n\n1. The verb returns the run-dir `ledger.md` when it exists, even when the ownership probe's records are unresolved.\n2. The verb never returns an inherited `docs/plans/` ledger as this run's, and reports `unattributable` where `resolveLedgerPath` does.\n3. No reader in `plugin/skills` restates the probe's `value.files` / `value.unattributedFiles` handling; each cites the rule.\n4. `npm test` passes.\n\n## Release Note\n\nLedger readers outside wrap-up resolve this run's ledger through one command instead of per-skill instructions.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — add the `resolve-ledger` subcommand beside `delete-ledger`\n- `plugin/bin/lib/wrap-up/ledger-write.js` — reuse `resolveLedgerPath`\n- `plugin/skills/_shared/ledger-format.md` — the resolution rule\n- `plugin/skills/ledger/SKILL.md` — reader repoint\n- `plugin/skills/review/code-mode-steps.md` — QA Ledger Check repoint\n- `tests/ledger-reader-ownership-conformance.test.js` — pins\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T19:49:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          }
-        ],
-        "number": 3897,
-        "state": "OPEN",
-        "title": "Add a read-side resolve-ledger verb so ledger readers stop restating the probe-and-fallback prose rule",
-        "updatedAt": "2026-10-21T20:30:54Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate from #3687 (items 6 and 22)\nDefer-reason: genuinely-larger\n\n## Current State\n\n`tests/ledger-reader-ownership-conformance.test.js` (#3687) fails the suite when a this-run ledger lookup in an instruction step reintroduces the bare `docs/plans/*-ledger.md` glob. It scans one sentence at a time, and three escapes were found by the build's final review and the review lenses (3f pair, 3a): `ALLOWED_RE` exempts any sentence that merely contains \"fallback\", \"inherited\", \"unattributed\" or \"other run's\", so a reintroduced this-run glob in a sentence that also says \"fallback\" passes; `GLOB_RE` matches only the literal `docs/plans/*…-ledger.md` spelling, so `docs/plans/*ledger*.md`, the dated `docs/plans/YYYY-MM-DD-*-ledger.md` shape, or `find docs/plans -name \"*-ledger.md\"` pass; and the sentence splitter merges across a lowercase continuation, so a glob sentence can inherit an exempting word from its neighbour. Closing all three needs a different scan shape (a structural check of which steps are this-run lookups, rather than sentence-level word matching), so it was not fixed inside #3687. Evidence: ledger rows 6 and 22 of the #3687 run and the 3f/3a lens findings on `tests/ledger-reader-ownership-conformance.test.js`.\n\n## Deliverables\n\n- [ ] Replace the sentence-level `ALLOWED_RE` exemption with a check tied to the rule's own structure (the documented fallback sentence and the prose naming inherited ledgers are listed explicitly; any other glob mention in a ledger-reader step fails)\n- [ ] Widen the glob matcher to every spelling of a `docs/plans` ledger lookup (`*ledger*.md`, the dated template shape, `find`/`ls` forms)\n- [ ] Add go-red fixtures for each escape above, each failing before the change and passing after, with a message matcher on every `assert.throws`\n\n## Acceptance Criteria\n\n1. A this-run lookup sentence that contains the word \"fallback\" or \"inherited\" but is not the documented fallback sentence fails the scan.\n2. The `docs/plans/*ledger*.md`, dated-template and `find` spellings each fail the scan when they appear in a this-run lookup.\n3. The documented fallback sentence in `_shared/ledger-format.md` and the inherited-ledger prose in `ledger/SKILL.md` still pass.\n4. `npm test` passes.\n\n## Release Note\n\nThe ledger-reader conformance test now catches reintroduced ledger globs however they are spelled.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/ledger-reader-ownership-conformance.test.js` — the scan and its go-red fixtures\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-21T19:49:04Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          }
-        ],
-        "number": 3896,
-        "state": "OPEN",
-        "title": "Harden the ledger-reader conformance scan against sentence-level and glob-spelling escapes",
-        "updatedAt": "2026-10-21T20:30:49Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "Origin: /review of #3642 (lens 3a, direct-verified by the reviewing agent)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/hooks/sweep-shadow.js:113-119` decides whether `runDir` sits under the run root with a retyped `runDir.startsWith(rootWithSep)` (`rootWithSep` is `root + path.sep`) and then slices `rel` off by `rootWithSep.length`. That is the hand-rolled idiom `docs/donts.md` [IL-161] bans in favor of `shared-primitives.js`'s `isPathContained`. It is strict and correct on POSIX, but it lacks the win32 casing and drive semantics `isAncestorOrSelf` provides. #3498's conformance scan (`tests/path-containment-conformance.test.js`, `HAND_ROLLED`) only matches a `startsWith(...)` whose argument carries `path.sep` on the same line, so the copy built through the `rootWithSep` variable escapes it. #3642's diff does not touch this file.\n\n## Deliverables\n\n- [ ] Replace the `startsWith(rootWithSep)` guard with `isPathContained(runDir, root)`, deriving `rel` with `path.relative(root, runDir)`.\n- [ ] Widen `HAND_ROLLED` in `tests/path-containment-conformance.test.js` (or add a sibling scan) so a `startsWith(<variable built from path.sep>)` containment test is flagged.\n\n## Acceptance Criteria\n\n- [ ] `tests/bin-lib/hooks/sweep-shadow.test.js` passes unmodified.\n- [ ] The widened scan fails when the old `rootWithSep` guard is restored.\n\n## Release Note\n\nInternal hardening: the shadow-sweep run-dir check uses the shared path-containment helper.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/sweep-shadow.js` — modify\n- `tests/path-containment-conformance.test.js` — modify\n\n_Filed by `review` via specShapedBody._\n",
@@ -378,150 +205,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3783\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/tidy/actions-github-issues.md`'s `## Arm ready PR` action runs `_shared/pr-first-merge.md` Step 3 (auto-merge) on a green, non-draft PR and states that it \"never touches Step 1 (Acceptance labeling)\" because item 9 only selects PRs that are already green and not draft.\n\nThat reasoning covers Step 2 (Mark ready) and Step 2.5, not Step 1: being green says nothing about whether acceptance labeling (`demo:pending` / the Try it walkthrough) landed. #3783 (PR #3869) made `pr-first-merge.md` Step 1 state that labeling has not landed when the run's `verify.json` is missing or its `acceptance-labeling` row is not `pass`/`skip`, \"whichever caller reached this merge\", and guarded `dispatch/close-out.md` step 3, but left this third caller as it was (SDD final review Important 3, deferred by ruling 4).\n\nA record-linked `auto:merge` PR armed here whose run skipped wrap-up's Phase 4 merges and closes its record with no demo label, the failure #3712 exposed.\n\n## Deliverables\n\n- `## Arm ready PR` checks acceptance labeling before running Step 3 for a record-linked PR: it resolves the run dir from the PR body's `claude-tweaks-run:` marker and reads `verify.json` (every `spec-*/verify.json` for a multi-spec parent), applying the same landed rule and live-state precheck as `dispatch/close-out.md` step 3.\n- When labeling has not landed, the action stages the PR for a human (the record-linked flavor already always stages) with a reason naming the missing labeling, instead of arming it. It never runs labeling itself from a tidy sweep.\n- The housekeeping-marker flavor (no linked record) is unchanged: it has no record to label.\n- Consider moving the landed check into one helper that close-out, pr-first-merge Step 1 and tidy all cite (e.g. a `verify-results.js`-backed CLI printing landed/not-landed per run dir), so the three callers cannot drift.\n- The \"never touches Step 1\" sentence is corrected to state the guard.\n\n## Acceptance Criteria\n\n1. A conformance test pins `## Arm ready PR` to name `verify.json`'s `acceptance-labeling` row before its Step 3 call, and fails when that sentence is removed.\n2. The \"never touches Step 1 … preconditions already hold\" claim no longer appears in `actions-github-issues.md`.\n3. A record-linked PR whose run dir has no `verify.json` (and no `demo:pending` on its `Fixes` records) is staged, not armed.\n4. `npm test` passes.\n\n## Release Note\n\n`/tidy` no longer arms auto-merge on a record-linked PR whose acceptance labeling never landed.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/tidy/actions-github-issues.md` — `## Arm ready PR` checks verify.json acceptance labeling before Step 3\n- `plugin/skills/_shared/pr-first-merge.md` — Step 1 caller list includes tidy's arm action\n- `plugin/bin/lib/wrap-up/verify-results.js` — optional shared landed-check helper\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T08:00:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxTu0eA",
-            "name": "by:reflect",
-            "description": "Origin: filed via /reflect (wrap-up Phase 1)",
-            "color": "ededed"
-          }
-        ],
-        "number": 3877,
-        "state": "OPEN",
-        "title": "Guard tidy's Arm ready PR on acceptance labeling — verify.json check before auto-merge",
-        "updatedAt": "2026-10-21T20:30:21Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3737, #3822\n\nOrigin: reflect full from #3809\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md`'s Scratch path paragraph tells a dispatched lens agent, under `worktree-always`, to create and delete its probe files \"via Bash (`mkdir -p` + a redirect/heredoc, then `rm`), never `Write`/`Edit`\". It does not say each of those is its own plain Bash call.\n\nIn #3809's /review, three lens-agent probes were refused by the harness worktree-isolation guard (`wd-guard-refusal`, reason `harness-worktree-isolation`, 07:12:04-07:12:23Z) because the agents chained them as `S=\"…/agent-scratch/3a-a\" && mkdir -p \"$S\" && cat > \"$S/probe.js\" <<'EOF' …` — each refusal cost the agent a retry.\n\n## Deliverables\n\nIn `plugin/skills/review/step3-lens-dispatch.md`'s Scratch path paragraph, say the scratch create/delete runs as separate plain Bash calls — one command per call, no `&&`/`;` chaining and no shell variable carried between calls (absolute paths each time) — citing `_shared/scratch-worktree.md` §7 for the guard shape.\n\n## Acceptance Criteria\n\n- [ ] `plugin/skills/review/step3-lens-dispatch.md`'s Scratch path paragraph states that each scratch create/delete is its own plain Bash call with no chaining, and cites `_shared/scratch-worktree.md` §7.\n\n## Release Note\n\nReview lens agents no longer trip the worktree guard when they write a throwaway probe file.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — Scratch path paragraph: one plain Bash call per scratch step\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T07:46:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          }
-        ],
-        "number": 3876,
-        "state": "OPEN",
-        "title": "Tell review lens agents to write scratch probes as one plain Bash call each",
-        "updatedAt": "2026-10-21T20:31:32Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -903,84 +586,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (#3510 final whole-branch review, I3 follow-up)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/wrap-up/ledger-write.js`'s `parseLedgerTable` keys rows by item number in a `Map`, so a ledger table holding two rows with the same number collapses them on parse. `serializeLedgerTable` then writes only the survivor back. `flipLedgerRow` (used by `finish-console` and `delete-ledger`) therefore silently drops a duplicate-numbered row the next time it flips any row in that ledger. #3510's `stage-item.js --ledger` refuses to append to such a ledger (`LEDGER_UNSAFE`), but the pre-existing write-back path still loses the row.\n\n## Deliverables\n\n- [ ] Make `parseLedgerTable`/`serializeLedgerTable` (or `flipLedgerRow`) preserve duplicate-numbered rows, or refuse the write-back with a logged degrade instead of dropping a row.\n- [ ] Add a test with a two-row `| 1 |` fixture proving no row is lost across a `flipLedgerRow` round-trip.\n\n## Acceptance Criteria\n\nA `flipLedgerRow` call on a ledger with two rows numbered `1` either keeps both rows byte-for-byte or fails loudly without writing; the new test fails when the fix is reverted.\n\n## Release Note\n\nFix: resolving a ledger item at the Review Console can no longer silently drop a second row that shares its number.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/wrap-up/ledger-write.js` — preserve or refuse duplicate-numbered rows on write-back\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-20T22:08:50Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3834,
-        "state": "OPEN",
-        "title": "Stop flipLedgerRow dropping a duplicate-numbered ledger row on write-back",
-        "updatedAt": "2026-10-21T20:29:20Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate, run 2026-10-20T205632-record-3771 (refs #3771)\nDefer-reason: tangential\n\n## Current State\n\n#3771 made `plugin/skills/review/code-mode-steps.md` Step 4 and Step 6.7, and `step3-routing.md`'s re-verify sites, pass `--source review` on their `/claude-tweaks:test` calls. `tests/review-qa-rerun-after-fix-wave-conformance.test.js` enforces that with point pins on the exact edited phrases. A future mid-review `/test` call added to any `plugin/skills/review/*.md` file would not be caught, so the regression class #3771 fixed can recur silently. A bare file-wide grep cannot be the pin: Step 1.5's gate-table rows and STOP messages legitimately name `/claude-tweaks:test` without the flag.\n\n## Deliverables\n\n- [ ] A sweep test over `plugin/skills/review/*.md` that classifies each backticked `/claude-tweaks:test` span as an invocation or a descriptive mention, and requires `--source review` on every invocation.\n- [ ] The classification rule is written down in the test, with a go-red proof per the `skill-prose-conformance-tests` project skill.\n\n## Acceptance Criteria\n\n- [ ] Adding a bare `/claude-tweaks:test` invocation to a step file under `plugin/skills/review/` turns the sweep red.\n- [ ] The existing descriptive mentions in Step 1.5's gate table stay green with no allowlist of line numbers.\n\n## Release Note\n\nNone - internal conformance test only.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-20T21:23:24Z",
         "labels": [
@@ -1044,156 +649,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nClaude Code releases near daily, so `tools/upstream-drift/run.js` keeps an `upgrade-available` finding for the `claude-code` entry almost permanently (installed 2.1.302 against latest 2.1.304 at #3304 build time), and dedup reopens it after every lag. For a drift-only, floor-pinned entry the assertions carry the signal, not the version. Found in #3304's final review (I4).\n\n**Related:** #3818\n\n## Deliverables\n\nAdd an upgrade-class opt-out (a manifest field or an entry-level setting) that suppresses `upgrade-available` for drift-only entries.\n\nSet it on the `claude-code` entry and cover it with a `tools/upstream-drift/tests` case.\n\n## Acceptance Criteria\n\n`node tools/upstream-drift/run.js due --dep claude-code` reports no `upgrade-available` finding when the installed version is behind latest.\n\nOther entries still report `upgrade-available` as before.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/upstream-drift/run.js` — finding classes\n- `tools/upstream-drift/manifest.yml` — claude-code entry\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-20T20:57:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3820,
-        "state": "OPEN",
-        "title": "Let drift-only upstream-drift entries opt out of the upgrade-available finding",
-        "updatedAt": "2026-10-21T20:29:05Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3665\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md` exempts a reviewing Task-tool subagent from lens dispatch at the `low` tier only (the \"Low-tier single-read dispatch\" paragraph: skip the Task-tool dispatch and apply the Direct-verification override). The `medium` and above path (\"Parallel execution (conditional)\" and \"Reproduction dispatch\") prescribes reproduction-pair Task dispatch with no counterpart, while `dispatch/task-prompt.md`'s Async-wait discipline tells a dispatched reviewer never to end its turn waiting on a nested dispatch.\n\nA dispatched `/review` at `medium`+ therefore has no documented path: it either dispatches pairs and risks the stall the task prompt forbids, or degrades ad hoc. #3665's dispatched review (effort `medium`) judged lenses 3a/3b/3c/3f directly from the raw diff and logged its own `SKIP` line. No finding could reach `confirmed` through pair agreement, and the only coverage caveat was the one that run wrote by hand.\n\n## Deliverables\n\n- [ ] State the subagent-reviewer degrade for every tier in `step3-lens-dispatch.md`: when the reviewer is itself a Task-tool subagent, lenses in scope are judged directly (Direct-verification), findings enter `confirmed` only through that independent source read, and the run logs a `SKIP` degrade-trace line with a fixed shape.\n- [ ] Carry a one-line coverage caveat into the review summary and the PR verdict comment whenever the degrade ran, mirroring the existing partner-death caveat.\n- [ ] Pin the paragraph with a conformance test beside the neighbouring `step3-lens-dispatch.md` pins.\n\n## Acceptance Criteria\n\n- [ ] `step3-lens-dispatch.md` names the degrade for `medium`, `high`, `xhigh` and `max`, not only `low`.\n- [ ] The degrade's `decisions.md` line shape and the summary caveat are stated once and pinned by a test that fails when the paragraph is removed.\n- [ ] `npm test` passes.\n\n## Release Note\n\nA review run by a dispatched agent at medium effort or above now has a documented no-wait path and a visible coverage caveat.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — state the subagent-reviewer degrade for every tier\n- `plugin/skills/dispatch/task-prompt.md` — cross-reference the degrade from the Async-wait discipline item\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-20T20:57:10Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3817,
-        "state": "OPEN",
-        "title": "Review lens dispatch has no documented path for a Task-subagent reviewer at medium effort and above",
-        "updatedAt": "2026-10-21T20:29:01Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
