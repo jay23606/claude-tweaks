@@ -109,7 +109,7 @@
   },
   "skill:pre-tool-use-gate-exemptions": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792659098376
+    "lastAuditedMs": 1792662251722
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792622649470
+    "lastAuditedMs": 1792662246216
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
@@ -209,7 +209,7 @@
   },
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792659092968
+    "lastAuditedMs": 1792662232249
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
