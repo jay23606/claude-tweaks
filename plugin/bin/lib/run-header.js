@@ -14,7 +14,10 @@
 // pathspecs, `ls-tree`); filesystem paths returned are native.
 //
 // Never reads file content, and never throws: a stat or readdir error counts
-// as absent.
+// as absent. A symlink counts as what it points at (the followed reads the
+// readers made before #3974 did the same): a link to a regular file is a
+// header, a link to a directory a header dir, a dangling or unreadable link
+// absent.
 
 const fs = require('fs');
 const path = require('path');
@@ -108,6 +111,22 @@ function validRoots(roots) {
   return Array.isArray(roots) ? roots.filter((r) => typeof r === 'string' && r !== '') : [];
 }
 
+// The entry type at `p` (path-guard's lstatType vocabulary), following a
+// symlink to its target's file or directory type; a link that dangles, loops,
+// is unreadable or points at anything else stays 'symlink'. Never throws.
+function followedType(p) {
+  const { type } = lstatType(p);
+  if (type !== 'symlink') return type;
+  try {
+    const st = fs.statSync(p);
+    if (st.isFile()) return 'file';
+    if (st.isDirectory()) return 'directory';
+  } catch (_err) {
+    // dangling, looping or unreadable link: absent
+  }
+  return type;
+}
+
 function nativeJoin(root, rel) {
   return path.join(root, ...rel.split('/'));
 }
@@ -143,9 +162,10 @@ function headerCandidates(roots, runId, n, opts = {}) {
   return out;
 }
 
-// The candidates of `headerCandidates` that exist as regular files.
+// The candidates of `headerCandidates` that exist as regular files (a symlink
+// to one included).
 function findHeaderFiles(roots, runId, n, opts = {}) {
-  return headerCandidates(roots, runId, n, opts).filter((abs) => lstatType(abs).type === 'file');
+  return headerCandidates(roots, runId, n, opts).filter((abs) => followedType(abs) === 'file');
 }
 
 function compareNames(a, b) {
@@ -188,7 +208,7 @@ function specChildren(dir) {
 function listHeaderDirs(roots, runId, { specN = null, runDir: bareDir } = {}) {
   const out = [];
   const add = (dir, location, root, n, shape) => {
-    if (lstatType(dir).type === 'directory') out.push({ dir, location, specN: n, shape, root });
+    if (followedType(dir) === 'directory') out.push({ dir, location, specN: n, shape, root });
   };
   const bare = bareRunDir(bareDir);
   if (bare !== null) {

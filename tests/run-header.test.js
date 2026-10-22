@@ -175,6 +175,67 @@ test('findHeaderFiles: a missing root, a directory at the header path, and junk 
   }
 });
 
+// A symlink's target decides what it is, as it did for the pre-#3974 readers'
+// followed reads (`readdirSync(base/work)`, `readFile(header)`): a link to a
+// regular file is a header, a link to a directory is a header dir, and a
+// dangling, looping or wrong-typed link is absent. Skipped where the platform
+// cannot create a symlink (an unprivileged Windows account).
+function symlinkOrSkip(t, target, link, type) {
+  try {
+    fs.symlinkSync(target, link, type);
+    return true;
+  } catch (err) {
+    t.skip(`cannot create a symlink here (${err.code})`);
+    return false;
+  }
+}
+
+test('findHeaderFiles: a symlink to a regular file counts; a dangling link and a link to a directory do not', (t) => {
+  const root = tmp();
+  try {
+    const store = path.join(root, 'store');
+    fs.mkdirSync(store);
+    const target = put(store, 'real.md');
+    const live = path.join(root, '.claude-tweaks', 'pipelines', 'R');
+    fs.mkdirSync(path.join(live, 'work'), { recursive: true });
+    fs.mkdirSync(path.join(live, 'spec-5', 'work'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.claude-tweaks', 'pipelines', 'archive', 'R', 'work'), { recursive: true });
+    const flat = path.join(live, 'work', '5-spec.md');
+    if (!symlinkOrSkip(t, target, flat)) return;
+    symlinkOrSkip(t, path.join(store, 'nowhere.md'), path.join(root, '.claude-tweaks', 'pipelines', 'archive', 'R', 'work', '5-spec.md'));
+    symlinkOrSkip(t, store, path.join(live, 'spec-5', 'work', '5-spec.md'), 'dir');
+    assert.deepStrictEqual(findHeaderFiles([root], 'R', 5), [flat]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('listHeaderDirs: a symlinked work/ dir is listed; a dangling link and a link to a regular file are not', (t) => {
+  const root = tmp();
+  try {
+    const store = path.join(root, 'store');
+    const realDir = path.join(store, 'real-work');
+    fs.mkdirSync(realDir, { recursive: true });
+    const file = put(store, 'plain.md');
+    const live = path.join(root, '.claude-tweaks', 'pipelines', 'R');
+    const archived = path.join(root, '.claude-tweaks', 'pipelines', 'archive', 'R');
+    fs.mkdirSync(path.join(live, 'spec-2'), { recursive: true });
+    fs.mkdirSync(path.join(live, 'spec-3'), { recursive: true });
+    fs.mkdirSync(archived, { recursive: true });
+    if (!symlinkOrSkip(t, realDir, path.join(live, 'work'), 'dir')) return;
+    symlinkOrSkip(t, realDir, path.join(live, 'spec-2', 'work'), 'dir');
+    symlinkOrSkip(t, file, path.join(live, 'spec-3', 'work'));
+    symlinkOrSkip(t, path.join(store, 'nowhere'), path.join(archived, 'work'), 'dir');
+    const got = listHeaderDirs([root], 'R').map((e) => [e.dir, e.location, e.shape]);
+    assert.deepStrictEqual(got, [
+      [path.join(live, 'work'), 'live', 'flat'],
+      [path.join(live, 'spec-2', 'work'), 'live', 'nested'],
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('listHeaderDirs: live flat, live spec-N ascending, then archived flat, with location tags', () => {
   const root = tmp();
   try {
