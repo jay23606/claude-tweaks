@@ -136,11 +136,11 @@ function missingMessage(dep, pm, vm) {
 }
 
 function collect() {
-  const pm = detectPackageManager();
-  const vm = detectVersionManager();
-  const msgs = [];
-  if (!has('node')) msgs.push(missingMessage('node', pm, vm));
-  if (!has('git')) msgs.push(missingMessage('git', pm, null));
+  // The package manager only feeds an install hint, so it is probed only once something is
+  // missing — `brew --version` on every SessionStart costs as much as the npx probe did.
+  const missing = ['node', 'git'].filter((dep) => !has(dep));
+  const pm = missing.length ? detectPackageManager() : null;
+  const msgs = missing.map((dep) => missingMessage(dep, pm, dep === 'node' ? detectVersionManager() : null));
   const pw = playwrightCliMessage();
   if (pw) msgs.push(pw);
   return msgs;

@@ -243,6 +243,27 @@ test('deps: playwrightCliMessage reports installed vs missing from the real PATH
   });
 });
 
+test('deps: collect probes no package manager when node and git are present', () => {
+  const modulePath = require.resolve('../plugin/bin/lib/deps');
+  const childProcess = require('node:child_process');
+  const original = childProcess.execSync;
+  const commands = [];
+  // Every probe succeeds, so nothing is missing and no install hint needs a package manager.
+  childProcess.execSync = (cmd) => {
+    commands.push(cmd);
+    return '';
+  };
+  delete require.cache[modulePath];
+  try {
+    const freshDeps = require('../plugin/bin/lib/deps');
+    freshDeps.collect();
+    assert.deepStrictEqual(commands.filter((c) => !/^git /.test(c)), [], 'only git may be probed');
+  } finally {
+    childProcess.execSync = original;
+    delete require.cache[modulePath];
+  }
+});
+
 test('deps: playwrightCliMessage never spawns a subprocess', () => {
   const modulePath = require.resolve('../plugin/bin/lib/deps');
   const childProcess = require('node:child_process');
