@@ -17,6 +17,7 @@
 // go instead, because ~780 paths overflow the 32,767-char command line (#3316).
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -58,28 +59,59 @@ function listTestFiles(cwd, roots) {
   const useRoots = roots && roots.length ? roots : DEFAULT_ROOTS;
   const files = [];
   for (const root of useRoots) {
-    collectTestFiles(path.join(base, root), files);
+    collectTestFiles(path.resolve(base, root), files);
   }
   files.sort();
   return files;
 }
 
+// Matches a positive integer with no sign, fraction, or leading zero — the shape both
+// `CT_TEST_CONCURRENCY` and `CT_TEST_SUITE_SLOTS` accept.
+const POSITIVE_INT = /^[1-9]\d*$/;
+
+// How many test files `node --test` runs at once. Half the cores (at least 1) by default so one
+// suite leaves the machine usable for sibling worktrees (#3969); `CT_TEST_CONCURRENCY` overrides
+// with a positive integer, and an invalid value is ignored rather than failing the run.
+// Pure: `env` and `cpus` are parameters, never read from `process`/`os`.
+function resolveConcurrency(env, cpus) {
+  const raw = env.CT_TEST_CONCURRENCY;
+  if (typeof raw === 'string' && POSITIVE_INT.test(raw)) return Number(raw);
+  return Math.max(1, Math.floor(cpus / 2));
+}
+
+// How many full suites may run at once across processes (the slot semaphore). Defaults to 1;
+// `CT_TEST_SUITE_SLOTS` overrides with a positive integer. An invalid value falls back to 1 and
+// says so once through `log`, so a typo is visible instead of silently changing the cap.
+function resolveSlots(env, log) {
+  const raw = env.CT_TEST_SUITE_SLOTS;
+  if (raw === undefined) return 1;
+  if (typeof raw === 'string' && POSITIVE_INT.test(raw)) return Number(raw);
+  log(`run-tests.js: ignoring invalid CT_TEST_SUITE_SLOTS=${JSON.stringify(raw)} (want a positive integer) — using 1 slot.`);
+  return 1;
+}
+
 // Returns the argv (after the node binary) for `node --test`. The explicit file list is the
 // default — `node --test` glob args don't work on Node 20 (#407). On win32 that list overflows
 // the 32,767-char command line (#3316), so there it passes the root globs, which needs Node >= 22.
-// Pure: `platform` and `nodeMajor` are parameters, never read from `process`.
-function buildTestArgs(files, roots, { platform, nodeMajor }) {
-  if (platform !== 'win32') return ['--test', ...files];
+// `--test-concurrency=<n>` follows `--test` on both branches (#3969); `concurrency` must be a
+// positive integer, checked before the win32/Node<22 error so that error keeps its own message.
+// Pure: `platform`, `nodeMajor` and `concurrency` are parameters, never read from `process`.
+function buildTestArgs(files, roots, { platform, nodeMajor, concurrency }) {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error(`buildTestArgs: concurrency must be a positive integer (got ${String(concurrency)}).`);
+  }
+  const head = ['--test', `--test-concurrency=${concurrency}`];
+  if (platform !== 'win32') return [...head, ...files];
   if (nodeMajor < 22) {
     throw new Error(
       'the Windows command line cannot hold the explicit test-file list, and `node --test` ' +
         `globs need Node >= 22 on Windows (running Node ${nodeMajor}).`,
     );
   }
-  return ['--test', ...roots.map((root) => `${root.split(/[\\/]/).join('/')}/**/*.test.js`)];
+  return [...head, ...roots.map((root) => `${root.split(/[\\/]/).join('/')}/**/*.test.js`)];
 }
 
-module.exports = { listTestFiles, buildTestArgs };
+module.exports = { listTestFiles, buildTestArgs, resolveConcurrency, resolveSlots };
 
 if (require.main === module) {
   const argRoots = process.argv.slice(2);
@@ -106,6 +138,7 @@ if (require.main === module) {
     testArgs = buildTestArgs(files, roots, {
       platform: process.platform,
       nodeMajor: Number(process.versions.node.split('.')[0]),
+      concurrency: resolveConcurrency(process.env, os.availableParallelism()),
     });
   } catch (err) {
     console.error(`run-tests.js: ${err.message}`);
