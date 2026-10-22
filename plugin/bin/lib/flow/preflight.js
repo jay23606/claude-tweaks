@@ -21,7 +21,7 @@ const { computeDerivedDefaults } = require('../policy-derived-defaults');
 const { resolveTarget } = require('../stage-item/write');
 const { classifyDecisions } = require('../log-decision/claim-log');
 const { splitNul } = require('../git-z');
-const { toPosix } = require('../shared-primitives');
+const { runIdentity, headerTreeDirs, HEADER_PATH_RE } = require('../run-header');
 
 const BIN = path.join(__dirname, '..', '..');
 const VERIFY_JS = path.join(BIN, 'verify.js');
@@ -123,22 +123,19 @@ function specOnBranch(deps, { mainRoot, runDirReal, state }) {
     try { branch = deps.git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: state.worktree }).trim() || null; } catch { branch = null; }
   }
   if (!branch) return null;
-  const rel = toPosix(path.relative(mainRoot, runDirReal));
-  const ls = (pathspec, recursive) => {
-    const args = ['ls-tree', ...(recursive ? ['-r'] : []), '--name-only', '-z', '--end-of-options', branch, '--', pathspec];
-    try { return deps.git(args, { cwd: mainRoot }); } catch { return null; }
-  };
-  const direct = ls(`${rel}/work/`, false);
-  if (direct === null) return null;
-  if (splitNul(direct).some((l) => /(^|\/)work\/\d+-spec\.md$/.test(l))) return true;
+  const identity = runIdentity(runDirReal);
+  if (!identity) return null;
   // Multi-spec parent (#1931 I4): /dispatch hands both calls the PARENT run
-  // dir, whose spec headers live under `spec-{N}/work/` — a `{rel}/work/`
-  // listing is legitimately empty there. `-r` is required: without it a
-  // `{rel}/` listing returns the `spec-{N}`/`work` TREE names, never a file
-  // path the header regex could match.
-  const nested = ls(`${rel}/`, true);
-  if (nested === null) return null;
-  return splitNul(nested).some((l) => /(^|\/)(spec-\d+\/)?work\/\d+-spec\.md$/.test(l));
+  // dir, whose spec headers live under `spec-{N}/work/`. `-r` is required:
+  // without it a `{dir}/` listing returns the `spec-{N}`/`work` TREE names,
+  // never a file path the header regex could match. The header may sit live or
+  // archived (#3974), so each of the resolver's two run dirs is listed.
+  for (const dir of headerTreeDirs(identity.runId, { specN: identity.specN })) {
+    let listed;
+    try { listed = deps.git(['ls-tree', '-r', '--name-only', '-z', '--end-of-options', branch, '--', `${dir}/`], { cwd: mainRoot }); } catch { return null; }
+    if (splitNul(listed).some((l) => HEADER_PATH_RE.test(l))) return true;
+  }
+  return false;
 }
 
 function computeAdoption({ runDir, mainRoot, cwd, deps }) {

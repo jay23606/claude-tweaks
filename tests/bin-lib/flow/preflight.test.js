@@ -290,31 +290,100 @@ test('the spec probe reports absent with an empty records list when neither work
   assert.deepStrictEqual(pack.spec.value, { path: null, present: false, record: null, records: [] });
 });
 
-test('specOnBranch falls back to a recursive spec-{N}/work/ listing when {run-dir}/work/ is empty on the branch (#1931 I4)', () => {
+test('specOnBranch lists the live then the archived run dir, each recursively, so a multi-spec parent\'s spec-{N}/work/ headers resolve (#1931 I4, #3974)', () => {
   const fx = mainRoot();
   fs.writeFileSync(path.join(fx.runDir, 'decisions.md'), 'x\n');
   fs.writeFileSync(path.join(fx.runDir, 'run-state.json'), JSON.stringify({ worktree: '/w/tree', status: 'active', pr: { number: 1, branch: 'feat-branch' } }));
   const seen = [];
-  const rel = path.relative(fx.root, fs.realpathSync(fx.runDir)).split(path.sep).join('/');
+  const runId = path.basename(fs.realpathSync(fx.runDir));
+  const live = `.claude-tweaks/pipelines/${runId}`;
+  const archived = `.claude-tweaks/pipelines/archive/${runId}`;
   const d = deps(fx, {
     git: (args) => {
       seen.push(args);
       if (args[0] !== 'ls-tree') return 'feat-branch\n';
-      // The direct `{rel}/work/` listing is legitimately empty for a parent;
-      // only the recursive `{rel}/` listing carries the per-spec headers.
-      if (args[args.length - 1] === `${rel}/work/`) return '';
-      return `${rel}/spec-9/work/9-spec.md\0${rel}/spec-160/work/160-spec.md\0`;
+      // A parent's headers live under spec-{N}/work/; only a recursive listing
+      // returns file paths. Only the archived location carries them here.
+      if (args[args.length - 1] === `${archived}/`) return `${archived}/spec-9/work/9-spec.md\0${archived}/spec-160/work/160-spec.md\0`;
+      return '';
     },
   });
   const a = computeAdoption({ runDir: fx.runDir, mainRoot: fx.root, cwd: fx.root, deps: d });
   assert.strictEqual(a.specMaterialized, true);
   const lsCalls = seen.filter((args) => args[0] === 'ls-tree');
-  assert.strictEqual(lsCalls.length, 2, 'the direct listing runs first, the recursive fallback second');
-  assert.ok(!lsCalls[0].includes('-r'), 'the direct {rel}/work/ listing is non-recursive');
-  assert.ok(lsCalls[1].includes('-r'), 'the parent fallback must recurse — a bare {rel}/ listing returns TREE names only');
-  assert.strictEqual(lsCalls[1][lsCalls[1].length - 1], `${rel}/`);
-  assert.deepStrictEqual(lsCalls[0], ['ls-tree', '--name-only', '-z', '--end-of-options', 'feat-branch', '--', `${rel}/work/`]);
-  assert.deepStrictEqual(lsCalls[1], ['ls-tree', '-r', '--name-only', '-z', '--end-of-options', 'feat-branch', '--', `${rel}/`]);
+  assert.strictEqual(lsCalls.length, 2, 'the live listing runs first, the archived listing second');
+  assert.deepStrictEqual(lsCalls[0], ['ls-tree', '-r', '--name-only', '-z', '--end-of-options', 'feat-branch', '--', `${live}/`]);
+  assert.deepStrictEqual(lsCalls[1], ['ls-tree', '-r', '--name-only', '-z', '--end-of-options', 'feat-branch', '--', `${archived}/`]);
+});
+
+// #3974: specOnBranch against a REAL repo — the header may sit live or archived
+// (`.claude-tweaks/pipelines/archive/{run-id}/…`), flat or under spec-{N}/.
+const RUN_ID = '2026-09-06T000000-record-7';
+function realRepoFx() {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'flow-preflight-real-')));
+  const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  git('init', '-q'); git('config', 'user.email', 't@example.invalid'); git('config', 'user.name', 't');
+  git('commit', '-q', '--allow-empty', '-m', 'init');
+  git('checkout', '-q', '-b', 'flow/record-7');
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify({ worktree: root, status: 'active', pr: { number: 1, branch: 'flow/record-7' } }));
+  const commitHeader = (relDir, file, msg) => {
+    fs.mkdirSync(path.join(root, relDir), { recursive: true });
+    fs.writeFileSync(path.join(root, relDir, file), '---\nrecord: 7\n---\n');
+    git('add', '-f', path.join(relDir, file));
+    git('commit', '-q', '-m', msg);
+  };
+  return { root, runDir, git, commitHeader };
+}
+const realDeps = (fx, overrides = {}) => deps(fx, { git: defaultDeps(fx.root).git, ...overrides });
+const specMaterializedFor = (fx, overrides) => computeAdoption({ runDir: fx.runDir, mainRoot: fx.root, cwd: fx.root, deps: realDeps(fx, overrides) }).specMaterialized;
+
+test('specOnBranch: a git failure on ls-tree is unknown (null), never absent (false) (#3974 characterization)', () => {
+  const fx = mainRoot();
+  fs.writeFileSync(path.join(fx.runDir, 'run-state.json'), JSON.stringify({ worktree: '/w/tree', status: 'active', pr: { number: 1, branch: 'feat-branch' } }));
+  const d = deps(fx, { git: (args) => { if (args[0] === 'ls-tree') throw new Error('fatal: not a tree object'); return 'feat-branch\n'; } });
+  assert.strictEqual(computeAdoption({ runDir: fx.runDir, mainRoot: fx.root, cwd: fx.root, deps: d }).specMaterialized, null);
+});
+
+test('specOnBranch: a live flat header and a live multi-spec header on the branch are materialized (#3974 characterization)', () => {
+  const flat = realRepoFx();
+  flat.commitHeader(`.claude-tweaks/pipelines/${RUN_ID}/work`, '7-spec.md', 'materialize 7');
+  assert.strictEqual(specMaterializedFor(flat), true);
+  const multi = realRepoFx();
+  multi.commitHeader(`.claude-tweaks/pipelines/${RUN_ID}/spec-9/work`, '9-spec.md', 'materialize 9');
+  assert.strictEqual(specMaterializedFor(multi), true);
+});
+
+test('specOnBranch: a header only at the archived flat path counts as materialized (#3974)', () => {
+  const fx = realRepoFx();
+  fx.commitHeader(`.claude-tweaks/pipelines/archive/${RUN_ID}/work`, '7-spec.md', 'archived 7');
+  assert.strictEqual(specMaterializedFor(fx), true);
+});
+
+test('specOnBranch: a header only at the archived spec-{N}/work/ path counts as materialized (#3974)', () => {
+  const fx = realRepoFx();
+  fx.commitHeader(`.claude-tweaks/pipelines/archive/${RUN_ID}/spec-9/work`, '9-spec.md', 'archived 9');
+  assert.strictEqual(specMaterializedFor(fx), true);
+});
+
+test('specOnBranch: a branch whose last commit moves the header into the archive still reads as materialized (#3974 AC3)', () => {
+  const fx = realRepoFx();
+  const live = `.claude-tweaks/pipelines/${RUN_ID}/work`;
+  fx.commitHeader(live, '7-spec.md', 'materialize 7');
+  const archived = `.claude-tweaks/pipelines/archive/${RUN_ID}/work`;
+  fs.mkdirSync(path.join(fx.root, archived), { recursive: true });
+  fx.git('mv', path.join(live, '7-spec.md'), path.join(archived, '7-spec.md'));
+  fx.git('commit', '-q', '-m', 'archive run');
+  assert.strictEqual(fx.git('ls-tree', '-r', '--name-only', 'flow/record-7', '--', live).trim(), '', 'the live header is gone from the branch tip');
+  assert.strictEqual(specMaterializedFor(fx), true);
+});
+
+test('specOnBranch: no header live or archived is absent (false), and an unreadable branch stays unknown (null) (#3974)', () => {
+  const fx = realRepoFx();
+  assert.strictEqual(specMaterializedFor(fx), false);
+  fs.writeFileSync(path.join(fx.runDir, 'run-state.json'), JSON.stringify({ worktree: fx.root, status: 'active', pr: { number: 1, branch: 'no-such-branch' } }));
+  assert.strictEqual(specMaterializedFor(fx), null);
 });
 
 test('defaultDeps().resolvePolicy applies computeDerivedDefaults, so merge-verification resolves to a value with no policy.yml (#1931 I2)', () => {
