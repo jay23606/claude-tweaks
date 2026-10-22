@@ -11,9 +11,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { resolveConcurrency, resolveSlots, listTestFiles, buildTestArgs } = require(path.join(ROOT, 'tools', 'run-tests.js'));
+const {
+  resolveConcurrency, resolveSlots, listTestFiles, buildTestArgs,
+  isPidAlive, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
+} = require(path.join(ROOT, 'tools', 'run-tests.js'));
 
 test('resolveConcurrency defaults to half the cores, at least 1', () => {
   assert.strictEqual(resolveConcurrency({}, 12), 6);
@@ -66,4 +70,148 @@ test('buildTestArgs rejects a non-positive-integer concurrency; a valid one stil
     assert.throws(() => buildTestArgs([], [], { platform: 'linux', nodeMajor: 22, concurrency: bad }), /concurrency/, String(bad));
   }
   assert.throws(() => buildTestArgs([], ['tests'], { platform: 'win32', nodeMajor: 20, concurrency: 4 }), /Node >= 22/);
+});
+
+// The slot lock and run-root helpers take `isAlive`, `now`, `sleep` and `log` as parameters, so
+// these tests use fake pids (111/222/...) and a Set of "alive" ones — never a real process.
+function withTempDir(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'run-tests-slot-'));
+  try {
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function slotArgs(dir, over) {
+  return { dir, slots: 1, pid: 111, cwd: '/work/a', isAlive: () => false, now: Date.now, log: () => {}, sleep: () => {}, ...over };
+}
+
+function writeLock(dir, i, pid) {
+  const p = path.join(dir, `slot-${i}.lock`);
+  fs.writeFileSync(p, JSON.stringify({ pid, startedAt: '2026-01-01T00:00:00.000Z', cwd: '/work/other' }));
+  return p;
+}
+
+test('acquireSlot takes a free slot', () => {
+  withTempDir((dir) => {
+    const lock = acquireSlot(slotArgs(dir));
+    assert.strictEqual(lock, path.join(dir, 'slot-0.lock'));
+    const held = JSON.parse(fs.readFileSync(lock, 'utf8'));
+    assert.strictEqual(held.pid, 111);
+    assert.strictEqual(held.cwd, '/work/a');
+  });
+});
+
+test("acquireSlot reclaims a dead holder's lock without sleeping", () => {
+  withTempDir((dir) => {
+    writeLock(dir, 0, 222);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    const lock = acquireSlot(slotArgs(dir, { sleep, isAlive: (pid) => pid === 111 }));
+    assert.strictEqual(lock, path.join(dir, 'slot-0.lock'));
+    assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, 111);
+  });
+});
+
+test('acquireSlot reclaims an old unparseable lock', () => {
+  withTempDir((dir) => {
+    const p = path.join(dir, 'slot-0.lock');
+    fs.writeFileSync(p, '');
+    const old = new Date(Date.now() - 11 * 60 * 1000);
+    fs.utimesSync(p, old, old);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
+  });
+});
+
+test('a fresh unparseable lock is waited on, not reclaimed', () => {
+  withTempDir((dir) => {
+    const p = path.join(dir, 'slot-0.lock');
+    fs.writeFileSync(p, '');
+    let sleeps = 0;
+    const sleep = () => { sleeps += 1; fs.unlinkSync(p); };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(sleeps, 1);
+  });
+});
+
+test('acquireSlot waits for a live holder, logs once, then acquires', () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 333);
+    const lines = [];
+    let sleeps = 0;
+    const sleep = (ms) => {
+      sleeps += 1;
+      assert.strictEqual(ms, 2000);
+      if (sleeps === 2) fs.unlinkSync(p);
+    };
+    const lock = acquireSlot(slotArgs(dir, { sleep, log: (l) => lines.push(l), isAlive: (pid) => pid === 333 }));
+    assert.strictEqual(lock, p);
+    assert.strictEqual(sleeps, 2);
+    assert.strictEqual(lines.length, 1);
+    assert.strictEqual(
+      lines[0],
+      'run-tests.js: waiting for a test-suite slot — held by pid 333 (cwd /work/other) since 2026-01-01T00:00:00.000Z; set CT_TEST_SUITE_SLOTS to raise the limit',
+    );
+  });
+});
+
+test('acquireSlot uses a second slot when slots=2', () => {
+  withTempDir((dir) => {
+    writeLock(dir, 0, 333);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    const lock = acquireSlot(slotArgs(dir, { slots: 2, sleep, isAlive: (pid) => pid === 333 }));
+    assert.strictEqual(lock, path.join(dir, 'slot-1.lock'));
+  });
+});
+
+test("releaseSlot leaves another pid's lock alone", () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 444);
+    releaseSlot(p, 111);
+    assert.ok(fs.existsSync(p));
+    releaseSlot(p, 444);
+    assert.ok(!fs.existsSync(p));
+  });
+});
+
+test('releaseSlot never throws on a missing or unparseable lock', () => {
+  withTempDir((dir) => {
+    assert.doesNotThrow(() => releaseSlot(path.join(dir, 'slot-0.lock'), 111));
+    const p = path.join(dir, 'slot-1.lock');
+    fs.writeFileSync(p, 'not json');
+    assert.doesNotThrow(() => releaseSlot(p, 111));
+    assert.ok(fs.existsSync(p));
+  });
+});
+
+test('createRunRoot makes ct-testrun-<pid>-* under the given tmp dir', () => {
+  withTempDir((dir) => {
+    const root = createRunRoot(dir, 777);
+    assert.strictEqual(path.dirname(root), dir);
+    assert.match(path.basename(root), /^ct-testrun-777-/);
+    assert.ok(fs.statSync(root).isDirectory());
+  });
+});
+
+test('sweepStaleRoots removes dead-pid roots and keeps live ones', () => {
+  withTempDir((dir) => {
+    for (const name of ['ct-testrun-555-aaaaaa', 'ct-testrun-666-bbbbbb', 'other-dir']) {
+      fs.mkdirSync(path.join(dir, name));
+    }
+    fs.writeFileSync(path.join(dir, 'ct-testrun-555-aaaaaa', 'junk'), 'x');
+    const removed = sweepStaleRoots({ dir, isAlive: (pid) => pid === 666 });
+    assert.deepStrictEqual(removed, [path.join(dir, 'ct-testrun-555-aaaaaa')]);
+    assert.ok(!fs.existsSync(path.join(dir, 'ct-testrun-555-aaaaaa')));
+    assert.ok(fs.existsSync(path.join(dir, 'ct-testrun-666-bbbbbb')));
+    assert.ok(fs.existsSync(path.join(dir, 'other-dir')));
+  });
+});
+
+test('isPidAlive is true for this process and false for an exited child', () => {
+  assert.strictEqual(isPidAlive(process.pid), true);
+  const child = spawnSync(process.execPath, ['-e', '0']);
+  assert.ok(child.pid > 0);
+  assert.strictEqual(isPidAlive(child.pid), false);
 });

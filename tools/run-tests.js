@@ -111,7 +111,150 @@ function buildTestArgs(files, roots, { platform, nodeMajor, concurrency }) {
   return [...head, ...roots.map((root) => `${root.split(/[\\/]/).join('/')}/**/*.test.js`)];
 }
 
-module.exports = { listTestFiles, buildTestArgs, resolveConcurrency, resolveSlots };
+// Whether `pid` names a live process: signal 0 probes without delivering anything. ESRCH means
+// gone; EPERM means it exists but belongs to someone else, which still counts as alive — a slot
+// holder we cannot signal must not be treated as dead and have its lock stolen.
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === 'EPERM';
+  }
+}
+
+// Creates `lockPath` exclusively (`wx`) with the holder's identity. Returns false when another
+// process already owns the file; any other error propagates. The identity is what lets a waiter
+// name the holder and lets a later run tell a dead holder from a live one.
+function createLock(lockPath, pid, cwd, now) {
+  let fd;
+  try {
+    fd = fs.openSync(lockPath, 'wx');
+  } catch (err) {
+    if (err.code === 'EEXIST') return false;
+    throw err;
+  }
+  try {
+    fs.writeSync(fd, JSON.stringify({ pid, startedAt: new Date(now()).toISOString(), cwd }));
+  } finally {
+    fs.closeSync(fd);
+  }
+  return true;
+}
+
+// Classifies an existing lock file: `null` if it vanished, `{ stale: true }` if it is
+// reclaimable (dead holder, or unparseable and older than `staleUnparseableMs`), else the
+// held-by info. A fresh unparseable file is a holder caught between create and write, so it is
+// treated as held with unknown identity rather than reclaimed.
+function readHolder(lockPath, { isAlive, now, staleUnparseableMs }) {
+  let text;
+  let mtimeMs;
+  try {
+    text = fs.readFileSync(lockPath, 'utf8');
+    mtimeMs = fs.statSync(lockPath).mtimeMs;
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  let held;
+  try {
+    held = JSON.parse(text);
+  } catch (_) {
+    held = null;
+  }
+  if (held && Number.isInteger(held.pid)) {
+    return isAlive(held.pid) ? { pid: held.pid, cwd: held.cwd, startedAt: held.startedAt } : { stale: true };
+  }
+  if (now() - mtimeMs > staleUnparseableMs) return { stale: true };
+  return { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
+}
+
+// Takes one of `slots` cross-process suite slots (`slot-<i>.lock` in `dir`) and returns the lock
+// path, polling every `pollMs` until one frees up (#3969). A lock held by a dead pid is reclaimed
+// immediately, so a crashed run never wedges the queue. The wait message is logged once per call.
+// `isAlive`, `now`, `sleep` and `log` are parameters so tests never touch real processes or time.
+function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000 }) {
+  fs.mkdirSync(dir, { recursive: true });
+  let logged = false;
+  for (;;) {
+    let blocker = null;
+    for (let i = 0; i < slots; i++) {
+      const lockPath = path.join(dir, `slot-${i}.lock`);
+      if (createLock(lockPath, pid, cwd, now)) return lockPath;
+      const holder = readHolder(lockPath, { isAlive, now, staleUnparseableMs });
+      if (holder === null || holder.stale) {
+        if (holder) {
+          try {
+            fs.unlinkSync(lockPath);
+          } catch (err) {
+            if (err.code !== 'ENOENT') throw err;
+          }
+        }
+        if (createLock(lockPath, pid, cwd, now)) return lockPath;
+        // Another process won the race for this slot: it is held now, so keep scanning.
+        if (!blocker) blocker = { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
+        continue;
+      }
+      if (!blocker || blocker.pid === 'unknown') blocker = holder;
+    }
+    if (!logged) {
+      logged = true;
+      log(
+        `run-tests.js: waiting for a test-suite slot — held by pid ${blocker.pid} (cwd ${blocker.cwd}) ` +
+          `since ${blocker.startedAt}; set CT_TEST_SUITE_SLOTS to raise the limit`,
+      );
+    }
+    sleep(pollMs);
+  }
+}
+
+// Frees `lockPath` only if it still names `pid`, so a run that lost its lock to a reclaim never
+// deletes the new owner's. Never throws: this runs on exit paths where a failure must not mask
+// the suite's own exit code.
+function releaseSlot(lockPath, pid) {
+  try {
+    const held = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    if (held && held.pid === pid) fs.unlinkSync(lockPath);
+  } catch (_) {
+    // missing, unparseable or already gone — nothing to release
+  }
+}
+
+// The per-run temp root: a pid-tagged directory under `realTmp` that the suite's children use as
+// their TMPDIR, so one run's leaked temp dirs are removable together and attributable to a pid.
+function createRunRoot(realTmp, pid) {
+  return fs.mkdtempSync(path.join(realTmp, 'ct-testrun-' + pid + '-'));
+}
+
+// Removes `ct-testrun-<pid>-*` roots in `dir` whose pid is no longer alive (a killed run never
+// reached its own cleanup). Returns the removed paths. One unreadable or undeletable entry must
+// not stop the sweep or fail the run, so per-entry errors are swallowed.
+function sweepStaleRoots({ dir, isAlive }) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (_) {
+    return [];
+  }
+  const removed = [];
+  for (const entry of entries) {
+    const match = entry.isDirectory() && /^ct-testrun-(\d+)-/.exec(entry.name);
+    if (!match || isAlive(Number(match[1]))) continue;
+    const full = path.resolve(dir, entry.name);
+    try {
+      fs.rmSync(full, { recursive: true, force: true });
+      removed.push(full);
+    } catch (_) {
+      // leave it for the next sweep
+    }
+  }
+  return removed;
+}
+
+module.exports = {
+  listTestFiles, buildTestArgs, resolveConcurrency, resolveSlots,
+  isPidAlive, acquireSlot, releaseSlot, createRunRoot, sweepStaleRoots,
+};
 
 if (require.main === module) {
   const argRoots = process.argv.slice(2);
