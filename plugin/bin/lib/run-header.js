@@ -80,10 +80,10 @@ function headerRelPaths(runId, n, { specN = null, shape = 'any' } = {}) {
   for (const dir of [liveDir(runId), archivedDir(runId)]) {
     if (specN !== null) {
       out.push(`${dir}/spec-${specN}/work/${file}`);
-      continue;
+    } else {
+      if (shape !== 'nested') out.push(`${dir}/work/${file}`);
+      out.push(`${dir}/spec-${n}/work/${file}`);
     }
-    if (shape !== 'nested') out.push(`${dir}/work/${file}`);
-    out.push(`${dir}/spec-${n}/work/${file}`);
   }
   return out;
 }
@@ -146,6 +146,11 @@ function findHeaderFiles(roots, runId, n, opts = {}) {
   return out;
 }
 
+function compareNames(a, b) {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
 // Every child of `dir` whose name starts with `spec-`, as [N, name] pairs — the
 // same breadth the `spec-*/work/*` git pathspec and the pre-existing readers
 // accept. N is a number only when the suffix is all digits, else null. Order:
@@ -166,7 +171,7 @@ function specChildren(dir) {
     else other.push([null, name]);
   }
   numeric.sort((a, b) => a[0] - b[0]);
-  other.sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0));
+  other.sort((a, b) => compareNames(a[1], b[1]));
   return [...numeric, ...other];
 }
 
@@ -180,26 +185,25 @@ function specChildren(dir) {
 // dirs as 'live' entries with `root: null`, ahead of the root-based ones.
 function listHeaderDirs(roots, runId, { specN = null, runDir: bareDir } = {}) {
   const out = [];
+  const add = (dir, location, root, n, shape) => {
+    if (lstatType(dir).type === 'directory') out.push({ dir, location, specN: n, shape, root });
+  };
   const bare = bareRunDir(bareDir);
   if (bare !== null) {
-    const add = (dir, n, shape) => {
-      if (lstatType(dir).type === 'directory') out.push({ dir, location: 'live', specN: n, shape, root: null });
-    };
-    add(path.join(bare, 'work'), specN, 'flat');
-    if (specN === null) for (const [n, name] of specChildren(bare)) add(path.join(bare, name, 'work'), n, 'nested');
+    add(path.join(bare, 'work'), 'live', null, specN, 'flat');
+    if (specN === null) {
+      for (const [n, name] of specChildren(bare)) add(path.join(bare, name, 'work'), 'live', null, n, 'nested');
+    }
   }
   for (const root of validRoots(roots)) {
     for (const [location, rel] of [['live', liveDir(runId)], ['archived', archivedDir(runId)]]) {
       const runDir = nativeJoin(root, rel);
-      const add = (dir, n, shape) => {
-        if (lstatType(dir).type === 'directory') out.push({ dir, location, specN: n, shape, root });
-      };
       if (specN !== null) {
-        add(path.join(runDir, `spec-${specN}`, 'work'), specN, 'nested');
+        add(path.join(runDir, `spec-${specN}`, 'work'), location, root, specN, 'nested');
         continue;
       }
-      add(path.join(runDir, 'work'), null, 'flat');
-      for (const [n, name] of specChildren(runDir)) add(path.join(runDir, name, 'work'), n, 'nested');
+      add(path.join(runDir, 'work'), location, root, null, 'flat');
+      for (const [n, name] of specChildren(runDir)) add(path.join(runDir, name, 'work'), location, root, n, 'nested');
     }
   }
   return out;
