@@ -306,5 +306,9 @@
   "plugin/bin/lib/staged-patch": {
     "lastSweptMs": 1792552005210,
     "lastHash": "c218fca1fec476e0294deb8fa139f9d35f1f461b"
+  },
+  "plugin/bin/lib/qa-report": {
+    "lastSweptMs": 1792638427826,
+    "lastHash": "dffcc40f305b0063df43d32475d4de6710d4b6d9"
   }
 }
