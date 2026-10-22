@@ -5,7 +5,7 @@ const path = require('path');
 const wtDetect = require('./worktree-detect');
 const { writeFileAtomic } = require('../atomic-write');
 const { runGit } = require('./git-exec');
-const { parseWorktreeList } = require('./worktree-reap');
+const { parseWorktreeList, isPidAlive } = require('./worktree-reap');
 const runDirResolve = require('./run-dir-resolve');
 const { classifyDecisions } = require('../log-decision/claim-log');
 const { canonicalRealpath } = require('../path-guard');
@@ -760,6 +760,47 @@ function isTrustedOwnedRun(ownedRun) {
   return !!(ownedRun && ownedRun.dir && ownedRun.attribution !== 'fallback');
 }
 
+// #3845: owner-process identity. Measured premise (probe, Claude Code 2.1.302):
+// Claude Code sets CLAUDE_PID to its own pid in every process it spawns — its
+// Bash tool and its hooks alike — so one session's Bash tool and its hooks see
+// the same value; a nested `claude -p` run from that Bash tool sets its own,
+// different value. record-worktree stamps run-state `ownerPid` from the former;
+// session-end compares the latter against it to tell a nested session from the
+// run's owner. Fail open: an unknown pid on either side is never "nested", so
+// a missing/garbled CLAUDE_PID or an unstamped (pre-#3845) run-state keeps the
+// existing session-end behavior.
+//
+// Liveness rule: a differing pair is "nested" only while the owner process is
+// still alive. A nested child's SessionEnd always fires while its parent is
+// alive (the parent's Bash tool is blocked on the child), so the incident case
+// keeps its protection. A dead owner is the crash + `claude --resume` shape: the
+// original process died without a SessionEnd, the resumed process (new pid, same
+// session id) never re-stamps ownerPid, and its ending is the run's real
+// interruption — suppressing it would regress to a never-flagged run. Probe
+// errors other than "alive" fail open (never nested, never throw from a hook).
+function claudePid(env) {
+  const raw = env && env.CLAUDE_PID;
+  if (typeof raw !== 'string' || !/^[1-9]\d*$/.test(raw)) return null;
+  const pid = Number(raw);
+  return Number.isSafeInteger(pid) ? pid : null;
+}
+
+// The run-state patch that stamps this process as the run's owner — empty when
+// the pid is unknown, so a stamp site never writes a garbled `ownerPid`. Shared
+// by every site that mints or re-stamps ownership (record-worktree, the ad-hoc
+// mints, the resume re-stamp in session-start.js).
+function ownerPidPatch(env) {
+  const pid = claudePid(env);
+  return pid === null ? {} : { ownerPid: pid };
+}
+
+function isNestedSession(runState, env, { isAlive = isPidAlive } = {}) {
+  const owner = runState && runState.ownerPid;
+  if (!Number.isInteger(owner) || owner <= 0) return false;
+  const mine = claudePid(env);
+  return mine !== null && mine !== owner && isAlive(owner);
+}
+
 // `{ts}-adhoc-standalone` — the suffix run-dir-resolve.js mints for
 // `standalone: 'adhoc'` (post-tool-use.js's stampAdHocRunDir and
 // stampAdHocRunDirForDenial). Same test as reconcile/archive-merged.js's
@@ -812,7 +853,7 @@ function stampAdHocRunDirForDenial(ctx) {
     // stampAdHocRunDir's identical guard).
     const existing = readRunState(result.path);
     if (existing && typeof existing.sessionId === 'string' && existing.sessionId && existing.sessionId !== sessionId) return null;
-    const written = writeRunState(result.path, { worktree: path.resolve(worktreePath), status: 'active', sessionId });
+    const written = writeRunState(result.path, { worktree: path.resolve(worktreePath), status: 'active', sessionId, ...ownerPidPatch(process.env) });
     if (!written) { rollbackMint(result.path); return null; }
     return result.path;
   } catch { return null; }
@@ -893,4 +934,5 @@ module.exports = {
   readStdin, parseInput, resolveRun, resolveRunDir, classifyOwnership, listRunDirs, listRunDirsWithState, iterRunDirsWithState,
   readRunState, readRunStateWithParent, writeRunState, appendEvent, scanWrapupEvents, readEventLines, findRunByWorktreePath, findRunsByWorktreePath, findAdHocRunsBySessionId, RUN_ID_RE, findNonCanonicalRunDirs,
   rollbackMint, isStaleClaim, stampAdHocRunDirForDenial, isTrustedOwnedRun, isAdHocRunDir, resolveDenialRunDir,
+  claudePid, ownerPidPatch, isPidAlive, isNestedSession,
 };
