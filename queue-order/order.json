@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-21T22:54:37.116Z",
-  "runId": null,
+  "computedAt": "2026-10-22T00:25:02.029Z",
+  "runId": "2026-10-22T002320-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
@@ -14,28 +14,13 @@
         "state": "OPEN"
       },
       {
-        "number": 3894,
-        "updatedAt": "2026-10-21T20:30:45Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3892,
         "updatedAt": "2026-10-21T20:30:41Z",
         "state": "OPEN"
       },
       {
-        "number": 3890,
-        "updatedAt": "2026-10-21T20:30:37Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3887,
         "updatedAt": "2026-10-21T22:00:50Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3886,
-        "updatedAt": "2026-10-21T22:04:45Z",
         "state": "OPEN"
       },
       {
@@ -51,11 +36,6 @@
       {
         "number": 3876,
         "updatedAt": "2026-10-21T20:31:32Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3871,
-        "updatedAt": "2026-10-21T22:04:37Z",
         "state": "OPEN"
       },
       {
@@ -76,11 +56,6 @@
       {
         "number": 3859,
         "updatedAt": "2026-10-21T20:29:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3857,
-        "updatedAt": "2026-10-21T22:04:28Z",
         "state": "OPEN"
       },
       {
@@ -150,7 +125,7 @@
       },
       {
         "number": 3812,
-        "updatedAt": "2026-10-21T20:28:57Z",
+        "updatedAt": "2026-10-21T23:31:50Z",
         "state": "OPEN"
       },
       {
@@ -164,23 +139,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3802,
-        "updatedAt": "2026-10-21T20:28:46Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3797,
-        "updatedAt": "2026-10-21T20:28:41Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3679,
-        "updatedAt": "2026-10-20T07:07:36Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3630,
-        "updatedAt": "2026-10-21T20:49:29Z",
+        "updatedAt": "2026-10-21T23:02:53Z",
         "state": "OPEN"
       },
       {
@@ -200,12 +160,12 @@
       },
       {
         "number": 3488,
-        "updatedAt": "2026-10-21T14:42:37Z",
+        "updatedAt": "2026-10-21T23:58:25Z",
         "state": "OPEN"
       },
       {
         "number": 3315,
-        "updatedAt": "2026-10-21T07:26:08Z",
+        "updatedAt": "2026-10-22T00:17:24Z",
         "state": "OPEN"
       },
       {
@@ -1752,78 +1712,6 @@
     ],
     [
       {
-        "body": "# Build — staged follow-up record (from #3595 D1 root-cause trace)\n\n**Category:** tangential\nOrigin: /build Spec Step 3 (#3595, run 2026-10-20T124821-spec-3599-3602-3695-3696-3698-3699-3595)\n\nDefer-reason: tangential\n\n## Current State\n\n#3595 fixed the in-run ordering: single-spec cleanup item 2 now commits and pushes the ledger deletion before item 4's `gh pr merge`, and the multi-spec Shared teardown step 0 has done the same since #3420 (`7a649060e`). Two residue ledgers landed on main after #3420 anyway, through PRs merged outside the run's own teardown:\n\n- `docs/plans/2026-10-19-spec-3507-3509-ledger.md` via PR #3584. Run `2026-10-19T100244-record-3507` ended (`run-state.json` `lastEvent: session-end`) after spec 3509's `/test`, never reaching review, wrap-up or the consolidated console. The PR was merged later from outside the run, and the reconciler released on merged evidence (`decisions.md`: \"merged: reconciled from PR #3584\").\n- `docs/plans/2026-10-20-spec-3564-3565-3581-ledger.md` via PR #3715. Run `2026-10-20T102130-record-3564` holds only `spec-*/work/`: no parent `decisions.md`, no console.\n\nA ledger delete that lives in the run's teardown cannot run when a human (or the fleet) merges the PR before the run reaches teardown. #3595 removed the 11 residue files on main by hand.\n\n## Deliverables\n\n1. Pick one mechanism that keeps a run's `docs/plans/*-ledger.md` off the integration branch when the PR merges outside the run's teardown, and record the choice. Two candidates:\n   - (a) a PR check that fails a non-draft PR whose head adds a `docs/plans/*-ledger.md` the PR itself introduced;\n   - (b) a reconcile/tidy convergence check that detects a merged run's ledger on the integration branch and opens a removal PR.\n2. Implement it, including its registration sites (`docs/reconcile-checks.md` for (b)).\n3. Test both directions: a merged-outside-teardown ledger is caught, and an in-flight draft PR's ledger is not.\n\n## Acceptance Criteria\n\n1. In a fixture where a PR head still carries its run's ledger, the chosen mechanism reports it, or opens the removal, before the residue can be counted by a later wrap-up.\n2. A draft PR for a run still in progress, whose ledger is expected on the branch, is not flagged.\n3. `npm test` passes.\n\n## Release Note\n\nWrap-up ledgers no longer reach main when a run's PR is merged before the run finishes.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/cleanup-procedures.md` — item 2 ordering (#3595), for reference\n- `plugin/skills/flow/multispec-review-console.md` — Shared teardown step 0 (#3420), for reference\n- `plugin/bin/lib/reconcile/` — home for option (b)\n- `.github/workflows/` — home for option (a)\n\n_Filed by `build` via specShapedBody._\n",
-        "createdAt": "2026-10-20T20:27:27Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3812,
-        "state": "OPEN",
-        "title": "Keep a run's ledger off main when its PR is merged outside the run's own teardown",
-        "updatedAt": "2026-10-21T20:28:57Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "# Review — staged follow-up record (from #3695 lens 3a)\n\n**Category:** tangential\nOrigin: review lens 3a (#3695, run 2026-10-20T124821-spec-3599-3602-3695-3696-3698-3699-3595)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#3695 fixed teardown-run's two worktree lookups on Windows: `git worktree list --porcelain` prints `D:/a/x/feat` while a native path is `D:\\a\\x\\feat`, so a strict `===` never matched. Review of #3695 found two more lookups in other hooks with the same strict compare of a porcelain path against the native `ctx.cwd`:\n\n- `plugin/bin/lib/hooks/post-tool-use.js:243` — `resolveWorktreePathViaPorcelain` (`entries.findIndex((e) => e.path === cwd)`). It is the fallback that finds the worktree `EnterWorktree` just switched into, and `stampAdHocRunDir`'s widened trigger reuses it. On Windows it returns null, so neither records the worktree.\n- `plugin/bin/lib/hooks/context.js:784` — `stampAdHocRunDirForDenial` (same compare). On Windows it returns null, so a gate denial in a session with no owned run dir has nowhere to land its friction event (the gap this function was written to close).\n\nBoth read `parseWorktreeList` output from `worktree-reap.js`. The realpath-normalized lookups (`isWorktreeLocked`, `resume-freshness.js`, `flow/consolidated-pass.js`, `run-integrity.js` `deriveBranch`) are unaffected. #3695's `findWorktreeEntry(entries, target, pathImpl = path)` helper lives in `teardown-run.js` and is not shared.\n\n**Related:** #3736, #3836\n\n## Deliverables\n\n1. Move `findWorktreeEntry` beside `parseWorktreeList` in `plugin/bin/lib/hooks/worktree-reap.js` (keep `teardown-run.js` re-exporting or importing it), so every porcelain lookup shares one compare key.\n\n2. Replace the strict `e.path === cwd` compares at `post-tool-use.js:243` and `context.js:784` with the shared helper, keeping each function's `{path, isMain}` / index semantics.\n\n3. Add a `path.win32` pin per site in the existing hook test files (forward-slash porcelain vs backslash cwd).\n\n## Acceptance Criteria\n\n1. With `path.win32`, a porcelain entry `D:/a/x/feat` matches a cwd of `D:\\a\\x\\feat` at both sites, and `isMain` stays true only for the first entry.\n\n2. Each new pin fails when its site's strict `===` compare is restored.\n\n3. `git grep -nE \"\\.path\\s*===\\s*cwd\" -- plugin/bin` finds nothing.\n\n4. `npm test` passes.\n\n## Release Note\n\nFix worktree detection in claude-tweaks hooks on Windows, so a session that enters a worktree, or is denied by a gate, is recorded against the right worktree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/post-tool-use.js` — `resolveWorktreePathViaPorcelain` uses the shared compare\n- `plugin/bin/lib/hooks/context.js` — `stampAdHocRunDirForDenial` uses the shared compare\n- `plugin/bin/lib/hooks/worktree-reap.js` — home of the shared `findWorktreeEntry`\n- `plugin/bin/lib/hooks/teardown-run.js` — imports the moved helper\n\n_Filed by `review` via specShapedBody._\n",
         "createdAt": "2026-10-20T20:27:23Z",
         "labels": [
@@ -1872,156 +1760,6 @@
           "origin": null,
           "risk": "medium",
           "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (wrap-up of #3290)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3290 shipped the staged-patch stacked check (`plugin/bin/lib/staged-patch/stack-check.js`, `plugin/bin/check-staged-stack.js`, the console wiring in `plugin/bin/console-resolve.js` and `plugin/bin/lib/console/resolve.js`). Its whole-branch review passed and the build's final review ruled fifteen minor findings ok-to-defer. Together they span six or more files, so no single fix-now pass covers them. They fall in four groups. Robustness: `headerSources` scans the whole patch including the free-text preamble, so a `rename from ../x` preamble line skips the patch and CRLF leaves `\\r` in the source name; `isUnsafe` splits on `/` only; `rederive` gives the generic 'not a file in the worktree' reason for a file an earlier patch created; `git merge-file` exit 255 (a git error) is reported as 'conflict in {path}'; the STAGED conflict line names only the first conflict that involves the target. Portability: `defaultGit`'s `GIT_CONFIG_GLOBAL=os.devNull` is unverified on a Windows checkout and needs git 2.32 or newer. Coverage: no committed rename, new-file, deleted-file or binary patch case; untested `rederive` branches (already-satisfied, unsafe or not-in-patches guards, multi-file partial conflict, rename or delete refusal, numstat or summary failure) and untested CLI `rederiveReason` branches; the console's `checkPatchStack` wiring and its throw fail-closed branch have no test; the order-agreement test mirrors `readSnapshot`'s filter and sort instead of calling it; the `cli.test.js` shadow-refusal test asserts a vacuous `existsSync`. Contract pins and docs: `tests/staged-patch-contract.test.js` pins token presence only, not the re-run-once bound or the re-anchor condition, and its go-red control trips only the heading assertion; the `docs/plugin-structure.md` CLI line does not say exit 2 still prints the JSON line. Each item's detail and trigger is in the #3290 run ledger, `docs/plans/2026-10-19-staged-patch-stacked-check-ledger.md`, rows 1-15.\n\n## Deliverables\n\nScan `headerSources` from the first `diff --git` line only and strip a trailing `\\r` from a source name\n\nMake `isUnsafe` reject a `..` segment split on `\\` as well as `/`\n\nGive `rederive` a specific refusal reason when the target file is created by an earlier staged patch\n\nReport a `git merge-file` exit above 1 as a git error, not as 'conflict in {path}'\n\nName every conflict that involves the target in the stacked-check STAGED line, not only the first\n\nVerify `GIT_CONFIG_GLOBAL=os.devNull` on a Windows runner and document or replace the git 2.32 requirement\n\nAdd committed `stack-check` cases for rename, new-file, deleted-file and binary patches\n\nAdd `rederive` branch tests: already-satisfied, unsafe path, target not in patches, multi-file partial conflict, rename or delete refusal, numstat or summary failure; make the same-anchor rederive test assert the reason, not only `/conflict/`\n\nAdd CLI tests for the `rederiveReason` branches: rederive refusal, rederive throw, `--rederive-out` with a non-conflicting target, `conflictsWith` equal to the target\n\nReplace the vacuous shadow-refusal assertion in `tests/bin-lib/staged-patch/cli.test.js` with one that fails when the shadow is written\n\nTest `plugin/bin/console-resolve.js`'s `checkPatchStack` wiring and its throw fail-closed branch\n\nMake the stack-check order-agreement test call `readSnapshot` instead of mirroring its filter and sort\n\nMake `tests/staged-patch-contract.test.js` go red on each assertion it claims, and pin the re-run-once bound and the re-anchor condition\n\nState in `docs/plugin-structure.md` that exit 2 for an unapplicable target still prints the JSON line\n\n## Acceptance Criteria\n\nEach deliverable has a committed test or a changed assertion that fails when its fix is reverted\n\n`npm test` passes with no new skips\n\nThe #3290 ledger rows 1-15 each name the commit or test that closes them\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/staged-patch/stack-check.js` — robustness fixes\n- `plugin/bin/check-staged-stack.js` — STAGED conflict line and exit-2 doc\n- `tests/bin-lib/staged-patch/stack-check.test.js` — rename, new, delete, binary and rederive branch cases\n- `tests/bin-lib/staged-patch/cli.test.js` — rederiveReason branches, shadow-refusal assertion\n- `tests/staged-patch-contract.test.js` — go-red controls and pins\n- `docs/plugin-structure.md` — exit 2 wording\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-19T22:20:30Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3679,
-        "state": "OPEN",
-        "title": "Harden and cover the staged-patch stacked check — 14 follow-ups from #3290's final review",
-        "updatedAt": "2026-10-20T07:07:36Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3026\n\nDefer-reason: tangential\n\n## Current State\n\n`reconcile --checks` runs exactly the named subset, but `archive` silently depends on `mirror`: `archive-merged.js`'s `localHasMerge` needs the integration branch's merge commit to be an ancestor of `refs/heads/{integration}` or `origin/{integration}`, and only `mirror` (or `remote-prune`) runs the fetch that makes `origin/{integration}` current. A caller who names `archive` without `mirror` gets a silent `local-behind-merge` skip for any PR GitHub merged asynchronously.\n\nNothing in `plugin/bin/lib/reconcile/index.js` or `docs/reconcile-checks.md` declares this prerequisite. #3026's drain-termination call was specified as `--checks release,archive,reap`, which would have shipped the defect; it was caught only by the final whole-branch review and corrected to `mirror,release,archive,reap`. The only other scripted subset caller, `_shared/pr-first-merge-post-merge.md` Step 4.2, names `mirror` by hand.\n\n## Deliverables\n\n1. `plugin/bin/lib/reconcile/index.js` declares each check's prerequisite checks (`archive` needs `mirror`, and any other dependency the code shows) and expands an explicit `checks` subset with them before dispatch, preserving the existing dispatch order.\n\n2. `docs/reconcile-checks.md` documents the prerequisite table and that an explicit subset is expanded and runs without the hot-path time ceiling.\n\n3. `tests/reconcile.test.js` pins the expansion: a `checks: ['archive']` request runs `mirror` first; an unrelated subset is not widened.\n\n## Acceptance Criteria\n\n- `reconcile({ checks: ['archive'] })` runs `mirror` before `archive`, and `reconcile({ checks: ['reap'] })` runs only `reap`.\n\n- A dispatch-style call `--checks release,archive,reap` archives a run whose PR GitHub merged asynchronously, with no `local-behind-merge` skip caused by a missing fetch.\n\n- `node --test tests/reconcile.test.js` passes.\n\n## Release Note\n\nFixed reconcile so naming `archive` in an explicit check list also refreshes the integration branch it needs, instead of silently skipping asynchronously merged pull requests.\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-19T19:18:38Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3630,
-        "state": "OPEN",
-        "title": "reconcile does not expand an explicit checks subset with the checks it depends on",
-        "updatedAt": "2026-10-21T20:49:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -2274,150 +2012,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (spec #3370 build, whole-branch review finding I5)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/stage-item.js` (#3370) warns on stderr when the id that landed matches no `SECTION_MAP` row in `plugin/bin/lib/console/resolve.js`. Four producers stage ids no row maps: `release-held`, `upstream-draft-{N}`, `shipped-close-*` (whose call is silenced by its own `2>/dev/null`) and `dispatch-target-missing-*`. Real staged output carries more unmapped names: `review-followup-*`, `build-followup-*`, `docs-*`, `skills-*`, `wrap-up-reflect-insights`, `wrap-up-cleanup-ordering` and `reconcile-live-run-archived`. The release and dispatch run directories never reach wrap-up's `console-resolve.js`, so for them the warning (\"if a wrap-up Review Console resolves this run, it routes this item to Pending review\") describes a console that never runs; for the producers whose runs do reach it, an unmapped name lands in Pending review and is never auto-resolved. Files: `plugin/bin/lib/console/resolve.js`, `plugin/bin/stage-item.js`, and the producer skills under `plugin/skills/`.\n\n## Deliverables\n\n- [ ] Enumerate every `stage-item.js --id` producer under `plugin/skills/` and `plugin/bin/` and record, per producer, whether its run directory reaches `console-resolve.js`.\n- [ ] For each producer whose run reaches the console: add a `SECTION_MAP` row (and the matching `CANONICAL_PREFIXES` entry) or rename the id to an already-mapped prefix.\n- [ ] For each producer whose run never reaches it: exempt it from the warning with the reason stated beside the exemption, and drop `shipped-close-*`'s `2>/dev/null` so a real staging failure is visible.\n- [ ] A test that fails when a producer's id matches neither a row nor the exemption list.\n\n## Acceptance Criteria\n\n1. `stage-item.js --id release-held` and `--id dispatch-target-missing-x` print no unmapped-prefix warning, and `--id review-13-record` still prints it.\n\n2. Every id named in Current State classifies through `classifyStagedItem` without `unmapped-prefix`, or is on the exemption list with its reason.\n\n3. `npm test` passes with no new failures relative to `main`.\n\n## Release Note\n\nThe staging-time warning for an unmapped Review Console prefix now prints only where it is true: every producer's id either maps to a console section or is exempt with a stated reason.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-17T22:07:23Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3488,
-        "state": "OPEN",
-        "title": "Map or exempt every staged-id producer so stage-item.js's unmapped-prefix warning is true for each of them",
-        "updatedAt": "2026-10-21T14:42:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #2767\n\nDefer-reason: pre-existing-outside-diff\n\n**Related:** #3314 #3316 #3317 #3318\n\n## Current State\n\n#2767's static class map (docs/superpowers/plans/2026-10-16-windows-path-separator-class-2767.md, Class map) found Windows path faults that no failing test pins yet:\n- `plugin/bin/lib/code-health/scope.js` `splitOversized` key mismatch: native-path keys compared against `/` keys.\n- `plugin/bin/lib/residue/probes/worktrees.js`: a domain `includes` check on a native path.\n- `plugin/bin/lib/timing/transcript.js`: the `isProcedurePath` input separator.\n- `cloud-setup-drift-check` joins `PATH` with `:` instead of `path.delimiter`, and its fixtures run shell-script stubs.\n- plan-audit and findability display inconsistencies.\n\n`archive-merged` needs a real Windows run before it can be classified.\n\n## Deliverables\n\n- [ ] For each listed site, write a test that pins its win32 behaviour on a POSIX host (inject `path.win32` / `path.win32.delimiter` at the seam, never stub `process.platform`), then fix the site or record why it is correct.\n- [ ] Replace `cloud-setup-drift-check`'s `:` with `path.delimiter`. Its shell-stub fixtures need a Windows-runnable equivalent or an explicit win32 skip with a reason.\n\n## Acceptance Criteria\n\nEach listed site has a committed test that fails with the fix reverted and passes with it (or a recorded not-a-bug verdict).\n\n`npm test` stays green on ubuntu.\n\n## Release Note\n\nFixes several tools mis-handling Windows paths and PATH separators.\n\n_Filed by `wrap-up leftover routing` via specShapedBody._",
-        "createdAt": "2026-10-16T21:08:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3315,
-        "state": "OPEN",
-        "title": "Fix latent Windows path producers found by the #2767 class map",
-        "updatedAt": "2026-10-21T07:26:08Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #2987\n\n## Current State\n\n`plugin/bin/verify.js` writes the pass stamp only for a passing run of the full resolved check set: the write gate requires `fullSet && !parsed.noStamp` (verify.js ~line 568). `plugin/skills/test/verification.md:48` requires any deliberately partial `--cmd` set to pass `--no-stamp`, because the runner cannot tell a partial set from the full one. Both rules are correct on their own.\n\nTogether they leave a long suite with no way to earn a stamp. A project whose declared checks take about 25 minutes end to end must split verification into chunks under the harness's 10-minute foreground Bash cap. Every chunk is partial, so every chunk passes `--no-stamp`, and `--stamp-status` never reads `verifiedHead: true`. Every later gate (`/claude-tweaks:review` Step 1.5, the second call of a dispatched two-call group, skip-if-recent) then re-runs the whole set, so the two-call dispatch form pays the full ~25 minutes twice even when HEAD did not move. Agent-written stamps are forbidden (#1921), correctly, so there is no workaround. Reported on plugin 6.136.0.\n\nWhy not a single background run: `plugin/skills/test/verification.md:46`'s Foreground rule already permits one full-set run with `run_in_background` when the set exceeds the 600 s foreground cap — but only for the orchestrating session. \"A dispatched subagent never backgrounds it — its turn cannot wait on a notification\" (the `[IL-108]` family; #1904 stalled waiting on a background verify child's notification that never arrived). `/claude-tweaks:dispatch`'s two-call form runs each `/flow` call as a dispatched subagent, so inside those calls the 600 s cap is hard and chunking is the only sanctioned option. That is the case this record targets.\n\n## Deliverables\n\n1. A per-suite stamp mode: `verify.js --stamp-suite` (or equivalent) records, for a passing chunk, which declared checks passed against which sha and tree state, written by the runner only.\n2. `--stamp-status` composes `verifiedHead: true` when every check declared in `.claude-tweaks/verify-scope.json` (types, lint, and each declared suite) has a passing per-suite record at the current clean HEAD.\n3. A per-suite record never counts toward a different sha, a dirty tree, or a check it did not run; a failing chunk clears or never writes its record.\n4. `plugin/skills/test/verification.md` documents the chunked flow: when to use it, and that `--no-stamp` stays required for ad hoc partial runs.\n\n## Acceptance Criteria\n\n1. Running each declared check in separate `verify.js` invocations with the per-suite mode, all passing at one clean HEAD, makes `--stamp-status` report `verifiedHead: true`.\n2. If any declared check has no passing record at the current HEAD, `verifiedHead` stays `false`.\n3. A per-suite record from an earlier sha, or written against a dirty tree, does not count.\n4. A plain `--no-stamp` partial run still writes nothing.\n5. The verify stamp tests pass, with new cases for 1–4.\n\n## Release Note\n\nLong test suites can now be verified in chunks under the 10-minute command limit and still earn a full verification stamp.\n\n## Technical Approach\n\nStore per-suite pass records alongside the existing stamp (same git-dir location, runner-written), keyed by sha and check name. Have `--stamp-status` compute the full-coverage verdict from the declared check list in `verify-scope.json`. Keep the existing full-run stamp unchanged so current callers see no difference.\n\n### Key Files\n\n- `plugin/bin/verify.js` — new flag, write path, and `--stamp-status` composition\n- `plugin/bin/lib/verify/stamp.js` — per-suite record read/write\n- `plugin/bin/lib/verify/args.js` — flag parsing\n- `plugin/bin/lib/verify/declaration.js` — declared check list from `verify-scope.json`\n- `plugin/skills/test/verification.md` — chunked-run documentation\n- `tests/bin-lib/verify/stamp.test.js` — new cases\n\n## Gotchas\n\n- #2806 (untangling `verify/args.js`'s parseArgs, PR #2836) is in flight on `args.js`; build this after it merges or rebase onto it.\n- #2987 changes the same stamp's dirty handling; agree one stamp schema so the two compose.\n- A project with no `verify-scope.json` has no declared check list to compose against; per-suite mode should refuse there with a clear message rather than guess.\n- The runner stays the only stamp writer; nothing here may add an agent-side write path.\n\n## Original request\n\nbin/verify.js: no way to compose a full pass stamp from chunked --no-stamp runs, so a suite longer than the 10-minute foreground cap never verifies HEAD\n\n**Summary:** A project whose declared suites take about 25 minutes end to end (a Python allowlist near 12 minutes, an e2e suite of 4-5 minutes, build plus lint of 3 minutes) must split verification into chunks under the harness's 10-minute foreground Bash timeout; every chunk is a partial `--cmd` set and must pass `--no-stamp`, so `verify.js --stamp-status` never reads `verifiedHead: true` and every later gate (review Step 1.5, the second call of a dispatched group, Skip-if-recent) re-runs the whole set.\n\n**Kind:** Gap\n\n**Affected component:** bin/verify.js (pass stamp) and test/verification.md (\"A targeted run never stamps\")\n\n**Use case:** verification.md is explicit that a partial `--cmd` set must pass `--no-stamp` because the runner cannot tell a partial set from the full one. That rule is correct, but it leaves a long suite with no sanctioned way to ever earn a stamp: the two-call dispatch form (`build,test` then `review,polish,wrap-up`) pays the full ~25-minute set twice — once in the first call's chunks and again when the second call's review Step 1.5 finds `present: false` — even when HEAD did not move. Expected: a per-suite stamp mode — e.g. `--stamp-suite <name>` recording that suite's pass against the sha, with `--stamp-status` composing `verifiedHead: true` once every suite declared in `.claude-tweaks/verify-scope.json` has a passing stamp at a clean HEAD — so chunked runs under the foreground cap can still produce a trustworthy full pass without an agent-side stamp write (which #1921 rightly forbids).\n\n**Definition:** Clear\n\n**Plugin version:** 6.136.0\n\n---\nFiled via /claude-tweaks:feedback.\n<!-- fingerprint: feedback-334cb7c9 -->\n\n\n**Related:** #2987\n\n",
         "createdAt": "2026-10-05T17:57:27Z",
         "labels": [
@@ -2655,366 +2249,9 @@
           "shapedHeadless": false
         }
       }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe post-merge Windows check on commit 259be0521 (merged PR #3833) reported `tests/routine-fleet-security-hardening.test.js` newly failing on \"AC1.1: composition table has a Vertical finder row whose focus override is security-hardening\", with `no \"## Fleet composition table\" heading`.\n\nRe-checked against current `main`, the failure is still live and reproduces on macOS under a CRLF-read simulation: 3 of the file's 6 tests fail (AC1.1, AC1.2, and the existing-rows cron pin), 3 pass. Root cause: the file's read helper (line 10) uses a raw `fs.readFileSync(path.join(ROOT, rel), 'utf8')`. On a Windows `core.autocrlf=true` checkout, the heading lookup and the table-row parsing downstream of it never match `\\r`-terminated lines. The Windows filer reported only the first failure.\n\n`tests/helpers/read-skill.js` exports `readText(absPath)` (#2763), the shared EOL-normalizing read for exactly this case.\n\n**Related:** #3702, #3703, #3742, #3751, #3776, #3797, #3802, #3857, #3871, #3886, #3894\n\n## Deliverables\n\n1. `tests/routine-fleet-security-hardening.test.js` — the read helper (line 10) returns `readText(path.join(ROOT, rel))` from `./helpers/read-skill` instead of a raw `fs.readFileSync`.\n\n## Acceptance Criteria\n\n1. No raw `fs.readFileSync` of a markdown file remains in `tests/routine-fleet-security-hardening.test.js`.\n2. Under the CRLF-read simulation, all 6 tests in the file pass. Before the fix, 3 fail.\n3. `node --test tests/routine-fleet-security-hardening.test.js` is green on Linux/macOS.\n4. The next post-merge Windows check (`.github/workflows/windows-regression.yml`) no longer lists this test file.\n\n## Release Note\n\nFix a Windows-only failure in the routine fleet security-hardening test caused by CRLF line endings.\n\n## Technical Approach\n\nA one-line swap in the file's single read helper. Every test reads through it, so all three failing tests are fixed at once with no assertion changes.\n\n### Key Files\n\n- `tests/routine-fleet-security-hardening.test.js` — read helper routed through `readText`\n- `tests/helpers/read-skill.js` — `readText` helper reused (read-only)\n\n## Gotchas\n\n- The filer reported one failing test, but the CRLF read breaks 3. AC2 pins all 6 passing.\n- CI runs on ubuntu only, so only the post-merge `windows-regression.yml` run proves this on Windows.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 259be0521\n\nThe post-merge Windows check failed on commit 259be052140a89cf43e735ed30887cb55245c25d (compared against 5e44ed0a5).\n\n**Merged PR:** #3833 (https://github.com/thn-inc/claude-tweaks/pull/3833)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39637047670\n\n### Newly failing test files\n- `tests/routine-fleet-security-hardening.test.js`\n\n### Failure excerpts\n\n#### `tests/routine-fleet-security-hardening.test.js`\n\n```\nnot ok 13222 - AC1.1: composition table has a Vertical finder row whose focus override is security-hardening\n  ---\n  duration_ms: 5.0615\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\routine-fleet-security-hardening.test.js:51:1'\n  failureType: 'testCodeFailure'\n  error: 'no \"## Fleet composition table\" heading'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: -1\n  actual: -1\n  operator: 'notStrictEqual'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-21T17:01:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3890,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 259be0521",
-        "updatedAt": "2026-10-21T20:30:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe post-merge Windows check on commit a865b2ffa (merged PR #3808) reported `tests/materiality-floor-conformance.test.js` newly failing on \"digest-sweep.md reads trusted comment objects with the Trusted-authors jq pasted verbatim (#3766)\". The failing assertion is `promotion.includes('never reduce\\nthem to bare bodies first')`.\n\nRe-checked against current `main`, the failure is still live and reproduces on macOS under a CRLF-read simulation: exactly this one test fails, 54 pass. Root cause: the file's `read` helper (line 16) uses a raw `fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8')`, and this assertion embeds a literal `\\n` across a line break. A Windows `core.autocrlf=true` checkout holds that break as `\\r\\n`. The file's other 54 assertions carry no newline-spanning literals, which is why only this one failed.\n\n`tests/helpers/read-skill.js` exports `readText(absPath)` (#2763), the shared EOL-normalizing read for this case.\n\n**Related:** #3702, #3703, #3742, #3751, #3776, #3797, #3802, #3857, #3871, #3886, #3890\n\n## Deliverables\n\n1. `tests/materiality-floor-conformance.test.js` — the `read` helper (line 16) returns `readText(path.join(REPO_ROOT, rel))` from `./helpers/read-skill` instead of a raw `fs.readFileSync`.\n\n## Acceptance Criteria\n\n1. No raw `fs.readFileSync` of a markdown file remains in `tests/materiality-floor-conformance.test.js`.\n2. Under the CRLF-read simulation, all 55 tests in the file pass. Before the fix, the #3766 test fails.\n3. `node --test tests/materiality-floor-conformance.test.js` is green on Linux/macOS.\n4. The next post-merge Windows check (`.github/workflows/windows-regression.yml`) no longer lists this test file.\n\n## Release Note\n\nFix a Windows-only failure in the materiality-floor conformance test caused by CRLF line endings.\n\n## Technical Approach\n\nA one-line swap in the file's single `read` helper. All tests read through it, so the newline-spanning literal matches on any checkout with no assertion change.\n\n### Key Files\n\n- `tests/materiality-floor-conformance.test.js` — `read` helper routed through `readText`\n- `tests/helpers/read-skill.js` — `readText` helper reused (read-only)\n\n## Gotchas\n\n- Do not rewrite the assertion to avoid the embedded `\\n`. Spanning the line break is deliberate: it pins that the wording wraps exactly there in the jq-pasting paragraph.\n- CI runs on ubuntu only, so only the post-merge `windows-regression.yml` run proves this on Windows.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after a865b2ffa\n\nThe post-merge Windows check failed on commit a865b2ffab392860f6fe8d55aacb1c330291be47 (compared against a9a388bd8).\n\n**Merged PR:** #3808 (https://github.com/thn-inc/claude-tweaks/pull/3808)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39661570980\n\n### Newly failing test files\n- `tests/materiality-floor-conformance.test.js`\n\n### Failure excerpts\n\n#### `tests/materiality-floor-conformance.test.js`\n\n```\nnot ok 11914 - digest-sweep.md reads trusted comment objects with the Trusted-authors jq pasted verbatim (\\#3766)\n  ---\n  duration_ms: 9.6889\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\materiality-floor-conformance.test.js:288:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    The expression evaluated to a falsy value:\n    \n      assert.ok(promotion.includes('never reduce\\nthem to bare bodies first'))\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-21T19:41:00Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3894,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after a865b2ffa",
-        "updatedAt": "2026-10-21T20:30:45Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe post-merge Windows check on commit 12c39e008 (merged PR #3789) reported `tests/review-console-header-conformance.test.js` newly failing on \"#3712: the deny reason's quoted section heading exists in the console file it names (single-spec)\", with `plugin/skills/wrap-up/review-console.md has no \"## Auto-resolution short-circuit (`consoleAutoResolve`)\" heading`.\n\nRe-checked against current `main`, the failure is still live and reproduces on macOS under a CRLF simulation (a preload that makes `fs.readFileSync` return `\\r\\n` text). Both the single-spec and the multi-spec variant of the #3712 test fail (6 pass / 2 fail). Root cause: line 36's `readConsole` helper reads with a raw `fs.readFileSync(..., 'utf8')`. The #3712 tests then `split('\\n')` and require an exact `lines.includes('## {heading}')` match, which a CRLF line (`## …\\r`) never satisfies. The heading itself is present in the file.\n\n`tests/helpers/read-skill.js` exports `readText(absPath)` (#2763), the shared EOL-normalizing read for this case.\n\n**Related:** #3702, #3703, #3742, #3751, #3776, #3802, #3857, #3871, #3886, #3890, #3894\n\n## Deliverables\n\n1. `tests/review-console-header-conformance.test.js` — `readConsole` (line 36) reads through `readText` from `./helpers/read-skill` instead of a raw `fs.readFileSync`.\n\n## Acceptance Criteria\n\n1. `readConsole` in `tests/review-console-header-conformance.test.js` returns `readText(...)`; no raw `fs.readFileSync` of a markdown file remains in the file.\n2. Under the CRLF simulation, both #3712 tests (single-spec and multi-spec) pass. Before the fix they fail.\n3. `node --test tests/review-console-header-conformance.test.js` is green on Linux/macOS.\n4. The next post-merge Windows check (`.github/workflows/windows-regression.yml`) no longer lists this test file.\n\n## Release Note\n\nFix a Windows-only failure in the review-console header conformance test caused by CRLF line endings.\n\n## Technical Approach\n\nA one-line swap in the shared `readConsole` helper. Every test in the file reads through it, so all of them become CRLF-safe at once, and no assertion text changes.\n\n### Key Files\n\n- `tests/review-console-header-conformance.test.js` — `readConsole` routed through `readText`\n- `tests/helpers/read-skill.js` — `readText` helper reused (read-only)\n\n## Gotchas\n\n- The Windows filer listed only the single-spec variant, but the multi-spec variant fails on the same CRLF read. AC2 covers both.\n- CI runs on ubuntu only, so only the post-merge `windows-regression.yml` run proves this on Windows.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 12c39e008\n\nThe post-merge Windows check failed on commit 12c39e008b5ffc52a339aaac968050f43cc14fd3 (compared against b408402a8).\n\n**Merged PR:** #3789 (https://github.com/thn-inc/claude-tweaks/pull/3789)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39476442558\n\n### Newly failing test files\n- `tests/review-console-header-conformance.test.js`\n\n### Failure excerpts\n\n#### `tests/review-console-header-conformance.test.js`\n\n```\nnot ok 12656 - \\#3712: the deny reason's quoted section heading exists in the console file it names (single-spec)\n  ---\n  duration_ms: 146.3358\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\review-console-header-conformance.test.js:85:3'\n  failureType: 'testCodeFailure'\n  error: 'plugin/skills/wrap-up/review-console.md has no \"## Auto-resolution short-circuit (`consoleAutoResolve`)\" heading — pre-tool-use.js\\'s checkReviewConsoleAskGate deny reason sends the model to that section by name; rename both together'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-20T18:56:33Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3797,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 12c39e008",
-        "updatedAt": "2026-10-21T20:28:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n## Current State\n\nThe post-merge Windows check on commit 8039e9166 (merged PR #3781) reported `tests/backlog-refine-flagback-divergence.test.js` newly failing on \"the flag-back comparison paragraph exists in refine-closing-summary.md\", with `expected a paragraph opening with \"**Flag-back concurrent-grant comparison (#3324).**\"`.\n\nRe-checked against current `main`, the failure is still live and reproduces on macOS under a CRLF simulation (a preload that makes `fs.readFileSync` return `\\r\\n` text): 7 of the file's 9 tests fail, 2 pass. Root cause: lines 16-17 read `refine-mode.md` and `refine-closing-summary.md` with raw `fs.readFileSync(..., 'utf8')`, and line 28 splits paragraphs with `closing.split('\\n\\n')`. On a CRLF checkout the separator is `\\r\\n\\r\\n`, so no paragraph splits out, `PARA` is undefined, and every test reading `PARA` fails. The Windows filer reported only the first.\n\n`tests/helpers/read-skill.js` exports `readText(absPath)` (#2763), the shared EOL-normalizing read whose header names `'\\n\\n'` paragraph splits as a case it makes CRLF-safe.\n\n**Related:** #3702, #3703, #3742, #3751, #3776, #3797, #3857, #3871, #3886, #3890, #3894\n\n## Deliverables\n\n1. `tests/backlog-refine-flagback-divergence.test.js` — read both markdown files (lines 16-17) through `readText` from `./helpers/read-skill`.\n\n## Acceptance Criteria\n\n1. No raw `fs.readFileSync` of a markdown file remains in `tests/backlog-refine-flagback-divergence.test.js`.\n2. Under the CRLF simulation, all 9 tests in the file pass. Before the fix, 7 fail.\n3. `node --test tests/backlog-refine-flagback-divergence.test.js` is green on Linux/macOS.\n4. The next post-merge Windows check (`.github/workflows/windows-regression.yml`) no longer lists this test file.\n\n## Release Note\n\nFix a Windows-only failure in the backlog refine flag-back test caused by CRLF line endings.\n\n## Technical Approach\n\nSwap the two reads for `readText`. The `'\\n\\n'` paragraph split and every assertion then work unchanged on any checkout.\n\n### Key Files\n\n- `tests/backlog-refine-flagback-divergence.test.js` — both markdown reads routed through `readText`\n- `tests/helpers/read-skill.js` — `readText` helper reused (read-only)\n\n## Gotchas\n\n- The filer reported one failing test, but the CRLF read breaks 7. AC2 pins all 9 passing, not just the reported one.\n- CI runs on ubuntu only, so only the post-merge `windows-regression.yml` run proves this on Windows.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 8039e9166\n\nThe post-merge Windows check failed on commit 8039e9166af5c8f93719327259bfd151d91880c9 (compared against cdda1f37f).\n\n**Merged PR:** #3781 (https://github.com/thn-inc/claude-tweaks/pull/3781)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39483862970\n\n### Newly failing test files\n- `tests/backlog-refine-flagback-divergence.test.js`\n\n### Failure excerpts\n\n#### `tests/backlog-refine-flagback-divergence.test.js`\n\n```\nnot ok 226 - the flag-back comparison paragraph exists in refine-closing-summary.md\n  ---\n  duration_ms: 1.7559\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\backlog-refine-flagback-divergence.test.js:42:1'\n  failureType: 'testCodeFailure'\n  error: 'expected a paragraph opening with \"**Flag-back concurrent-grant comparison (#3324).**\"'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  operator: '=='\n  stack: |-\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
-        "createdAt": "2026-10-20T19:47:48Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 3802,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 8039e9166",
-        "updatedAt": "2026-10-21T20:28:46Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
     ]
   ],
   "excluded": [],
   "grouping": "per-record",
-  "bundles": [
-    {
-      "records": [
-        3890,
-        3894
-      ]
-    },
-    {
-      "records": [
-        3797,
-        3802
-      ]
-    }
-  ]
+  "bundles": []
 }
