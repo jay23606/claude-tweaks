@@ -19,7 +19,9 @@
 // Running the suite also bounds its load on the machine (#3969): concurrent suites from sibling
 // worktrees and fixtures leaked into the shared temp dir made the dev machine unusable. Each run
 // takes a cross-process slot, runs `node --test` with a bounded `--test-concurrency` and a private
-// TMPDIR (removed on exit; roots orphaned by a killed run are swept on the next one). Env knobs:
+// TMPDIR under `<tmpdir>/ct-test-runs/` (removed on exit; roots orphaned by a killed run are swept
+// from that directory on the next one), and forwards SIGINT/SIGTERM/SIGHUP to the child so a
+// signalled runner frees its slot and root promptly instead of after the suite. Env knobs:
 // CT_TEST_SUITE_SLOTS (simultaneous suites, default 1), CT_TEST_CONCURRENCY (files at once,
 // default half the cores), CT_TEST_SUITE_SLOT_DIR (where the slot locks live, default under the
 // real tmpdir), CT_TEST_SUITE_SLOT_HELD (=1 set for the child so a nested run skips the slot).
@@ -27,7 +29,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 
 // The repo root every root path is relative to — both the explicit file list and the win32
 // root globs resolve against it (the spawned `node --test` runs with it as cwd), so the two
@@ -342,15 +344,18 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  const realTmp = os.tmpdir();
-  sweepStaleRoots({ dir: realTmp, isAlive: isPidAlive });
+  // Run roots live under one dedicated parent, so the startup sweep reads a directory that only
+  // ever holds run roots instead of scanning the whole real tmpdir.
+  const runsDir = path.join(os.tmpdir(), 'ct-test-runs');
+  fs.mkdirSync(runsDir, { recursive: true });
+  sweepStaleRoots({ dir: runsDir, isAlive: isPidAlive });
 
   // A nested run (a test that itself runs this script) inherits CT_TEST_SUITE_SLOT_HELD=1 from
   // the suite that already holds the slot, and must not wait on it.
   let lockPath = null;
   if (process.env.CT_TEST_SUITE_SLOT_HELD !== '1') {
     lockPath = acquireSlot({
-      dir: process.env.CT_TEST_SUITE_SLOT_DIR || path.join(realTmp, 'ct-test-suite-slots'),
+      dir: process.env.CT_TEST_SUITE_SLOT_DIR || path.join(os.tmpdir(), 'ct-test-suite-slots'),
       slots: resolveSlots(process.env, console.error),
       pid: process.pid,
       cwd: REPO_ROOT,
@@ -361,42 +366,57 @@ if (require.main === module) {
     });
   }
 
-  let runRoot;
-  let signalName = null;
-  let result;
-  try {
-    runRoot = createRunRoot(realTmp, process.pid);
-    // spawnSync blocks the event loop, so a handler can only run once the child is done: it
-    // records the signal (instead of the default instant death) so the `finally` below still
-    // removes the run root and frees the slot, then the exit code (decided in the setImmediate
-    // below, once the handler has had its turn) reports the signal.
-    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => { signalName = sig; });
-    result = spawnSync(process.execPath, testArgs, {
-      cwd: REPO_ROOT,
-      stdio: 'inherit',
-      env: { ...process.env, TMPDIR: runRoot, TMP: runRoot, TEMP: runRoot, CT_TEST_SUITE_SLOT_HELD: '1' },
+  // From here the slot is held, so a signal must forward to the child and let the cleanup below
+  // run rather than kill the runner with the lock and run root left behind. (While waiting for a
+  // slot nothing is held yet, so the default exit is right.) A signal that lands before the child
+  // exists is applied as soon as it does.
+  let child = null;
+  let forwarded = null;
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.on(sig, () => {
+      forwarded = sig;
+      if (child) child.kill(sig);
     });
-  } finally {
+  }
+
+  let runRoot = null;
+  const cleanup = () => {
     if (runRoot) {
       try {
         fs.rmSync(runRoot, { recursive: true, force: true });
       } catch (err) {
         console.error(`run-tests.js: could not remove ${runRoot}: ${err.message}`);
       }
+      runRoot = null;
     }
-    if (lockPath) releaseSlot(lockPath, process.pid);
+    if (lockPath) {
+      releaseSlot(lockPath, process.pid);
+      lockPath = null;
+    }
+  };
+
+  try {
+    runRoot = createRunRoot(runsDir, process.pid);
+    child = spawn(process.execPath, testArgs, {
+      cwd: REPO_ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, TMPDIR: runRoot, TMP: runRoot, TEMP: runRoot, CT_TEST_SUITE_SLOT_HELD: '1' },
+    });
+  } catch (err) {
+    cleanup();
+    throw err;
   }
+  if (forwarded) child.kill(forwarded);
 
-  // One event-loop turn so a signal that arrived while spawnSync blocked has run its handler.
-  setImmediate(() => {
-    if (signalName) {
-      process.exit(128 + os.constants.signals[signalName]);
-    }
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    process.exit(result.status === null ? 1 : result.status);
+  // A spawn failure emits 'error' (and no 'exit'): clean up, then surface it as an uncaught throw.
+  child.on('error', (err) => {
+    cleanup();
+    throw err;
+  });
+  child.on('exit', (code, signal) => {
+    cleanup();
+    if (forwarded) process.exit(128 + os.constants.signals[forwarded]);
+    if (signal) process.exit(128 + os.constants.signals[signal]);
+    process.exit(code === null ? 1 : code);
   });
 }

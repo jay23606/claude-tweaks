@@ -11,7 +11,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const {
@@ -287,69 +287,145 @@ test('isPidAlive is true for this process and false for an exited child', () => 
   assert.strictEqual(isPidAlive(child.pid), false);
 });
 
-// Runs tools/run-tests.js as a real child over a throwaway root holding only the probe fixture
-// (copied in as probe.test.js — the fixture's own name is not collected by the real suite), with a
-// private slot dir. `inspect({ result, probeOut, slotDir })` runs before the temp dirs go; every
-// temp dir is removed in `finally`. `CT_TEST_SUITE_SLOT_HELD` is cleared first: the suite this test
-// runs inside has it set to 1.
-function runProbe({ env: extraEnv = {}, timeout = 120000, setup, inspect }) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'run-tests-probe-'));
+// ---- Process-level tests: tools/run-tests.js as a real child over a throwaway root. ----
+// Each gets a fresh sandbox (suite root holding one fixture copied in as `<name>.test.js`, a
+// private slot dir, and a private TMPDIR so the runner's startup sweep never scans the real
+// tmpdir) that is removed in `finally`. `CT_TEST_SUITE_SLOT_HELD` and `NODE_TEST_CONTEXT` are
+// cleared from the child env: the suite this runs inside sets both, and the latter would make the
+// child's own `node --test` act as a nested worker and run nothing.
+async function withSandbox(fixture, testName, fn) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'run-tests-sandbox-'));
   try {
-    const suiteRoot = path.join(tmp, 'suite');
-    const slotDir = path.join(tmp, 'slots');
-    const probeOut = path.join(tmp, 'probe-out.json');
-    fs.mkdirSync(suiteRoot);
-    fs.mkdirSync(slotDir);
-    fs.copyFileSync(
-      path.join(ROOT, 'tests', 'fixtures', 'run-tests', 'tmpdir-probe.fixture.js'),
-      path.join(suiteRoot, 'probe.test.js'),
-    );
-    if (setup) setup({ slotDir });
-    // A private tmpdir for the child: its startup sweep scans `os.tmpdir()`, and on a machine with
-    // years of leaked fixtures in the real one (millions of entries) that scan alone outlasts the
-    // spawn timeout. The sweep itself is pinned directly above.
-    const childTmp = path.join(tmp, 'tmp');
-    fs.mkdirSync(childTmp);
-    const env = { ...process.env, CT_PROBE_OUT: probeOut, CT_TEST_SUITE_SLOT_DIR: slotDir, TMPDIR: childTmp, TMP: childTmp, TEMP: childTmp };
-    delete env.CT_TEST_SUITE_SLOT_HELD;
-    // Set by the `node --test` this test runs under: left in, the child's own `node --test` would
-    // act as a nested worker and run nothing.
-    delete env.NODE_TEST_CONTEXT;
-    Object.assign(env, extraEnv);
-    const result = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'run-tests.js'), suiteRoot], {
-      cwd: ROOT, env, encoding: 'utf8', timeout,
-    });
-    inspect({ result, probeOut, slotDir });
+    const sb = {
+      suiteRoot: path.join(tmp, 'suite'),
+      slotDir: path.join(tmp, 'slots'),
+      childTmp: path.join(tmp, 'tmp'),
+      probeOut: path.join(tmp, 'probe-out.json'),
+    };
+    for (const dir of [sb.suiteRoot, sb.slotDir, sb.childTmp]) fs.mkdirSync(dir);
+    fs.copyFileSync(path.join(ROOT, 'tests', 'fixtures', 'run-tests', fixture), path.join(sb.suiteRoot, testName));
+    sb.env = {
+      ...process.env,
+      CT_PROBE_OUT: sb.probeOut,
+      CT_TEST_SUITE_SLOT_DIR: sb.slotDir,
+      TMPDIR: sb.childTmp,
+      TMP: sb.childTmp,
+      TEMP: sb.childTmp,
+    };
+    delete sb.env.CT_TEST_SUITE_SLOT_HELD;
+    delete sb.env.NODE_TEST_CONTEXT;
+    return await fn(sb);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
-test('run-tests.js runs the suite under a ct-testrun-* TMPDIR it removes on exit', () => {
-  runProbe({
-    inspect({ result, probeOut, slotDir }) {
-      assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-      const recorded = JSON.parse(fs.readFileSync(probeOut, 'utf8'));
-      assert.match(path.basename(recorded.tmpdir), /^ct-testrun-\d+-/);
-      assert.strictEqual(fs.existsSync(recorded.tmpdir), false);
-      assert.strictEqual(recorded.held, '1');
-      assert.deepStrictEqual(fs.readdirSync(slotDir).filter((n) => /^slot-.*\.lock$/.test(n)), []);
-    },
+const RUNNER = path.join(ROOT, 'tools', 'run-tests.js');
+const PROBE = ['tmpdir-probe.fixture.js', 'probe.test.js'];
+const SLOT_LOCKS = (dir) => fs.readdirSync(dir).filter((n) => /^slot-.*\.lock$/.test(n));
+
+test('run-tests.js runs the suite under a ct-testrun-* TMPDIR it removes on exit', async () => {
+  await withSandbox(...PROBE, (sb) => {
+    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 120000 });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    const recorded = JSON.parse(fs.readFileSync(sb.probeOut, 'utf8'));
+    assert.match(path.basename(recorded.tmpdir), /^ct-testrun-\d+-/);
+    // Run roots live under a dedicated parent, so the startup sweep never scans the whole tmpdir.
+    assert.strictEqual(
+      fs.realpathSync(path.dirname(recorded.tmpdir)),
+      fs.realpathSync(path.join(sb.childTmp, 'ct-test-runs')),
+    );
+    assert.strictEqual(fs.existsSync(recorded.tmpdir), false);
+    assert.strictEqual(recorded.held, '1');
+    assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
   });
 });
 
-test('a nested run with CT_TEST_SUITE_SLOT_HELD=1 skips the slot', () => {
-  // A live holder (this process) would block a run that tried to take the only slot.
-  const lockText = JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: ROOT });
-  runProbe({
-    env: { CT_TEST_SUITE_SLOT_HELD: '1' },
-    timeout: 60000,
-    setup({ slotDir }) {
-      fs.writeFileSync(path.join(slotDir, 'slot-0.lock'), lockText);
-    },
-    inspect({ result, slotDir }) {
-      assert.strictEqual(result.status, 0, result.stdout + result.stderr);
-      assert.strictEqual(fs.readFileSync(path.join(slotDir, 'slot-0.lock'), 'utf8'), lockText);
-    },
+test('run-tests.js holds the suite slot for the runner pid while the suite runs, and frees it after', async () => {
+  await withSandbox(...PROBE, (sb) => {
+    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 120000 });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    const recorded = JSON.parse(fs.readFileSync(sb.probeOut, 'utf8'));
+    assert.strictEqual(recorded.lockPid, result.pid);
+    assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
   });
 });
+
+test('a nested run with CT_TEST_SUITE_SLOT_HELD=1 skips the slot', async () => {
+  await withSandbox(...PROBE, (sb) => {
+    // A live holder (this process) would block a run that tried to take the only slot.
+    const lockText = JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: ROOT });
+    fs.writeFileSync(path.join(sb.slotDir, 'slot-0.lock'), lockText);
+    const env = { ...sb.env, CT_TEST_SUITE_SLOT_HELD: '1' };
+    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env, encoding: 'utf8', timeout: 60000 });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(sb.slotDir, 'slot-0.lock'), 'utf8'), lockText);
+  });
+});
+
+test('run-tests.js reclaims a slot held by a dead pid and frees it after the run', async () => {
+  await withSandbox(...PROBE, (sb) => {
+    const dead = spawnSync(process.execPath, ['-e', '0']);
+    fs.writeFileSync(
+      path.join(sb.slotDir, 'slot-0.lock'),
+      JSON.stringify({ pid: dead.pid, startedAt: new Date().toISOString(), cwd: ROOT }),
+    );
+    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 60000 });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.strictEqual(JSON.parse(fs.readFileSync(sb.probeOut, 'utf8')).lockPid, result.pid);
+    assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
+  });
+});
+
+// Polls `predicate` until true or `timeoutMs` passes; rejects on timeout so a hang fails the test.
+async function until(predicate, timeoutMs, what) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+test('run-tests.js waits for a slot held by a live pid, naming the holder', async () => {
+  const lockText = JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: ROOT });
+  await withSandbox(...PROBE, async (sb) => {
+    fs.writeFileSync(path.join(sb.slotDir, 'slot-0.lock'), lockText);
+    const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: ['ignore', 'ignore', 'pipe'] });
+    try {
+      let stderr = '';
+      child.stderr.on('data', (d) => { stderr += d; });
+      await until(() => stderr.includes('waiting for a test-suite slot'), 60000, 'the slot-wait message');
+      assert.ok(stderr.includes(`held by pid ${process.pid}`), stderr);
+      assert.strictEqual(fs.existsSync(sb.probeOut), false, 'the suite must not run while the slot is held');
+      assert.strictEqual(fs.readFileSync(path.join(sb.slotDir, 'slot-0.lock'), 'utf8'), lockText);
+    } finally {
+      child.kill('SIGKILL');
+    }
+  });
+});
+
+test('a SIGTERM to the runner alone is forwarded: it exits 143 promptly and frees its run root and slot', async () => {
+  await withSandbox('sleep-probe.fixture.js', 'sleep.test.js', async (sb) => {
+    const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: 'ignore' });
+    try {
+      const exited = new Promise((resolve) => child.on('exit', (code, signal) => resolve({ code, signal })));
+      await until(() => fs.existsSync(sb.probeOut), 60000, 'the fixture to start');
+      assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), ['slot-0.lock']);
+      const sentAt = Date.now();
+      child.kill('SIGTERM'); // the runner pid only, not its group
+      const { code, signal } = await Promise.race([
+        exited,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('runner still running 8s after SIGTERM')), 8000)),
+      ]);
+      assert.strictEqual(signal, null);
+      assert.strictEqual(code, 143);
+      assert.ok(Date.now() - sentAt < 8000);
+      assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
+      const runsDir = path.join(sb.childTmp, 'ct-test-runs');
+      assert.deepStrictEqual(fs.existsSync(runsDir) ? fs.readdirSync(runsDir) : [], []);
+    } finally {
+      child.kill('SIGKILL');
+    }
+  });
+});
+
