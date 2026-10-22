@@ -417,8 +417,14 @@ const READER_FILES = [
 // file stays an offender.
 const HEADER_ALLOWLIST = {
   'lib/run-header.js': { reason: 'the resolver: it owns the header filename and the live/archived location rule.' },
-  'materialize.js': { reason: 'the header writer: it creates work/{n}-spec.md, it does not locate an existing header.' },
-  'lib/issues/blast-radius.js': { reason: 'classifier glob over changed files, not a header read path; it already matches the archived location.' },
+  'materialize.js': {
+    reason: 'the header writer: it creates work/{n}-spec.md, it does not locate an existing header.',
+    lines: ['path.join(workDir, `${opts.n}-spec.md`)'],
+  },
+  'lib/issues/blast-radius.js': {
+    reason: 'classifier glob over changed files, not a header read path; it already matches the archived location.',
+    lines: ["'.claude-tweaks/pipelines/**/work/*-spec.md'"],
+  },
   'verify-run-bookends.js': {
     reason: 'user-facing text (usage line and materialize remedy message), not a read path.',
     lines: ['a committed work/{n}-spec.md', 'then commit work/${n}-spec.md'],
@@ -634,6 +640,18 @@ test('header scan: a stale allowlist file, zero-match file, line key or missing 
     'b.js: stale allowlist line key -- matches nothing: a key that matches nothing',
   ]);
   assert.deepStrictEqual(evaluateHeaderScan({ 'b.js': files['b.js'] }, { 'b.js': { reason: ' ' } }).offenders, ['b.js: allowlist entry has no reason']);
+});
+
+test('header scan: a second header literal in a one-site allowlisted file (materialize.js, blast-radius.js) is an offender', () => {
+  const planted = {
+    'materialize.js': ['const outFile = path.join(workDir, `${opts.n}-spec.md`);', 'const again = path.join(dir, `${n}-spec.md`);'].join('\n'),
+    'lib/issues/blast-radius.js': ["const G = ['.claude-tweaks/pipelines/**/work/*-spec.md', 'docs/superpowers/plans/*.md'];", "const H = ['pipelines/**/work/*-spec.md'];"].join('\n'),
+  };
+  for (const [rel, src] of Object.entries(planted)) {
+    const out = evaluateHeaderScan({ [rel]: src }, { [rel]: HEADER_ALLOWLIST[rel] }).offenders;
+    assert.strictEqual(out.length, 1, `${rel}: ${JSON.stringify(out)}`);
+    assert.match(out[0], new RegExp(`^${rel.replace(/[./]/g, '\\$&')}:2: header filename literal outside the allowlist`));
+  }
 });
 
 test('reader scan matcher: an archive literal or pipelines/archive in code is flagged; in a comment it is not', () => {
