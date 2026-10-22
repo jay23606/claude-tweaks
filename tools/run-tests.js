@@ -23,8 +23,9 @@
 // from that directory on the next one), and forwards SIGINT/SIGTERM/SIGHUP to the child so a
 // signalled runner frees its slot and root promptly instead of after the suite. Env knobs:
 // CT_TEST_SUITE_SLOTS (simultaneous suites, default 1), CT_TEST_CONCURRENCY (files at once,
-// default half the cores, or cores - 1 when CI is set), CT_TEST_SUITE_SLOT_DIR (where the slot locks live, default under the
-// real tmpdir), CT_TEST_SUITE_SLOT_HELD (=1 set for the child so a nested run skips the slot).
+// default half the cores, or cores - 1 when CI is set), CT_TEST_SUITE_SLOT_DIR (where the slot
+// locks live, default under the real tmpdir), CT_TEST_SUITE_SLOT_HELD (=1 set for the child so a
+// nested run skips the slot).
 
 const fs = require('fs');
 const os = require('os');
@@ -158,6 +159,10 @@ function createLock(lockPath, pid, cwd, now) {
   return true;
 }
 
+// Stands in for a holder whose identity is not readable (caught between create and write, or a
+// reclaim in flight).
+const UNKNOWN_HOLDER = Object.freeze({ pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' });
+
 // Classifies an existing lock file: `null` if it vanished, `{ stale: true }` if it is
 // reclaimable (dead holder, or unparseable and older than `staleUnparseableMs`), else the
 // held-by info. A fresh unparseable file is a holder caught between create and write, so it is
@@ -182,7 +187,26 @@ function readHolder(lockPath, { isAlive, now, staleUnparseableMs }) {
     return isAlive(held.pid) ? { pid: held.pid, cwd: held.cwd, startedAt: held.startedAt } : { stale: true };
   }
   if (now() - mtimeMs > staleUnparseableMs) return { stale: true };
-  return { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
+  return UNKNOWN_HOLDER;
+}
+
+function unlinkQuiet(p) {
+  try {
+    fs.unlinkSync(p);
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+}
+
+// Creates the reclaim mutex exclusively; false when it already exists.
+function createMutex(mutex) {
+  try {
+    fs.closeSync(fs.openSync(mutex, 'wx'));
+    return true;
+  } catch (err) {
+    if (err.code === 'EEXIST') return false;
+    throw err;
+  }
 }
 
 // Reclaims a lock its caller judged stale, atomically enough that two reclaimers cannot both end
@@ -196,13 +220,6 @@ function readHolder(lockPath, { isAlive, now, staleUnparseableMs }) {
 // Returns true when `lockPath` is now ours; false when someone else holds or is reclaiming it.
 function reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, staleReclaimMs }) {
   const mutex = lockPath.replace(/\.lock$/, '.reclaim');
-  const unlinkQuiet = (p) => {
-    try {
-      fs.unlinkSync(p);
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-    }
-  };
   if (!createMutex(mutex)) {
     let ageMs;
     try {
@@ -221,17 +238,6 @@ function reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, sta
     return createLock(lockPath, pid, cwd, now);
   } finally {
     unlinkQuiet(mutex);
-  }
-}
-
-// Creates the reclaim mutex exclusively; false when it already exists.
-function createMutex(mutex) {
-  try {
-    fs.closeSync(fs.openSync(mutex, 'wx'));
-    return true;
-  } catch (err) {
-    if (err.code === 'EEXIST') return false;
-    throw err;
   }
 }
 
@@ -254,7 +260,7 @@ function acquireSlot({ dir, slots, pid, cwd, isAlive: isPidLive, now, sleep, log
       if (holder === null || holder.stale) {
         if (reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, staleReclaimMs })) return lockPath;
         // Someone else is reclaiming this slot or won it: it is held now, so keep scanning.
-        if (!blocker) blocker = { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown', lockPath };
+        if (!blocker) blocker = { ...UNKNOWN_HOLDER, lockPath };
         continue;
       }
       if (!blocker || blocker.pid === 'unknown') blocker = { ...holder, lockPath };

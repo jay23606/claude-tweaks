@@ -96,6 +96,8 @@ function slotArgs(dir, over) {
   return { dir, slots: 1, pid: 111, cwd: '/work/a', isAlive: () => false, now: Date.now, log: () => {}, sleep: () => {}, ...over };
 }
 
+const noSleep = () => { throw new Error('sleep must not be called'); };
+
 function writeLock(dir, i, pid) {
   const p = path.join(dir, `slot-${i}.lock`);
   fs.writeFileSync(p, JSON.stringify({ pid, startedAt: '2026-01-01T00:00:00.000Z', cwd: '/work/other' }));
@@ -115,8 +117,7 @@ test('acquireSlot takes a free slot', () => {
 test("acquireSlot reclaims a dead holder's lock without sleeping", () => {
   withTempDir((dir) => {
     writeLock(dir, 0, 222);
-    const sleep = () => { throw new Error('sleep must not be called'); };
-    const lock = acquireSlot(slotArgs(dir, { sleep, isAlive: (pid) => pid === 111 }));
+    const lock = acquireSlot(slotArgs(dir, { sleep: noSleep, isAlive: (pid) => pid === 111 }));
     assert.strictEqual(lock, path.join(dir, 'slot-0.lock'));
     assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, 111);
   });
@@ -172,8 +173,7 @@ test('acquireSlot clears an old .reclaim mutex left by a crashed reclaimer and r
     fs.writeFileSync(mutex, '');
     const old = new Date(Date.now() - 31 * 1000);
     fs.utimesSync(mutex, old, old);
-    const sleep = () => { throw new Error('sleep must not be called'); };
-    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep: noSleep })), p);
     assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
     assert.ok(!fs.existsSync(mutex));
   });
@@ -184,9 +184,8 @@ test('a lock carrying pid 0 is not live forever: it counts as unparseable and is
     const p = writeLock(dir, 0, 0);
     const old = new Date(Date.now() - 11 * 60 * 1000);
     fs.utimesSync(p, old, old);
-    const sleep = () => { throw new Error('sleep must not be called'); };
     // isAlive says yes to everything: only the pid > 0 requirement can make this lock reclaimable.
-    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep, isAlive: () => true })), p);
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep: noSleep, isAlive: () => true })), p);
     assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
   });
 });
@@ -197,8 +196,7 @@ test('acquireSlot reclaims an old unparseable lock', () => {
     fs.writeFileSync(p, '');
     const old = new Date(Date.now() - 11 * 60 * 1000);
     fs.utimesSync(p, old, old);
-    const sleep = () => { throw new Error('sleep must not be called'); };
-    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep: noSleep })), p);
     assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
   });
 });
@@ -240,8 +238,7 @@ test('acquireSlot waits for a live holder, logs once, then acquires', () => {
 test('acquireSlot reclaims a lock naming its own pid without sleeping, even when isAlive says it is live', () => {
   withTempDir((dir) => {
     const p = writeLock(dir, 0, 111);
-    const sleep = () => { throw new Error('sleep must not be called'); };
-    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep, isAlive: () => true })), p);
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep: noSleep, isAlive: () => true })), p);
     assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
   });
 });
@@ -249,8 +246,7 @@ test('acquireSlot reclaims a lock naming its own pid without sleeping, even when
 test('acquireSlot uses a second slot when slots=2', () => {
   withTempDir((dir) => {
     writeLock(dir, 0, 333);
-    const sleep = () => { throw new Error('sleep must not be called'); };
-    const lock = acquireSlot(slotArgs(dir, { slots: 2, sleep, isAlive: (pid) => pid === 333 }));
+    const lock = acquireSlot(slotArgs(dir, { slots: 2, sleep: noSleep, isAlive: (pid) => pid === 333 }));
     assert.strictEqual(lock, path.join(dir, 'slot-1.lock'));
   });
 });
@@ -342,11 +338,13 @@ async function withSandbox(fixture, testName, fn) {
 
 const RUNNER = path.join(ROOT, 'tools', 'run-tests.js');
 const PROBE = ['tmpdir-probe.fixture.js', 'probe.test.js'];
+const runRunner = (sb, { env = sb.env, timeout = 60000 } = {}) =>
+  spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env, encoding: 'utf8', timeout });
 const SLOT_LOCKS = (dir) => fs.readdirSync(dir).filter((n) => /^slot-.*\.lock$/.test(n));
 
 test('run-tests.js runs the suite under a ct-testrun-* TMPDIR it removes on exit', async () => {
   await withSandbox(...PROBE, (sb) => {
-    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 120000 });
+    const result = runRunner(sb, { timeout: 120000 });
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
     const recorded = JSON.parse(fs.readFileSync(sb.probeOut, 'utf8'));
     assert.match(path.basename(recorded.tmpdir), /^ct-testrun-\d+-/);
@@ -363,7 +361,7 @@ test('run-tests.js runs the suite under a ct-testrun-* TMPDIR it removes on exit
 
 test('run-tests.js holds the suite slot for the runner pid while the suite runs, and frees it after', async () => {
   await withSandbox(...PROBE, (sb) => {
-    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 120000 });
+    const result = runRunner(sb, { timeout: 120000 });
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
     const recorded = JSON.parse(fs.readFileSync(sb.probeOut, 'utf8'));
     assert.strictEqual(recorded.lockPid, result.pid);
@@ -377,7 +375,7 @@ test('a nested run with CT_TEST_SUITE_SLOT_HELD=1 skips the slot', async () => {
     const lockText = JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), cwd: ROOT });
     fs.writeFileSync(path.join(sb.slotDir, 'slot-0.lock'), lockText);
     const env = { ...sb.env, CT_TEST_SUITE_SLOT_HELD: '1' };
-    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env, encoding: 'utf8', timeout: 60000 });
+    const result = runRunner(sb, { env });
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
     assert.strictEqual(fs.readFileSync(path.join(sb.slotDir, 'slot-0.lock'), 'utf8'), lockText);
   });
@@ -390,7 +388,7 @@ test('run-tests.js reclaims a slot held by a dead pid and frees it after the run
       path.join(sb.slotDir, 'slot-0.lock'),
       JSON.stringify({ pid: dead.pid, startedAt: new Date().toISOString(), cwd: ROOT }),
     );
-    const result = spawnSync(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, encoding: 'utf8', timeout: 60000 });
+    const result = runRunner(sb);
     assert.strictEqual(result.status, 0, result.stdout + result.stderr);
     assert.strictEqual(JSON.parse(fs.readFileSync(sb.probeOut, 'utf8')).lockPid, result.pid);
     assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);
@@ -439,28 +437,20 @@ const SIGNAL_SKIP = { skip: process.platform === 'win32' && 'win32: signals term
 
 // A signal to the runner pid alone (not its group) must reach the suite and free everything the
 // runner holds. The fixture sleeps 60s, so a runner that waited for it could not exit inside the
-// 30s race bound; the race rejecting is the failure signal, not a clock comparison.
+// 30s `until` bound; the timeout rejecting is the failure signal, not a clock comparison.
 for (const [signal, expectedCode] of [['SIGTERM', 143], ['SIGHUP', 129]]) {
   test(`a ${signal} to the runner alone is forwarded: it exits ${expectedCode} promptly and frees its run root, slot and test worker`, SIGNAL_SKIP, async () => {
     await withSandbox('sleep-probe.fixture.js', 'sleep.test.js', async (sb) => {
       const child = spawn(process.execPath, [RUNNER, sb.suiteRoot], { cwd: ROOT, env: sb.env, stdio: 'ignore' });
       let workerPid = null;
       try {
-        const exited = new Promise((resolve) => child.on('exit', (code, sig) => resolve({ code, sig })));
+        let outcome = null;
+        child.on('exit', (code, sig) => { outcome = { code, sig }; });
         await until(() => fixturePid(sb) !== null, 60000, 'the fixture to start');
         workerPid = fixturePid(sb);
         assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), ['slot-0.lock']);
         child.kill(signal);
-        let timer;
-        const bound = new Promise((_, reject) => {
-          timer = setTimeout(() => reject(new Error(`runner still running 30s after ${signal}`)), 30000);
-        });
-        let outcome;
-        try {
-          outcome = await Promise.race([exited, bound]);
-        } finally {
-          clearTimeout(timer);
-        }
+        await until(() => outcome !== null, 30000, `the runner to exit after ${signal}`);
         assert.strictEqual(outcome.sig, null);
         assert.strictEqual(outcome.code, expectedCode);
         assert.deepStrictEqual(SLOT_LOCKS(sb.slotDir), []);

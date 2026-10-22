@@ -66,8 +66,7 @@ function findOnPath(name, { env, platform, cwd }) {
   const win = platform === 'win32';
   const rawPath = env.PATH || env.Path || '';
   const localBin = cwd ? [path.join(cwd, 'node_modules', '.bin')] : [];
-  const dirs = [...localBin, ...rawPath.split(win ? ';' : path.delimiter)]
-    .filter(Boolean);
+  const dirs = [...localBin, ...rawPath.split(win ? ';' : path.delimiter)].filter(Boolean);
   const names = [name];
   if (win) {
     for (const ext of (env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)) {
