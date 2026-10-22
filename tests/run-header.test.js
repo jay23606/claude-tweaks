@@ -353,6 +353,35 @@ test('checkoutRootOf: null without a .claude-tweaks/pipelines pair', () => {
   assert.strictEqual(checkoutRootOf(undefined), null);
 });
 
+// The win32 branch, reached on any host through an injected path flavor
+// (.claude/skills/windows-checkout-test-parity: inject the stdlib module).
+test('checkoutRootOf (path.win32): drive, mixed separators, UNC, nested pair, and the bare drive root', () => {
+  const w = path.win32;
+  assert.strictEqual(checkoutRootOf('C:\\a\\b\\.claude-tweaks\\pipelines\\R', w), 'C:\\a\\b');
+  assert.strictEqual(checkoutRootOf('C:/a/b/.claude-tweaks/pipelines/archive/R/spec-3', w), 'C:\\a\\b');
+  assert.strictEqual(checkoutRootOf('\\\\server\\share\\repo\\.claude-tweaks\\pipelines\\R', w), '\\\\server\\share\\repo');
+  assert.strictEqual(checkoutRootOf('\\\\server\\share\\.claude-tweaks\\pipelines\\R', w), '\\\\server\\share');
+  assert.strictEqual(
+    checkoutRootOf('D:\\a\\.claude-tweaks\\pipelines\\x\\.claude-tweaks\\pipelines\\R', w),
+    'D:\\a\\.claude-tweaks\\pipelines\\x',
+  );
+  // A bare `C:` is drive-relative; the checkout root is the drive root `C:\`,
+  // so a resolver join lands at C:\.claude-tweaks, not C:.claude-tweaks.
+  assert.strictEqual(checkoutRootOf('C:\\.claude-tweaks\\pipelines\\R', w), 'C:\\');
+  assert.strictEqual(w.join(checkoutRootOf('C:\\.claude-tweaks\\pipelines\\R', w), '.claude-tweaks'), 'C:\\.claude-tweaks');
+  assert.strictEqual(checkoutRootOf('\\.claude-tweaks\\pipelines\\R', w), '\\');
+  assert.strictEqual(checkoutRootOf('C:\\a\\b\\c', w), null);
+});
+
+test('checkoutRootOf (path.posix): absolute, filesystem root, relative, and a backslash that is not a separator', () => {
+  const p = path.posix;
+  assert.strictEqual(checkoutRootOf('/a/b/.claude-tweaks/pipelines/R', p), '/a/b');
+  assert.strictEqual(checkoutRootOf('/.claude-tweaks/pipelines/R', p), '/');
+  assert.strictEqual(checkoutRootOf('.claude-tweaks/pipelines/R', p), '.');
+  assert.strictEqual(checkoutRootOf('C:/.claude-tweaks/pipelines/R', p), 'C:', 'a C: dir is an ordinary name on posix');
+  assert.strictEqual(checkoutRootOf('/a\\.claude-tweaks\\pipelines\\R', p), null);
+});
+
 // ---------------------------------------------------------------------------
 // Source scan (#3974): the spec-header location rule lives in run-header.js.
 //

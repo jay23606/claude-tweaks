@@ -44,15 +44,19 @@ function runIdentity(runDir) {
 }
 
 // The checkout root a run dir sits under: the native path before the last
-// `.claude-tweaks` segment that is followed by `pipelines`.
-function checkoutRootOf(runDir) {
+// `.claude-tweaks` segment that is followed by `pipelines`. `pathFlavor`
+// (`path.win32`/`path.posix`) defaults to the host's, so tests reach the
+// win32 branch on any host.
+function checkoutRootOf(runDir, pathFlavor = path) {
   if (typeof runDir !== 'string' || runDir === '') return null;
-  const segs = runDir.split(path.sep === '\\' ? /[\\/]/ : '/');
+  const { sep } = pathFlavor;
+  const segs = runDir.split(sep === '\\' ? /[\\/]/ : '/');
   for (let i = segs.length - 2; i >= 0; i--) {
     if (segs[i] === '.claude-tweaks' && segs[i + 1] === 'pipelines') {
-      const root = segs.slice(0, i).join(path.sep);
-      if (root !== '') return root;
-      return segs[0] === '' ? path.sep : '.';
+      const root = segs.slice(0, i).join(sep);
+      if (root === '') return segs[0] === '' ? sep : '.';
+      // A bare drive (`C:`) is drive-relative on win32; its root is `C:\`.
+      return sep === '\\' && /^[A-Za-z]:$/.test(root) ? `${root}${sep}` : root;
     }
   }
   return null;
