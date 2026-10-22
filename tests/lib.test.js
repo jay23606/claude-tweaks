@@ -119,11 +119,11 @@ function withTempDirs(fn) {
   }
 }
 
-test('deps: findOnPath finds an executable on PATH', () => {
+test('deps: findOnPath finds an executable on PATH', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
   withTempDirs(({ fs, path, dir, cwd }) => {
     const file = path.join(dir, 'playwright-cli');
     fs.writeFileSync(file, '#!/bin/sh\n');
-    fs.chmodSync(file, 0o755);
+    fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
     assert.strictEqual(
       deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd }),
       file,
@@ -131,13 +131,13 @@ test('deps: findOnPath finds an executable on PATH', () => {
   });
 });
 
-test('deps: findOnPath finds a project-local node_modules/.bin install first', () => {
+test('deps: findOnPath finds a project-local node_modules/.bin install first', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
   withTempDirs(({ fs, path, cwd }) => {
     const binDir = path.join(cwd, 'node_modules', '.bin');
     fs.mkdirSync(binDir, { recursive: true });
     const file = path.join(binDir, 'playwright-cli');
     fs.writeFileSync(file, '#!/bin/sh\n');
-    fs.chmodSync(file, 0o755);
+    fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
     assert.strictEqual(
       deps.findOnPath('playwright-cli', { env: { PATH: '' }, platform: 'darwin', cwd }),
       file,
@@ -149,7 +149,7 @@ test('deps: findOnPath ignores a non-executable file on POSIX', () => {
   withTempDirs(({ fs, path, dir, cwd }) => {
     const file = path.join(dir, 'playwright-cli');
     fs.writeFileSync(file, 'not executable\n');
-    fs.chmodSync(file, 0o644);
+    fs.chmodSync(file, 0o644); // root-safe: root does not change the mode bits findOnPath reads
     assert.strictEqual(
       deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd }),
       null,
@@ -177,9 +177,43 @@ test('deps: findOnPath tries PATHEXT on win32', () => {
   });
 });
 
-// Pins the wiring of process.env / process.platform / process.cwd() into
-// findOnPath: a mis-wired argument (e.g. env: {}) would still satisfy the
-// no-subprocess guard below, so drive the real process state instead.
+// A null cwd (the caller could not resolve one) skips the project-local
+// node_modules/.bin and scans PATH only.
+test('deps: findOnPath scans PATH only when cwd is null', { skip: process.platform === 'win32' && 'win32: fs.stat reports no execute bits' }, () => {
+  withTempDirs(({ fs, path, dir }) => {
+    assert.strictEqual(deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd: null }), null);
+    const file = path.join(dir, 'playwright-cli');
+    fs.writeFileSync(file, '#!/bin/sh\n');
+    fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
+    assert.strictEqual(deps.findOnPath('playwright-cli', { env: { PATH: dir }, platform: 'darwin', cwd: null }), file);
+  });
+});
+
+// process.cwd() throws once the cwd was deleted (a reaped worktree); that must not drop
+// collect()'s messages. Node caches the cwd until the next chdir, so the test chdirs in,
+// deletes the directory, and only then calls: the first process.cwd() after that throws.
+test('deps: playwrightCliMessage still answers from PATH when the cwd was deleted', {
+  skip: process.platform === 'win32' && 'win32: a process cwd cannot be removed',
+}, () => {
+  withTempDirs(({ fs, path, dir, cwd }) => {
+    const origPath = process.env.PATH;
+    const origCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      fs.rmSync(cwd, { recursive: true });
+      assert.throws(() => process.cwd(), 'the fixture must have produced a deleted cwd');
+      process.env.PATH = dir;
+      assert.match(deps.playwrightCliMessage(), /Install: npm install -g @playwright\/cli/);
+    } finally {
+      process.chdir(origCwd);
+      process.env.PATH = origPath;
+    }
+  });
+});
+
+// Pins the wiring of process.env into findOnPath through playwrightCliMessage: a
+// mis-wired argument (e.g. env: {}) would still satisfy the no-subprocess guard
+// below, so drive the real PATH instead.
 test('deps: playwrightCliMessage reports installed vs missing from the real PATH', () => {
   withTempDirs(({ fs, path, dir, cwd }) => {
     const origPath = process.env.PATH;
@@ -191,7 +225,7 @@ test('deps: playwrightCliMessage reports installed vs missing from the real PATH
 
       const shim = path.join(dir, 'playwright-cli');
       fs.writeFileSync(shim, '#!/bin/sh\n');
-      fs.chmodSync(shim, 0o755);
+      fs.chmodSync(shim, 0o755); // root-safe: exec-bit stub, not a permission-denial simulation
       assert.strictEqual(deps.playwrightCliMessage(), null);
     } finally {
       process.chdir(origCwd);

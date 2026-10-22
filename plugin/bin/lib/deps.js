@@ -61,10 +61,12 @@ function detectVersionManager() {
 
 // Pure PATH scan, no subprocess. `platform` is a parameter (not read from
 // process) because path.delimiter reflects the host, not a simulated win32.
+// A falsy `cwd` skips the project-local node_modules/.bin and scans PATH only.
 function findOnPath(name, { env, platform, cwd }) {
   const win = platform === 'win32';
   const rawPath = env.PATH || env.Path || '';
-  const dirs = [path.join(cwd, 'node_modules', '.bin'), ...rawPath.split(win ? ';' : path.delimiter)]
+  const localBin = cwd ? [path.join(cwd, 'node_modules', '.bin')] : [];
+  const dirs = [...localBin, ...rawPath.split(win ? ';' : path.delimiter)]
     .filter(Boolean);
   const names = [name];
   if (win) {
@@ -91,13 +93,23 @@ function findOnPath(name, { env, platform, cwd }) {
   return null;
 }
 
+// process.cwd() throws when the cwd was deleted (e.g. a reaped worktree); one throw here would
+// drop every message collect() returns, so a missing cwd degrades to a PATH-only lookup.
+function safeCwd() {
+  try {
+    return process.cwd();
+  } catch {
+    return null;
+  }
+}
+
 function playwrightCliMessage() {
   // A PATH scan, not `npx --no-install playwright-cli --version`: npx boots a
   // whole npm CLI on every SessionStart (~2 CPU-seconds, 30s+ under load).
   const installed = findOnPath('playwright-cli', {
     env: process.env,
     platform: process.platform,
-    cwd: process.cwd(),
+    cwd: safeCwd(),
   }) !== null;
   if (!installed) {
     return 'claude-tweaks: Browser features require playwright-cli. Install: npm install -g @playwright/cli. Browser features are optional.';
