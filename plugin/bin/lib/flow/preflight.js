@@ -21,7 +21,7 @@ const { computeDerivedDefaults } = require('../policy-derived-defaults');
 const { resolveTarget } = require('../stage-item/write');
 const { classifyDecisions } = require('../log-decision/claim-log');
 const { splitNul } = require('../git-z');
-const { runIdentity, headerTreeDirs, HEADER_PATH_RE } = require('../run-header');
+const { runIdentity, checkoutRootOf, headerTreeDirs, listHeaderDirs, HEADER_PATH_RE } = require('../run-header');
 
 const BIN = path.join(__dirname, '..', '..');
 const VERIFY_JS = path.join(BIN, 'verify.js');
@@ -268,22 +268,37 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
     },
     spec: () => {
       const headers = (dir) => deps.readdir(dir).filter((n) => /^\d+-spec\.md$/.test(n)).sort();
-      const names = headers(path.join(runDirReal, 'work'));
-      if (names.length) {
-        const record = Number(names[0].split('-')[0]);
-        return { path: `work/${names[0]}`, present: true, record, records: [record] };
+      const absent = { path: null, present: false, record: null, records: [] };
+      const identity = runIdentity(runDirReal);
+      const root = checkoutRootOf(runDirReal);
+      if (!identity || root === null) return absent;
+      // The header dirs sit live or archived (#3974), and run-header.js says
+      // where; the first location holding any header answers, live first.
+      // `path` stays relative to the run dir (`work/{n}-spec.md`) at either.
+      const dirs = listHeaderDirs([root], identity.runId, { specN: identity.specN });
+      for (const location of ['live', 'archived']) {
+        const at = dirs.filter((d) => d.location === location);
+        // A run's own work/ — for a per-spec run, its spec-{N}/work/ — wins outright.
+        const own = at.find((d) => identity.specN !== null || d.shape === 'flat');
+        const names = own ? headers(own.dir) : [];
+        if (names.length) {
+          const record = Number(names[0].split('-')[0]);
+          return { path: `work/${names[0]}`, present: true, record, records: [record] };
+        }
+        if (identity.specN !== null) continue;
+        // Multi-spec parent (#1931 I4): /dispatch hands both calls the PARENT
+        // run dir; its headers live one level down, under `spec-{N}/work/`
+        // (multi-spec.md), numeric N only. `record`/`path` stay null — a
+        // parent has no single one — and `records` carries every header found.
+        const records = [];
+        for (const d of at) {
+          if (d.shape !== 'nested' || d.specN === null) continue;
+          for (const n of headers(d.dir)) records.push(Number(n.split('-')[0]));
+        }
+        records.sort((a, b) => a - b);
+        if (records.length) return { path: null, present: true, record: null, records };
       }
-      // Multi-spec parent (#1931 I4): /dispatch hands both calls the PARENT
-      // run dir; its headers live one level down, under `spec-{N}/work/`
-      // (multi-spec.md). `record`/`path` stay null — a parent has no single
-      // one — and `records` carries every header found.
-      const records = [];
-      for (const sub of deps.readdir(runDirReal).filter((n) => /^spec-\d+$/.test(n))) {
-        for (const n of headers(path.join(runDirReal, sub, 'work'))) records.push(Number(n.split('-')[0]));
-      }
-      records.sort((a, b) => a - b);
-      if (records.length) return { path: null, present: true, record: null, records };
-      return { path: null, present: false, record: null, records: [] };
+      return absent;
     },
     pr: async () => {
       if (!state || !state.pr || !state.pr.number) return null;

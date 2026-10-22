@@ -358,8 +358,11 @@ test('checkoutRootOf: null without a .claude-tweaks/pipelines pair', () => {
 //
 // Two pins over plugin/bin, comments stripped by the shared helper
 // (tests/helpers/strip-comments.js; see .claude/skills/bin-source-scan-conformance):
-//   1. the six header READERS name neither the archive segment literal nor
-//      `pipelines/archive` -- archived headers resolve through run-header.js;
+//   1. the header READERS (seven readers, in the six READER_FILES; preflight.js
+//      holds two) name neither the archive segment literal nor
+//      `pipelines/archive`, nor a `work` path-segment literal -- a reader that
+//      joins its own `work` dir reads only one location; headers resolve
+//      through run-header.js;
 //   2. no string or template literal outside the allowlist holds a header
 //      filename (`${n}-spec.md`, `work/{n}-spec.md`, `work/*-spec.md`) -- a
 //      reader that rebuilds the location rule on its own has to spell one.
@@ -498,15 +501,16 @@ function evaluateHeaderScan(files, allowlist) {
   return { offenders, allowed };
 }
 
-// -> offender strings for one reader file: an `'archive'`/`"archive"`/backtick literal or
-// the text `pipelines/archive`, comments excluded.
+// -> offender strings for one reader file: an `'archive'`/`"archive"`/backtick literal,
+// the text `pipelines/archive`, or a `'work'`/`"work"`/backtick path-segment literal,
+// comments excluded.
 function readerOffenders(rel, src) {
   const stripped = stripComments(src);
   const verdict = stripperVerdict(src, stripped);
   if (verdict !== 'ok') return [`${rel}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`];
   const out = [];
   stripped.split('\n').forEach((text, i) => {
-    if (/(['"`])archive\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
+    if (/(['"`])(?:archive|work)\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
   });
   return out;
 }
@@ -612,14 +616,22 @@ test('reader scan matcher: an archive literal or pipelines/archive in code is fl
   assert.deepStrictEqual(readerOffenders('r.js', 'if (b) /"/.test(b); const c = "//";'), [`r.js: ${STRIPPER_VERDICT_MESSAGES.misparsed}`]);
 });
 
-test('AC 8: the six header readers name neither the archive segment nor pipelines/archive (comments excluded)', () => {
+test('reader scan matcher: a work path-segment literal in code is flagged; in a comment, or as part of a longer string, it is not', () => {
+  assert.deepStrictEqual(readerOffenders('r.js', "const w = path.join(runDir, 'work');\n"), ["r.js:1: const w = path.join(runDir, 'work');"]);
+  assert.deepStrictEqual(readerOffenders('r.js', 'const w = path.join(runDir, sub, "work");\n'), ['r.js:1: const w = path.join(runDir, sub, "work");']);
+  assert.deepStrictEqual(readerOffenders('r.js', 'const w = path.join(runDir, `work`);\n'), ['r.js:1: const w = path.join(runDir, `work`);']);
+  assert.deepStrictEqual(readerOffenders('r.js', "// path.join(runDir, 'work')\n/* \"work\" */\nconst ok = 1;\n"), []);
+  assert.deepStrictEqual(readerOffenders('r.js', "const label = `work/${name}`; const w = 'worker';\n"), []);
+});
+
+test('AC 8: the header reader files name neither the archive segment, pipelines/archive, nor a work path segment (comments excluded)', () => {
   const files = readBinTree();
   const offenders = [];
   for (const rel of READER_FILES) {
     if (!(rel in files)) offenders.push(`${rel}: reader file not found under plugin/bin/`);
     else offenders.push(...readerOffenders(rel, files[rel]));
   }
-  assert.deepStrictEqual(offenders, [], 'a header reader spells the archive location itself -- resolve it through plugin/bin/lib/run-header.js');
+  assert.deepStrictEqual(offenders, [], 'a header reader spells a header location itself -- resolve it through plugin/bin/lib/run-header.js');
 });
 
 test('AC 8: no header filename literal in plugin/bin outside run-header.js and the allowlist', () => {
