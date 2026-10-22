@@ -157,6 +157,15 @@ test('deps: findOnPath ignores a non-executable file on POSIX', () => {
   });
 });
 
+test('deps: findOnPath returns null when nothing matches', () => {
+  withTempDirs(({ cwd }) => {
+    assert.strictEqual(
+      deps.findOnPath('playwright-cli', { env: { PATH: '' }, platform: 'darwin', cwd }),
+      null,
+    );
+  });
+});
+
 test('deps: findOnPath tries PATHEXT on win32', () => {
   withTempDirs(({ fs, path, dir, cwd }) => {
     const file = path.join(dir, 'playwright-cli.cmd');
@@ -165,6 +174,29 @@ test('deps: findOnPath tries PATHEXT on win32', () => {
       deps.findOnPath('playwright-cli', { env: { PATH: dir, PATHEXT: '.EXE;.CMD' }, platform: 'win32', cwd }),
       file,
     );
+  });
+});
+
+// Pins the wiring of process.env / process.platform / process.cwd() into
+// findOnPath: a mis-wired argument (e.g. env: {}) would still satisfy the
+// no-subprocess guard below, so drive the real process state instead.
+test('deps: playwrightCliMessage reports installed vs missing from the real PATH', () => {
+  withTempDirs(({ fs, path, dir, cwd }) => {
+    const origPath = process.env.PATH;
+    const origCwd = process.cwd();
+    try {
+      process.chdir(cwd);
+      process.env.PATH = dir;
+      assert.match(deps.playwrightCliMessage(), /Install: npm install -g @playwright\/cli/);
+
+      const shim = path.join(dir, 'playwright-cli');
+      fs.writeFileSync(shim, '#!/bin/sh\n');
+      fs.chmodSync(shim, 0o755);
+      assert.strictEqual(deps.playwrightCliMessage(), null);
+    } finally {
+      process.chdir(origCwd);
+      process.env.PATH = origPath;
+    }
   });
 });
 
