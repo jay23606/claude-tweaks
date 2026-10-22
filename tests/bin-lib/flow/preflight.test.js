@@ -331,10 +331,11 @@ function archivedRunDir(fx) {
   return path.join(fx.root, '.claude-tweaks', 'pipelines', 'archive', path.basename(fx.runDir));
 }
 
-test('the spec probe: a header only at the archived work/ path reads as the live one does (#3974 AC 1)', async () => {
+test('the spec probe: a header only at the archived work/ path is found, and its path names the archived location (#3974 AC 1)', async () => {
   const fx = mainRoot();
   putHeader(path.join(archivedRunDir(fx), 'work'), 7);
-  assert.deepStrictEqual(await specProbe(fx.runDir, fx), { path: 'work/7-spec.md', present: true, record: 7, records: [7] });
+  const runId = path.basename(fx.runDir);
+  assert.deepStrictEqual(await specProbe(fx.runDir, fx), { path: `../archive/${runId}/work/7-spec.md`, present: true, record: 7, records: [7] });
 });
 
 test('the spec probe: a multi-spec parent\'s headers only at the archived spec-{N}/work/ paths read as the live ones do (#3974 AC 2)', async () => {
@@ -344,13 +345,14 @@ test('the spec probe: a multi-spec parent\'s headers only at the archived spec-{
   assert.deepStrictEqual(await specProbe(fx.runDir, fx), { path: null, present: true, record: null, records: [9, 160] });
 });
 
-test('the spec probe: a per-spec run dir whose header is only at the archived spec-{N}/work/ path reads as the live one does (#3974 AC 2)', async () => {
+test('the spec probe: a per-spec run dir whose header is only at the archived spec-{N}/work/ path is found, and its path names that location (#3974 AC 2)', async () => {
   const fx = mainRoot();
   const perSpec = path.join(fx.runDir, 'spec-9');
   fs.mkdirSync(perSpec);
   putHeader(path.join(archivedRunDir(fx), 'spec-9', 'work'), 9);
   putHeader(path.join(archivedRunDir(fx), 'spec-4', 'work'), 4);
-  assert.deepStrictEqual(await specProbe(perSpec, fx), { path: 'work/9-spec.md', present: true, record: 9, records: [9] });
+  const runId = path.basename(fx.runDir);
+  assert.deepStrictEqual(await specProbe(perSpec, fx), { path: `../../archive/${runId}/spec-9/work/9-spec.md`, present: true, record: 9, records: [9] });
 });
 
 test('the spec probe: a live header wins over an archived one, flat or nested (#3974)', async () => {

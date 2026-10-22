@@ -597,18 +597,143 @@ function evaluateHeaderScan(files, allowlist) {
   return { offenders, allowed };
 }
 
-// -> offender strings for one reader file: an `'archive'`/`"archive"`/backtick literal,
-// the text `pipelines/archive`, or a `'work'`/`"work"`/backtick path-segment literal,
-// comments excluded.
+// Text bodies of every string, template-text piece and regex literal in the
+// source -- [{ start, end, kind }] over `keep` offsets. `blank` is the same
+// source with literal bodies blanked (delimiters, `${…}` code and offsets stay),
+// so it shows where each literal sits; `keep` holds the body text. A template
+// contributes one body per text piece around its `${…}` code (that code is
+// scanned for literals of its own); a regex is a `/` pair whose blanked body
+// held text (a division's slashes enclose only code, which blanks to itself).
+function literalBodies(keep, blank) {
+  const bodies = [];
+  const scanTemplate = (i) => {
+    let seg = i + 1;
+    let j = i + 1;
+    while (j < blank.length) {
+      if (blank[j] === '`') {
+        bodies.push({ start: seg, end: j, kind: 'template' });
+        return j + 1;
+      }
+      if (blank[j] === '$' && blank[j + 1] === '{') {
+        bodies.push({ start: seg, end: j, kind: 'template' });
+        j = scanCode(j + 2, true);
+        seg = j;
+      } else j++;
+    }
+    bodies.push({ start: seg, end: j, kind: 'template' });
+    return j;
+  };
+  const scanCode = (from, inInterpolation) => {
+    let i = from;
+    let depth = 0;
+    while (i < blank.length) {
+      const c = blank[i];
+      if (c === "'" || c === '"') {
+        const end = literalEnd(blank, i);
+        bodies.push({ start: i + 1, end: blank[end - 1] === c && end - 1 > i ? end - 1 : end, kind: 'string' });
+        i = end;
+      } else if (c === '`') i = scanTemplate(i);
+      else if (c === '/') {
+        const close = blank.indexOf('/', i + 1);
+        const body = close === -1 ? '' : blank.slice(i + 1, close);
+        if (/^ +$/.test(body) && keep.slice(i + 1, close) !== body) {
+          bodies.push({ start: i + 1, end: close, kind: 'regex' });
+          i = close + 1;
+        } else i++;
+      } else if (inInterpolation && c === '{') { depth++; i++; }
+      else if (inInterpolation && c === '}') {
+        if (depth === 0) return i + 1;
+        depth--;
+        i++;
+      } else i++;
+    }
+    return i;
+  };
+  scanCode(0, false);
+  return bodies;
+}
+
+// Offsets (into `keep`) of every `work`/`archive` that is a whole path segment
+// inside a literal body. Bounded on each side by the body's edge or a `/` (so
+// `\/` too); in a regex also by a metacharacter `( ) | ? ^ $ [ ]` and, on the
+// right, by `\/`. Any other neighbour -- a letter, digit, `_`, `-`, `.`, a space --
+// means a longer word, a name or prose, not a segment.
+const REGEX_BOUNDARY = '/()|?^$[]';
+function segmentOffsets(keep, bodies) {
+  const hits = [];
+  for (const { start, end, kind } of bodies) {
+    const text = keep.slice(start, end);
+    for (const m of text.matchAll(/work|archive/g)) {
+      const before = m.index === 0 ? null : text[m.index - 1];
+      const at = m.index + m[0].length;
+      const after = at === text.length ? null : text[at];
+      const bounds = (ch) => ch === null || ch === '/' || (kind === 'regex' && REGEX_BOUNDARY.includes(ch));
+      if (bounds(before) && (bounds(after) || (kind === 'regex' && after === '\\' && text[at + 1] === '/'))) hits.push(start + m.index);
+    }
+  }
+  return hits;
+}
+
+// -> offender strings for one reader file: a `work`/`archive` path segment inside
+// a string, template or regex literal (segmentOffsets), or the text
+// `pipelines/archive`, comments excluded.
 function readerOffenders(rel, src) {
-  const stripped = stripComments(src);
-  const verdict = stripperVerdict(src, stripped);
-  if (verdict !== 'ok') return [`${rel}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`];
-  const out = [];
-  stripped.split('\n').forEach((text, i) => {
-    if (/(['"`])(?:archive|work)\1/.test(text) || /pipelines\/archive/.test(text)) out.push(`${rel}:${i + 1}: ${text.trim()}`);
+  const keep = stripComments(src);
+  const blank = stripComments(src, { literals: 'blank' });
+  for (const stripped of [keep, blank]) {
+    const verdict = stripperVerdict(src, stripped);
+    if (verdict !== 'ok') return [`${rel}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`];
+  }
+  const lines = keep.split('\n');
+  const flagged = new Set();
+  lines.forEach((text, i) => {
+    if (/pipelines\/archive/.test(text)) flagged.add(i + 1);
   });
-  return out;
+  for (const offset of segmentOffsets(keep, literalBodies(keep, blank))) flagged.add(keep.slice(0, offset).split('\n').length);
+  return [...flagged].sort((a, b) => a - b).map((n) => `${rel}:${n}: ${lines[n - 1].trim()}`);
+}
+
+// A reader line the segment rule flags that is nonetheless not a header read.
+// Same shape and stale-key rule as HEADER_ALLOWLIST: `lines` keys an entry to
+// the offending lines (by substring), every other offender in the file stays,
+// and an entry whose file or key matches nothing fails.
+const READER_ALLOWLIST = {
+  'lib/hooks/pre-tool-use.js': {
+    reason: 'write-target carve-out for the pipeline-shadow guard (materialize writes the live header); not a header read -- whether archived writes need it is #3976\'s question.',
+    lines: ['const WORK_SPEC_TAIL_RE = '],
+  },
+};
+
+// files: { relPosixPath: source }; readerFiles: the rel paths to scan ->
+// offender strings (comments excluded), allowlist applied.
+function evaluateReaderScan(files, readerFiles, allowlist) {
+  const offenders = [];
+  const usedKeys = {};
+  for (const [rel, entry] of Object.entries(allowlist)) {
+    if (!entry || typeof entry.reason !== 'string' || entry.reason.trim() === '') offenders.push(`${rel}: allowlist entry has no reason`);
+  }
+  for (const rel of readerFiles) {
+    if (!(rel in files)) {
+      offenders.push(`${rel}: reader file not found under plugin/bin/`);
+      continue;
+    }
+    const entry = allowlist[rel];
+    for (const offender of readerOffenders(rel, files[rel])) {
+      const key = entry && (entry.lines || []).find((k) => offender.includes(k));
+      if (key) (usedKeys[rel] = usedKeys[rel] || new Set()).add(key);
+      else offenders.push(offender);
+    }
+  }
+  for (const [rel, entry] of Object.entries(allowlist)) {
+    if (!readerFiles.includes(rel) || !(rel in files)) {
+      offenders.push(`${rel}: stale allowlist entry -- not a reader file under plugin/bin/`);
+      continue;
+    }
+    for (const k of (entry && entry.lines) || []) {
+      if (!(usedKeys[rel] && usedKeys[rel].has(k))) offenders.push(`${rel}: stale allowlist line key -- matches nothing: ${k}`);
+    }
+  }
+  return offenders;
 }
 
 function readBinTree(root = BIN_ROOT) {
@@ -729,17 +854,90 @@ test('reader scan matcher: a work path-segment literal in code is flagged; in a 
   assert.deepStrictEqual(readerOffenders('r.js', 'const w = path.join(runDir, sub, "work");\n'), ['r.js:1: const w = path.join(runDir, sub, "work");']);
   assert.deepStrictEqual(readerOffenders('r.js', 'const w = path.join(runDir, `work`);\n'), ['r.js:1: const w = path.join(runDir, `work`);']);
   assert.deepStrictEqual(readerOffenders('r.js', "// path.join(runDir, 'work')\n/* \"work\" */\nconst ok = 1;\n"), []);
-  assert.deepStrictEqual(readerOffenders('r.js', "const label = `work/${name}`; const w = 'worker';\n"), []);
+  assert.deepStrictEqual(readerOffenders('r.js', "const label = `the work of ${name}`; const w = 'worker';\n"), []);
+});
+
+// The segment rule (F2): in comment-stripped reader source, `work` or `archive`
+// is an offender when it is a whole path segment inside a string, template-text
+// or regex literal -- bounded on each side by the literal's own edge (start or
+// end of the string, of a template piece next to `${…}`, of the regex body), a
+// `/` (which covers `\/`), or, in a regex only, a metacharacter `( ) | ? ^ $ [ ]`.
+// A space, `-`, `.`, `_` or a letter is not a boundary: `'no work to do'` is
+// prose, `'work-dir'`/`'archive.md'` are names, `worker`/`network`/`archived`
+// are other words, and an identifier (`workDir`) is not inside a literal at all.
+test('reader scan matcher: work/archive as a path segment inside a string, template or regex literal is flagged (every shape)', () => {
+  const flagged = (src) => readerOffenders('r.js', `${src}\n`).length === 1;
+  assert.ok(flagged('const a = `${rel}/work/`;'), '`${rel}/work/` template');
+  assert.ok(flagged("const a = 'work/';"), "'work/' string");
+  assert.ok(flagged('const a = `${runDir}/work`;'), '`${runDir}/work` template');
+  assert.ok(flagged('const a = `${runDir}/archive/${id}`;'), 'archive segment in a template');
+  assert.ok(flagged("const a = base + '/work';"), "'/work' string");
+  assert.ok(flagged('const re = /(^|\\/)(spec-\\d+\\/)?work\\/\\d+-spec\\.md$/;'), 'the pre-#3974 specOnBranch regex');
+  assert.ok(flagged('const re = /^archive$/;'), 'regex anchors bound a segment');
+  assert.ok(flagged('const t = `${a ? `${b}/work` : x}`;'), 'a template nested in ${…} code');
+});
+
+test('reader scan matcher: worker, network, rework, archived, an identifier, prose, a name and a comment are not flagged', () => {
+  const clean = (src) => assert.deepStrictEqual(readerOffenders('r.js', `${src}\n`), [], src);
+  clean("const a = 'worker'; const b = 'network'; const c = 'rework'; const d = 'archived';");
+  clean('const a = `${x}worker/${y}network`;');
+  clean('const workDir = path.join(root, dir); const archiveDir = workDir; work(archive);');
+  clean("const m = 'no work to do'; const n = `nothing to archive here`; const o = 'see work/ dir';");
+  clean("const m = 'work-dir'; const n = 'archive.md'; const o = 'work_dir'; const p = `${x}.work`;");
+  clean('const re = /\\bworker\\b/; const r2 = /no work to do/;');
+  clean("// const a = `${rel}/work/`; const b = 'work/';\n/* const re = /(^|\\/)work\\/x/; */");
+  assert.deepStrictEqual(
+    readerOffenders('r.js', "const ok = 1;\n// 'work/'\nconst bad = 'work/';\n"),
+    ["r.js:3: const bad = 'work/';"],
+    'a comment line does not hide, or shift, the flagged line',
+  );
+});
+
+test('reader scan matcher: the pre-#3974 flow/preflight.js specOnBranch location rule is flagged', () => {
+  // Verbatim from `git show 5c7722f246d20628a8f8f7d8453e473e06748a8d:plugin/bin/lib/flow/preflight.js`.
+  const src = [
+    '  const direct = ls(`${rel}/work/`, false);',
+    '  if (direct === null) return null;',
+    '  if (splitNul(direct).some((l) => /(^|\\/)work\\/\\d+-spec\\.md$/.test(l))) return true;',
+    '  const nested = ls(`${rel}/`, true);',
+    '  return splitNul(nested).some((l) => /(^|\\/)(spec-\\d+\\/)?work\\/\\d+-spec\\.md$/.test(l));',
+  ].join('\n');
+  assert.deepStrictEqual(readerOffenders('lib/flow/preflight.js', src).map((o) => o.split(': ')[0]), [
+    'lib/flow/preflight.js:1',
+    'lib/flow/preflight.js:3',
+    'lib/flow/preflight.js:5',
+  ]);
+});
+
+test('reader scan: an allowlisted line is allowed only on its keyed line; a second work segment in the same file is still an offender', () => {
+  const rel = 'lib/hooks/pre-tool-use.js';
+  const allow = { [rel]: READER_ALLOWLIST[rel] };
+  const carveOut = 'const WORK_SPEC_TAIL_RE = /^(?:spec-[^/\\\\]+[/\\\\])?work(?:[/\\\\]\\d+-spec\\.md)?$/;';
+  const src = [carveOut, "const other = path.join(runDir, 'work');"].join('\n');
+  assert.deepStrictEqual(evaluateReaderScan({ [rel]: src }, [rel], allow), [`${rel}:2: const other = path.join(runDir, 'work');`]);
+  assert.deepStrictEqual(evaluateReaderScan({ [rel]: carveOut }, [rel], allow), []);
+});
+
+test('reader scan: a stale allowlist file, line key, or a missing reason is an offender', () => {
+  const files = { 'a.js': "const ok = 1;\nconst w = path.join(d, 'work');\n", 'b.js': 'const ok = 1;\n' };
+  const offenders = evaluateReaderScan(files, ['a.js', 'b.js'], {
+    'a.js': { reason: 'x', lines: ["path.join(d, 'work')", 'a key that matches nothing'] },
+    'b.js': { reason: 'x', lines: ['const ok'] },
+    'gone.js': { reason: 'x', lines: ['y'] },
+    'c.js': { reason: ' ', lines: ['z'] },
+  });
+  assert.deepStrictEqual(offenders, [
+    'c.js: allowlist entry has no reason',
+    'a.js: stale allowlist line key -- matches nothing: a key that matches nothing',
+    'b.js: stale allowlist line key -- matches nothing: const ok',
+    'gone.js: stale allowlist entry -- not a reader file under plugin/bin/',
+    'c.js: stale allowlist entry -- not a reader file under plugin/bin/',
+  ]);
 });
 
 test('AC 8: the header reader files name neither the archive segment, pipelines/archive, nor a work path segment (comments excluded)', () => {
-  const files = readBinTree();
-  const offenders = [];
-  for (const rel of READER_FILES) {
-    if (!(rel in files)) offenders.push(`${rel}: reader file not found under plugin/bin/`);
-    else offenders.push(...readerOffenders(rel, files[rel]));
-  }
-  assert.deepStrictEqual(offenders, [], 'a header reader spells a header location itself -- resolve it through plugin/bin/lib/run-header.js');
+  const offenders = evaluateReaderScan(readBinTree(), READER_FILES, READER_ALLOWLIST);
+  assert.deepStrictEqual(offenders, [],'a header reader spells a header location itself -- resolve it through plugin/bin/lib/run-header.js');
 });
 
 test('AC 8: no header filename literal in plugin/bin outside run-header.js and the allowlist', () => {

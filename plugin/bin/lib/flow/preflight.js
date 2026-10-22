@@ -21,6 +21,7 @@ const { computeDerivedDefaults } = require('../policy-derived-defaults');
 const { resolveTarget } = require('../stage-item/write');
 const { classifyDecisions } = require('../log-decision/claim-log');
 const { splitNul } = require('../git-z');
+const { toPosix } = require('../shared-primitives');
 const { runIdentity, checkoutRootOf, headerTreeDirs, listHeaderDirs, HEADER_PATH_RE } = require('../run-header');
 
 const BIN = path.join(__dirname, '..', '..');
@@ -274,7 +275,8 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
       if (!identity || root === null) return absent;
       // The header dirs sit live or archived (#3974), and run-header.js says
       // where; the first location holding any header answers, live first.
-      // `path` stays relative to the run dir (`work/{n}-spec.md`) at either.
+      // `path` is the header's POSIX path relative to the run dir: `work/{n}-spec.md`
+      // for a live header, the real `../archive/{run-id}/…` location for an archived one.
       const dirs = listHeaderDirs([root], identity.runId, { specN: identity.specN });
       for (const location of ['live', 'archived']) {
         const at = dirs.filter((d) => d.location === location);
@@ -283,7 +285,7 @@ function buildProbes({ runDirReal, runId, mainRoot, cwd, config, state, deps, ex
         const names = own ? headers(own.dir) : [];
         if (names.length) {
           const record = Number(names[0].split('-')[0]);
-          return { path: `work/${names[0]}`, present: true, record, records: [record] };
+          return { path: toPosix(path.relative(runDirReal, path.join(own.dir, names[0]))), present: true, record, records: [record] };
         }
         if (identity.specN !== null) continue;
         // Multi-spec parent (#1931 I4): /dispatch hands both calls the PARENT
