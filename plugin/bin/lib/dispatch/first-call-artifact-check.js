@@ -262,7 +262,8 @@ function checkFirstCallArtifacts({ runDir, issueNumbers, repoSlug }, deps = {}) 
   for (const issueNumber of issueNumbers) {
     if (!hasMaterializedHeader(readFile, lookup, Number(issueNumber))) {
       const searched = searchedHeaderPaths(lookup, Number(issueNumber));
-      return fail('materialized-header-missing', `no materialized header for issue #${issueNumber}; searched ${searched.length ? searched.join(', ') : `nothing (no run identity for ${runDir})`}`);
+      const searchedText = searched.length ? searched.join(', ') : `nothing (no run identity for ${runDir})`;
+      return fail('materialized-header-missing', `no materialized header for issue #${issueNumber}; searched ${searchedText}`);
     }
   }
 
