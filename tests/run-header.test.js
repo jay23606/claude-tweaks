@@ -183,9 +183,9 @@ test('listHeaderDirs: live flat, live spec-N ascending, then archived flat, with
     put(root, `${P}/R/spec-10/notwork/10-spec.md`); // no work/ dir: not listed
     const abs = (...p) => path.join(root, '.claude-tweaks', 'pipelines', ...p);
     assert.deepStrictEqual(listHeaderDirs([root], 'R'), [
-      { dir: abs('R', 'spec-2', 'work'), location: 'live', specN: 2, root },
-      { dir: abs('R', 'spec-9', 'work'), location: 'live', specN: 9, root },
-      { dir: abs('archive', 'R', 'work'), location: 'archived', specN: null, root },
+      { dir: abs('R', 'spec-2', 'work'), location: 'live', specN: 2, shape: 'nested', root },
+      { dir: abs('R', 'spec-9', 'work'), location: 'live', specN: 9, shape: 'nested', root },
+      { dir: abs('archive', 'R', 'work'), location: 'archived', specN: null, shape: 'flat', root },
     ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -258,6 +258,74 @@ test('listHeaderDirs: roots in caller order; a missing root and junk roots never
   } finally {
     fs.rmSync(r1, { recursive: true, force: true });
     fs.rmSync(r2, { recursive: true, force: true });
+  }
+});
+
+test('listHeaderDirs: every entry carries its shape — flat for a run\'s own work/, nested for spec-*/work/', () => {
+  const root = tmp();
+  try {
+    put(root, `${P}/R/work/1-spec.md`);
+    put(root, `${P}/R/spec-3/work/3-spec.md`);
+    put(root, `${P}/archive/R/work/1-spec.md`);
+    put(root, `${P}/archive/R/spec-alpha/work/1-spec.md`);
+    assert.deepStrictEqual(
+      listHeaderDirs([root], 'R').map((e) => [e.location, e.shape]),
+      [['live', 'flat'], ['live', 'nested'], ['archived', 'flat'], ['archived', 'nested']],
+    );
+    assert.deepStrictEqual(listHeaderDirs([root], 'R', { specN: 3 }).map((e) => e.shape), ['nested']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// A run dir outside any .claude-tweaks/pipelines tree (a bare tmp fixture) has
+// no checkout root; `runDir` makes the resolver read it directly (#3974).
+test('findHeaderFiles: runDir of a root-less run dir yields its own work/ and spec-{n}/work/ header files', () => {
+  const base = tmp();
+  try {
+    const runDir = path.join(base, 'R');
+    const flat = put(runDir, 'work/5-spec.md');
+    const nested = put(runDir, 'spec-5/work/5-spec.md');
+    put(runDir, 'spec-6/work/5-spec.md'); // another spec's dir: not a candidate for 5
+    assert.deepStrictEqual(findHeaderFiles([], 'R', 5, { runDir }), [flat, nested]);
+    assert.deepStrictEqual(findHeaderFiles([], 'R', 5, { runDir, shape: 'nested' }), [nested]);
+    assert.deepStrictEqual(findHeaderFiles([], 'R', 5, { runDir, specN: 7 }), [flat], 'per-spec: only the run dir\'s own work/');
+    assert.deepStrictEqual(findHeaderFiles([], 'R', 5), [], 'without runDir the root-less dir is invisible');
+    assert.deepStrictEqual(findHeaderFiles([], 'R', 99, { runDir }), []);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('listHeaderDirs: runDir of a root-less run dir lists its work/ (flat) and spec-*/work/ (nested) as live, root null', () => {
+  const base = tmp();
+  try {
+    const runDir = path.join(base, 'R');
+    put(runDir, 'work/1-spec.md');
+    put(runDir, 'spec-9/work/9-spec.md');
+    put(runDir, 'spec-2/work/2-spec.md');
+    assert.deepStrictEqual(listHeaderDirs([], 'R', { runDir }), [
+      { dir: path.join(runDir, 'work'), location: 'live', specN: null, shape: 'flat', root: null },
+      { dir: path.join(runDir, 'spec-2', 'work'), location: 'live', specN: 2, shape: 'nested', root: null },
+      { dir: path.join(runDir, 'spec-9', 'work'), location: 'live', specN: 9, shape: 'nested', root: null },
+    ]);
+    assert.deepStrictEqual(listHeaderDirs([], 'R', { runDir, specN: 4 }).map((e) => e.dir), [path.join(runDir, 'work')], 'per-spec: its own work/ only');
+    assert.deepStrictEqual(listHeaderDirs([], 'R'), []);
+    assert.deepStrictEqual(listHeaderDirs([], 'R', { runDir: path.join(base, 'absent') }), []);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('runDir is inert when the run dir sits under a .claude-tweaks/pipelines tree (the root-based lookup already covers it)', () => {
+  const root = tmp();
+  try {
+    const runDir = path.join(root, '.claude-tweaks', 'pipelines', 'R');
+    const live = put(root, `${P}/R/work/5-spec.md`);
+    assert.deepStrictEqual(findHeaderFiles([root], 'R', 5, { runDir }), [live]);
+    assert.deepStrictEqual(listHeaderDirs([root], 'R', { runDir }).map((e) => e.root), [root]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

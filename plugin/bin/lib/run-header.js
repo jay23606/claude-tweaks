@@ -108,11 +108,31 @@ function nativeJoin(root, rel) {
   return path.join(root, ...rel.split('/'));
 }
 
+// A run dir that sits outside any `.claude-tweaks/pipelines` tree (a bare tmp
+// fixture) has no checkout root, so the root-relative lookups cannot reach it.
+// `options.runDir` names it: when `checkoutRootOf(runDir)` is null the run dir
+// itself is read directly -- `{runDir}/work` flat, `{runDir}/spec-*/work`
+// nested -- and when the run dir does resolve to a checkout root the option
+// adds nothing (the live location under that root already is the run dir).
+function bareRunDir(runDir) {
+  return typeof runDir === 'string' && runDir !== '' && checkoutRootOf(runDir) === null ? runDir : null;
+}
+
 // Absolute native paths of the header candidates that exist as regular files,
 // root by root (each root is a checkout root), in precedence order.
+// `opts.runDir`: see bareRunDir -- a root-less run dir's own `work/{n}-spec.md`
+// (and, unless `specN` is set, `spec-{n}/work/{n}-spec.md`) come first.
 function findHeaderFiles(roots, runId, n, opts = {}) {
   const rels = headerRelPaths(runId, n, opts);
   const out = [];
+  const bare = bareRunDir(opts.runDir);
+  if (bare !== null) {
+    const file = `${n}-spec.md`;
+    const candidates = [];
+    if (opts.shape !== 'nested') candidates.push(path.join(bare, 'work', file));
+    if (opts.specN == null) candidates.push(path.join(bare, `spec-${n}`, 'work', file));
+    for (const abs of candidates) if (lstatType(abs).type === 'file') out.push(abs);
+  }
   for (const root of validRoots(roots)) {
     for (const rel of rels) {
       const abs = nativeJoin(root, rel);
@@ -149,21 +169,33 @@ function specChildren(dir) {
 // Existing header directories, root by root: live `work/`, live
 // `spec-*/work/` (numeric N ascending, then non-numeric names lexically),
 // archived `work/`, archived `spec-*/work/` in the same order. A per-spec run
-// lists only its own `spec-{N}/work/` at both locations.
-function listHeaderDirs(roots, runId, { specN = null } = {}) {
+// lists only its own `spec-{N}/work/` at both locations. Each entry carries
+// `shape`: 'flat' for a run's own `work/`, 'nested' for a `spec-*/work/`.
+// `options.runDir`: see bareRunDir -- a root-less run dir contributes its own
+// `work/` (flat, or for a per-spec run its single `work/`) and `spec-*/work/`
+// dirs as 'live' entries with `root: null`, ahead of the root-based ones.
+function listHeaderDirs(roots, runId, { specN = null, runDir: bareDir } = {}) {
   const out = [];
+  const bare = bareRunDir(bareDir);
+  if (bare !== null) {
+    const add = (dir, n, shape) => {
+      if (lstatType(dir).type === 'directory') out.push({ dir, location: 'live', specN: n, shape, root: null });
+    };
+    add(path.join(bare, 'work'), specN, 'flat');
+    if (specN === null) for (const [n, name] of specChildren(bare)) add(path.join(bare, name, 'work'), n, 'nested');
+  }
   for (const root of validRoots(roots)) {
     for (const [location, rel] of [['live', liveDir(runId)], ['archived', archivedDir(runId)]]) {
       const runDir = nativeJoin(root, rel);
-      const add = (dir, n) => {
-        if (lstatType(dir).type === 'directory') out.push({ dir, location, specN: n, root });
+      const add = (dir, n, shape) => {
+        if (lstatType(dir).type === 'directory') out.push({ dir, location, specN: n, shape, root });
       };
       if (specN !== null) {
-        add(path.join(runDir, `spec-${specN}`, 'work'), specN);
+        add(path.join(runDir, `spec-${specN}`, 'work'), specN, 'nested');
         continue;
       }
-      add(path.join(runDir, 'work'), null);
-      for (const [n, name] of specChildren(runDir)) add(path.join(runDir, name, 'work'), n);
+      add(path.join(runDir, 'work'), null, 'flat');
+      for (const [n, name] of specChildren(runDir)) add(path.join(runDir, name, 'work'), n, 'nested');
     }
   }
   return out;
