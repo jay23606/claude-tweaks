@@ -113,8 +113,11 @@ function buildTestArgs(files, roots, { platform, nodeMajor, concurrency }) {
 
 // Whether `pid` names a live process: signal 0 probes without delivering anything. ESRCH means
 // gone; EPERM means it exists but belongs to someone else, which still counts as alive — a slot
-// holder we cannot signal must not be treated as dead and have its lock stolen.
+// holder we cannot signal must not be treated as dead and have its lock stolen. A non-positive or
+// non-integer pid is never a process: `kill(0, 0)` would probe our own process group and report it
+// alive forever.
 function isPidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
     return true;
@@ -162,18 +165,68 @@ function readHolder(lockPath, { isAlive, now, staleUnparseableMs }) {
   } catch (_) {
     held = null;
   }
-  if (held && Number.isInteger(held.pid)) {
+  if (held && Number.isInteger(held.pid) && held.pid > 0) {
     return isAlive(held.pid) ? { pid: held.pid, cwd: held.cwd, startedAt: held.startedAt } : { stale: true };
   }
   if (now() - mtimeMs > staleUnparseableMs) return { stale: true };
   return { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
 }
 
+// Reclaims a lock its caller judged stale, atomically enough that two reclaimers cannot both end
+// up holding the slot. The race without a mutex: A and B both read the same dead lock; A unlinks it
+// and creates its own; B then unlinks A's live lock and creates its own — both hold the slot. So
+// only the process that creates `slot-<i>.reclaim` (`wx`) may reclaim, and under it the lock is
+// RE-READ and must still be stale before the unlink + create. A mutex older than `staleReclaimMs`
+// was left by a reclaimer that crashed inside its window: it is cleared and taken once. Residual
+// risk: a reclaimer crashing inside the window, or two processes clearing the same old mutex, can
+// at worst let two suites run at once one time — never a deadlock, since the mutex always ages out.
+// Returns true when `lockPath` is now ours; false when someone else holds or is reclaiming it.
+function reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, staleReclaimMs }) {
+  const mutex = lockPath.replace(/\.lock$/, '.reclaim');
+  const unlinkQuiet = (p) => {
+    try {
+      fs.unlinkSync(p);
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
+  };
+  if (!createMutex(mutex)) {
+    let ageMs;
+    try {
+      ageMs = now() - fs.statSync(mutex).mtimeMs;
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
+    if (ageMs !== undefined && ageMs <= staleReclaimMs) return false;
+    unlinkQuiet(mutex);
+    if (!createMutex(mutex)) return false;
+  }
+  try {
+    const holder = readHolder(lockPath, { isAlive, now, staleUnparseableMs });
+    if (holder !== null && !holder.stale) return false;
+    if (holder !== null) unlinkQuiet(lockPath);
+    return createLock(lockPath, pid, cwd, now);
+  } finally {
+    unlinkQuiet(mutex);
+  }
+}
+
+// Creates the reclaim mutex exclusively; false when it already exists.
+function createMutex(mutex) {
+  try {
+    fs.closeSync(fs.openSync(mutex, 'wx'));
+    return true;
+  } catch (err) {
+    if (err.code === 'EEXIST') return false;
+    throw err;
+  }
+}
+
 // Takes one of `slots` cross-process suite slots (`slot-<i>.lock` in `dir`) and returns the lock
 // path, polling every `pollMs` until one frees up (#3969). A lock held by a dead pid is reclaimed
 // immediately, so a crashed run never wedges the queue. The wait message is logged once per call.
 // `isAlive`, `now`, `sleep` and `log` are parameters so tests never touch real processes or time.
-function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000 }) {
+function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 2000, staleUnparseableMs = 600000, staleReclaimMs = 30000 }) {
   fs.mkdirSync(dir, { recursive: true });
   let logged = false;
   for (;;) {
@@ -183,15 +236,8 @@ function acquireSlot({ dir, slots, pid, cwd, isAlive, now, sleep, log, pollMs = 
       if (createLock(lockPath, pid, cwd, now)) return lockPath;
       const holder = readHolder(lockPath, { isAlive, now, staleUnparseableMs });
       if (holder === null || holder.stale) {
-        if (holder) {
-          try {
-            fs.unlinkSync(lockPath);
-          } catch (err) {
-            if (err.code !== 'ENOENT') throw err;
-          }
-        }
-        if (createLock(lockPath, pid, cwd, now)) return lockPath;
-        // Another process won the race for this slot: it is held now, so keep scanning.
+        if (reclaimSlot(lockPath, { pid, cwd, isAlive, now, staleUnparseableMs, staleReclaimMs })) return lockPath;
+        // Someone else is reclaiming this slot or won it: it is held now, so keep scanning.
         if (!blocker) blocker = { pid: 'unknown', cwd: 'unknown', startedAt: 'unknown' };
         continue;
       }

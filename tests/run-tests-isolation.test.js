@@ -113,6 +113,75 @@ test("acquireSlot reclaims a dead holder's lock without sleeping", () => {
   });
 });
 
+// Two waiters can both judge the same dead lock stale. The loser of the reclaim must not delete
+// the winner's live lock: the stale verdict is re-checked under a per-slot `.reclaim` mutex.
+test("acquireSlot does not delete a live winner's lock that lands after the stale verdict", () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 222);
+    let swapped = false;
+    const isAlive = (pid) => {
+      if (pid === 222 && !swapped) {
+        swapped = true;
+        writeLock(dir, 0, 333); // another process reclaims and takes the slot right after our verdict
+        return false;
+      }
+      return pid === 333;
+    };
+    let sleeps = 0;
+    const sleep = () => {
+      sleeps += 1;
+      assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 333, "the winner's lock must survive");
+      fs.unlinkSync(p);
+    };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep, isAlive })), p);
+    assert.strictEqual(sleeps, 1);
+    assert.ok(!fs.existsSync(path.join(dir, 'slot-0.reclaim')));
+  });
+});
+
+test('acquireSlot does not reclaim a slot whose fresh .reclaim mutex is held by someone else', () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 222);
+    const mutex = path.join(dir, 'slot-0.reclaim');
+    fs.writeFileSync(mutex, '');
+    let sleeps = 0;
+    const sleep = () => {
+      sleeps += 1;
+      assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 222, 'not reclaimed on the first scan');
+      fs.unlinkSync(mutex);
+    };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(sleeps, 1);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
+  });
+});
+
+test('acquireSlot clears an old .reclaim mutex left by a crashed reclaimer and reclaims', () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 222);
+    const mutex = path.join(dir, 'slot-0.reclaim');
+    fs.writeFileSync(mutex, '');
+    const old = new Date(Date.now() - 31 * 1000);
+    fs.utimesSync(mutex, old, old);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep })), p);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
+    assert.ok(!fs.existsSync(mutex));
+  });
+});
+
+test('a lock carrying pid 0 is not live forever: it counts as unparseable and is reclaimed once old', () => {
+  withTempDir((dir) => {
+    const p = writeLock(dir, 0, 0);
+    const old = new Date(Date.now() - 11 * 60 * 1000);
+    fs.utimesSync(p, old, old);
+    const sleep = () => { throw new Error('sleep must not be called'); };
+    // isAlive says yes to everything: only the pid > 0 requirement can make this lock reclaimable.
+    assert.strictEqual(acquireSlot(slotArgs(dir, { sleep, isAlive: () => true })), p);
+    assert.strictEqual(JSON.parse(fs.readFileSync(p, 'utf8')).pid, 111);
+  });
+});
+
 test('acquireSlot reclaims an old unparseable lock', () => {
   withTempDir((dir) => {
     const p = path.join(dir, 'slot-0.lock');
@@ -211,6 +280,8 @@ test('sweepStaleRoots removes dead-pid roots and keeps live ones', () => {
 
 test('isPidAlive is true for this process and false for an exited child', () => {
   assert.strictEqual(isPidAlive(process.pid), true);
+  // pid 0 / negative would probe a process group, not a process — never "alive".
+  for (const bad of [0, -1, 1.5, NaN]) assert.strictEqual(isPidAlive(bad), false, String(bad));
   const child = spawnSync(process.execPath, ['-e', '0']);
   assert.ok(child.pid > 0);
   assert.strictEqual(isPidAlive(child.pid), false);
