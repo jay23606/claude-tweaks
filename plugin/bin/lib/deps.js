@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 const { execSync } = require('child_process');
+const fs = require('fs');
 const os = require('os');
+const path = require('path');
 
 function has(cmd) {
   // This code can only ever execute while a Node process is already
@@ -57,14 +59,46 @@ function detectVersionManager() {
   return null;
 }
 
-function playwrightCliMessage() {
-  let installed;
-  try {
-    execSync('npx --no-install playwright-cli --version', { stdio: 'ignore', windowsHide: true });
-    installed = true;
-  } catch {
-    installed = false;
+// Pure PATH scan, no subprocess. `platform` is a parameter (not read from
+// process) because path.delimiter reflects the host, not a simulated win32.
+function findOnPath(name, { env, platform, cwd }) {
+  const win = platform === 'win32';
+  const rawPath = env.PATH || env.Path || '';
+  const dirs = [path.join(cwd, 'node_modules', '.bin'), ...rawPath.split(win ? ';' : path.delimiter)]
+    .filter(Boolean);
+  const names = [name];
+  if (win) {
+    for (const ext of (env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)) {
+      // Lowercase first, then the given case: PATHEXT is conventionally
+      // upper-case but npm shims are `name.cmd`, so a case-sensitive
+      // filesystem still finds them (and a case-insensitive one reports the
+      // conventional lowercase spelling).
+      names.push(name + ext.toLowerCase());
+      if (ext !== ext.toLowerCase()) names.push(name + ext);
+    }
   }
+  for (const dir of dirs) {
+    for (const n of names) {
+      const candidate = path.join(dir, n);
+      try {
+        const st = fs.statSync(candidate);
+        if (st.isFile() && (win || (st.mode & 0o111))) return candidate;
+      } catch {
+        // not present / unreadable — keep scanning
+      }
+    }
+  }
+  return null;
+}
+
+function playwrightCliMessage() {
+  // A PATH scan, not `npx --no-install playwright-cli --version`: npx boots a
+  // whole npm CLI on every SessionStart (~2 CPU-seconds, 30s+ under load).
+  const installed = findOnPath('playwright-cli', {
+    env: process.env,
+    platform: process.platform,
+    cwd: process.cwd(),
+  }) !== null;
   if (!installed) {
     return 'claude-tweaks: Browser features require playwright-cli. Install: npm install -g @playwright/cli. Browser features are optional.';
   }
@@ -107,4 +141,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { has, detectPackageManager, detectVersionManager, installCommand, collect, main };
+module.exports = { has, detectPackageManager, detectVersionManager, installCommand, findOnPath, playwrightCliMessage, collect, main };
