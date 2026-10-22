@@ -1,6 +1,6 @@
 {
-  "computedAt": "2026-10-22T08:21:32.779Z",
-  "runId": "2026-10-22T082043-dispatch-standalone",
+  "computedAt": "2026-10-22T10:09:17.087Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "number": 3880,
-        "updatedAt": "2026-10-22T06:26:10Z",
+        "updatedAt": "2026-10-22T08:54:31Z",
         "state": "OPEN"
       },
       {
@@ -35,7 +35,7 @@
       },
       {
         "number": 3870,
-        "updatedAt": "2026-10-21T20:30:08Z",
+        "updatedAt": "2026-10-22T09:35:09Z",
         "state": "OPEN"
       },
       {
@@ -55,7 +55,7 @@
       },
       {
         "number": 3856,
-        "updatedAt": "2026-10-21T20:29:48Z",
+        "updatedAt": "2026-10-22T09:44:18Z",
         "state": "OPEN"
       },
       {
@@ -75,7 +75,7 @@
       },
       {
         "number": 3844,
-        "updatedAt": "2026-10-21T20:29:33Z",
+        "updatedAt": "2026-10-22T09:02:10Z",
         "state": "OPEN"
       },
       {
@@ -95,7 +95,7 @@
       },
       {
         "number": 3829,
-        "updatedAt": "2026-10-21T20:29:17Z",
+        "updatedAt": "2026-10-22T10:05:05Z",
         "state": "OPEN"
       },
       {
@@ -125,7 +125,7 @@
       },
       {
         "number": 3811,
-        "updatedAt": "2026-10-21T20:32:39Z",
+        "updatedAt": "2026-10-22T08:36:21Z",
         "state": "OPEN"
       },
       {
@@ -537,78 +537,6 @@
     ],
     [
       {
-        "body": "Verified-as-of: bdc780eaa\n\nOrigin: reflect light from #3854\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/log-decision.js` validates `--reversibility` against the bare enum `high|med|low|n/a` (line 51: `--reversibility must be one of high|med|low|n/a`).\n\nAbout 75 decision-log templates in `plugin/skills/**/*.md` prescribe a parenthetical note after the enum. Two examples:\n- `flow/validation.md` Step 2.5: `Reversibility: low (divergence persists).`\n- `flow/manifesto.md`'s design-critique row: `Reversibility: n/a (a policy read, not a code mutation).`\n\nThese templates write through `log-decision.js`, the sanctioned writer for a worktree-pinned session. An agent that passes the template's value verbatim gets a usage error, exit 2, and nothing is logged. It must notice the error and re-run, moving the note into `--text`. In #3854's run this happened twice: the Manifesto design-critique line and the Step 2.5 divergence line.\n\n## Deliverables\n\n- `log-decision.js` accepts a `--reversibility` value of an enum member optionally followed by one parenthesized note. Two examples: `low (divergence persists)` and `n/a (a policy read, not a code mutation)`.\n- The written entry renders the value verbatim: `Reversibility: low (divergence persists).`\n- A value whose leading token is not an enum member still fails with the existing usage error.\n- `formatEntry` and the readers that parse `Reversibility:` (the Review Console and decision-log parsers) keep reading the leading enum token, unaffected by the trailing note.\n\n## Acceptance Criteria\n\n- [ ] `log-decision.js --reversibility \"low (divergence persists)\"` exits 0 and writes `Reversibility: low (divergence persists).`\n- [ ] `log-decision.js --reversibility \"bogus (x)\"` and `--reversibility \"lowish\"` still exit 2 with the existing usage message.\n- [ ] Every in-repo reader of `Reversibility:` in decisions.md is pinned to accept the trailing note. A test covers each one that parses the field.\n- [ ] `npm test` passes.\n\n## Release Note\n\nDecision-log entries can carry a short reversibility note, such as \"low (divergence persists)\", as the skill templates already show.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/log-decision.js` — accept an enum value with one optional parenthesized note\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T06:43:39Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          }
-        ],
-        "number": 3870,
-        "state": "OPEN",
-        "title": "log-decision.js rejects the \"enum (note)\" reversibility the skill-prose decision-log templates prescribe",
-        "updatedAt": "2026-10-21T20:30:08Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/_shared/pr-first-merge-post-merge.md` Step 4.2 runs `hooks.js reconcile --checks mirror,release,archive`, whose `archive` check moves this run's dir to `.claude-tweaks/pipelines/archive/{run-id}/`, and then tells the caller to log a `decisions.md` line — the \"{N} other run dir(s) need human action\" line when this run's own check is clean. That line targets `$PIPELINE_RUN_DIR/decisions.md`, which no longer exists after a successful archive, so the write recreates an un-archived run dir holding one `decisions.md`. Every Step 4.2 caller is affected (`review-console.md` step 13, the auto-merge short-circuit, `wrap-up/merge-mode.md`, dispatch's auto-merge gate). Found by #3784's SDD final review (Minor 6); ruled out of #3784 scope as staged/sdd-ruling-4.md.\n\n## Deliverables\n\n- [ ] Step 4.2 writes any post-reconcile `decisions.md` line to the run's archived path when reconcile archived it (`_shared/timing-render.md`'s archive-path rule), or before the reconcile call — never to the moved `$PIPELINE_RUN_DIR`.\n- [ ] A conformance test pins the chosen ordering in `pr-first-merge-post-merge.md`.\n\n## Acceptance Criteria\n\n1. After a Step 4.2 run whose reconcile archived the run dir, no directory reappears at `.claude-tweaks/pipelines/{run-id}/`.\n2. The \"other run dir(s) need human action\" note still reaches the archived run's `decisions.md` or the closing report.\n\n## Release Note\n\nA merged run's directory no longer reappears under .claude-tweaks/pipelines after it has been archived.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/pr-first-merge-post-merge.md` — write post-reconcile log lines to the archived run path, or before reconcile\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-21T06:12:02Z",
         "labels": [
@@ -819,78 +747,6 @@
     ],
     [
       {
-        "body": "Origin: reflect light from #3672\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/wrap-up-engine.js` `render` reads `engine-state.json` from the exact `--run-dir` it is given (`runRender`, `fs.readFileSync(path.join(args.runDir, 'engine-state.json'))`), with no archive fallback. `verify` in the same file resolves an archived run via `resolveArchivedRunDir(args.runDir, repoRoot)` (`plugin/bin/lib/wrap-up/engine-verify.js`). #3672 moved wrap-up's phase-trace report to render after the execute step, whose cleanup item 8 archives the run directory, so `render --run-dir \"$PIPELINE_RUN_DIR\"` now runs against an already-archived run. #3672 worked around it in prose (`wrap-up/SKILL.md` tells the agent to pass the archive path), which depends on the agent following one sentence.\n\n## Deliverables\n\n- [ ] Make `wrap-up-engine.js render` resolve an archived run directory the way `verify` does, so the original `$PIPELINE_RUN_DIR` path works before and after cleanup item 8.\n\n- [ ] Once that lands, drop the archive-path sentence from `plugin/skills/wrap-up/SKILL.md`'s phase-trace report step and its pin in `tests/wrap-up-phase4-report-order-conformance.test.js`.\n\n## Acceptance Criteria\n\n- `wrap-up-engine.js render --run-dir {original-path} --section trace --strict` prints the same table whether the run directory is still in place or has been moved to `.claude-tweaks/pipelines/archive/{run-id}/`.\n\n- A test covers the archived-run render path and goes red when the fallback is removed.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/wrap-up-engine.js` — runRender: resolve an archived run dir via resolveArchivedRunDir\n- `plugin/skills/wrap-up/SKILL.md` — drop the archive-path workaround sentence\n- `tests/wrap-up-phase4-report-order-conformance.test.js` — drop the matching pin\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-21T05:01:59Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3856,
-        "state": "OPEN",
-        "title": "wrap-up-engine render: resolve an archived run directory like verify does",
-        "updatedAt": "2026-10-21T20:29:48Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "**Related:** #3056 (the comparison this comes from), #2799, #3845\n\nOrigin: #3056 /prompt-audit comparison (run 2026-10-21T001740-record-3056)\n\nDefer-reason: tangential\n\n## Current State\n\n#3056 compared Claude Code's prompt audit against `/claude-tweaks:harness-health` and `docs/skill-authoring.md`'s \"Model-version prompting notes\" checklist (now at line 229). Three facts from that run:\n\n- Nothing in claude-tweaks audits the shipped `plugin/skills/` and `plugin/agents/` library for stale or model-dated prose. harness-health's discovery reads only `.claude/skills`, `.claude/rules` and CLAUDE.md (`plugin/bin/lib/harness-health/scope.js`), and `/wrap-up`'s Skills curation row enumerates only `.claude/skills/` (`plugin/skills/wrap-up/skill-curation.md` 7.2). The checklist is a manual sample (its own 2026-09-30 cross-check read four files).\n- The audit runs headlessly. In Claude Code 2.1.305 it is the `prompt-audit [<path>]` argument of `/doctor`, not a standalone `/prompt-audit` command (`claude -p \"/prompt-audit\"` reports it not installed). `claude -p \"/doctor prompt-audit plugin/\" --allowedTools \"Read,Glob,Grep,Skill\" --disallowedTools \"Edit,Write,NotebookEdit,Bash\"` audited all of `plugin/` read-only and returned 12 findings, 8 of which were routed to follow-up records. Without a path argument it audits only session-loaded configuration, and reaches the plugin library by a signal grep alone.\n- Of those 12 plugin-scope findings, only one (the `[Effort: …]` prose stopgap in `subagent-dispatch-core.md`) falls under one of the checklist's named deltas.\n\n## Deliverables\n\n1. Add one step to `docs/skill-authoring.md`'s Model-version prompting notes: on each new model release, run `/doctor prompt-audit plugin/` (and once without a path for CLAUDE.md and `.claude/skills/`), and route each finding through the same three-bucket comparison #3056 used.\n2. Name the exact headless invocation, the read-only tool set, and the caveat that a nested `claude -p` must not run inside an active pipeline session until #3845 is fixed.\n3. State in that section that harness-health does not reach `plugin/` by design, so this run is the only automated reader of the shipped library's prose.\n\n## Acceptance Criteria\n\n- `docs/skill-authoring.md`'s Model-version prompting notes contains the `/doctor prompt-audit plugin/` step with its invocation and tool restrictions.\n- The section states harness-health's `.claude/`-only scope with a pointer to `scope.js`.\n- `npm test` passes (docs conformance suites included).\n\n## Release Note\n\nNo user-facing change.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/skill-authoring.md` — Model-version prompting notes — add the prompt-audit step\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-21T00:39:02Z",
         "labels": [
@@ -935,78 +791,6 @@
         "state": "OPEN",
         "title": "Add a /doctor prompt-audit run over plugin/ to the model-version prompting checklist",
         "updatedAt": "2026-10-21T20:29:44Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": null,
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3056 (the /prompt-audit run that surfaced these), #2799 (description trimming — adjacent, different spans)\n\nOrigin: #3056 /prompt-audit comparison (run 2026-10-21T001740-record-3056)\n\nDefer-reason: tangential\n\n## Current State\n\n`/doctor prompt-audit plugin/` (#3056) flagged four spans in shipped skill prose that pin a fact to one model version or wrap a sentence in emphasis that carries no information. Each was re-verified at `origin/main` 36fff7a2f:\n\n- `plugin/skills/_shared/subagent-dispatch-core.md:156` (Overrides paragraph) narrates a single dated probe (\"Probed 2026-08-17 … self-reported running as Haiku 4.5, not Sonnet … Single-observation confidence\"). The rule it supports — an explicit per-invocation `model` overrides the session's ambient model — stands without the experiment narrative. `plugin/skills/build/dispatch.md:19` repeats the \"probed 2026-08-17\" date.\n- `plugin/skills/_shared/subagent-output-contract.md:47` states \"Sonnet 5's tokenizer emits roughly 30% more tokens for the same text than its predecessor\" — a per-model ratio that goes stale at the next release; the instruction it supports (keep CLAUDE.md lean) does not need it.\n- `plugin/skills/capture/SKILL.md:383`: \"don't overthink — capture the essence.\" Prose steering thinking depth; `effort` is the lever, and the positive half carries the intent.\n- `plugin/skills/build/SKILL.md:162-164` wraps a self-explaining sentence (design mode has no structured acceptance criteria) in `<IMPORTANT>` tags.\n\nNone of these is reached by `/claude-tweaks:harness-health`, whose target discovery reads only `.claude/skills`, `.claude/rules` and CLAUDE.md (`plugin/bin/lib/harness-health/scope.js`).\n\n## Deliverables\n\n1. `subagent-dispatch-core.md`'s Overrides paragraph: keep the rule, drop the dated probe narrative and its confidence caveat.\n2. `build/dispatch.md:19`: drop the \"probed 2026-08-17\" parenthetical, keeping the cross-reference to that Overrides section.\n3. `subagent-output-contract.md:47`: drop the Sonnet 5 tokenizer sentence; keep \"keep CLAUDE.md lean\".\n4. `capture/SKILL.md:383`: drop \"don't overthink\", keep \"capture the essence\".\n5. `build/SKILL.md:162-164`: remove the `<IMPORTANT>` wrapper and fold its reason into the sentence.\n\n## Acceptance Criteria\n\n- `grep -rn 'Probed 2026-08-17\\|probed 2026-08-17\\|tokenizer emits\\|overthink\\|<IMPORTANT>' plugin/skills/` returns no hit in the five named files.\n- Each edited passage still states the rule it carried (explicit `model` overrides the ambient model; keep CLAUDE.md lean; extract testable outcomes in design mode).\n- `tests/` is grepped for the exact removed strings before editing, and any byte-pin is updated in the same change; `npm test` passes.\n\n## Release Note\n\nNo user-facing change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/subagent-dispatch-core.md` — Overrides paragraph — drop dated probe narrative\n- `plugin/skills/build/dispatch.md` — line 19 — drop probe date\n- `plugin/skills/_shared/subagent-output-contract.md` — line 47 — drop tokenizer ratio\n- `plugin/skills/capture/SKILL.md` — line 383 — drop thinking-depth prose\n- `plugin/skills/build/SKILL.md` — lines 162-164 — drop emphasis wrapper\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-21T00:38:25Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          }
-        ],
-        "number": 3844,
-        "state": "OPEN",
-        "title": "Drop dated model-version fossils and emphasis wrappers from shipped skill prose",
-        "updatedAt": "2026-10-21T20:29:33Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
@@ -1182,78 +966,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\n**Source:** full mode, lens \"Friction\"\n**Files:** plugin/skills/wrap-up/ceremony-derivation.md, plugin/skills/_shared/subagent-dispatch-core.md\n\nOrigin: reflect full from #3378\nDefer-reason: tangential\n\n## Current State\n\nThe \"Worktree shell constraint\" guidance (the dispatch context-pack template, mirrored in `_shared/subagent-dispatch-core.md`) lists specific refused compound-Bash shapes — quoted JSON with a VCS command name, a for/while loop variable, a glob, an API call inside `if RAW=$(...)`, `sed -i` on a variable path, `cat \"$P/...\"` — but omits \"a `git`/`gh` command whose output is piped or substituted into a second command.\" `plugin/skills/wrap-up/ceremony-derivation.md` itself prescribes exactly that shape as its canonical one-liner (`git diff --numstat \"$(git merge-base HEAD origin/main)\" | node -e \"...\"`), so a session following that file's own documented invocation verbatim hits the harness's worktree-isolation guard anyway, discovering the gap by trial rather than by the guidance warning it up front.\n\n**Evidence:** this run's `friction-events.js` output recorded a `wd-guard-refusal` event at the exact command above, refused with \"too complex to verify that it stays inside the worktree,\" during this wrap-up run's own Phase 1 ceremony-derivation step. Four more `wd-guard-refusal` events fired earlier in the same run's lifecycle (build/PR-setup phase, an adhoc-standalone run dir) for other compound shapes (`eval`, a heredoc redirect, `curl | head`), suggesting the avoid-list's enumeration is incomplete more broadly, not just for this one shape.\n**Cost this session:** low — one extra tool round-trip to split the command and re-run; no blocked work, no incorrect result.\n\n## Deliverables\n\n- [ ] Add the \"a git/gh command piped or command-substituted into a second command\" pattern to the Worktree shell constraint's enumerated avoid-list, wherever it is canonically maintained.\n- [ ] Reconcile `ceremony-derivation.md`'s own prescribed one-liner against the corrected list — either document a pre-split two-command form there, or confirm the avoid-list now covers it so future callers split proactively instead of discovering the refusal by trial.\n\n## Acceptance Criteria\n\n1. The Worktree shell constraint's avoid-list names the piped/substituted-git shape (or a general rule covering it), and `ceremony-derivation.md`'s invocation either already satisfies the corrected rule or is rewritten to a pre-split form that does.\n\n## Release Note\n\nClosed a gap in the worktree-isolated Bash guidance where a documented skill's own canonical one-liner collided with the harness's compound-command refusal.\n\n### Key Files\n\n- `plugin/skills/wrap-up/ceremony-derivation.md` (change: reconcile prescribed one-liner with the corrected avoid-list)\n- `plugin/skills/_shared/subagent-dispatch-core.md` (change: add the missing avoid-list entry)\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-20T21:40:09Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3829,
-        "state": "OPEN",
-        "title": "Worktree shell constraint avoid-list misses the piped-git-into-node shape",
-        "updatedAt": "2026-10-21T20:29:17Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
@@ -1478,78 +1190,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "# Review — staged follow-up record (from #3695 lens 3a)\n\n**Category:** tangential\nOrigin: review lens 3a (#3695, run 2026-10-20T124821-spec-3599-3602-3695-3696-3698-3699-3595)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#3695 fixed teardown-run's two worktree lookups on Windows: `git worktree list --porcelain` prints `D:/a/x/feat` while a native path is `D:\\a\\x\\feat`, so a strict `===` never matched. Review of #3695 found two more lookups in other hooks with the same strict compare of a porcelain path against the native `ctx.cwd`:\n\n- `plugin/bin/lib/hooks/post-tool-use.js:243` — `resolveWorktreePathViaPorcelain` (`entries.findIndex((e) => e.path === cwd)`). It is the fallback that finds the worktree `EnterWorktree` just switched into, and `stampAdHocRunDir`'s widened trigger reuses it. On Windows it returns null, so neither records the worktree.\n- `plugin/bin/lib/hooks/context.js:784` — `stampAdHocRunDirForDenial` (same compare). On Windows it returns null, so a gate denial in a session with no owned run dir has nowhere to land its friction event (the gap this function was written to close).\n\nBoth read `parseWorktreeList` output from `worktree-reap.js`. The realpath-normalized lookups (`isWorktreeLocked`, `resume-freshness.js`, `flow/consolidated-pass.js`, `run-integrity.js` `deriveBranch`) are unaffected. #3695's `findWorktreeEntry(entries, target, pathImpl = path)` helper lives in `teardown-run.js` and is not shared.\n\n**Related:** #3736, #3836\n\n## Deliverables\n\n1. Move `findWorktreeEntry` beside `parseWorktreeList` in `plugin/bin/lib/hooks/worktree-reap.js` (keep `teardown-run.js` re-exporting or importing it), so every porcelain lookup shares one compare key.\n\n2. Replace the strict `e.path === cwd` compares at `post-tool-use.js:243` and `context.js:784` with the shared helper, keeping each function's `{path, isMain}` / index semantics.\n\n3. Add a `path.win32` pin per site in the existing hook test files (forward-slash porcelain vs backslash cwd).\n\n## Acceptance Criteria\n\n1. With `path.win32`, a porcelain entry `D:/a/x/feat` matches a cwd of `D:\\a\\x\\feat` at both sites, and `isMain` stays true only for the first entry.\n\n2. Each new pin fails when its site's strict `===` compare is restored.\n\n3. `git grep -nE \"\\.path\\s*===\\s*cwd\" -- plugin/bin` finds nothing.\n\n4. `npm test` passes.\n\n## Release Note\n\nFix worktree detection in claude-tweaks hooks on Windows, so a session that enters a worktree, or is denied by a gate, is recorded against the right worktree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/post-tool-use.js` — `resolveWorktreePathViaPorcelain` uses the shared compare\n- `plugin/bin/lib/hooks/context.js` — `stampAdHocRunDirForDenial` uses the shared compare\n- `plugin/bin/lib/hooks/worktree-reap.js` — home of the shared `findWorktreeEntry`\n- `plugin/bin/lib/hooks/teardown-run.js` — imports the moved helper\n\n_Filed by `review` via specShapedBody._\n",
-        "createdAt": "2026-10-20T20:27:23Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3811,
-        "state": "OPEN",
-        "title": "Hooks: match git worktree porcelain paths against native cwd on Windows (post-tool-use, context)",
-        "updatedAt": "2026-10-21T20:32:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
