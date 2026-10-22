@@ -153,7 +153,7 @@
 ### Task 6: Source-scan conformance — the rule lives in one place
 
 **Files:**
-- Modify: `tests/run-header.test.js` (append the scan; follow the `bin-source-scan-conformance` skill: shared `stripComments`/`stripperVerdict` from `./helpers/strip-comments`, mis-parse is an offender, planted self-tests, a floor on matched sites)
+- Test: `tests/run-header.test.js` (append the scan; follow the `bin-source-scan-conformance` skill: shared `stripComments`/`stripperVerdict` from `./helpers/strip-comments`, mis-parse is an offender, planted self-tests, a floor on matched sites)
 
 **Interfaces:**
 - Consumes: `plugin/bin/**/*.js` source text.
@@ -166,6 +166,31 @@
 - [ ] **Step 2: Run** `node --test tests/run-header.test.js` — Expected: PASS on the migrated tree. Prove it can go red: temporarily restore one reader's old literal (e.g. `specCandidatePaths`' template) in a scratch copy fed to the matcher via the planted self-test, and confirm the self-test flags it.
 - [ ] **Step 3: Record the reader set:** run `grep -rln "work.*-spec\.md" plugin/bin` and keep the output for the PR body (AC 8).
 - [ ] **Step 4: Commit** — "Pin the spec-header location rule to run-header.js with a source scan (refs #3974)".
+
+### Spec coverage map
+
+| AC clause | Covered by |
+|---|---|
+| AC1.1 | Task 2 Step 2 (a); Task 3 Step 2; Task 4 Step 2 (`getMaterializedRecordNumbers`, precondition); Task 5 Step 2 (`resolveRecords`, `closingRecords`, `hasMaterializedHeader`) |
+| AC2.1 | Task 2 Step 2 (b, c); Task 3 Step 2 (archived `spec-{N}`); Task 4 Step 2 (per-spec run dir, archived `spec-2`/`spec-9`); Task 5 Step 2 (multi-spec parent, flat and `spec-{N}`) |
+| AC3.1 | Task 2 Step 2 (d); Task 3 Step 2 (`git mv` branch); Task 4 Step 2 AC 4(c) |
+| AC4.1 | Task 4 Step 2 AC 4(a) |
+| AC4.2 | Task 4 Step 2 AC 4(b) |
+| AC4.3 | Task 4 Step 2 AC 4(c) |
+| AC5.1 | Task 4 Step 2 AC 5 |
+| AC5.2 | Task 4 Step 2 AC 5 (fixture in `tests/hooks-bookkeeping-stamps-gate.test.js`) |
+| AC6.1 | Task 2–5 Step 5 (existing suites unedited); Task 7 Step 1 |
+| AC7.1 | Task 1 Step 1 (`findHeaderFiles` live-before-archived) |
+| AC7.2 | Task 5 Step 2 (stale live `record:` mismatch falls through) |
+| AC7.3 | Task 5 Step 2 (live `work/` without this record, header archived) |
+| AC8.1 | Task 6 Step 1 |
+| AC8.2 | Task 6 Step 3 |
+| AC8.3 | Task 7 Step 2 |
+| AC9.1 | Task 2 Step 1; Task 3 Step 1 |
+| AC9.2 | Task 4 Step 1 (`materialize-check-failed`) |
+| AC9.3 | Task 4 Step 1 (`false` / `[]`) |
+| AC9.4 | Task 5 Step 1 |
+| AC9.5 | Task 2 Step 1; Task 3 Step 1 (`null` stays `null` after migration) |
 
 ### Task 7: Full-suite check and PR-body evidence
 
