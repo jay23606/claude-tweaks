@@ -14,7 +14,7 @@
 'use strict';
 
 const {
-  specShapedBody, recordPayload, fencedBlock,
+  specShapedBody, recordPayload, fencedBlock, LABELS,
 } = require('../issues/record');
 const { classifyStagedItem, SHADOW_DUP_RE } = require('./resolve');
 
@@ -69,7 +69,7 @@ function composeShadowDupProposal({
     outcome,
     anchor,
     title,
-    proposal: `Title: ${title}\nType: task\nLabels: needs:definition\nDefer-reason: ${DEFER_REASON}\n\n${body}`,
+    proposal: `Title: ${title}\nType: task\nLabels: ${LABELS.NEEDS_DEFINITION}\nDefer-reason: ${DEFER_REASON}\n\n${body}`,
   };
 }
 

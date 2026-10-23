@@ -239,7 +239,10 @@ function classifyStagedItem(filename, text, siblingText) {
   if (SHADOW_DUP_RE.test(filename)) {
     let outcome = 'shadow-dup-collision';
     if (siblingText !== undefined && siblingText !== null && text !== undefined && text !== null) {
-      outcome = text === siblingText ? 'shadow-dup-duplicate' : 'shadow-dup-divergent';
+      // Both sides are utf8-decoded, so equal strings prove equal bytes only when no
+      // invalid sequence was replaced by U+FFFD on the way in. With one present,
+      // identity is unproven and the copy is kept as divergent — never dismissed.
+      outcome = text === siblingText && !text.includes('�') ? 'shadow-dup-duplicate' : 'shadow-dup-divergent';
     }
     return { section: SHADOW_DUP_OUTCOMES[outcome].section, outcome };
   }

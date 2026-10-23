@@ -1,5 +1,5 @@
 'use strict';
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
@@ -7,7 +7,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const { composeShadowDupProposal } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'shadow-dup-proposal'));
-const { run, USAGE } = require(path.join(ROOT, 'plugin', 'bin', 'shadow-dup-proposal'));
+const { run, USAGE, readNoFollow } = require(path.join(ROOT, 'plugin', 'bin', 'shadow-dup-proposal'));
 const { fencedBlock, DEFER_REASONS } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'issues', 'record'));
 const { resolveAll, SHADOW_DUP_RE } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'resolve'));
 const { unresolvedItems } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
@@ -95,8 +95,12 @@ test('an empty copy that differs from its anchor still composes (empty is conten
 
 // --- CLI ---------------------------------------------------------------
 
+const fixtureRoots = [];
+after(() => { for (const r of fixtureRoots) fs.rmSync(r, { recursive: true, force: true }); });
+
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sdp-'));
+  fixtureRoots.push(root);
   const main = path.join(root, 'main');
   const runDir = path.join(main, '.claude-tweaks', 'pipelines', '2026-10-23T090000-spec-12');
   const shadow = path.join(main, '.claude', 'worktrees', 'flow-spec-12', '.claude-tweaks', 'pipelines', '2026-10-23T090000-spec-12');
@@ -174,6 +178,46 @@ test('cli: exit 2 for a byte-identical duplicate, with the dismissal on stderr a
   assert.equal(run(['--run', f.runDir, '--item', 'a-1.md.shadow-dup', '--out', f.out], deps), 2);
   assert.match(err.join(''), /refused \(shadow-dup-duplicate\): dismissed, nothing to file/);
   assert.equal(fs.existsSync(f.out), false);
+});
+
+test('cli: a non-.md/.patch pair agrees with resolveAll — identical .json dismissed (exit 2), differing .json composed divergent', () => {
+  const f = fixture();
+  stage(f.runDir, {
+    'tidy-absorb-1.json': '{"a":1}\n', 'tidy-absorb-1.json.shadow-dup': '{"a":1}\n',
+    'tidy-absorb-2.json': '{"a":1}\n', 'tidy-absorb-2.json.shadow-dup': '{"a":2}\n',
+  });
+  const dup = fakeDeps(f.main);
+  assert.equal(run(['--run', f.runDir, '--item', 'tidy-absorb-1.json.shadow-dup', '--out', f.out], dup.deps), 2);
+  assert.match(dup.err.join(''), /refused \(shadow-dup-duplicate\)/);
+  assert.equal(fs.existsSync(f.out), false);
+  const div = fakeDeps(f.main);
+  assert.equal(run(['--run', f.runDir, '--item', 'tidy-absorb-2.json.shadow-dup', '--out', f.out], div.deps), 0);
+  assert.match(fs.readFileSync(f.out, 'utf8'), /shadow-dup-divergent copy/);
+});
+
+test('cli: a symlinked copy is refused as copy-unreadable and its target is never quoted', { skip: process.platform === 'win32' && 'symlinks need privileges on Windows' }, () => {
+  const f = fixture();
+  const secret = path.join(f.root, 'outside-secret.txt');
+  fs.writeFileSync(secret, 'TOP-SECRET-VALUE\n');
+  stage(f.runDir, { 'a-1.md': 'anchor' });
+  fs.symlinkSync(secret, path.join(f.runDir, 'staged', 'a-1.md.shadow-dup'));
+  const { deps, err } = fakeDeps(f.main, { readFile: readNoFollow });
+  assert.equal(run(['--run', f.runDir, '--item', 'a-1.md.shadow-dup', '--out', f.out], deps), 2);
+  assert.match(err.join(''), /refused \(copy-unreadable\)/);
+  assert.equal(fs.existsSync(f.out), false);
+});
+
+test('cli: a symlinked anchor reads as missing — the copy composes as a collision with no anchor quote', { skip: process.platform === 'win32' && 'symlinks need privileges on Windows' }, () => {
+  const f = fixture();
+  const secret = path.join(f.root, 'outside-secret.txt');
+  fs.writeFileSync(secret, 'TOP-SECRET-VALUE\n');
+  stage(f.runDir, { 'a-1.md.shadow-dup': 'copy' });
+  fs.symlinkSync(secret, path.join(f.runDir, 'staged', 'a-1.md'));
+  const { deps } = fakeDeps(f.main, { readFile: readNoFollow });
+  assert.equal(run(['--run', f.runDir, '--item', 'a-1.md.shadow-dup', '--out', f.out], deps), 0);
+  const proposal = fs.readFileSync(f.out, 'utf8');
+  assert.match(proposal, /shadow-dup-collision copy/);
+  assert.ok(!proposal.includes('TOP-SECRET-VALUE'), 'the symlink target leaked into the proposal');
 });
 
 test('cli: exit 2 for malformed invocations, nothing written', () => {

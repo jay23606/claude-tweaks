@@ -166,6 +166,14 @@ test('AC4.2: a whitespace-only or CRLF difference is divergent, never dismissed 
   }
 });
 
+test('two copies that differ only in invalid UTF-8 bytes decode alike but are divergent, never dismissed (#3946 review)', () => {
+  const copy = Buffer.from([0x61, 0xff]).toString('utf8');
+  const anchor = Buffer.from([0x61, 0xfe]).toString('utf8');
+  assert.strictEqual(copy, anchor, 'precondition: both bytes decode to the same U+FFFD string');
+  const r = classifyStagedItem('x-1.md.shadow-dup', copy, anchor);
+  assert.deepStrictEqual(r, { section: 'Queue writes', outcome: 'shadow-dup-divergent' });
+});
+
 test('patch copy: a .patch.shadow-dup copy resolves apply in Queue writes, never stale (#3946)', () => {
   const r = resolveAll({ runDir: fixture({ staged: { 'review-2.patch': 'p', 'review-2.patch.shadow-dup': 'q' }, headers: [7] }), policy: 'console-auto', deps: deps() });
   const copy = r.items.find((i) => i.id === 'review-2.patch.shadow-dup');
@@ -173,7 +181,7 @@ test('patch copy: a .patch.shadow-dup copy resolves apply in Queue writes, never
   assert.strictEqual(copy.section, 'Queue writes');
 });
 
-test('a non-.md/.patch anchor is read too: an identical .json pair resolves dismissed, agreeing with the composer CLI (#3946 M1)', () => {
+test('a non-.md/.patch anchor is read too: an identical .json pair resolves dismissed, a differing one divergent (#3946 M1; CLI agreement: shadow-dup-proposal.test.js)', () => {
   const r = resolveAll({ runDir: fixture({ staged: { 'tidy-absorb-1.json': '{"a":1}\n', 'tidy-absorb-1.json.shadow-dup': '{"a":1}\n', 'tidy-absorb-2.json': '{"a":1}\n', 'tidy-absorb-2.json.shadow-dup': '{"a":2}\n' }, headers: [7] }), policy: 'console-auto', deps: deps() });
   const by = Object.fromEntries(r.items.map((i) => [i.id, i]));
   assert.strictEqual(by['tidy-absorb-1.json.shadow-dup'].resolution, 'dismissed');

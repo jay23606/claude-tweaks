@@ -10,7 +10,8 @@
 // The Review Console's Queue-writes step files that proposal.
 // Exit 0 on success (--out written; its path echoed to stdout); 2 on a malformed
 // invocation (a missing/unknown flag, an --item that is not a plain filename or
-// not a shadow-dup name, an item absent from staged/, an unreadable copy, or a
+// not a shadow-dup name, an item absent from staged/, an unreadable copy — a leaf
+// symlink included (readNoFollow below; a symlinked anchor reads as missing) — or a
 // byte-identical duplicate — refused, the console dismisses it; reopen this exit-2
 // overload if a console step must retry an unreadable copy differently from
 // dismissing a duplicate); 3 when the run dir is missing or not anchored under
@@ -45,10 +46,19 @@ function parseArgs(argv) {
   return o;
 }
 
+// The copy and anchor are quoted verbatim into a filed record, so a leaf symlink
+// in staged/ must never pull an outside file in: O_NOFOLLOW makes opening one fail
+// (ELOOP), which reads as an unreadable copy or a missing anchor. (0 where the
+// platform has no such flag.)
+function readNoFollow(p) {
+  const fd = fs.openSync(p, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+  try { return fs.readFileSync(fd, 'utf8'); } finally { fs.closeSync(fd); }
+}
+
 const realDeps = {
   cwd: () => process.cwd(),
   mainRoot: undefined,
-  readFile: (p) => fs.readFileSync(p, 'utf8'),
+  readFile: readNoFollow,
   writeFile: (p, s) => fs.writeFileSync(p, s),
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
@@ -107,6 +117,6 @@ function run(argv, deps = realDeps) {
   return 0;
 }
 
-module.exports = { run, parseArgs, USAGE };
+module.exports = { run, parseArgs, USAGE, readNoFollow };
 
 if (require.main === module) process.exitCode = run(process.argv.slice(2), realDeps);

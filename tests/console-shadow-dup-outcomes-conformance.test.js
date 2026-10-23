@@ -273,13 +273,13 @@ const STEP7_FACTS = [
   ['carries no header of its own', /carries no header of its own/],
   ['resolves a scratch path', /session-tmp-resolve\.js" SHADOW_DUP_PROPOSAL=shadow-dup-proposal-\{Q#\}\.md`/],
   ['no eval, prints a quoted assignment', /\(no `eval`; it prints `SHADOW_DUP_PROPOSAL="<path>"` — use the path inside the quotes as `\{proposal-path\}`\)/],
-  ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\{item-run-dir\}" --item \{name\} --out "\{proposal-path\}"/],
+  ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\{item-run-dir\}" --item '\{name\}' --out "\{proposal-path\}"/],
   ['quotes the copy verbatim', /quotes the copy verbatim under `Defer-reason: needs-human-decision` and `needs:definition`/],
-  ['defines {name}', /\(`\{name\}`: the item's staged filename;/],
+  ['defines {name}', /\(`\{name\}`: the item's staged filename, single-quoted here and below because it is read from `staged\/`, not written by a pipeline producer;/],
   ['defines {item-run-dir}', /`\{item-run-dir\}`: the run directory whose `staged\/` holds the item — `\$PIPELINE_RUN_DIR` in a single-spec run\)/],
   ['files from the proposal, not the raw copy', /create the record from `\{proposal-path\}`, not the raw copy/],
   ['a non-zero exit logs a Degrade-trace SKIP', /A non-zero exit is not a refusal: log one `SKIP` per `_shared\/auto-decision-log\.md`'s Degrade-trace rule/],
-  ['the full SKIP command', /`node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/log-decision\.js" --run "\{item-run-dir\}" --status SKIP --section "\/wrap-up" --step "Shadow-dup proposal \(skipped\)" --text "condition: shadow-dup-proposal\.js exited \{code\} for \{name\} → fallback: copy stays in staged\/, not filed this run" --reversibility n\/a`/],
+  ['the full SKIP command', /`node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/log-decision\.js" --run "\{item-run-dir\}" --status SKIP --section "\/wrap-up" --step "Shadow-dup proposal \(skipped\)" --text 'condition: shadow-dup-proposal\.js exited \{code\} for \{name\} → fallback: copy stays in staged\/, not filed this run' --reversibility n\/a`/],
   ['the true fallback', /the copy stays in `staged\/`, the item is not filed this run, and that `SKIP` line is its trace/],
   ['a failed gh issue create cites refused-proposals.md', /A failed `gh issue create` on the proposal follows `refused-proposals\.md`'s failed-create line/],
 ];
@@ -376,7 +376,8 @@ test("control: each fact of step 7's shadow-dup clause is individually load-bear
 
 test('control: naming FAILED in step 7 fails assertStep7Composer (log-decision.js rejects that status)', () => {
   const mutated = doctor(REVIEW_CONSOLE, 'log one `SKIP` per', 'log one `FAILED` per');
-  assert.throws(() => assertStep7Composer(mutated), (e) => e.message.startsWith('step 7') && /names FAILED|lost a shadow-dup fact/.test(e.message));
+  // Rewording the SKIP sentence loses its fact first, so this case pins the fact check; onlyFailed below pins FAILED alone.
+  assert.throws(() => assertStep7Composer(mutated), { message: /^step 7 lost a shadow-dup fact/ });
   const onlyFailed = doctor(REVIEW_CONSOLE, ' and that `SKIP` line is its trace.', ' and that `SKIP` line is its trace (FAILED).');
   assert.throws(() => assertStep7Composer(onlyFailed), { message: /names FAILED/ });
 });
@@ -393,14 +394,15 @@ const LOG_DECISION = require(path.join(ROOT, 'plugin', 'bin', 'log-decision.js')
 function step7SkipArgv(consoleText, fill) {
   const m = step7(consoleText).match(/`node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/log-decision\.js" ([^`]*)`/);
   assert.ok(m, 'step 7 has no log-decision.js command to run');
-  const tokens = m[1].match(/"[^"]*"|\S+/g).map((t) => (t.startsWith('"') ? t.slice(1, -1) : t));
+  const tokens = m[1].match(/"[^"]*"|'[^']*'|\S+/g).map((t) => (/^["']/.test(t) ? t.slice(1, -1) : t));
   return tokens.map((t) => Object.entries(fill).reduce((s, [k, v]) => s.split(k).join(v), t));
 }
 
-test("step 7's SKIP command runs through log-decision.js and appends one Degrade-trace SKIP line", () => {
+test("step 7's SKIP command runs through log-decision.js and appends one Degrade-trace SKIP line", (t) => {
   const fs = require('node:fs');
   const os = require('node:os');
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'step7-skip-')));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, '.git'));
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', '2026-10-24T000000-spec-7', 'spec-7');
   fs.mkdirSync(runDir, { recursive: true });
@@ -738,12 +740,13 @@ test('control: dropping the citation fails assertMultispecCitesCmpRule', () => {
 const { spawnSync } = require('node:child_process');
 const HAS_CMP = !spawnSync('cmp', [__filename, __filename]).error;
 
-test('the cmp -s rule agrees with classifyStagedItem on identical, whitespace/CRLF-divergent and missing anchors', { skip: !HAS_CMP && 'no cmp binary on PATH' }, () => {
+test('the cmp -s rule agrees with classifyStagedItem on identical, whitespace/CRLF-divergent and missing anchors', { skip: !HAS_CMP && 'no cmp binary on PATH' }, (t) => {
   const fs = require('node:fs');
   const os = require('node:os');
   const { classifyStagedItem } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'resolve.js'));
   const command = CMP_RULE.exec(sectionBlock(CONSOLE_TEMPLATE, NAME))[1];
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmp-rule-'));
+  t.after(() => fs.rmSync(runDir, { recursive: true, force: true }));
   fs.mkdirSync(path.join(runDir, 'staged'));
   const cases = [['same\n', 'same\n'], ['a\r\n', 'a\n'], ['a ', 'a'], ['x', null]];
   cases.forEach(([copyText, anchorText], i) => {
