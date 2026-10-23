@@ -173,6 +173,15 @@ test('patch copy: a .patch.shadow-dup copy resolves apply in Queue writes, never
   assert.strictEqual(copy.section, 'Queue writes');
 });
 
+test('a non-.md/.patch anchor is read too: an identical .json pair resolves dismissed, agreeing with the composer CLI (#3946 M1)', () => {
+  const r = resolveAll({ runDir: fixture({ staged: { 'tidy-absorb-1.json': '{"a":1}\n', 'tidy-absorb-1.json.shadow-dup': '{"a":1}\n', 'tidy-absorb-2.json': '{"a":1}\n', 'tidy-absorb-2.json.shadow-dup': '{"a":2}\n' }, headers: [7] }), policy: 'console-auto', deps: deps() });
+  const by = Object.fromEntries(r.items.map((i) => [i.id, i]));
+  assert.strictEqual(by['tidy-absorb-1.json.shadow-dup'].resolution, 'dismissed');
+  assert.strictEqual(by['tidy-absorb-1.json.shadow-dup'].section, 'Dismissed duplicates');
+  assert.match(by['tidy-absorb-1.json.shadow-dup'].reason, /^shadow-dup-duplicate — /);
+  assert.match(by['tidy-absorb-2.json.shadow-dup'].reason, /^shadow-dup-divergent — /);
+});
+
 test('AC4.1 e2e: resolveAll leaves no shadow-dup item pending (#2773, #3946)', () => {
   const runDir = fixture({
     staged: {

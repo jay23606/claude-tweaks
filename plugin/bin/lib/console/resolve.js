@@ -225,7 +225,7 @@ function parseCategory(text) {
 }
 
 // `text` is the staged file's own content, when the caller has it (readSnapshot loads it for
-// every `.md`/`.patch` staged item). Only the QUEUE bucket's un-reasoned row reads it: that
+// every `.md`/`.patch` staged item, every shadow-dup copy, and each copy's anchor). Only the QUEUE bucket's un-reasoned row reads it: that
 // bucket's contract (`reflect/SKILL.md`'s Auto mode routing table) reserves an actual Queue
 // write (a `gh issue create` candidate, resolution `apply`) for `Category: tangential` findings
 // — `convention`/`observation` findings share the same filename prefix but carry no
@@ -288,10 +288,14 @@ function parseInvariant(patchText) {
 function readSnapshot({ runDir, deps }) {
   const decisions = readText(deps, path.join(runDir, 'decisions.md')) || '';
   const stagedDir = path.join(runDir, 'staged');
-  const staged = deps.readdir(stagedDir).filter((n) => !n.startsWith('.')).sort().map((name) => ({
+  const names = deps.readdir(stagedDir).filter((n) => !n.startsWith('.')).sort();
+  // A shadow-dup copy's anchor is read whatever its extension, so the duplicate check compares
+  // the same bytes bin/shadow-dup-proposal.js reads from disk (#3946 M1).
+  const anchors = new Set(names.map((n) => SHADOW_DUP_RE.exec(n)).filter(Boolean).map((m) => m[1]));
+  const staged = names.map((name) => ({
     name,
     path: path.join(stagedDir, name),
-    text: (name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name)) ? readText(deps, path.join(stagedDir, name)) : null,
+    text: (name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name) || anchors.has(name)) ? readText(deps, path.join(stagedDir, name)) : null,
   }));
   const engineState = readJson(deps, path.join(runDir, 'engine-state.json'));
   const members = readMembers(deps, runDir);
