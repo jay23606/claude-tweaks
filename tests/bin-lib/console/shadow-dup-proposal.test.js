@@ -44,6 +44,23 @@ test('verbatim round-trip: the copy is quoted byte for byte', () => {
   assert.ok(r.proposal.includes(`\`\`\`\`\n${COPY}\n\`\`\`\``));
 });
 
+test('divergent: the anchor is quoted verbatim too, after the copy, so the record is self-contained (#3946 M3)', () => {
+  const ANCHOR = 'anchor with ```` four ticks\r\n';
+  const r = composeShadowDupProposal({ name: 'leftover-x.md.shadow-dup', text: COPY, anchorText: ANCHOR, runId: 'run-1' });
+  const copyAt = r.proposal.indexOf(fencedBlock(COPY));
+  const anchorAt = r.proposal.indexOf(fencedBlock(ANCHOR));
+  assert.notEqual(copyAt, -1, 'the copy is still quoted byte for byte');
+  assert.notEqual(anchorAt, -1, 'the anchor is quoted byte for byte');
+  assert.ok(copyAt < anchorAt, 'the copy comes first, then the anchor');
+  assert.match(r.proposal, /the anchor's full content follows/);
+});
+
+test('collision: the proposal quotes no anchor, and keeps the missing-or-unreadable note (#3946 M3)', () => {
+  const r = composeShadowDupProposal({ name: 'leftover-x.md.shadow-dup', text: COPY, anchorText: null, runId: 'run-1' });
+  assert.match(r.proposal, /was missing or unreadable, so nothing could be compared/);
+  assert.doesNotMatch(r.proposal, /the anchor's full content follows/);
+});
+
 test('collision: no anchor composes with the collision question', () => {
   for (const anchorText of [null, undefined]) {
     const r = composeShadowDupProposal({ name: 'leftover-x.md.shadow-dup-2', text: COPY, anchorText, runId: 'run-1' });

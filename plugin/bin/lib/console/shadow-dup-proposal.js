@@ -6,8 +6,9 @@
 // SHADOW_DUP_OUTCOMES). The Queue-writes step files a staged `Title:`/`Type:`/
 // `Labels:`/`Defer-reason:` header + body; a raw copy carries none of that, so
 // this module builds it: a needs:definition task whose spec-shaped body quotes
-// the copy verbatim (fencedBlock widens its fence past any backtick run inside
-// the copy, so the quote can never be closed early). The header shape is the
+// the copy verbatim — and, for a divergent copy, its anchor too, so the record
+// stays readable after the run dir is archived (fencedBlock widens its fence past
+// any backtick run inside the text, so a quote can never be closed early). The header shape is the
 // one wrap-up/leftover-routing.md step 3 writes. A byte-identical duplicate is
 // refused, never composed — the console dismisses it.
 'use strict';
@@ -42,12 +43,17 @@ function composeShadowDupProposal({
     deferReason: DEFER_REASON,
     body: specShapedBody({
       provenance: { origin: `wrap-up Review Console, run ${runId}: ${outcome} copy staged/${name}`, deferReason: DEFER_REASON },
-      currentState: [
-        divergent
-          ? `\`staged/${name}\` is a ${outcome} copy of its anchor \`staged/${anchor}\` — the two differ, and the copy's full content follows verbatim.`
-          : `\`staged/${name}\` is a ${outcome} copy: its anchor \`staged/${anchor}\` was missing or unreadable, so nothing could be compared, and the copy's full content follows verbatim.`,
-        fencedBlock(text),
-      ],
+      currentState: divergent
+        ? [
+          `\`staged/${name}\` is a ${outcome} copy of its anchor \`staged/${anchor}\` — the two differ, and the copy's full content follows verbatim.`,
+          fencedBlock(text),
+          `\`staged/${anchor}\` stops resolving once the run dir is archived, so the anchor's full content follows verbatim too.`,
+          fencedBlock(anchorText),
+        ]
+        : [
+          `\`staged/${name}\` is a ${outcome} copy: its anchor \`staged/${anchor}\` was missing or unreadable, so nothing could be compared, and the copy's full content follows verbatim.`,
+          fencedBlock(text),
+        ],
       deliverables: '- [ ] compare with the anchor; apply the copy through its own kind\'s consumer, or close this record when the anchor covers it',
       openQuestion: divergent
         ? `Does the copy carry a proposal that its anchor \`staged/${anchor}\` does not?`
