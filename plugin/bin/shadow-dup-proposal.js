@@ -93,7 +93,7 @@ function run(argv, deps = realDeps) {
   let readError = null;
   try { text = deps.readFile(path.join(stagedDir, item)); } catch (err) { readError = err; }
   let anchorText = null;
-  try { anchorText = deps.readFile(path.join(stagedDir, match[1])); } catch { anchorText = null; }
+  try { anchorText = deps.readFile(path.join(stagedDir, match[1])); } catch { /* absent or unreadable anchor reads as no anchor */ }
 
   // A multi-spec per-spec run dir is {pipelines}/{parent-run-id}/spec-{N}: name the parent run too.
   const base = path.basename(target.dir);

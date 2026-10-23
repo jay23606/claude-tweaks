@@ -225,7 +225,8 @@ function parseCategory(text) {
 }
 
 // `text` is the staged file's own content, when the caller has it (readSnapshot loads it for
-// every `.md`/`.patch` staged item, every shadow-dup copy, and each copy's anchor). Only the QUEUE bucket's un-reasoned row reads it: that
+// every `.md`/`.patch` staged item, every shadow-dup copy, and each copy's anchor).
+// Only the QUEUE bucket's un-reasoned row reads it: that
 // bucket's contract (`reflect/SKILL.md`'s Auto mode routing table) reserves an actual Queue
 // write (a `gh issue create` candidate, resolution `apply`) for `Category: tangential` findings
 // — `convention`/`observation` findings share the same filename prefix but carry no

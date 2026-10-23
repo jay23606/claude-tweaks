@@ -8,9 +8,9 @@
 // this module builds it: a needs:definition task whose spec-shaped body quotes
 // the copy verbatim — and, for a divergent copy, its anchor too, so the record
 // stays readable after the run dir is archived (fencedBlock widens its fence past
-// any backtick run inside the text, so a quote can never be closed early). The header shape is the
-// one wrap-up/leftover-routing.md step 3 writes. A byte-identical duplicate is
-// refused, never composed — the console dismisses it.
+// any backtick run inside the text, so a quote can never be closed early). The
+// header shape is the one wrap-up/leftover-routing.md step 3 writes. A
+// byte-identical duplicate is refused, never composed — the console dismisses it.
 'use strict';
 
 const {
