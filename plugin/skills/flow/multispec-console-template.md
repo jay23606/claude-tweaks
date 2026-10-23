@@ -31,6 +31,14 @@ A `SCANNED` entry (skill-curation's scan-summary log line — see `_shared/auto-
 | 6 | 157 | /review | 2 severity:medium findings | Unhandled rejection in src/api.ts:180; missing null check in src/auth/session.ts:42 | `spec-157/staged/review-2.patch`, `spec-157/staged/review-3.patch` |
 | 7 | 159 | /wrap-up | Skill restructure proposed | Split `auth/SKILL.md` into `auth/` + `session-management/` | `spec-159/staged/wrap-up-skill-restructure.md` |
 
+#### Dismissed duplicates (byte-identical to their anchor — informational; Approve all and Override leave them as they are)
+
+| # | Spec | Copy | Anchor |
+|---|---|---|---|
+| {n} | 157 | `spec-157/staged/build-deviation-1.md.shadow-dup` | `spec-157/staged/build-deviation-1.md` |
+
+Renders only when non-empty; aggregated across every spec in the run, `Spec`-tagged, and the rows take the next numbers of the global sequence.
+
 #### Low-confidence findings (not reproduced)
 
 Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.

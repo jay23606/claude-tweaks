@@ -107,6 +107,9 @@ procedure — no row is left unrouted:
 - `stale` — still step 1, but its re-derivation path only: rebuild the diff from the item's
   `Target:`/`Invariant:` preamble. Never `git apply` a diff the CLI already reported as failing
   `--check`, and never drop it silently.
+- `dismissed` — execute **nothing**. A **Dismissed duplicates** row is a `.shadow-dup` copy
+  byte-identical to its anchor (`shadow-dup-duplicate`): the anchor is its own item, routed on
+  its own, and the copy stays in `staged/` like every other staged file.
 - `keep-staged`, `pending`, and `refused` — execute **nothing**. They stay in `staged/`, are named
   in the closing pointer, and are never applied; `refused` rows have no default at any tier
   (`refused-proposals.md`).
