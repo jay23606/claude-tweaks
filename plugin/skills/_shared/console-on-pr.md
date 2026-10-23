@@ -45,7 +45,9 @@ rows sharing one comment set. One further id, always present, always last: `reso
 
 **Auto-applied rows are never checkboxes** — they already happened (see `console-template.md`);
 render them as the same plain table the chat console already uses, informational only, no id, no
-tick.
+tick. **Dismissed duplicates** rows (a `.shadow-dup` copy byte-identical to its anchor) are the
+same: informational, they execute nothing, no id, no tick — the anchor is its own item with its
+own id.
 
 ## Row shape
 

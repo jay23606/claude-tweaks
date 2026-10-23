@@ -428,3 +428,101 @@ test("control: a flag step 7 passes that USAGE lacks fails assertFlagsInUsage", 
   assert.throws(() => assertFlagsInUsage(mutated, CLI_USAGE), { message: /absent from shadow-dup-proposal\.js's USAGE: --bogus/ });
   assert.throws(() => assertFlagsInUsage(REVIEW_CONSOLE, doctor(CLI_USAGE, '--item', '--itm')), { message: /USAGE: --item/ });
 });
+
+// --- shipped-skill sweep: curation-engine.md and console-on-pr.md (Task 6) ---------------
+//
+// Two files still described the pre-#3946 world, where a `.shadow-dup` copy waited on a human
+// decision as a pending item. The ban and its positive twin are both pinned, each proved on
+// doctored text by the helper the live test calls.
+
+const CURATION = read('plugin', 'skills', 'wrap-up', 'curation-engine.md');
+const ON_PR = read('plugin', 'skills', '_shared', 'console-on-pr.md');
+
+const collapse = (s) => s.replace(/\s+/g, ' ');
+
+// The shadow sweep's collision paragraph, whitespace-collapsed. Exactly one paragraph carries it.
+function shadowSweepParagraph(text) {
+  const paragraphs = text.split(/\r?\n\r?\n/).filter((p) => p.includes('A same-basename collision'));
+  assert.equal(paragraphs.length, 1, `curation-engine.md has ${paragraphs.length} shadow-sweep collision paragraphs, expected 1`);
+  return collapse(paragraphs[0]);
+}
+
+function assertShadowSweepRouted(text) {
+  const para = shadowSweepParagraph(text);
+  assert.ok(para.includes('log it as `STAGED {time} — Shadow sweep:'), 'the shadow sweep paragraph lost its STAGED log line');
+  assert.ok(!para.includes('for a human decision'), 'the shadow sweep paragraph still routes a .shadow-dup copy "for a human decision"');
+  assert.ok(!para.includes('renders it as a pending item'), 'the shadow sweep paragraph still says the console renders a .shadow-dup copy as a pending item');
+  assert.ok(para.includes(`**${SECTIONS.DISMISSED}**`), `the shadow sweep paragraph does not name ${SECTIONS.DISMISSED}`);
+  assert.ok(para.includes(`**${SECTIONS.QUEUE}**`), `the shadow sweep paragraph does not name ${SECTIONS.QUEUE}`);
+  assert.ok(para.includes('`classifyStagedItem`'), 'the shadow sweep paragraph does not cite classifyStagedItem');
+}
+
+test('curation-engine.md no longer routes a shadow-dup copy to a human decision', () => {
+  assertShadowSweepRouted(CURATION);
+});
+
+test('control: the old log-line and pending-item wording fails assertShadowSweepRouted', () => {
+  const oldLog = doctor(CURATION, 'shadow copy kept as staged/{name}.shadow-dup. Reversibility', 'shadow copy kept as staged/{name}.shadow-dup for a human decision. Reversibility');
+  assert.throws(() => assertShadowSweepRouted(oldLog), { message: /still routes a \.shadow-dup copy "for a human decision"/ });
+  const oldPending = doctor(CURATION, '`classifyStagedItem`', '`classifyStagedItem`, so the console renders it as a pending item');
+  assert.throws(() => assertShadowSweepRouted(oldPending), { message: /still says the console renders a \.shadow-dup copy as a pending item/ });
+});
+
+test('control: dropping a section name or the classifier citation fails assertShadowSweepRouted', () => {
+  const drop = (needle, message) => {
+    const mutated = CURATION.split(needle).join('something else');
+    assert.notEqual(mutated, CURATION, `control did not change the text: ${needle}`);
+    assert.throws(() => assertShadowSweepRouted(mutated), { message });
+  };
+  drop(`**${SECTIONS.DISMISSED}**`, /does not name Dismissed duplicates/);
+  drop(`**${SECTIONS.QUEUE}**`, /does not name Queue writes/);
+  drop('`classifyStagedItem`', /does not cite classifyStagedItem/);
+  drop('log it as `STAGED {time} — Shadow sweep:', /lost its STAGED log line/);
+});
+
+// console-on-pr.md Item ID scheme: the paragraph opened by "**Auto-applied rows are never checkboxes**".
+function onPrNeverCheckboxRaw(text) {
+  const paragraphs = text.split(/\r?\n\r?\n/).filter((p) => p.startsWith('**Auto-applied rows are never checkboxes**'));
+  assert.equal(paragraphs.length, 1, `console-on-pr.md has ${paragraphs.length} "Auto-applied rows are never checkboxes" paragraphs, expected 1`);
+  return paragraphs[0];
+}
+const onPrNeverCheckboxPara = (text) => collapse(onPrNeverCheckboxRaw(text));
+
+function assertDismissedNotCheckbox(text) {
+  const para = onPrNeverCheckboxPara(text);
+  const at = para.indexOf(`**${SECTIONS.DISMISSED}** rows`);
+  assert.notEqual(at, -1, `the never-checkboxes paragraph does not name ${SECTIONS.DISMISSED} rows`);
+  const tail = para.slice(at);
+  assert.match(tail, /informational/, 'the Dismissed duplicates clause does not say the rows are informational');
+  assert.match(tail, /no id, no tick/, 'the Dismissed duplicates clause does not say the rows have no id and no tick');
+}
+
+// Frozen pre-change paragraph (the same region the pin targets): Auto-applied only.
+const PRE_CHANGE_NEVER_CHECKBOX = `**Auto-applied rows are never checkboxes** — they already happened (see \`console-template.md\`);
+render them as the same plain table the chat console already uses, informational only, no id, no
+tick.`;
+
+test('console-on-pr.md keeps Dismissed duplicates rows out of the checkbox ids', () => {
+  assertDismissedNotCheckbox(ON_PR);
+});
+
+test('control: the pre-change paragraph fails assertDismissedNotCheckbox', () => {
+  const mutated = doctor(ON_PR, onPrNeverCheckboxRaw(ON_PR), PRE_CHANGE_NEVER_CHECKBOX);
+  assert.throws(() => assertDismissedNotCheckbox(mutated), { message: /does not name Dismissed duplicates rows/ });
+});
+
+test('control: stripping informational or the no-id-no-tick clause from the Dismissed duplicates clause fails assertDismissedNotCheckbox', () => {
+  const original = onPrNeverCheckboxRaw(ON_PR);
+  const collapsed = collapse(original);
+  const at = collapsed.indexOf(`**${SECTIONS.DISMISSED}** rows`);
+  assert.notEqual(at, -1);
+  const clause = collapsed.slice(at);
+  const swap = (pattern, message) => {
+    const edited = collapsed.replace(clause, clause.replace(pattern, 'x'));
+    assert.notEqual(edited, collapsed, `control did not change the clause: ${pattern}`);
+    const mutated = doctor(ON_PR, original, edited);
+    assert.throws(() => assertDismissedNotCheckbox(mutated), { message });
+  };
+  swap(/informational/, /does not say the rows are informational/);
+  swap(/no id, no tick/, /does not say the rows have no id and no tick/);
+});
