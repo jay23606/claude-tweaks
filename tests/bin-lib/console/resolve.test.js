@@ -89,8 +89,8 @@ test('classifyStagedItem maps every known prefix to its console section and unkn
   // nothing stages that prefix anymore) — a stray one now falls through to
   // the generic unmapped-prefix path, same as any other unrecognized prefix.
   assert.deepStrictEqual(classifyStagedItem('release-backfill-v6.md'), { section: 'Pending review', reason: 'unmapped-prefix' });
-  assert.deepStrictEqual(classifyStagedItem('wrap-up-memory-1.md.shadow-dup'), { section: 'Pending review', reason: 'shadow-dup-collision' }, 'a sweep-shadow copy is never its original\'s section');
-  assert.deepStrictEqual(classifyStagedItem('review-2.patch.shadow-dup-2'), { section: 'Pending review', reason: 'shadow-dup-collision' });
+  assert.deepStrictEqual(classifyStagedItem('wrap-up-memory-1.md.shadow-dup'), { section: 'Queue writes', outcome: 'shadow-dup-collision' }, 'a sweep-shadow copy is never its original\'s section');
+  assert.deepStrictEqual(classifyStagedItem('review-2.patch.shadow-dup-2'), { section: 'Queue writes', outcome: 'shadow-dup-collision' });
   assert.ok(Array.isArray(SECTION_MAP) && SECTION_MAP.length > 10);
 });
 
@@ -128,54 +128,79 @@ test('a run whose only staged file is wrap-up-reflect-insights.md resolves with 
   assert.deepStrictEqual(unresolvedItems({ items: r.items }), []);
 });
 
-test('a .shadow-dup file is classified duplicate when byte-identical to its anchor, divergent otherwise, and falls back to shadow-dup-collision with no anchor to compare (#2773)', () => {
+test('AC4.1: shadow-dup-duplicate classifies to Dismissed duplicates, whose stance is final (#2773, #3946)', () => {
   assert.deepStrictEqual(
-    classifyStagedItem('build-deviation-1.md.shadow-dup', 'same text', 'same text'),
-    { section: 'Pending review', reason: 'shadow-dup-duplicate' },
+    classifyStagedItem('build-deviation-1.md.shadow-dup', 'same', 'same'),
+    { section: 'Dismissed duplicates', outcome: 'shadow-dup-duplicate' },
   );
+  assert.strictEqual(SECTION_STANCES['Dismissed duplicates'].resolution, 'dismissed');
+});
+
+test('AC4.1: shadow-dup-divergent classifies to Queue writes (apply) (#2773, #3946)', () => {
   assert.deepStrictEqual(
-    classifyStagedItem('build-deviation-2.md.shadow-dup', 'shadow text', 'anchor text'),
-    { section: 'Pending review', reason: 'shadow-dup-divergent' },
+    classifyStagedItem('build-deviation-2.md.shadow-dup', 'shadow', 'anchor'),
+    { section: 'Queue writes', outcome: 'shadow-dup-divergent' },
   );
-  // No sibling supplied at all — the pre-existing conservative fallback,
-  // unchanged for callers that don't (or can't) supply anchor text.
+});
+
+test('AC4.1: shadow-dup-collision (no anchor, or unreadable copy) classifies to Queue writes (apply) (#2773, #3946)', () => {
+  // No sibling supplied at all — the conservative fallback for callers that
+  // don't (or can't) supply anchor text.
   assert.deepStrictEqual(
     classifyStagedItem('wrap-up-memory-1.md.shadow-dup', 'x'),
-    { section: 'Pending review', reason: 'shadow-dup-collision' },
-  );
-  assert.deepStrictEqual(
-    classifyStagedItem('review-2.patch.shadow-dup-2'),
-    { section: 'Pending review', reason: 'shadow-dup-collision' },
+    { section: 'Queue writes', outcome: 'shadow-dup-collision' },
   );
   // The shadow-dup file's own text unreadable (null) while the anchor's text IS
-  // readable falls back to shadow-dup-collision too — not shadow-dup-divergent.
-  // A naive `text === siblingText` check with no guard on `text` would report
-  // `null === 'anchor text'` as divergent, which is wrong: "can't tell" because
-  // this side couldn't be read is a different outcome from "confirmed different."
+  // readable is "can't tell", not "confirmed different" — collision, not divergent.
   assert.deepStrictEqual(
-    classifyStagedItem('build-deviation-3.md.shadow-dup', null, 'anchor text'),
-    { section: 'Pending review', reason: 'shadow-dup-collision' },
+    classifyStagedItem('build-deviation-3.md.shadow-dup', null, 'anchor'),
+    { section: 'Queue writes', outcome: 'shadow-dup-collision' },
   );
+});
 
-  // End-to-end via resolveAll: one byte-identical pair, one divergent pair,
-  // in the same run — two distinguishable reasons, same resolution.
+test('AC4.2: a whitespace-only or CRLF difference is divergent, never dismissed (#3946)', () => {
+  for (const [text, sibling] of [['a\n', 'a\n\n'], ['a ', 'a'], ['a\r\n', 'a\n']]) {
+    const r = classifyStagedItem('x-1.md.shadow-dup', text, sibling);
+    assert.strictEqual(r.outcome, 'shadow-dup-divergent', JSON.stringify([text, sibling]));
+    assert.notStrictEqual(r.section, 'Dismissed duplicates', JSON.stringify([text, sibling]));
+  }
+});
+
+test('patch copy: a .patch.shadow-dup copy resolves apply in Queue writes, never stale (#3946)', () => {
+  const r = resolveAll({ runDir: fixture({ staged: { 'review-2.patch': 'p', 'review-2.patch.shadow-dup': 'q' }, headers: [7] }), policy: 'console-auto', deps: deps() });
+  const copy = r.items.find((i) => i.id === 'review-2.patch.shadow-dup');
+  assert.strictEqual(copy.resolution, 'apply');
+  assert.strictEqual(copy.section, 'Queue writes');
+});
+
+test('AC4.1 e2e: resolveAll leaves no shadow-dup item pending (#2773, #3946)', () => {
   const runDir = fixture({
     staged: {
       'build-deviation-1.md': 'identical content',
       'build-deviation-1.md.shadow-dup': 'identical content',
       'build-deviation-2.md': 'original content',
       'build-deviation-2.md.shadow-dup': 'different content — recovered from a clobbering write',
+      'leftover-x.md.shadow-dup': 'a copy whose anchor is gone',
     },
     headers: [7],
   });
   const r = resolveAll({ runDir, policy: 'console-auto', deps: deps() });
   const by = Object.fromEntries(r.items.map((i) => [i.id, i]));
-  assert.strictEqual(by['build-deviation-1.md.shadow-dup'].reason, 'shadow-dup-duplicate');
-  assert.strictEqual(by['build-deviation-2.md.shadow-dup'].reason, 'shadow-dup-divergent');
-  assert.strictEqual(by['build-deviation-1.md.shadow-dup'].resolution, 'pending');
-  assert.strictEqual(by['build-deviation-2.md.shadow-dup'].resolution, 'pending');
+  assert.deepStrictEqual(unresolvedItems({ items: r.items }), []);
+  assert.strictEqual(by['build-deviation-1.md.shadow-dup'].resolution, 'dismissed');
+  assert.strictEqual(by['build-deviation-2.md.shadow-dup'].resolution, 'apply');
+  assert.strictEqual(by['leftover-x.md.shadow-dup'].resolution, 'apply');
+  assert.match(by['build-deviation-1.md.shadow-dup'].reason, /^shadow-dup-duplicate — /);
+  assert.match(by['build-deviation-2.md.shadow-dup'].reason, /^shadow-dup-divergent — /);
+  assert.match(by['leftover-x.md.shadow-dup'].reason, /^shadow-dup-collision — /);
   // The anchors themselves are unaffected — still plain Pending review items.
   assert.strictEqual(by['build-deviation-1.md'].resolution, 'apply');
+});
+
+test('AC3.2/AC3.3 orthogonal: tangential and Category-less reflect files are unchanged (#3946)', () => {
+  const tangential = 'Title: Some backlog idea\nType: task\nLabels: none\nDefer-reason: tangential\n\n# Reflect — staged finding 3\n\n**Category:** tangential\n\n## Finding\n\nx\n';
+  assert.deepStrictEqual(classifyStagedItem('reflect-3.md', tangential), { section: 'Queue writes' });
+  assert.deepStrictEqual(classifyStagedItem('reflect-4.md', '# Reflect\n\n## Finding\n\nx\n'), { section: 'Queue writes' });
 });
 
 test('every registry row whose own judge file documents a literal staged/{prefix}-{n} naming convention resolves through SECTION_MAP, into that row\'s own ENGINE_ROW_SECTIONS section when one exists (#2773)', () => {
@@ -631,7 +656,7 @@ test('policy other than console-auto throws RangeError (#1932)', () => {
 });
 
 test('SECTION_STANCES names a stance for every section the console renders (#1932)', () => {
-  for (const s of ['Auto-applied', 'Pending review', 'Low-confidence findings', 'Contested findings', 'Skill updates', 'Documentation updates', 'Journey updates', 'Configuration updates', 'Reference repairs', 'Cleanup actions', 'Queue writes', 'Memory updates', 'Upstream feedback', 'Reflection insights', 'Refused — no defer reason']) {
+  for (const s of ['Auto-applied', 'Pending review', 'Low-confidence findings', 'Contested findings', 'Skill updates', 'Documentation updates', 'Journey updates', 'Configuration updates', 'Reference repairs', 'Cleanup actions', 'Queue writes', 'Memory updates', 'Upstream feedback', 'Reflection insights', 'Dismissed duplicates', 'Refused — no defer reason']) {
     assert.ok(SECTION_STANCES[s] && typeof SECTION_STANCES[s].resolution === 'string', s);
   }
 });

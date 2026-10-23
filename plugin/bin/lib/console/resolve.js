@@ -28,6 +28,7 @@ const SECTIONS = {
   MEMORY: 'Memory updates',
   UPSTREAM: 'Upstream feedback',
   INSIGHTS: 'Reflection insights',
+  DISMISSED: 'Dismissed duplicates',
   REFUSED: 'Refused — no defer reason',
 };
 
@@ -160,18 +161,29 @@ function nearestCanonicalPrefixes(id, n = 3) {
 // `{preferred}.shadow-dup` / `{preferred}.shadow-dup-{n}` — bin/lib/hooks/
 // sweep-shadow.js's name for a collision copy when the preferred destination
 // was already taken. Checked before SECTION_MAP so it always wins over
-// whatever prefix the copied name still carries; never auto-applied. A
-// `.shadow-dup` file is not always a duplicate of its anchor (#2773) — a
-// clobbering write can leave two real, different proposals behind — so
-// classifyStagedItem compares the shadow copy's own text against its
-// anchor's (when both are readable) instead of guessing: byte-identical
-// reports `shadow-dup-duplicate`, anything else reports
-// `shadow-dup-divergent`. Either side unreadable — `siblingText` absent (no
-// anchor found, or its content couldn't be read) or the shadow copy's own
-// `text` itself couldn't be read — falls back to the conservative
+// whatever prefix the copied name still carries. A `.shadow-dup` file is not
+// always a duplicate of its anchor (#2773) — a clobbering write can leave two
+// real, different proposals behind — so classifyStagedItem compares the
+// shadow copy's own text against its anchor's (when both are readable)
+// instead of guessing: byte-identical reports `shadow-dup-duplicate`,
+// anything else reports `shadow-dup-divergent`. Either side unreadable —
+// `siblingText` absent (no anchor found, or its content couldn't be read) or
+// the shadow copy's own `text` itself couldn't be read — reports
 // `shadow-dup-collision` — "can't tell" is a distinct outcome from
 // "confirmed a duplicate," never guessed as one.
+//
+// Each outcome has a final section (#3946), so none stays pending:
+// SHADOW_DUP_OUTCOMES below maps `shadow-dup-duplicate` to Dismissed
+// duplicates (nothing to apply — the anchor carries the same content) and the
+// other two to Queue writes (the copy may hold a real proposal, so it is filed
+// as a record rather than dropped).
 const SHADOW_DUP_RE = /^(.*)\.shadow-dup(?:-\d+)?$/;
+
+const SHADOW_DUP_OUTCOMES = Object.freeze({
+  'shadow-dup-duplicate': Object.freeze({ section: SECTIONS.DISMISSED, note: 'byte-identical to its anchor — dismissed, nothing to apply' }),
+  'shadow-dup-divergent': Object.freeze({ section: SECTIONS.QUEUE, note: 'differs from its anchor, so the copy is filed as a needs:definition backlog record quoting it verbatim (Queue writes, On approval step 7)' }),
+  'shadow-dup-collision': Object.freeze({ section: SECTIONS.QUEUE, note: 'no readable anchor to compare, so the copy is filed as a needs:definition backlog record quoting it verbatim (Queue writes, On approval step 7)' }),
+});
 
 // The short-circuit's stances, verbatim from review-console.md:
 // - every batch section resolves as "Approve all" — Pending review patches
@@ -197,6 +209,7 @@ const SECTION_STANCES = {
   [SECTIONS.MEMORY]: { resolution: 'apply', reason: 'pre-checked Apply default (batched-item-drill.md)' },
   [SECTIONS.UPSTREAM]: { resolution: 'filed', reason: 'unattended files upstream feedback like M#/Q# (#347)' },
   [SECTIONS.INSIGHTS]: { resolution: 'approve', reason: 'Approve-all default — review-console.md step 10 applies each row\'s recommended destination; D4/D5 rows stay informational' },
+  [SECTIONS.DISMISSED]: { resolution: 'dismissed', reason: 'byte-identical to its anchor, which carries the same content — nothing to apply or file' },
   [SECTIONS.REFUSED]: { resolution: 'refused', reason: 'no default; excluded from Approve all and from consoleAutoResolve (refused-proposals.md)' },
 };
 
@@ -224,10 +237,11 @@ function parseCategory(text) {
 // this field) is unaffected and keeps today's Queue writes/`apply` classification.
 function classifyStagedItem(filename, text, siblingText) {
   if (SHADOW_DUP_RE.test(filename)) {
-    if (siblingText === undefined || siblingText === null || text === undefined || text === null) {
-      return { section: SECTIONS.PENDING, reason: 'shadow-dup-collision' };
+    let outcome = 'shadow-dup-collision';
+    if (siblingText !== undefined && siblingText !== null && text !== undefined && text !== null) {
+      outcome = text === siblingText ? 'shadow-dup-duplicate' : 'shadow-dup-divergent';
     }
-    return { section: SECTIONS.PENDING, reason: text === siblingText ? 'shadow-dup-duplicate' : 'shadow-dup-divergent' };
+    return { section: SHADOW_DUP_OUTCOMES[outcome].section, outcome };
   }
   for (const [re, section, reason] of SECTION_MAP) {
     if (!re.test(filename)) continue;
@@ -400,7 +414,8 @@ function stagedItems(snapshot) {
     if (refused.has(s.name)) return { id: s.name, section: SECTIONS.REFUSED, ...SECTION_STANCES[SECTIONS.REFUSED] };
     const anchorMatch = SHADOW_DUP_RE.exec(s.name);
     const siblingText = anchorMatch && textByName.has(anchorMatch[1]) ? textByName.get(anchorMatch[1]) : undefined;
-    const { section, reason } = classifyStagedItem(s.name, s.text, siblingText);
+    const { section, reason, outcome } = classifyStagedItem(s.name, s.text, siblingText);
+    if (outcome) return { id: s.name, section, resolution: SECTION_STANCES[section].resolution, reason: `${outcome} — ${SHADOW_DUP_OUTCOMES[outcome].note}` };
     if (reason) return { id: s.name, section, resolution: 'pending', reason };
     const stance = SECTION_STANCES[section];
     if (s.name.endsWith('.patch')) {
@@ -530,4 +545,4 @@ function resolveAll({ runDir, policy, deps }) {
   return result;
 }
 
-module.exports = { SECTIONS, SECTION_MAP, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, renderTable, renderStoredTable, drainOverlapHoldPrs };
+module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, renderTable, renderStoredTable, drainOverlapHoldPrs };

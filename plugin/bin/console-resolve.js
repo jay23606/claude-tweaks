@@ -221,7 +221,7 @@ async function run(argv, deps = {}) {
     const header = formatEntry({ status: 'AUTO', now: now(), step: 'Review Console', text: `Console auto-resolved ${result.items.length} item(s) at unattended (console-resolve.js)`, reversibility: 'per item' });
     // Reversibility uses _shared/auto-decision-log.md's closed vocabulary
     // (high | med | low | n/a) — nothing else is a legal value on a schema line.
-    const nothingToRevert = new Set(['stale', 'keep-staged', 'pending', 'refused']);
+    const nothingToRevert = new Set(['stale', 'keep-staged', 'pending', 'refused', 'dismissed']);
     const reversibilityFor = (resolution) => {
       if (nothingToRevert.has(resolution)) return 'n/a';
       return resolution === 'apply' ? 'med' : 'high';

@@ -32,6 +32,14 @@ A `FAILED` entry (a batch write that errored — see `_shared/auto-decision-log.
 | 5 | /review | 2 severity:medium findings | Unhandled rejection in src/api.ts:180; missing null check in src/auth/session.ts:42 | `staged/review-2.patch`, `staged/review-3.patch` |
 | 7 | /wrap-up | Skill restructure proposed | Split `auth/SKILL.md` into `auth/` + `session-management/` | `staged/wrap-up-skill-restructure.md` |
 
+#### Dismissed duplicates (byte-identical to their anchor — informational; Approve all and Override leave them as they are)
+
+| # | Copy | Anchor |
+|---|---|---|
+| {n} | `staged/build-deviation-1.md.shadow-dup` | `staged/build-deviation-1.md` |
+
+Renders only when non-empty; rows take the next numbers of the global sequence.
+
 #### Low-confidence findings (not reproduced)
 
 Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Omit the section entirely when empty.

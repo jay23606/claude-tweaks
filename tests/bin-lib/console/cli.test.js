@@ -73,6 +73,14 @@ test('unattended: exit 0, one decisions block of items+1 lines, console.json res
   assert.ok(block.some((l) => /Console item reflect-1\.md \(Queue writes\): apply — .*\(staged\/reflect-1\.md\)\. Reversibility: med\.$/.test(l)), block.join('\n'));
 });
 
+test('a dismissed shadow-dup duplicate logs reversibility n/a (#3946)', async () => {
+  const fx = mainCheckoutWithRun({ staged: { 'wrap-up-memory-1.md': 'same', 'wrap-up-memory-1.md.shadow-dup': 'same' } });
+  const { d } = baseDeps(fx, []);
+  assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto'], d), 0);
+  const decisions = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+  assert.match(decisions, /Console item wrap-up-memory-1\.md\.shadow-dup \(Dismissed duplicates\): dismissed — shadow-dup-duplicate .*Reversibility: n\/a\.$/m);
+});
+
 // grant-veto-window-hours only reaches evaluateMaturation if the CLI resolves
 // it: 30h-old pending grant, matured under the 24h default, still inside a 72h
 // window. Same fixture, two policies, opposite merge halves.
