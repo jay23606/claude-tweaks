@@ -1183,6 +1183,7 @@ async function main(argv) {
   if (cmd === 'archive-run') {
     const {
       archiveRunDir, readConsoleState, listSpecDirs, listStagedItems, consoleReplacedByAutoMergeShortCircuit,
+      TIEBREAK_COVERAGE_HINT,
     } = require('./lib/reconcile/archive-merged');
     const { NON_TERMINAL } = require('./lib/hooks/run-integrity');
     const { runDir, invalidRunArg, worktreeLocalFallback } = resolveRunArg(
@@ -1233,6 +1234,19 @@ async function main(argv) {
         process.stdout.write(`claude-tweaks: archival refused — console-never-rendered-staged-pending (the auto-merge short-circuit rendered no console; pending: ${pending.join(', ')}) — apply or delete the pending staged/ items (and any spec-*/staged/), or write a resolved console.json, then re-run archive-run\n`);
         return 0;
       }
+    }
+    // #3945: evaluated after the guards above. A findings artifact that is
+    // present but unreadable/malformed is refused under its own reason, before
+    // the per-id coverage gap is looked at.
+    const tiebreakCoverage = require('./lib/tiebreak').checkRunTiebreakCoverage(runDir, listSpecDirs(runDir));
+    const tiebreakHint = `${TIEBREAK_COVERAGE_HINT}, then re-run archive-run`;
+    if (tiebreakCoverage.artifactValid === false) {
+      process.stdout.write(`claude-tweaks: archival refused — tiebreak-artifact-invalid (review-findings.json is present but unreadable or malformed) — ${tiebreakHint}\n`);
+      return 0;
+    }
+    if (tiebreakCoverage.missing.length > 0) {
+      process.stdout.write(`claude-tweaks: archival refused — tiebreak-coverage-missing (${tiebreakCoverage.missing.length} listed finding(s) have no tiebreak verdict line: ${tiebreakCoverage.missing.join(', ')}) — ${tiebreakHint}\n`);
+      return 0;
     }
     const mainRoot = wtDetect.mainCheckoutRoot(process.cwd());
     if (!mainRoot) {

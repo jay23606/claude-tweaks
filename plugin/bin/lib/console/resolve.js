@@ -27,6 +27,7 @@ const SECTIONS = {
   QUEUE: 'Queue writes',
   MEMORY: 'Memory updates',
   UPSTREAM: 'Upstream feedback',
+  INSIGHTS: 'Reflection insights',
   REFUSED: 'Refused — no defer reason',
 };
 
@@ -73,15 +74,17 @@ const SECTION_MAP = [
   // premise-satisfied- (#3488): bin/materialize.js stages a proposal to close a record
   // whose premise check already passes; closing is a human call, so it resolves pending.
   [/^premise-satisfied-/, SECTIONS.QUEUE, 'premise-satisfied-close-proposal'],
-  // wrap-up-reflect-insights (#3488): reflect/full-mode.md stages the composed insights
-  // table unapplied; the reason pins it pending so the console never applies it blind.
-  [/^wrap-up-reflect-insights(-|\b)/, SECTIONS.QUEUE, 'reflect-insights-table'],
   [/^(reflect|digest-promotion|leftover|ledger-record|upstream-unfiled|red-team|specify-overlap|specify-redteam|flaky-allowlist|tidy|plan-retention|feedback-drafts|review-followup|build-followup|reconcile-live-run-archived|wrap-up-cleanup-ordering)(-|\b)/, SECTIONS.QUEUE],
   [/^wrap-up-memory-/, SECTIONS.MEMORY],
   [/^wrap-up-upstream-/, SECTIONS.UPSTREAM],
   // upstream-draft- (#3488): feedback/upstream-draft.md's hand-off draft. The console
   // must never file it, so it resolves pending (a filed stance would auto-file it).
   [/^upstream-draft-/, SECTIONS.UPSTREAM, 'hand-off-draft'],
+  // wrap-up-reflect- (#3926): reflect/full-mode.md's staged insights table
+  // (wrap-up-reflect-insights.md). Its executor is review-console.md "On approval"
+  // step 10, which applies each row's recommended destination (D4/D5 rows stay
+  // informational), so it resolves without a human like every other section.
+  [/^wrap-up-reflect-/, SECTIONS.INSIGHTS],
 ];
 
 // One literal string per alternative of every non-`.patch` SECTION_MAP row,
@@ -103,10 +106,11 @@ const CANONICAL_PREFIXES = [
   'reflect-', 'digest-promotion-', 'leftover-', 'ledger-record-', 'upstream-unfiled-', 'red-team-',
   'specify-overlap-', 'specify-redteam-', 'flaky-allowlist-', 'tidy-', 'plan-retention-', 'feedback-drafts-',
   'review-followup-', 'build-followup-', 'reconcile-live-run-archived-', 'wrap-up-cleanup-ordering-',
-  'premise-satisfied-', 'wrap-up-reflect-insights-',
+  'premise-satisfied-',
   'wrap-up-memory-',
   'wrap-up-upstream-',
   'upstream-draft-',
+  'wrap-up-reflect-',
 ];
 
 // Staged-id prefixes whose run never reaches this console, so no SECTION_MAP row
@@ -192,6 +196,7 @@ const SECTION_STANCES = {
   [SECTIONS.QUEUE]: { resolution: 'apply', reason: 'pre-checked Apply default (batched-item-drill.md)' },
   [SECTIONS.MEMORY]: { resolution: 'apply', reason: 'pre-checked Apply default (batched-item-drill.md)' },
   [SECTIONS.UPSTREAM]: { resolution: 'filed', reason: 'unattended files upstream feedback like M#/Q# (#347)' },
+  [SECTIONS.INSIGHTS]: { resolution: 'approve', reason: 'Approve-all default — review-console.md step 10 applies each row\'s recommended destination; D4/D5 rows stay informational' },
   [SECTIONS.REFUSED]: { resolution: 'refused', reason: 'no default; excluded from Approve all and from consoleAutoResolve (refused-proposals.md)' },
 };
 

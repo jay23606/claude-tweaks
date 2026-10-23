@@ -193,6 +193,27 @@ Three skip reasons come out of this check:
 Run-state is never written on any of these skips. The `status: clean` sweep is exempt from this
 check: wrap-up already closed that run.
 
+**A review finding with no tiebreak verdict blocks archival too (#3945).** When the run dir, or
+any of its `spec-*/` subdirs, holds `review-findings.json` (the findings list `/review` Step 3.7
+writes through `review-coordination.js write-findings`), `tiebreak.js`'s `checkRunTiebreakCoverage`
+requires a tiebreak verdict line in that same dir's `decisions.md` for every listed finding id.
+`decideArchiveCore` evaluates it only at the points that would otherwise return `archive`
+(`settleMergedPartial` included), so it runs after every other guard, the record check above
+among them. A run with no artifact archives exactly as before. Two skip reasons come out of it,
+each carrying a recovery `hint`:
+
+- **`tiebreak-artifact-invalid`**: the artifact is present but unreadable or malformed. It is
+  checked before any per-id gap.
+- **`tiebreak-coverage-missing`**: carries `missing`, the uncovered ids, with a spec dir's ids
+  prefixed `spec-N/`.
+
+Both are in `STRUCTURALLY_STUCK_REASONS`, because only a re-run of the findings writer and the
+tiebreak, or deleting a pre-tiebreak artifact, converges them. Unlike the record check, the
+`status: clean` sweep applies this gate as well, and its `onSkip` tracks both reasons, so a closed
+run skipped here escalates through the same structurally-stuck path as the main loop.
+`hooks.js archive-run` refuses on the same two conditions, after its own guards, and
+`review-coordination.js check-coverage` prints the same coverage result without refusing anything.
+
 **Residue pruning.** After every `archive` pass, `cache.js`'s `pruneResidueFailures` drops any
 `residueFailures` entry (reason-agnostic — `move-failed`, `structurally-stuck`, any future reason)
 whose tracked path no longer exists on disk: a path can never fail or succeed there again, so it
@@ -267,8 +288,12 @@ main loop, landed via #1962/#2226/#2228/#2231):
   second `issue create`. The body's fixed text names every skip reason that feeds the record
   (`no-worktree`, `no-branch`, `no-pr`, `console-never-rendered-pr-closed`, `console-never-rendered-staged-pending` (#3297), #3543's
   `pr-not-found` — a stamped `run-state.json` `pr.number` GitHub's structured GraphQL error confirms
-  names no PR, whose remedy is correcting or clearing that stamp), and #3503's `merged-partial` (a run
-  whose merged PR left records unclosed, carried as `unclosed` on the skip). `no-repo-slug` is also in
+  names no PR, whose remedy is correcting or clearing that stamp), #3503's `merged-partial` (a run
+  whose merged PR left records unclosed, carried as `unclosed` on the skip), and #3945's
+  `tiebreak-coverage-missing` and `tiebreak-artifact-invalid` (a run whose `review-findings.json`
+  lists a finding with no tiebreak verdict line in `decisions.md`, or is malformed; the skip carries
+  `missing` ids and a `hint`, which `reconcile/index.js` passes through to `result.runs`, and the body
+  carries their remedy line after the `merged-partial` one). `no-repo-slug` is also in
   `STRUCTURALLY_STUCK_REASONS` but is not listed here: it can never be filed into this record, because
   with no repo slug `findOrCreateIssue` returns `escalation-failed`, so it shows only in the residue
   summary's stuck count. Each path's own reason is its
