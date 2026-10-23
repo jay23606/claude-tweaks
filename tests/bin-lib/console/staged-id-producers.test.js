@@ -10,7 +10,7 @@ const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('.
 // the Review Console's SECTION_MAP (classifyStagedItem names a reason other than
 // `unmapped-prefix`) or sits on its documented staging exemption list. A producer
 // that does neither lands in Pending review as `unmapped-prefix`, which
-// stage-item.js warns about (#3488). The scan reads the producers from the
+// stage-item.js refuses (#3488, #3946). The scan reads the producers from the
 // skills' command lines and the bin modules' in-process calls, so a new producer
 // with an unmapped prefix fails here instead of at a Review Console.
 const REPO = path.join(__dirname, '..', '..', '..');
@@ -152,7 +152,7 @@ function isMapped(probe) {
 }
 
 // A mapped id that is also exempt would hide a real mapping behind an exemption (and
-// stage-item.js would skip a warning the console never needed to skip). `exemptionOf` is
+// stage-item.js would skip a refusal the console never needed to skip). `exemptionOf` is
 // injectable so the go-red control can pass a stub that exempts everything.
 function assertExemptionsDisjointFromMapped(producers, exemptionOf = stagingExemption) {
   for (const p of producers) {

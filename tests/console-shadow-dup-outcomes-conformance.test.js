@@ -526,3 +526,87 @@ test('control: stripping informational or the no-id-no-tick clause from the Dism
   swap(/informational/, /does not say the rows are informational/);
   swap(/no id, no tick/, /does not say the rows have no id and no tick/);
 });
+
+// --- journeys: the two #3946 behavior changes (Task 8) -----------------------------------
+//
+// Three docs/journeys files described the pre-#3946 world: stage-item.js warned and still wrote
+// an unmapped id (now a refusal, exit 2, nothing written), and a `.shadow-dup` copy waited in
+// Pending review (now dismissed when byte-identical, otherwise filed through Queue writes).
+
+const J_3370 = read('docs', 'journeys', 'review-what-an-unattended-console-left-open-3370.md');
+const J_1932 = read('docs', 'journeys', 'resolve-the-unattended-console-in-one-process-1932.md');
+const J_MULTISPEC = read('docs', 'journeys', 'multi-spec-review-console.md');
+
+function assertRefusalJourney(text) {
+  assert.ok(text.includes('refused (unmapped-prefix)'), 'the 3370 journey does not describe the stage-item.js refusal (refused (unmapped-prefix))');
+  assert.ok(!text.includes('the exit code is unchanged'), 'the 3370 journey still says the staging check leaves the exit code unchanged');
+  assert.ok(!text.includes('The file is still written'), 'the 3370 journey still says the unmapped file is still written');
+  assert.ok(!text.includes('a shadow-dup copy'), 'the 3370 journey still lists a shadow-dup copy among the pending items');
+}
+
+test('the 3370 journey describes the unmapped-prefix refusal and no longer lists a shadow-dup copy as pending', () => {
+  assertRefusalJourney(J_3370);
+});
+
+test('control: the old warning wording or the old pending list fails assertRefusalJourney', () => {
+  const noRefusal = doctor(J_3370, 'refused (unmapped-prefix)', 'warning (unmapped-prefix)');
+  assert.throws(() => assertRefusalJourney(noRefusal), { message: /does not describe the stage-item\.js refusal/ });
+  const oldExit = doctor(J_3370, 'refused (unmapped-prefix)', 'refused (unmapped-prefix); the exit code is unchanged');
+  assert.throws(() => assertRefusalJourney(oldExit), { message: /still says the staging check leaves the exit code unchanged/ });
+  const oldFile = doctor(J_3370, 'refused (unmapped-prefix)', 'refused (unmapped-prefix). The file is still written');
+  assert.throws(() => assertRefusalJourney(oldFile), { message: /still says the unmapped file is still written/ });
+  const oldPending = doctor(J_3370, 'a non-tangential reflect category)', 'a non-tangential reflect category, a shadow-dup copy)');
+  assert.throws(() => assertRefusalJourney(oldPending), { message: /still lists a shadow-dup copy/ });
+});
+
+// The facts the 1932 journey's Should-understand / Red-flags text owes a `.shadow-dup` copy.
+const J_1932_FACTS = [
+  ['dismissed when byte-identical', 'byte-identical to its anchor resolves `dismissed` under Dismissed duplicates'],
+  ['filed through Queue writes', 'resolves `apply` under Queue writes'],
+  ['quoted verbatim', 'quoting the copy verbatim'],
+  ['whitespace or CRLF is divergent', 'whitespace- or CRLF-only difference is divergent'],
+  ['a divergent copy is never dismissed', 'a divergent copy is never dismissed'],
+];
+
+function assertShadowDupJourney(text) {
+  assert.ok(!text.includes('a `.shadow-dup` copy lands there too'), 'the 1932 journey still puts a .shadow-dup copy in Pending review');
+  const missing = J_1932_FACTS.filter(([, literal]) => !text.includes(literal)).map(([label]) => label);
+  assert.deepEqual(missing, [], 'the 1932 journey lost a shadow-dup outcome fact');
+}
+
+test('the 1932 journey routes a .shadow-dup copy to Dismissed duplicates or Queue writes', () => {
+  assertShadowDupJourney(J_1932);
+});
+
+test('control: the old Pending review sentence fails assertShadowDupJourney', () => {
+  const mutated = doctor(J_1932, 'resolves `apply` under Queue writes', 'resolves `apply` under Queue writes, and a `.shadow-dup` copy lands there too');
+  assert.throws(() => assertShadowDupJourney(mutated), { message: /still puts a \.shadow-dup copy in Pending review/ });
+});
+
+test('control: each outcome fact of the 1932 journey is individually load-bearing', () => {
+  for (const [label, literal] of J_1932_FACTS) {
+    const mutated = J_1932.split(literal).join('something else');
+    assert.notEqual(mutated, J_1932, `fact "${label}" matched nothing in the live journey`);
+    assert.throws(
+      () => assertShadowDupJourney(mutated),
+      (e) => e.message.startsWith('the 1932 journey lost a shadow-dup outcome fact') && e.actual.includes(label),
+      `dropping "${label}" must report itself`,
+    );
+  }
+});
+
+function assertJourneyBatchOrder(text, name) {
+  assert.ok(
+    text.includes(`${SECTIONS.PENDING}, ${name}, ${SECTIONS.LOW}`),
+    `the multi-spec journey's reading order does not put ${name} between ${SECTIONS.PENDING} and ${SECTIONS.LOW}`,
+  );
+}
+
+test('the multi-spec journey reads Dismissed duplicates after Pending review', () => {
+  assertJourneyBatchOrder(J_MULTISPEC, NAME);
+});
+
+test('control: dropping the name from the multi-spec journey fails assertJourneyBatchOrder', () => {
+  const mutated = doctor(J_MULTISPEC, `${SECTIONS.PENDING}, ${NAME}, `, `${SECTIONS.PENDING}, `);
+  assert.throws(() => assertJourneyBatchOrder(mutated, NAME), { message: /does not put Dismissed duplicates between/ });
+});

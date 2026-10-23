@@ -245,8 +245,8 @@ test('AC1.2: cli: a canonical id prints nothing to stderr (#3370)', () => {
 // #3488: producers whose runs never reach the wrap-up Review Console are exempt from the
 // unmapped-prefix refusal (AC1.2: a mapped or exempt id still exits 0); a mapped id (upstream-draft-) classifies cleanly on its own.
 for (const [id, why, titlePrefix] of [
-  ['release-held', 'exempt: release console', 'AC1.1: '],
-  ['dispatch-target-missing-x', 'exempt: dispatch standalone', 'AC1.1: '],
+  ['release-held', 'exempt: release console', 'AC1.2: '],
+  ['dispatch-target-missing-x', 'exempt: dispatch standalone', 'AC1.2: '],
   ['shipped-close-1', 'exempt: dispatch standalone firing', ''],
   ['upstream-draft-1', 'mapped, hand-off-draft', ''],
 ]) {
