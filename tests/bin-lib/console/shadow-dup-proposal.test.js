@@ -140,6 +140,17 @@ test('cli: exit 0 writes --out whose content equals the composed proposal and pr
   assert.equal(out.join(''), f.out + '\n');
 });
 
+test('cli: a multi-spec per-spec run dir names the run as {parent-run-id}/spec-{N} in the Origin line', () => {
+  const f = fixture();
+  const parent = path.join(f.main, '.claude-tweaks', 'pipelines', '2026-10-23T213805-spec-7-8');
+  const specDir = path.join(parent, 'spec-7');
+  fs.mkdirSync(path.join(specDir, 'staged'), { recursive: true });
+  stage(specDir, { 'a-1.md': 'anchor', 'a-1.md.shadow-dup': 'copy' });
+  const { deps } = fakeDeps(f.main);
+  assert.equal(run(['--run', specDir, '--item', 'a-1.md.shadow-dup', '--out', f.out], deps), 0);
+  assert.match(fs.readFileSync(f.out, 'utf8'), new RegExp(`^Origin: wrap-up Review Console, run ${path.basename(parent)}/spec-7:`, 'm'));
+});
+
 test('cli: a missing anchor composes the collision outcome', () => {
   const f = fixture();
   stage(f.runDir, { 'leftover-x.md.shadow-dup': COPY });

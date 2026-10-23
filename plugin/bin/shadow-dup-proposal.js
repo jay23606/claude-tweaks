@@ -5,7 +5,8 @@
 // Reads staged/<item> (the copy) and staged/<anchor> (the name minus its
 // `.shadow-dup[-n]` suffix; absent or unreadable reads as no anchor), and writes
 // the `Title:`/`Type:`/`Labels:`/`Defer-reason:` header + spec-shaped body that
-// quotes the copy verbatim to --out (bin/lib/console/shadow-dup-proposal.js).
+// quotes the copy verbatim (and, for a divergent copy, the anchor verbatim too) to
+// --out (bin/lib/console/shadow-dup-proposal.js).
 // The Review Console's Queue-writes step files that proposal.
 // Exit 0 on success (--out written; its path echoed to stdout); 2 on a malformed
 // invocation (a missing/unknown flag, an --item that is not a plain filename or
@@ -84,8 +85,11 @@ function run(argv, deps = realDeps) {
   let anchorText = null;
   try { anchorText = deps.readFile(path.join(stagedDir, match[1])); } catch { anchorText = null; }
 
+  // A multi-spec per-spec run dir is {pipelines}/{parent-run-id}/spec-{N}: name the parent run too.
+  const base = path.basename(target.dir);
+  const runId = /^spec-\d+$/.test(base) ? `${path.basename(path.dirname(target.dir))}/${base}` : base;
   const composed = composeShadowDupProposal({
-    name: item, text, anchorText, runId: path.basename(target.dir),
+    name: item, text, anchorText, runId,
   });
   if (!composed.ok) {
     if (composed.reason === 'shadow-dup-duplicate') deps.stderr('shadow-dup-proposal.js: refused (shadow-dup-duplicate): dismissed, nothing to file\n');
