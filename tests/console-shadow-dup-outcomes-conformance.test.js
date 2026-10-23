@@ -249,3 +249,168 @@ test('control: dropping the name from either enumeration fails assertInMultispec
   const twice = doctor(once, adjacent, `${SECTIONS.PENDING}, ${SECTIONS.LOW}`);
   assert.throws(() => assertInMultispecOrder(twice, NAME), { message: /carries .* 0 times, expected 2/ });
 });
+
+// --- Queue writes: step 7 composes a shadow-dup copy's header (Task 5) ------------------
+//
+// A divergent or collision `.shadow-dup` copy is a raw staged file with no `Title:`/`Type:`/
+// `Labels:` header, so step 7 cannot read one off it: it runs bin/shadow-dup-proposal.js first.
+// Every assertion below is a helper the matching control re-runs on doctored text.
+
+const REVIEW_CONSOLE = read('plugin', 'skills', 'wrap-up', 'review-console.md');
+const CONSOLE_TEMPLATE = read('plugin', 'skills', 'wrap-up', 'console-template.md');
+const { USAGE: CLI_USAGE } = require(path.join(ROOT, 'plugin', 'bin', 'shadow-dup-proposal.js'));
+
+// review-console.md "On approval" step 7, as one line (it is a single list item).
+function step7(consoleText) {
+  const line = consoleText.split('\n').find((l) => l.startsWith('7. `Q#` queue writes'));
+  assert.ok(line, 'review-console.md has no "7. `Q#` queue writes" step');
+  return line;
+}
+
+// The facts step 7 owes a `.shadow-dup` item, as [label, pattern]. Non-global on purpose.
+const STEP7_FACTS = [
+  ['names the item kinds', /`\*\.shadow-dup\*` item \(`shadow-dup-divergent`\/`shadow-dup-collision`\)/],
+  ['carries no header of its own', /carries no header of its own/],
+  ['resolves a scratch path', /session-tmp-resolve\.js" SHADOW_DUP_PROPOSAL=shadow-dup-proposal-\{Q#\}\.md`/],
+  ['no eval', /\(no `eval` — it prints the path\)/],
+  ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\$PIPELINE_RUN_DIR" --item \{name\} --out "\{proposal-path\}"/],
+  ['quotes the copy verbatim', /quotes the copy verbatim under `Defer-reason: needs-human-decision` and `needs:definition`/],
+  ['a non-zero exit is a failed create', /A non-zero exit is a failed create, not a refusal: log it `FAILED` and keep the item staged/],
+  ['a gh issue create failure is the same', /`gh issue create` failure[^.]*`FAILED`[^.]*staged/],
+];
+
+function missingStep7Facts(line) {
+  return STEP7_FACTS.filter(([, pattern]) => !pattern.test(line)).map(([label]) => label);
+}
+
+function assertStep7Composer(consoleText) {
+  assert.deepEqual(missingStep7Facts(step7(consoleText)), [], 'step 7 lost a shadow-dup fact');
+}
+
+// The `apply` on a `Q#` item bullet of the appendix's Resolution-to-step mapping, joined.
+function applyOnQBullet(appendixText) {
+  const lines = appendixText.split('\n');
+  const first = lines.findIndex((l) => l.startsWith('- `apply` on a `Q#` item'));
+  assert.notEqual(first, -1, 'the appendix has no "- `apply` on a `Q#` item" bullet');
+  let last = first + 1;
+  while (last < lines.length && !lines[last].startsWith('- ') && lines[last].trim() !== '') last += 1;
+  return lines.slice(first, last).join(' ').replace(/\s+/g, ' ');
+}
+
+function assertAppendixRoutesShadowDup(appendixText) {
+  const bullet = applyOnQBullet(appendixText);
+  assert.match(bullet, /`\.shadow-dup` copy/, 'the apply-on-Q# bullet does not name a .shadow-dup copy');
+  assert.match(bullet, /`shadow-dup-proposal\.js`/, 'the apply-on-Q# bullet does not name shadow-dup-proposal.js');
+  assert.match(bullet, /step 7/, 'the apply-on-Q# bullet does not cite step 7');
+}
+
+// multispec-review-console.md: step 2 and the Numbering rules' Queue-writes sentence each cite
+// review-console.md step 7's shadow-dup clause.
+const MULTISPEC_CITE = /`wrap-up\/review-console\.md` step 7's shadow-dup clause/;
+
+function multispecLine(consoleText, prefix, what) {
+  const line = consoleText.split('\n').find((l) => l.startsWith(prefix));
+  assert.ok(line, `multispec-review-console.md has no ${what}`);
+  return line;
+}
+
+function assertMultispecCitesStep7(consoleText) {
+  const step2 = multispecLine(consoleText, '2. For each `spec-{N}/`', 'step 2');
+  assert.match(step2, MULTISPEC_CITE, "step 2 does not cite review-console.md step 7's shadow-dup clause");
+  const numbering = multispecLine(consoleText, 'Rows across Auto-applied through Translated briefs', 'Numbering rules paragraph');
+  assert.match(numbering, MULTISPEC_CITE, "the Numbering rules' Queue-writes sentence does not cite review-console.md step 7's shadow-dup clause");
+}
+
+function assertTemplateNamesShadowDup(templateText) {
+  const start = templateText.indexOf('**Where the `Q#` rows come from.**');
+  assert.notEqual(start, -1, 'console-template.md has no "Where the `Q#` rows come from" paragraph');
+  const end = templateText.indexOf('\n\n', start);
+  const para = templateText.slice(start, end === -1 ? undefined : end);
+  assert.match(para, /`\.shadow-dup` cop(?:y|ies)/, 'the Q# source paragraph does not name .shadow-dup copies');
+  assert.match(para, /shadow-dup-divergent/, 'the Q# source paragraph does not name shadow-dup-divergent');
+}
+
+// Prose-code twin: every `--flag` step 7 passes to shadow-dup-proposal.js appears in that CLI's USAGE.
+function step7ComposerFlags(consoleText) {
+  const m = step7(consoleText).match(/bin\/shadow-dup-proposal\.js"([^`]*)`/);
+  assert.ok(m, 'step 7 has no shadow-dup-proposal.js command to read flags from');
+  const flags = m[1].match(/--[a-z][a-z-]*/g) || [];
+  assert.ok(flags.length > 0, 'step 7 passes no flags to shadow-dup-proposal.js');
+  return flags;
+}
+
+function assertFlagsInUsage(consoleText, usage) {
+  const missing = step7ComposerFlags(consoleText).filter((f) => !usage.includes(f));
+  assert.deepEqual(missing, [], `step 7 passes flags absent from shadow-dup-proposal.js's USAGE: ${missing.join(' ')}`);
+}
+
+test('step 7 names shadow-dup-proposal.js with --run, --item and --out for a .shadow-dup Q# item', () => {
+  assertStep7Composer(REVIEW_CONSOLE);
+});
+
+test("control: each fact of step 7's shadow-dup clause is individually load-bearing", () => {
+  const line = step7(REVIEW_CONSOLE);
+  assert.deepEqual(missingStep7Facts(line), []);
+  for (const [label, pattern] of STEP7_FACTS) {
+    const stripped = line.replace(pattern, '');
+    assert.notEqual(stripped, line, `fact "${label}" matched nothing in the live step 7`);
+    const mutated = doctor(REVIEW_CONSOLE, line, stripped);
+    assert.throws(
+      () => assertStep7Composer(mutated),
+      (e) => e.message.startsWith('step 7 lost a shadow-dup fact') &&Array.isArray(e.actual) && e.actual.length === 1 && e.actual[0] === label,
+      `stripping "${label}" must report exactly itself`,
+    );
+  }
+});
+
+test("the appendix apply-on-Q# bullet routes a shadow-dup copy through step 7's composer", () => {
+  assertAppendixRoutesShadowDup(APPENDIX);
+});
+
+test('control: stripping a clause from the apply-on-Q# bullet fails assertAppendixRoutesShadowDup', () => {
+  const noCopy = doctor(APPENDIX, '`.shadow-dup` copy', 'copy');
+  assert.throws(() => assertAppendixRoutesShadowDup(noCopy), { message: /does not name a \.shadow-dup copy/ });
+  const noCli = doctor(APPENDIX, '`shadow-dup-proposal.js`', 'the composer');
+  assert.throws(() => assertAppendixRoutesShadowDup(noCli), { message: /does not name shadow-dup-proposal\.js/ });
+  const noStep = doctor(APPENDIX, '- `apply` on a `Q#` item — step 7 (record creation)', '- `apply` on a `Q#` item — the record step (record creation)');
+  assert.throws(() => assertAppendixRoutesShadowDup(noStep), { message: /does not cite step 7/ });
+  const lines = APPENDIX.split('\n');
+  const first = lines.findIndex((l) => l.startsWith('- `apply` on a `Q#` item'));
+  const gone = [...lines.slice(0, first), ...lines.slice(first + 1)].join('\n');
+  assert.throws(() => assertAppendixRoutesShadowDup(gone), { message: /no "- `apply` on a `Q#` item" bullet/ });
+});
+
+test("multispec-review-console.md step 2 cites review-console.md step 7's shadow-dup clause", () => {
+  assertMultispecCitesStep7(MULTISPEC_CONSOLE);
+});
+
+test('control: dropping the step 7 citation from step 2 or the Numbering rules fails assertMultispecCitesStep7', () => {
+  const step2 = multispecLine(MULTISPEC_CONSOLE, '2. For each `spec-{N}/`', 'step 2');
+  const noStep2 = doctor(MULTISPEC_CONSOLE, step2, step2.replace(MULTISPEC_CITE, 'something else'));
+  assert.throws(() => assertMultispecCitesStep7(noStep2), { message: /^step 2 does not cite/ });
+  const numbering = multispecLine(MULTISPEC_CONSOLE, 'Rows across Auto-applied through Translated briefs', 'Numbering rules paragraph');
+  const noNumbering = doctor(MULTISPEC_CONSOLE, numbering, numbering.replace(MULTISPEC_CITE, 'something else'));
+  assert.throws(() => assertMultispecCitesStep7(noNumbering), { message: /^the Numbering rules' Queue-writes sentence does not cite/ });
+});
+
+test("console-template.md's Q# source sentence names .shadow-dup copies", () => {
+  assertTemplateNamesShadowDup(CONSOLE_TEMPLATE);
+});
+
+test('control: removing a clause from the Q# source paragraph fails assertTemplateNamesShadowDup', () => {
+  const noCopy = doctor(CONSOLE_TEMPLATE, /`\.shadow-dup` cop(?:y|ies)/g, 'copies');
+  assert.throws(() => assertTemplateNamesShadowDup(noCopy), { message: /does not name \.shadow-dup copies/ });
+  const noKind = doctor(CONSOLE_TEMPLATE, /shadow-dup-divergent/g, 'something-else');
+  assert.throws(() => assertTemplateNamesShadowDup(noKind), { message: /does not name shadow-dup-divergent/ });
+});
+
+test("prose-code twin: every flag step 7 passes appears in shadow-dup-proposal.js's USAGE", () => {
+  assert.deepEqual(step7ComposerFlags(REVIEW_CONSOLE).sort(), ['--item', '--out', '--run']);
+  assertFlagsInUsage(REVIEW_CONSOLE, CLI_USAGE);
+});
+
+test("control: a flag step 7 passes that USAGE lacks fails assertFlagsInUsage", () => {
+  const mutated = doctor(REVIEW_CONSOLE, '--out "{proposal-path}"', '--out "{proposal-path}" --bogus x');
+  assert.throws(() => assertFlagsInUsage(mutated, CLI_USAGE), { message: /absent from shadow-dup-proposal\.js's USAGE: --bogus/ });
+  assert.throws(() => assertFlagsInUsage(REVIEW_CONSOLE, doctor(CLI_USAGE, '--item', '--itm')), { message: /USAGE: --item/ });
+});

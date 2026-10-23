@@ -10,7 +10,9 @@
 // Exit 0 on success (--out written; its path echoed to stdout); 2 on a malformed
 // invocation (a missing/unknown flag, an --item that is not a plain filename or
 // not a shadow-dup name, an item absent from staged/, an unreadable copy, or a
-// byte-identical duplicate — refused, the console dismisses it); 3 when the run
+// byte-identical duplicate — refused, the console dismisses it; reopen this exit-2
+// overload if a console step must retry an unreadable copy differently from
+// dismissing a duplicate); 3 when the run
 // dir is missing or not anchored under the main checkout (a worktree-local
 // shadow — _shared/pipeline-run-dir.md's Anchoring section, [IL-127]), or --out
 // is unwritable. This is the Sanctioned-writer vocabulary (no exit 1), though

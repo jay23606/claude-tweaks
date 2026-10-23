@@ -153,7 +153,8 @@ file; this table only needs enough to render the prompt.
 (`_shared/ledger-format.md`'s Resolve Gate Phase 3 `Defer` / `Keep` / `Acknowledge` dispositions, including the
 ones `nothing-left-behind.md`'s Ops acknowledgment stages), `leftover-*.md`, and any other
 producer's staged proposal. Identify them by that header, not by filename, so a new producer is
-picked up without editing this file.
+picked up without editing this file. A divergent or collision `.shadow-dup` copy (`shadow-dup-divergent`/`shadow-dup-collision`)
+is a `Q#` row too, though it carries no header: `review-console.md` step 7 composes one.
 
 | Q# | Destination | What | Source |
 |---|---|---|---|

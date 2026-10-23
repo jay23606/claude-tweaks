@@ -95,7 +95,7 @@ procedure — no row is left unrouted:
   step already performs for a `.patch`; a `reverse` on any path writes it at step 7, as
   above, never at step 1.
 - `apply` on a `Q#` item — step 7 (record creation), whose `refused-proposals.md` check still
-  runs first; on an `M#` item — step 8 (the `_shared/learning-routing.md` memory write plus its
+  runs first (a `.shadow-dup` copy is composed by `shadow-dup-proposal.js` before that, as it states); on an `M#` item — step 8 (the `_shared/learning-routing.md` memory write plus its
   `MEMORY.md` index line).
 - `approve` — the curation steps: step 2 (Skill updates), step 3 (Documentation updates), step 4
   (Journey updates), step 5 (Configuration updates). A **Reference repairs** row has no numbered
