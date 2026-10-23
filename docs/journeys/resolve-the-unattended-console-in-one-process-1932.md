@@ -2,6 +2,7 @@
 files:
   - plugin/bin/lib/console/resolve.js
   - plugin/bin/console-resolve.js
+  - plugin/bin/shadow-dup-proposal.js
   - plugin/bin/lib/staged-patch/stack-check.js
   - plugin/bin/lib/dispatch/ceremony-derive.js
   - plugin/skills/wrap-up/review-console.md
