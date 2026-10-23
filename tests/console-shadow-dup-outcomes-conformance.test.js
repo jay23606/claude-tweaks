@@ -273,12 +273,14 @@ const STEP7_FACTS = [
   ['carries no header of its own', /carries no header of its own/],
   ['resolves a scratch path', /session-tmp-resolve\.js" SHADOW_DUP_PROPOSAL=shadow-dup-proposal-\{Q#\}\.md`/],
   ['no eval, prints a quoted assignment', /\(no `eval`; it prints `SHADOW_DUP_PROPOSAL="<path>"` — use the path inside the quotes as `\{proposal-path\}`\)/],
-  ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\$PIPELINE_RUN_DIR" --item \{name\} --out "\{proposal-path\}"/],
+  ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\{item-run-dir\}" --item \{name\} --out "\{proposal-path\}"/],
   ['quotes the copy verbatim', /quotes the copy verbatim under `Defer-reason: needs-human-decision` and `needs:definition`/],
-  ['defines {name}', /\(`\{name\}`: the item's staged filename\)/],
+  ['defines {name}', /\(`\{name\}`: the item's staged filename;/],
+  ['defines {item-run-dir}', /`\{item-run-dir\}`: the run directory whose `staged\/` holds the item — `\$PIPELINE_RUN_DIR` in a single-spec run\)/],
   ['files from the proposal, not the raw copy', /create the record from `\{proposal-path\}`, not the raw copy/],
-  ['a non-zero exit logs a SKIP via log-decision.js', /A non-zero exit is not a refusal: log one `SKIP` via `log-decision\.js` \(/],
-  ['the SKIP names the fallback', /exited \{code\} → item stays staged for the next console"`\) and keep the item staged/],
+  ['a non-zero exit logs a Degrade-trace SKIP', /A non-zero exit is not a refusal: log one `SKIP` per `_shared\/auto-decision-log\.md`'s Degrade-trace rule/],
+  ['the full SKIP command', /`node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/log-decision\.js" --run "\{item-run-dir\}" --status SKIP --section "\/wrap-up" --step "Shadow-dup proposal \(skipped\)" --text "condition: shadow-dup-proposal\.js exited \{code\} for \{name\} → fallback: copy stays in staged\/, not filed this run" --reversibility n\/a`/],
+  ['the true fallback', /the copy stays in `staged\/`, the item is not filed this run, and that `SKIP` line is its trace/],
   ['a failed gh issue create cites refused-proposals.md', /A failed `gh issue create` on the proposal follows `refused-proposals\.md`'s failed-create line/],
 ];
 
@@ -292,6 +294,8 @@ function assertStep7Composer(consoleText) {
   const line = step7(consoleText);
   assert.deepEqual(missingStep7Facts(line), [], 'step 7 lost a shadow-dup fact');
   assert.ok(!line.includes('FAILED'), 'step 7 names FAILED, a status log-decision.js rejects');
+  // Under `unattended` the console has already resolved, so no "next console" re-offers the copy (#3946 M2).
+  assert.ok(!line.includes('for the next console'), 'step 7 still says a skipped copy stays staged for the next console');
 }
 
 // The `apply` on a `Q#` item bullet of the appendix's Resolution-to-step mapping, joined.
@@ -371,10 +375,55 @@ test("control: each fact of step 7's shadow-dup clause is individually load-bear
 });
 
 test('control: naming FAILED in step 7 fails assertStep7Composer (log-decision.js rejects that status)', () => {
-  const mutated = doctor(REVIEW_CONSOLE, 'log one `SKIP` via', 'log one `FAILED` via');
+  const mutated = doctor(REVIEW_CONSOLE, 'log one `SKIP` per', 'log one `FAILED` per');
   assert.throws(() => assertStep7Composer(mutated), (e) => e.message.startsWith('step 7') && /names FAILED|lost a shadow-dup fact/.test(e.message));
-  const onlyFailed = doctor(REVIEW_CONSOLE, ' and keep the item staged.', ' and keep the item staged (FAILED).');
+  const onlyFailed = doctor(REVIEW_CONSOLE, ' and that `SKIP` line is its trace.', ' and that `SKIP` line is its trace (FAILED).');
   assert.throws(() => assertStep7Composer(onlyFailed), { message: /names FAILED/ });
+});
+
+test('control: the old "stays staged for the next console" wording fails assertStep7Composer (#3946 M2)', () => {
+  const mutated = doctor(REVIEW_CONSOLE, ' and that `SKIP` line is its trace.', ' and that `SKIP` line is its trace; the item stays staged for the next console.');
+  assert.throws(() => assertStep7Composer(mutated), { message: /still says a skipped copy stays staged for the next console/ });
+});
+
+// Extract-and-run: step 7's SKIP command, with its placeholders filled, is accepted by
+// log-decision.js and appends one Degrade-trace-shaped SKIP line (#3946 M2).
+const LOG_DECISION = require(path.join(ROOT, 'plugin', 'bin', 'log-decision.js'));
+
+function step7SkipArgv(consoleText, fill) {
+  const m = step7(consoleText).match(/`node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/log-decision\.js" ([^`]*)`/);
+  assert.ok(m, 'step 7 has no log-decision.js command to run');
+  const tokens = m[1].match(/"[^"]*"|\S+/g).map((t) => (t.startsWith('"') ? t.slice(1, -1) : t));
+  return tokens.map((t) => Object.entries(fill).reduce((s, [k, v]) => s.split(k).join(v), t));
+}
+
+test("step 7's SKIP command runs through log-decision.js and appends one Degrade-trace SKIP line", () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'step7-skip-')));
+  fs.mkdirSync(path.join(root, '.git'));
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', '2026-10-24T000000-spec-7', 'spec-7');
+  fs.mkdirSync(runDir, { recursive: true });
+  const argv = step7SkipArgv(REVIEW_CONSOLE, { '{item-run-dir}': runDir, '{code}': '2', '{name}': 'a-1.md.shadow-dup' });
+  const out = [];
+  const err = [];
+  const code = LOG_DECISION.run(argv, {
+    now: () => Date.parse('2026-10-24T09:14:02Z'), cwd: () => root, mainRoot: root, stdout: (s) => out.push(s), stderr: (s) => err.push(s),
+  });
+  assert.equal(code, 0, err.join(''));
+  const decisions = fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8');
+  const lines = decisions.split('\n').filter((l) => l.startsWith('- SKIP '));
+  assert.equal(lines.length, 1, decisions);
+  assert.match(lines[0], /^- SKIP \d{2}:\d{2}:\d{2} — Shadow-dup proposal \(skipped\): condition: shadow-dup-proposal\.js exited 2 for a-1\.md\.shadow-dup → fallback: copy stays in staged\/, not filed this run\. Reversibility: n\/a\.$/);
+  assert.match(decisions, /^## \/wrap-up$/m);
+});
+
+test('control: a SKIP command with a flag log-decision.js lacks is refused by the same run', () => {
+  const mutated = doctor(REVIEW_CONSOLE, '--status SKIP --section', '--status SKIP --bogus x --section');
+  const argv = step7SkipArgv(mutated, { '{item-run-dir}': '/nowhere', '{code}': '2', '{name}': 'a-1.md.shadow-dup' });
+  const err = [];
+  assert.equal(LOG_DECISION.run(argv, { now: () => 0, cwd: () => '/', mainRoot: '/', stdout: () => {}, stderr: (s) => err.push(s) }), 2);
+  assert.match(err.join(''), /unknown argument: --bogus/);
 });
 
 test("the appendix apply-on-Q# bullet routes a shadow-dup copy through step 7's composer", () => {
@@ -609,4 +658,156 @@ test('the multi-spec journey reads Dismissed duplicates after Pending review', (
 test('control: dropping the name from the multi-spec journey fails assertJourneyBatchOrder', () => {
   const mutated = doctor(J_MULTISPEC, `${SECTIONS.PENDING}, ${NAME}, `, `${SECTIONS.PENDING}, `);
   assert.throws(() => assertJourneyBatchOrder(mutated, NAME), { message: /does not put Dismissed duplicates between/ });
+});
+
+// --- final-review fix wave (#3946 I1, I2, M4, M5) ------------------------------------------
+
+// I1(a): the multi-spec executor's own "On approval" step 2 composes a .shadow-dup item first,
+// against the run dir it came from, using the placeholder step 7 defines.
+function multispecApprovalStep2(consoleText) {
+  const start = consoleText.indexOf('## On approval (option 1)');
+  assert.notEqual(start, -1, 'multispec-review-console.md has no "## On approval (option 1)" section');
+  const line = consoleText.slice(start).split('\n').find((l) => l.startsWith('2. For each `Q#` queue write'));
+  assert.ok(line, 'multispec-review-console.md\'s On approval has no "2. For each `Q#` queue write" step');
+  return line;
+}
+
+function assertMultispecApprovalComposes(consoleText, reviewConsoleText) {
+  const line = multispecApprovalStep2(consoleText);
+  assert.match(line, /A `\.shadow-dup` item is composed first per `wrap-up\/review-console\.md` step 7/, 'On approval step 2 does not compose a .shadow-dup item per review-console.md step 7');
+  assert.match(line, /`\{item-run-dir\}` being the directory it came from \(`\{parent\}\/spec-\{N\}` or the parent\)/, 'On approval step 2 does not set {item-run-dir} to the directory the item came from');
+  assert.ok(step7(reviewConsoleText).includes('`{item-run-dir}`: the run directory'), 'review-console.md step 7 does not define the {item-run-dir} placeholder step 2 sets');
+}
+
+test('multispec On approval step 2 composes a .shadow-dup item per step 7 against its own run dir (#3946 I1)', () => {
+  assertMultispecApprovalComposes(MULTISPEC_CONSOLE, REVIEW_CONSOLE);
+});
+
+test('control: dropping either clause, or step 7\'s placeholder definition, fails assertMultispecApprovalComposes', () => {
+  const noCompose = doctor(MULTISPEC_CONSOLE, 'A `.shadow-dup` item is composed first per', 'A `.shadow-dup` item is filed per');
+  assert.throws(() => assertMultispecApprovalComposes(noCompose, REVIEW_CONSOLE), { message: /does not compose a \.shadow-dup item/ });
+  const noDir = doctor(MULTISPEC_CONSOLE, '(`{parent}/spec-{N}` or the parent)', '(the parent)');
+  assert.throws(() => assertMultispecApprovalComposes(noDir, REVIEW_CONSOLE), { message: /does not set \{item-run-dir\}/ });
+  const noDef = doctor(REVIEW_CONSOLE, '`{item-run-dir}`: the run directory', '`{dir}`: the run directory');
+  assert.throws(() => assertMultispecApprovalComposes(MULTISPEC_CONSOLE, noDef), { message: /does not define the \{item-run-dir\} placeholder/ });
+});
+
+// I2: a human-rendered console decides Dismissed duplicates by `cmp -s` against the anchor.
+function sectionBlock(templateText, name) {
+  const start = templateText.indexOf(`\n#### ${name} (`);
+  assert.notEqual(start, -1, `no "#### ${name} (" heading`);
+  const end = templateText.indexOf('\n#### ', start + 1);
+  return templateText.slice(start, end === -1 ? undefined : end);
+}
+
+const CMP_RULE = /`(cmp -s "\{run-dir\}\/staged\/\{copy\}" "\{run-dir\}\/staged\/\{anchor\}")` exits 0/;
+
+function assertDismissedCmpRule(templateText) {
+  const block = sectionBlock(templateText, NAME);
+  assert.match(block, CMP_RULE, 'the Dismissed duplicates section does not gate a row on `cmp -s` against the anchor exiting 0');
+  assert.match(block, /any other copy, a missing or unreadable anchor included, is a `Q#` row/, 'the Dismissed duplicates section does not send every other copy to a Q# row');
+}
+
+function assertMultispecCitesCmpRule(templateText) {
+  const block = sectionBlock(templateText, NAME);
+  assert.match(block, /`wrap-up\/console-template\.md`'s Dismissed duplicates `cmp -s` rule/, "the multispec Dismissed duplicates section does not cite console-template.md's cmp -s rule");
+}
+
+test('console-template.md decides a Dismissed duplicates row by cmp -s exiting 0 (#3946 I2)', () => {
+  assertDismissedCmpRule(CONSOLE_TEMPLATE);
+});
+
+test('control: dropping the cmp gate or the Q# fallback fails assertDismissedCmpRule', () => {
+  const noCmp = doctor(CONSOLE_TEMPLATE, '`cmp -s "{run-dir}/staged/{copy}" "{run-dir}/staged/{anchor}"` exits 0', 'its content matches');
+  assert.throws(() => assertDismissedCmpRule(noCmp), { message: /does not gate a row on `cmp -s`/ });
+  const noFallback = doctor(CONSOLE_TEMPLATE, 'any other copy, a missing or unreadable anchor included, is a `Q#` row', 'other copies wait');
+  assert.throws(() => assertDismissedCmpRule(noFallback), { message: /does not send every other copy to a Q# row/ });
+});
+
+test('multispec-console-template.md cites the cmp -s rule (#3946 I2)', () => {
+  assertMultispecCitesCmpRule(MULTISPEC_TEMPLATE);
+});
+
+test('control: dropping the citation fails assertMultispecCitesCmpRule', () => {
+  const mutated = doctor(MULTISPEC_TEMPLATE, "`wrap-up/console-template.md`'s Dismissed duplicates `cmp -s` rule", 'the usual rule');
+  assert.throws(() => assertMultispecCitesCmpRule(mutated), { message: /does not cite console-template\.md's cmp -s rule/ });
+});
+
+// The rule's own command, run on fixtures, agrees with classifyStagedItem: exit 0 exactly when the
+// resolver says shadow-dup-duplicate. Skipped only where no `cmp` binary exists.
+const { spawnSync } = require('node:child_process');
+const HAS_CMP = !spawnSync('cmp', [__filename, __filename]).error;
+
+test('the cmp -s rule agrees with classifyStagedItem on identical, whitespace/CRLF-divergent and missing anchors', { skip: !HAS_CMP && 'no cmp binary on PATH' }, () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { classifyStagedItem } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'resolve.js'));
+  const command = CMP_RULE.exec(sectionBlock(CONSOLE_TEMPLATE, NAME))[1];
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmp-rule-'));
+  fs.mkdirSync(path.join(runDir, 'staged'));
+  const cases = [['same\n', 'same\n'], ['a\r\n', 'a\n'], ['a ', 'a'], ['x', null]];
+  cases.forEach(([copyText, anchorText], i) => {
+    const anchor = `item-${i}.md`;
+    const copy = `${anchor}.shadow-dup`;
+    fs.writeFileSync(path.join(runDir, 'staged', copy), copyText);
+    if (anchorText !== null) fs.writeFileSync(path.join(runDir, 'staged', anchor), anchorText);
+    const args = command.match(/"[^"]*"|\S+/g).slice(1).map((t) => t.replace(/^"|"$/g, '')
+      .split('{run-dir}').join(runDir).split('{copy}').join(copy).split('{anchor}').join(anchor));
+    const exit = spawnSync('cmp', args).status;
+    const { outcome } = classifyStagedItem(copy, copyText, anchorText === null ? undefined : anchorText);
+    assert.equal(exit === 0, outcome === 'shadow-dup-duplicate', JSON.stringify({ copyText, anchorText, exit, outcome }));
+  });
+});
+
+// M4: Approve all leaves Dismissed duplicates rows as they are, and Override has no verb for one.
+function assertApproveAllException(templateText) {
+  const line = templateText.split('\n').find((l) => l.startsWith('The pipeline auto-resolved'));
+  assert.ok(line, 'console-template.md has no "The pipeline auto-resolved" opening paragraph');
+  assert.ok(line.includes(`(batch sections: apply, except ${NAME} rows, which stay as they are;`), `the opening's Approve-all defaults do not except ${NAME} from "batch sections: apply"`);
+}
+
+function assertNoOverrideVerb(interactiveText) {
+  const para = interactiveText.split('\n').find((l) => l.startsWith(`**${NAME} rows (#3946):**`));
+  assert.ok(para, `review-console-interactive.md has no "**${NAME} rows (#3946):**" paragraph`);
+  assert.match(para, /they take no Override verb/, `the ${NAME} paragraph does not say the rows take no Override verb`);
+  assert.match(para, /`skip`\/`modify`\/`revert` naming one is refused/, `the ${NAME} paragraph does not refuse skip/modify/revert`);
+}
+
+test('console-template.md\'s Approve-all defaults except Dismissed duplicates (#3946 M4)', () => {
+  assertApproveAllException(CONSOLE_TEMPLATE);
+});
+
+test('control: the pre-change "batch sections: apply;" wording fails assertApproveAllException', () => {
+  const mutated = doctor(CONSOLE_TEMPLATE, `batch sections: apply, except ${NAME} rows, which stay as they are;`, 'batch sections: apply;');
+  assert.throws(() => assertApproveAllException(mutated), { message: /do not except Dismissed duplicates/ });
+});
+
+test('review-console-interactive.md gives Dismissed duplicates rows no Override verb (#3946 M4)', () => {
+  assertNoOverrideVerb(INTERACTIVE);
+});
+
+test('control: dropping the paragraph or either clause fails assertNoOverrideVerb', () => {
+  const gone = doctor(INTERACTIVE, `**${NAME} rows (#3946):**`, `**${NAME} (#3946):**`);
+  assert.throws(() => assertNoOverrideVerb(gone), { message: /has no "\*\*Dismissed duplicates rows/ });
+  const noVerb = doctor(INTERACTIVE, 'they take no Override verb', 'they take every Override verb');
+  assert.throws(() => assertNoOverrideVerb(noVerb), { message: /does not say the rows take no Override verb/ });
+  const noRefusal = doctor(INTERACTIVE, '`skip`/`modify`/`revert` naming one is refused', '`skip` naming one is applied');
+  assert.throws(() => assertNoOverrideVerb(noRefusal), { message: /does not refuse skip\/modify\/revert/ });
+});
+
+// M5: the 1932 journey scopes the unmapped-prefix fallback to hand-placed or legacy files.
+function assertUnmappedFallbackScoped(text) {
+  assert.ok(!text.includes('so a new producer cannot slip past the console'), 'the 1932 journey still says the Pending-review fallback is what stops a new producer');
+  assert.ok(text.includes('this now covers only a hand-placed or legacy file'), 'the 1932 journey does not scope the unmapped-prefix fallback to hand-placed or legacy files');
+}
+
+test('the 1932 journey scopes the unmapped-prefix fallback to hand-placed or legacy files (#3946 M5)', () => {
+  assertUnmappedFallbackScoped(J_1932);
+});
+
+test('control: the pre-change clause fails assertUnmappedFallbackScoped', () => {
+  const old = doctor(J_1932, 'this now covers only a hand-placed or legacy file', 'so a new producer cannot slip past the console');
+  assert.throws(() => assertUnmappedFallbackScoped(old), { message: /still says the Pending-review fallback/ });
+  const noScope = doctor(J_1932, 'this now covers only a hand-placed or legacy file', 'this covers every file');
+  assert.throws(() => assertUnmappedFallbackScoped(noScope), { message: /does not scope the unmapped-prefix fallback/ });
 });

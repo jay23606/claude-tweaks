@@ -37,7 +37,7 @@ A `SCANNED` entry (skill-curation's scan-summary log line — see `_shared/auto-
 |---|---|---|---|
 | {n} | 157 | `spec-157/staged/build-deviation-1.md.shadow-dup` | `spec-157/staged/build-deviation-1.md` |
 
-Renders only when non-empty; aggregated across every spec in the run, `Spec`-tagged, and the rows take the next numbers of the global sequence.
+Renders only when non-empty; aggregated across every spec in the run, `Spec`-tagged, and the rows take the next numbers of the global sequence. Which copies belong here: `wrap-up/console-template.md`'s Dismissed duplicates `cmp -s` rule, run against the `staged/` the copy came from.
 
 #### Low-confidence findings (not reproduced)
 

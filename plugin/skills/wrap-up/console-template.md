@@ -5,7 +5,7 @@ Referenced by `skills/wrap-up/review-console-interactive.md`'s "Present the cons
 ```markdown
 ### Wrap-Up Review Console
 
-The pipeline auto-resolved {N} decisions and staged {M} items for your review. Every section below — the named batch sections, plus Queue writes, Memory updates, Upstream feedback, and Reflection insights — resolves via the same terminal Approve all / Override / Stop choice. Approve all applies each section's own default (batch sections: apply; `Q#`/`M#`: their pre-checked `Apply` default; `U#`: filed when its staged draft carries a `**Causal:** systemic` tag, else its usual unchecked/declined default; `R#`: each row's recommended destination, D4/D5 rows informational) with no further prompts, except rows marked drills-individually (listed above the terminal options when present — see `review-console-interactive.md`'s Hard requirements). Override is what still drills `Q#`/`M#`/`U#`/`R#` individually — one or more chunked `multiSelect` calls, `_shared/batched-item-drill.md` for `Q#`/`M#`/`R#`, `_shared/upstream-feedback-batch.md` for `U#` (see `review-console-interactive.md`'s Hard requirements for why).
+The pipeline auto-resolved {N} decisions and staged {M} items for your review. Every section below — the named batch sections, plus Queue writes, Memory updates, Upstream feedback, and Reflection insights — resolves via the same terminal Approve all / Override / Stop choice. Approve all applies each section's own default (batch sections: apply, except Dismissed duplicates rows, which stay as they are; `Q#`/`M#`: their pre-checked `Apply` default; `U#`: filed when its staged draft carries a `**Causal:** systemic` tag, else its usual unchecked/declined default; `R#`: each row's recommended destination, D4/D5 rows informational) with no further prompts, except rows marked drills-individually (listed above the terminal options when present — see `review-console-interactive.md`'s Hard requirements). Override is what still drills `Q#`/`M#`/`U#`/`R#` individually — one or more chunked `multiSelect` calls, `_shared/batched-item-drill.md` for `Q#`/`M#`/`R#`, `_shared/upstream-feedback-batch.md` for `U#` (see `review-console-interactive.md`'s Hard requirements for why).
 
 > **Still pending from earlier** (#2736 — render only when `check-session-residue` reported something; omit entirely otherwise, no row/number of its own, purely informational)
 >
@@ -38,7 +38,7 @@ A `FAILED` entry (a batch write that errored — see `_shared/auto-decision-log.
 |---|---|---|
 | {n} | `staged/build-deviation-1.md.shadow-dup` | `staged/build-deviation-1.md` |
 
-Renders only when non-empty; rows take the next numbers of the global sequence.
+Renders only when non-empty; rows take the next numbers of the global sequence. A `.shadow-dup` copy goes here only when `cmp -s "{run-dir}/staged/{copy}" "{run-dir}/staged/{anchor}"` exits 0 (`{anchor}`: the copy's name minus its `.shadow-dup`/`.shadow-dup-{n}` suffix); any other copy, a missing or unreadable anchor included, is a `Q#` row.
 
 #### Low-confidence findings (not reproduced)
 
