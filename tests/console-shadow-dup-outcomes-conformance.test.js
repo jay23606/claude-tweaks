@@ -272,19 +272,26 @@ const STEP7_FACTS = [
   ['names the item kinds', /`\*\.shadow-dup\*` item \(`shadow-dup-divergent`\/`shadow-dup-collision`\)/],
   ['carries no header of its own', /carries no header of its own/],
   ['resolves a scratch path', /session-tmp-resolve\.js" SHADOW_DUP_PROPOSAL=shadow-dup-proposal-\{Q#\}\.md`/],
-  ['no eval', /\(no `eval` — it prints the path\)/],
+  ['no eval, prints a quoted assignment', /\(no `eval`; it prints `SHADOW_DUP_PROPOSAL="<path>"` — use the path inside the quotes as `\{proposal-path\}`\)/],
   ['runs the composer', /node "\$\{CLAUDE_PLUGIN_ROOT\}\/bin\/shadow-dup-proposal\.js" --run "\$PIPELINE_RUN_DIR" --item \{name\} --out "\{proposal-path\}"/],
   ['quotes the copy verbatim', /quotes the copy verbatim under `Defer-reason: needs-human-decision` and `needs:definition`/],
-  ['a non-zero exit is a failed create', /A non-zero exit is a failed create, not a refusal: log it `FAILED` and keep the item staged/],
-  ['a gh issue create failure is the same', /`gh issue create` failure[^.]*`FAILED`[^.]*staged/],
+  ['defines {name}', /\(`\{name\}`: the item's staged filename\)/],
+  ['files from the proposal, not the raw copy', /create the record from `\{proposal-path\}`, not the raw copy/],
+  ['a non-zero exit logs a SKIP via log-decision.js', /A non-zero exit is not a refusal: log one `SKIP` via `log-decision\.js` \(/],
+  ['the SKIP names the fallback', /exited \{code\} → item stays staged for the next console"`\) and keep the item staged/],
+  ['a failed gh issue create cites refused-proposals.md', /A failed `gh issue create` on the proposal follows `refused-proposals\.md`'s failed-create line/],
 ];
 
 function missingStep7Facts(line) {
   return STEP7_FACTS.filter(([, pattern]) => !pattern.test(line)).map(([label]) => label);
 }
 
+// `FAILED` is a hand-composed status only two named writers may use (_shared/auto-decision-log.md),
+// and log-decision.js exits 2 on it, so step 7 must route a composer failure to `SKIP` instead.
 function assertStep7Composer(consoleText) {
-  assert.deepEqual(missingStep7Facts(step7(consoleText)), [], 'step 7 lost a shadow-dup fact');
+  const line = step7(consoleText);
+  assert.deepEqual(missingStep7Facts(line), [], 'step 7 lost a shadow-dup fact');
+  assert.ok(!line.includes('FAILED'), 'step 7 names FAILED, a status log-decision.js rejects');
 }
 
 // The `apply` on a `Q#` item bullet of the appendix's Resolution-to-step mapping, joined.
@@ -357,10 +364,17 @@ test("control: each fact of step 7's shadow-dup clause is individually load-bear
     const mutated = doctor(REVIEW_CONSOLE, line, stripped);
     assert.throws(
       () => assertStep7Composer(mutated),
-      (e) => e.message.startsWith('step 7 lost a shadow-dup fact') &&Array.isArray(e.actual) && e.actual.length === 1 && e.actual[0] === label,
+      (e) => e.message.startsWith('step 7 lost a shadow-dup fact') && Array.isArray(e.actual) && e.actual.length === 1 && e.actual[0] === label,
       `stripping "${label}" must report exactly itself`,
     );
   }
+});
+
+test('control: naming FAILED in step 7 fails assertStep7Composer (log-decision.js rejects that status)', () => {
+  const mutated = doctor(REVIEW_CONSOLE, 'log one `SKIP` via', 'log one `FAILED` via');
+  assert.throws(() => assertStep7Composer(mutated), (e) => e.message.startsWith('step 7') && /names FAILED|lost a shadow-dup fact/.test(e.message));
+  const onlyFailed = doctor(REVIEW_CONSOLE, ' and keep the item staged.', ' and keep the item staged (FAILED).');
+  assert.throws(() => assertStep7Composer(onlyFailed), { message: /names FAILED/ });
 });
 
 test("the appendix apply-on-Q# bullet routes a shadow-dup copy through step 7's composer", () => {
