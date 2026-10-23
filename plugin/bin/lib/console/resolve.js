@@ -90,7 +90,7 @@ const SECTION_MAP = [
 
 // One literal string per alternative of every non-`.patch` SECTION_MAP row,
 // each with the trailing `-` its regex requires (a `(-|\b)` row still lists
-// the `-` form). stage-item.js's unmapped-prefix warning (#3370) suggests the
+// the `-` form). stage-item.js's unmapped-prefix refusal (#3370) suggests the
 // nearest of these. MUST list every alternative of every non-`.patch` row.
 // resolve.test.js expands each row's regex source into its alternatives and
 // fails when one is missing here; a new row shape its parser does not
@@ -115,7 +115,7 @@ const CANONICAL_PREFIXES = [
 ];
 
 // Staged-id prefixes whose run never reaches this console, so no SECTION_MAP row
-// maps them and stage-item.js's unmapped-prefix warning skips them (#3488). Each
+// maps them and stage-item.js's unmapped-prefix refusal skips them (#3488). Each
 // entry is [pattern over the id without its extension, why the console never sees it].
 // An id on this list must NOT also classify mapped (resolve.test.js pins the disjointness).
 const STAGING_EXEMPTIONS = Object.freeze([

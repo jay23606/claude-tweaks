@@ -766,7 +766,7 @@ test('nearestCanonicalPrefixes ranks an exact head match first and honors n (#33
 
 // #3488: every staged-id producer prefix is either mapped to a console section
 // or exempt (its run never reaches the console), so stage-item.js's
-// unmapped-prefix warning only fires for a genuinely unknown id.
+// unmapped-prefix refusal only fires for a genuinely unknown id.
 // AC2.1: one predicate, used by the positive test and by the control.
 function mappedOrExempt(id) {
   return classifyStagedItem(id + '.md').reason !== 'unmapped-prefix' || stagingExemption(id) !== null;
