@@ -262,6 +262,24 @@ test('trusted: exit 4 and nothing written (#1932 AC5)', async () => {
   assert.ok(!fs.existsSync(path.join(fx.runDir, 'console.json')));
 });
 
+// #3949 AC6: below `unattended` with no human, the resolver files nothing, drops
+// nothing, and leaves every item unresolved — no console.json, so the archive
+// guard (readConsoleState 'none' with staged items) keeps refusing.
+test('AC6: console-resolve.js below unattended exits 4 and writes no console.json', async () => {
+  for (const autonomy of ['supervised', 'trusted']) {
+    const fx = mainCheckoutWithRun({ autonomy, staged: NEEDS });
+    const calls = [];
+    const { d, err } = baseDeps(fx, calls);
+    assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto'], d), 4, autonomy);
+    assert.match(err(), /consoleAutoResolve/);
+    assert.ok(!fs.existsSync(path.join(fx.runDir, 'console.json')), autonomy);
+    assert.ok(!calls.some((c) => c[0] === 'gh'), 'no gh call');
+    for (const [n, b] of Object.entries(NEEDS)) {
+      assert.strictEqual(fs.readFileSync(path.join(fx.runDir, 'staged', n), 'utf8'), b, `${autonomy}: ${n} untouched`);
+    }
+  }
+});
+
 test('--dry-run at unattended prints the table and writes nothing (#1932 AC5)', async () => {
   const fx = mainCheckoutWithRun({ staged: THREE });
   const before = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');

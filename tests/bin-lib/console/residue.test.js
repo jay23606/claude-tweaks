@@ -53,6 +53,25 @@ test('UNRESOLVED_RESOLUTIONS is exactly pending and keep-staged', () => {
   assert.deepStrictEqual([...UNRESOLVED_RESOLUTIONS].sort(), ['keep-staged', 'pending']);
 });
 
+// #3949 AC3: a console.json written before `dropped`/`filed` existed holds its
+// contested findings as `keep-staged`; they must keep counting as residue on both
+// the run-level reader and the session-start banner scan.
+test('AC3: a legacy console.json keep-staged item still counts in readRunResidue and scanUnresolvedConsoles', () => {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'console-residue-legacy-'));
+  const run = path.join(project, '.claude-tweaks', 'pipelines', 'archive', '2026-10-16T210949-spec-2821');
+  fs.mkdirSync(path.join(run, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(run, 'staged', 'review-debate-deviation.md'), 'x');
+  fs.writeFileSync(path.join(run, 'console.json'), JSON.stringify({
+    resolved: true, mode: 'auto-resolve',
+    items: [{ id: 'review-debate-deviation.md', section: 'Contested findings', resolution: 'keep-staged', reason: 'debate inconclusive — no Approve-all default; never auto-applied' }],
+  }));
+  const [c] = readRunResidue(run).consoles;
+  assert.deepStrictEqual(c.items.map((i) => i.resolution), ['keep-staged']);
+  assert.strictEqual(c.acknowledged, false);
+  const { runs } = require(path.join(MOD, '..', '..', 'hooks', 'session-residue')).scanUnresolvedConsoles(project, { pluginRoot: '/p' });
+  assert.deepStrictEqual(runs.map((r) => r.dir), [run]);
+});
+
 test('unresolvedItems returns exactly the four pending/keep-staged items of the #2821 console', () => {
   assert.deepStrictEqual(unresolvedItems(CONSOLE_2821).map((i) => i.id), [
     'reflect-1.md',

@@ -1182,7 +1182,7 @@ async function main(argv) {
   }
   if (cmd === 'archive-run') {
     const {
-      archiveRunDir, readConsoleState, listSpecDirs, listStagedItems, consoleReplacedByAutoMergeShortCircuit,
+      archiveRunDir, readConsoleState, consoleResidue, listSpecDirs, listStagedItems, consoleReplacedByAutoMergeShortCircuit,
       TIEBREAK_COVERAGE_HINT,
     } = require('./lib/reconcile/archive-merged');
     const { NON_TERMINAL } = require('./lib/hooks/run-integrity');
@@ -1226,6 +1226,13 @@ async function main(argv) {
     const consoleState = readConsoleState(runDir);
     if (consoleState === 'unresolved') {
       process.stdout.write('claude-tweaks: archival refused — console-unresolved (console.json rendered but not resolved; answer or resolve the console first)\n');
+      return 0;
+    }
+    // #3949: a resolved console can still hold an item no human has reviewed.
+    if (consoleState === 'residue') {
+      const { items, unreadable } = consoleResidue(runDir);
+      const what = items > 0 ? `${items} unresolved item(s) no human has reviewed` : `${unreadable.length} console.json file(s) could not be read`;
+      process.stdout.write(`claude-tweaks: archival refused — console-residue (${what}; review them, then run console-residue.js --ack --run "${runDir}")\n`);
       return 0;
     }
     if (consoleState === 'none' && consoleReplacedByAutoMergeShortCircuit(runDir)) {

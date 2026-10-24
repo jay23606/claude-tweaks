@@ -2566,6 +2566,35 @@ test('archiveMerged: same shape as above, but console is unresolved — stays in
   assert.equal(fs.existsSync(runDir), true);
 });
 
+test('archiveMerged: same shape as above, but a resolved console holds a keep-staged item — stays in place with console-residue (#3949)', { skip: PATH_STUB_SKIP }, () => {
+  const root = fs.realpathSync(makeRepo());
+  const runId = '2026-08-01T090000-record-1962-nobranch-closedpr-residue';
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', runId);
+  fs.mkdirSync(path.join(runDir, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify({
+    status: 'active',
+    worktree: path.join(root, '.claude', 'worktrees', 'gone-record-1962c'),
+    pr: { number: 1964, branch: 'worktree-record-1962-gone-c' },
+  }));
+  fs.writeFileSync(path.join(runDir, 'staged', 'review-debate-deviation.md'), 'x');
+  fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({
+    resolved: true, items: [{ id: 'review-debate-deviation.md', section: 'Contested findings', resolution: 'keep-staged', reason: 'r' }],
+  }));
+
+  const wrapper = installGhWrapper({ number: 1964, state: 'CLOSED', mergedAt: null, updatedAt: '2026-08-01T00:00:00Z', mergeCommit: null });
+  let result;
+  try {
+    result = archiveMerged({ cwd: root });
+  } finally {
+    wrapper.restore();
+  }
+  assert.ok(!result.archived.includes(runDir));
+  const skip = result.skipped.find((s) => s.runDir === runDir);
+  assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
+  assert.equal(skip.reason, 'console-residue');
+  assert.equal(fs.existsSync(runDir), true);
+});
+
 test('archiveMerged: same shape as above, but the PR-by-number probe reports OPEN — falls back to the ordinary no-branch skip', { skip: PATH_STUB_SKIP }, () => {
   const root = fs.realpathSync(makeRepo());
   const runId = '2026-08-01T090000-record-1962-nobranch-openpr';
@@ -3052,6 +3081,63 @@ test('decideArchiveCore: consoleState none + MERGED + hasStagedPending:false arc
 });
 test('decideArchiveCore: consoleState unresolved still skips regardless of hasStagedPending', () => {
   assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'unresolved', false), { action: 'skip', reason: 'console-unresolved' });
+});
+
+// #3949: a resolved console holding an unacknowledged unresolved item blocks
+// archival — in decideArchiveCore unconditionally, whatever the staged evidence.
+test('AC6: decideArchiveCore: consoleState residue skips console-residue, regardless of hasStagedPending', () => {
+  for (const staged of [false, true, undefined]) {
+    assert.deepStrictEqual(decideArchiveCore({ state: 'MERGED' }, 'residue', staged), { action: 'skip', reason: 'console-residue' });
+  }
+});
+test('decideArchiveCore: console-residue keeps its place after the PR-state skips and is not a structurally-stuck reason', () => {
+  assert.deepStrictEqual(decideArchiveCore({ state: 'OPEN' }, 'residue', false), { action: 'skip', reason: 'pr-open' });
+  assert.equal(STRUCTURALLY_STUCK_REASONS.has('console-residue'), false);
+});
+
+function residueRunDir(consoleBody, { specBody } = {}) {
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-'));
+  const put = (dir, body) => {
+    fs.mkdirSync(path.join(dir, 'staged'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'staged', 'review-debate-deviation.md'), 'x');
+    fs.writeFileSync(path.join(dir, 'console.json'), typeof body === 'string' ? body : JSON.stringify(body));
+  };
+  put(runDir, consoleBody);
+  if (specBody !== undefined) put(path.join(runDir, 'spec-4'), specBody);
+  return runDir;
+}
+const heldItem = (resolution) => ({ id: 'review-debate-deviation.md', section: 'Contested findings', resolution, reason: 'r' });
+
+test('AC6: readConsoleState: a resolved console holding a keep-staged item reads residue, and decideArchive refuses it', () => {
+  const runDir = residueRunDir({ resolved: true, items: [heldItem('keep-staged')] });
+  assert.strictEqual(readConsoleState(runDir), 'residue');
+  assert.deepStrictEqual(decideArchive({ state: 'MERGED' }, readConsoleState(runDir)), { action: 'skip', reason: 'console-residue' });
+});
+test('AC2: readConsoleState: a resolved console holding a pending item reads residue', () => {
+  assert.strictEqual(readConsoleState(residueRunDir({ resolved: true, items: [heldItem('pending')] })), 'residue');
+});
+test('readConsoleState: an acknowledged residue console reads resolved and archives', () => {
+  const runDir = residueRunDir({ resolved: true, residueAcknowledgedAt: '2026-10-24T10:00:00Z', items: [heldItem('keep-staged')] });
+  assert.strictEqual(readConsoleState(runDir), 'resolved');
+  assert.deepStrictEqual(decideArchive({ state: 'MERGED' }, readConsoleState(runDir)), { action: 'archive' });
+});
+test('readConsoleState: an unresolved item whose staged file is gone is not residue (missing semantics kept)', () => {
+  const runDir = residueRunDir({ resolved: true, items: [heldItem('keep-staged')] });
+  fs.rmSync(path.join(runDir, 'staged', 'review-debate-deviation.md'));
+  assert.strictEqual(readConsoleState(runDir), 'resolved');
+});
+test('readConsoleState: a spec-N console with residue makes the run residue, even under a clean top-level console', () => {
+  const runDir = residueRunDir({ resolved: true, items: [] }, { specBody: { resolved: true, items: [heldItem('pending')] } });
+  assert.strictEqual(readConsoleState(runDir), 'residue');
+});
+test('readConsoleState: an unreadable spec-N console fails closed to residue', () => {
+  assert.strictEqual(readConsoleState(residueRunDir({ resolved: true, items: [] }, { specBody: '{not json' })), 'residue');
+});
+test('readConsoleState: an unresolved top-level console keeps precedence over residue', () => {
+  assert.strictEqual(readConsoleState(residueRunDir({ resolved: false, items: [heldItem('pending')] })), 'unresolved');
+});
+test('readConsoleState: no console anywhere still reads none', () => {
+  assert.strictEqual(readConsoleState(fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-none-'))), 'none');
 });
 
 test('decideArchiveCore: invalid-arguments skips with reason invalid-arguments (#3416)', () => {
