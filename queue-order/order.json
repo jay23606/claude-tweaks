@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-24T06:10:55.740Z",
+  "computedAt": "2026-10-24T07:59:16.183Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -10,17 +10,12 @@
       },
       {
         "number": 3989,
-        "updatedAt": "2026-10-23T22:43:45Z",
+        "updatedAt": "2026-10-24T06:13:52Z",
         "state": "OPEN"
       },
       {
         "number": 3988,
-        "updatedAt": "2026-10-23T22:43:42Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3987,
-        "updatedAt": "2026-10-23T22:43:38Z",
+        "updatedAt": "2026-10-24T06:12:38Z",
         "state": "OPEN"
       },
       {
@@ -35,7 +30,7 @@
       },
       {
         "number": 3980,
-        "updatedAt": "2026-10-23T22:43:22Z",
+        "updatedAt": "2026-10-24T07:41:27Z",
         "state": "OPEN"
       },
       {
@@ -50,17 +45,7 @@
       },
       {
         "number": 3973,
-        "updatedAt": "2026-10-23T22:42:55Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3968,
-        "updatedAt": "2026-10-23T22:09:18Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3965,
-        "updatedAt": "2026-10-23T22:09:14Z",
+        "updatedAt": "2026-10-24T06:13:23Z",
         "state": "OPEN"
       },
       {
@@ -85,17 +70,17 @@
       },
       {
         "number": 3939,
-        "updatedAt": "2026-10-23T22:08:34Z",
+        "updatedAt": "2026-10-24T06:15:20Z",
         "state": "OPEN"
       },
       {
         "number": 3936,
-        "updatedAt": "2026-10-23T22:08:26Z",
+        "updatedAt": "2026-10-24T07:53:55Z",
         "state": "OPEN"
       },
       {
         "number": 3933,
-        "updatedAt": "2026-10-23T22:08:23Z",
+        "updatedAt": "2026-10-24T06:51:30Z",
         "state": "OPEN"
       },
       {
@@ -109,13 +94,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3922,
-        "updatedAt": "2026-10-23T22:27:36Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3917,
-        "updatedAt": "2026-10-23T22:08:03Z",
+        "updatedAt": "2026-10-24T07:42:08Z",
         "state": "OPEN"
       },
       {
@@ -134,11 +114,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3880,
-        "updatedAt": "2026-10-23T22:07:24Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3878,
         "updatedAt": "2026-10-24T05:39:46Z",
         "state": "OPEN"
@@ -149,16 +124,6 @@
         "state": "OPEN"
       },
       {
-        "number": 3848,
-        "updatedAt": "2026-10-23T22:06:51Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3843,
-        "updatedAt": "2026-10-22T16:51:43Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3835,
         "updatedAt": "2026-10-24T05:39:39Z",
         "state": "OPEN"
@@ -166,11 +131,6 @@
       {
         "number": 3831,
         "updatedAt": "2026-10-24T05:39:35Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3827,
-        "updatedAt": "2026-10-22T20:07:51Z",
         "state": "OPEN"
       },
       {
@@ -189,18 +149,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3812,
-        "updatedAt": "2026-10-22T06:21:39Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3795,
-        "updatedAt": "2026-10-23T22:04:48Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3792,
-        "updatedAt": "2026-10-23T22:04:44Z",
+        "updatedAt": "2026-10-24T06:55:49Z",
         "state": "OPEN"
       },
       {
@@ -225,7 +175,7 @@
       },
       {
         "number": 3759,
-        "updatedAt": "2026-10-23T22:04:32Z",
+        "updatedAt": "2026-10-24T07:50:44Z",
         "state": "OPEN"
       },
       {
@@ -235,7 +185,7 @@
       },
       {
         "number": 3744,
-        "updatedAt": "2026-10-23T22:04:28Z",
+        "updatedAt": "2026-10-24T07:16:20Z",
         "state": "OPEN"
       },
       {
@@ -250,7 +200,7 @@
       },
       {
         "number": 3737,
-        "updatedAt": "2026-10-23T22:04:16Z",
+        "updatedAt": "2026-10-24T07:25:07Z",
         "state": "OPEN"
       },
       {
@@ -292,247 +242,10 @@
         "number": 3315,
         "updatedAt": "2026-10-22T00:17:24Z",
         "state": "OPEN"
-      },
-      {
-        "number": 3002,
-        "updatedAt": "2026-10-24T04:56:37Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2987,
-        "updatedAt": "2026-10-24T04:56:29Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 2805,
-        "updatedAt": "2026-10-15T16:08:18Z",
-        "state": "OPEN"
       }
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Defer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/hooks/pre-tool-use.js`'s `checkWorktreeRequired` (the `worktree-always` gate) denies a Bash call whose command text contains a `>`/`>>`/`>|`/`&>`/`&>>` redirect-shaped substring, to stop an unguarded write to the main checkout outside a worktree. The matcher appears to be purely textual: it does not distinguish a real shell redirect from a `>` that occurs inside embedded heredoc'd source (JS, in practice) passed to `node`.\n\nConfirmed live during a `/claude-tweaks:dispatch next` Routine firing on 2026-10-23, in a non-worktree main-checkout session: `plugin/skills/dispatch/queue-pull-script.md`'s own documented grouping snippet (run via `bin/node-eval-file.js` with a heredoc) contains the literal line `if (openIds.length > 0) excludedNative.push(...)`. Running that exact documented Bash call was refused with the `worktree-always` denial message, even though the command performs no real redirect — its only file target was a `/tmp/ct-session-*` path, nowhere near the repo. Rewriting the comparison to `if (openIds.length) { ... }` (no literal `> ` text) let the identical logic run with no denial, confirming the trigger is textual, not semantic.\n\nBecause `queue-pull-script.md` is read and run verbatim by every `/claude-tweaks:dispatch` firing (and other skills following the same node-eval-file.js heredoc convention), any firing that runs in a non-worktree session and reaches this exact line hits the same false block — a Routine firing has no one to retry it by hand.\n\n## Deliverables\n\n- `checkWorktreeRequired`'s redirect-shaped-substring matcher gains awareness of heredoc boundaries (e.g. ignore `>`-shaped text between a `<<'EOF'`/`<<EOF`-style heredoc opener and its matching closing delimiter), or is otherwise scoped to reject only a `>` that is syntactically a shell redirect (preceded by a file-descriptor-less command boundary, not embedded inside a heredoc body).\n- `plugin/skills/_shared/policy-schema-coverage.md`'s worktree-always coverage block documents the heredoc exemption explicitly, so a future matcher change doesn't silently regress it.\n- A regression test in the existing `pre-tool-use` hook test suite pins a Bash command containing a heredoc with a `>`-shaped numeric comparison (e.g. `x.length > 0`) as allowed, while a real `>` redirect at the top level of the same command (outside any heredoc) is still denied.\n\n## Acceptance Criteria\n\n1. The exact `queue-pull-script.md` grouping snippet (containing `if (openIds.length > 0) ...`) runs without a `worktree-always` denial in a non-worktree session, when its only write target is outside the repo (e.g. under `/tmp`).\n2. A Bash command with a real top-level `>` redirect into a repo file (outside any heredoc) is still denied in a non-worktree session — no regression to the gate's actual purpose.\n3. `npm test` passes.\n\n## Release Note\n\nInternal hardening: the `worktree-always` write gate no longer mistakes a numeric comparison (`x.length > 0`) inside a heredoc-embedded script for a real shell redirect.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/pre-tool-use.js` — `checkWorktreeRequired`'s redirect-shaped-substring matcher\n- `plugin/skills/_shared/policy-schema-coverage.md` — document the heredoc exemption\n- `tests/` (existing pre-tool-use hook suite) — new regression cases\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-23T16:26:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3989,
-        "state": "OPEN",
-        "title": "worktree-always PreToolUse hook false-positives on numeric comparisons like \"x.length > 0\" inside a Bash heredoc",
-        "updatedAt": "2026-10-23T22:43:45Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect hindsight from #3945\n\nDefer-reason: tangential\n\n## Current State\n\n#3945's SDD fix wave for F2 added a guard ahead of existing checks: the cited evidence line must be within ±5 of the finding (`plugin/bin/lib/tiebreak.js`). The window check and the past-EOF guard run after it, and their tests used fixtures the new guard already rejects. After F2 those tests no longer caught a regression in the code they were written for: deleting the downstream check left the suite green. The scoped re-review still marked F2 ADDRESSED.\n\nNothing in `plugin/skills/build/plan-authoring-checks.md`'s discrimination check, or in the re-review prompt, asks to re-prove downstream checks after inserting an earlier guard. Evidence: sdd-final-review.md residual (c) in spec-3945; ledger row 12.\n\n## Deliverables\n\n- `plan-authoring-checks.md`'s discrimination check gains a rule: when a fix inserts a precondition guard ahead of an existing check, each downstream check's test is re-proved by mutating that check (not only the new guard), and the plan names each one.\n- The same rule is stated where the SDD re-review is composed in this plugin (the review-of-fix-wave instructions `/claude-tweaks:build` passes), so a re-review names each downstream check and shows its test going red.\n\n## Acceptance Criteria\n\n1. Both texts carry the rule.\n2. A conformance test pins both, and it was shown to go red without each.\n\n## Release Note\n\nA fix that adds an early guard now has to show that the checks after it are still tested.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/plan-authoring-checks.md` — add the downstream re-prove rule\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-23T01:13:25Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3988,
-        "state": "OPEN",
-        "title": "Re-prove downstream checks after a fix inserts an earlier guard",
-        "updatedAt": "2026-10-23T22:43:42Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect hindsight from #3817\n\nDefer-reason: tangential\n\n## Current State\n\n`reflect` filed #3817 from #3665's run at 20:57Z on 2026-10-20. That was nine hours after #3078's fix for the same gap had merged to main (11:19Z). #3665's run executed an installed plugin build that predated #3078, so its reflect pass described a gap main had already closed. The record's Deliverable 1 asked to re-add the carve-out #3078 deliberately deleted.\n\nThe tangential-finding filing path in `plugin/skills/reflect/SKILL.md` (Step 3, tangential row) composes the record from the session's view of the skill files, and never checks the integration branch for the claimed absence. Evidence: spec-3817 decisions.md `premise reversed:` line; commit 364762254 (#3078).\n\n## Deliverables\n\n- Before `reflect` stages a tangential record that claims a skill or contract file lacks something, it probes the integration branch for that absence (for example `git grep` or `git log -S` on `origin/{integration-branch}` for the named paragraph), and cites the probe command and result in the record's Current State.\n- When the probe finds the claimed content already on the integration branch, the finding is not filed; a one-line decisions.md note records why.\n\n## Acceptance Criteria\n\n1. `reflect/SKILL.md`'s tangential filing path names the integration-branch probe and the drop-when-present rule.\n2. A conformance test pins both, and it was shown to go red without each.\n\n## Release Note\n\nReflect no longer files a record for a gap that is already fixed on the main branch.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/reflect/SKILL.md` — add the integration-branch probe to the tangential filing path\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-23T01:13:18Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3987,
-        "state": "OPEN",
-        "title": "Probe the integration branch before reflect files a skill-gap record",
-        "updatedAt": "2026-10-23T22:43:38Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "Origin: reflect full from #3947\n\nDefer-reason: tangential\n\n## Current State\n\nA skill step that dispatches agents or calls CLIs is specified in prose, and nothing at spec, plan or authoring time asks what happens when each of those calls fails.\n\nIn #3947 (Step 3.7, `plugin/skills/review/step3-tiebreak.md`), the SDD final review needed 1 Critical and 6 Important fixes, and the later 4-lens review found 23 more findings. Most of them were the same kind of gap: what the reviewer does when a dispatch fails or returns non-DONE, when `write-findings` exits 2, when `resolve-tiebreak` crashes, or when `log-decision.js` fails. Each was added after the fact, across fix commits a2d09600d, a645f740b, cc098dd27 and 494bb6045.\n\n`docs/skill-authoring.md` and `plugin/skills/build/plan-authoring-checks.md` have no rule or check that asks for a failure path per external call.\n\n## Deliverables\n\n- `docs/skill-authoring.md` gains a rule: a step whose prose dispatches an agent or runs a CLI states, for each such call, its next move on failure (retry once / fallback rung / surface and stop) and the log line it writes.\n- `plugin/skills/build/plan-authoring-checks.md` gains a check: a plan task that adds or changes such a step carries a failure-path table (call → failure mode → next move → log line) before its prose is written.\n- A conformance test pins both texts.\n\n## Acceptance Criteria\n\n1. `docs/skill-authoring.md` contains the failure-path rule and names the three next-move kinds.\n2. `plan-authoring-checks.md` contains the failure-path table check and its trigger (a task touching a step that dispatches an agent or runs a CLI).\n3. A test asserts both, and it was shown to go red without each text.\n\n## Release Note\n\nSkill steps that dispatch agents or run tools now have to say up front what happens when each call fails, so those gaps are found while planning instead of in review.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/skill-authoring.md` — add the failure-path rule\n- `plugin/skills/build/plan-authoring-checks.md` — add the failure-path table check\n\n_Filed by `reflect` via specShapedBody._\n",
@@ -579,312 +292,6 @@
         "state": "OPEN",
         "title": "Require a failure path for every agent dispatch and CLI call in skill-step prose",
         "updatedAt": "2026-10-23T22:43:34Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: spec #3843 review (out-of-diff observation)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/browse/SKILL.md` still advertises `set viewport <wxh>` and `set device \"<name>\"` as the skill's argument vocabulary (frontmatter `argument-hint` line 4, the pattern table at lines 43-44, and the anti-pattern row at line 145 that tells consumers to use \"the first-class `set viewport`/`set device` commands\"); `plugin/skills/help/reference-card.md:46` repeats the same `argument-hint`. The installed `playwright-cli --help` has `resize <w> <h>` for the viewport (and `plugin/skills/browse/playwright-cli-reference.md:75` maps the old `set viewport <w> <h>` form to it) and no `set device` command at all — only `set-color-scheme`/`set-media`-style emulation verbs. Found during the review of #3843 (which fixed the same stale `set viewport` form in `plugin/agents/qa-agent.md`); these files are outside that diff.\n\n## Deliverables\n\n- [ ] Decide whether `set device \"<name>\"` has a playwright-cli equivalent; either document the mapping in `plugin/skills/browse/playwright-cli-reference.md` or drop the pattern\n- [ ] Restate `plugin/skills/browse/SKILL.md` lines 4, 43-44 and 145 in terms the current CLI supports (`resize <w> <h>` for viewport)\n- [ ] Update `plugin/skills/help/reference-card.md:46` to the same `argument-hint`\n\n## Acceptance Criteria\n\n- `grep -rn 'set viewport' plugin/skills/browse/SKILL.md plugin/skills/help/reference-card.md` returns no hit outside a row explicitly labelled as the retired form\n- `grep -n 'set device' plugin/skills/browse/SKILL.md` returns no hit unless the playwright-cli equivalent is documented in `playwright-cli-reference.md`\n- `npm test` passes; any test pinning the old strings is updated in the same change\n\n## Release Note\n\nThe browse skill documents the viewport command the Playwright CLI actually supports.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/browse/SKILL.md` — lines 4, 43-44, 145 — retired-backend viewport/device vocabulary\n- `plugin/skills/help/reference-card.md` — line 46 — repeated argument-hint\n- `plugin/skills/browse/playwright-cli-reference.md` — document or drop the set-device mapping\n\n_Filed by `review` via specShapedBody._",
-        "createdAt": "2026-10-22T17:32:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3980,
-        "state": "OPEN",
-        "title": "browse: replace the retired backend's `set viewport`/`set device` vocabulary with playwright-cli forms",
-        "updatedAt": "2026-10-23T22:43:22Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n## Overview\n\nNothing in `run-state.json` says whether the session that owns a run is still alive. `updatedAt` moves on non-owner writes (the exemption stamps in `pre-tool-use.js` write to `ctx.runDir` without an ownership check), and a worktree lock PID belongs to the worktree rather than the run and goes stale on resume. Every cleanup decision that follows in this project (closing dead runs, trimming the SessionStart banner) needs one trustworthy answer to \"is this run live, dead, or can't we tell?\", and today three modules each answer it their own way.\n\nThis record adds that answer and changes no behavior. It does two things. It stamps an additive `owner` block into `run-state.json` wherever ownership is already stamped. It adds a new module, `plugin/bin/lib/run-liveness/`, that turns that block plus the existing probes (worktree lock, last commit time, event recency) into a three-valued verdict from positive evidence. No caller consumes the verdict yet; later records in this project migrate callers onto it (#3977 for dead-run closing and the banner, #3979 for the duplicated definitions) and then delete the old definitions.\n\n**Complexity:** Medium\n**Estimated tasks:** 7\n\n## Non-Goals\n\n- No caller consumes `runLiveness` in this record: not reconcile, not the SessionStart banner, not `isDeadRunDir`, not `resume-freshness.js`. Migrating callers is a separate record in this project (#3979).\n- No auto-close, no archive change, no banner change.\n- `updatedAt` is not repurposed. It stays a write timestamp and nothing new reads it as a liveness signal.\n- No change to the nested `claude -p` SessionEnd mis-attribution (#3845); this record only has to be correct in the presence of its false `interrupted`.\n- No GitHub state changes and no new policy keys. The 10 minute and 72 hour windows are module constants, tuned only with evidence and never in the fail-open direction.\n\n## Prerequisites\n\n| Spec | Title | Status |\n|------|-------|--------|\n| #3845 | A nested `claude -p` inside a pipeline session marks the parent's run interrupted at its SessionEnd | in progress; the SessionEnd route below must stay correct under its false `interrupted`, and both records touch `session-end.js`/`context.js` neighbourhoods |\n\n## Current State\n\n- Ownership stamps: `record-worktree` in `plugin/bin/hooks.js` (dispatch table at line 106, handler near line 655), `stampAdHocRunDir` in `plugin/bin/lib/hooks/post-tool-use.js` (line 295), and `stampAdHocRunDirForDenial` in `plugin/bin/lib/hooks/context.js` (line 785). Each calls `writeRunState(runDir, { worktree, status: 'active', sessionId })`.\n- `writeRunState` (`context.js` line 729) is a read-modify-write under `acquireRunStateLock` with a shallow `{ ...existing, ...patch, updatedAt }` merge. A nested object in the patch replaces the existing one wholesale.\n- Probes to reuse, not copy (each wrapped to return a tagged `positive` / `negative` / `error` result; a wrapper may add a read-only export, such as a raw last-commit timestamp getter in `resume-freshness.js`, without changing that file's behavior): `parseWorktreeList`, `isPidAlive`, `lockVerdict` exported from `plugin/bin/lib/hooks/worktree-reap.js`; `checkResumeFreshness` and `RESUME_FRESHNESS_THRESHOLD_MS` (10 minutes) in `plugin/bin/lib/hooks/resume-freshness.js`; `ownEventRecency(runDir)` in `plugin/bin/lib/reconcile/archive-merged.js` (line 263), which reads owner-attributed events from `events.jsonl` via `readEventLines` in `context.js`.\n- The duplicated liveness definitions this module will eventually replace: `isDeadRunDir` in `plugin/bin/lib/hooks/run-dir-resolve.js` (line 89), the `abandoned-interrupted` recency test in `classifyRunDir` (`archive-merged.js` line 1602), the probes in `resume-freshness.js`, and the worktree-lock read in `parentLiveDetail` in `plugin/bin/lib/flow/consolidated-pass.js`.\n- `isTrustedOwnedRun(ctx.ownedRun)` in `context.js` (line 752) is the existing owner-versus-`fallback` attribution test; `fallback` attribution is a guess at the newest unowned run and is never this session's own.\n- Hooks contract: `docs/hooks.md` (the Ownership section at line 44 is where the owner block is documented).\n- Tests: `tests/hooks-run-attribution.test.js` and `tests/hooks-context.test.js` for stamp behavior; `tests/bin-lib/reconcile/archive-merged.test.js` for `ownEventRecency` fixtures; the suite for the new module is new.\n\n## Deliverables\n\n- [ ] Task 0, blocking and first: the empirical premise check. Verify that a hook process receives `CLAUDE_PID` (the Bash tool environment carries `CLAUDE_PID`, observed on 2026-10-22 as the PID of the `claude` process in the `ps` ancestry). Probe it from a real hook invocation, record the raw output, and if hooks do not receive it, implement the parent-chain walk to the `claude` process instead. Task 0's output also fixes (a) the exact rule that identifies the `claude` process in the ancestry (executable basename and which ancestor), (b) how a nested `claude -p` is handled (the owner pid is always the process of the session whose `session_id` the hook received, never an ancestor belonging to another session), and (c) the result when neither source resolves a pid (`owner.pid` is `null`, and the run then has no PID evidence). The owner block records which source supplied the pid in `owner.pidSource` (`env` or `ancestry`). Do not write the owner-block contract text or its tests until this result is in hand (`empirical-premise-check-deliverables.md`).\n- [ ] `owner` block written by all three stamp sites: `{ sessionId, host, pid, pidSource, pidStartedAt, heartbeatAt }`, in the same `writeRunState` call that writes `sessionId` (so the owner block always belongs to the session recorded in `sessionId`), with `host` from `os.hostname()`, `pid` the Claude Code process, `pidStartedAt` from `ps -o lstart= -p <pid>` on Unix and `null` where the probe cannot run (Windows, or a sandbox without `ps`), and `heartbeatAt` an ISO timestamp. A stamp never replaces an existing owner block whose `sessionId` differs from the caller's, except when that same call also replaces the run's `sessionId` (an explicit adoption through `record-worktree`). `pid` and `pidStartedAt` are always written together in one call.\n- [ ] Heartbeat refresh: the owner's own hooks refresh `owner.heartbeatAt` at most once a minute. Only events attributed to the owner refresh it, never a `fallback` attribution. The refresh runs in the hook dispatcher's common path, so every hook event type with a trusted owned run heartbeats, not only PostToolUse. The re-stamp check (stored `pid` against the current process pid) runs on every owner-attributed event regardless of the heartbeat throttle: a resumed session with the same `sessionId` re-stamps `pid` and `pidStartedAt` together on its first event, and its SessionStart handler does this before it spawns the background reconcile pass, so a resumed run is never judged against its previous process.\n- [ ] New `plugin/bin/lib/run-liveness/index.js` exporting `runLiveness(runDir, { now, probes }) -> { verdict: 'live' | 'dead' | 'unknown', evidence: [{ probe, result, detail }] }` (one entry per probe consulted, `result` being `positive`, `negative`, or `error`), with every probe injectable (the house runner seam) and defaults wired to the existing probes listed above.\n- [ ] The verdict table and precedence rules (below) implemented, including the legacy route for runs with no owner block.\n- [ ] A new test suite for the module with one test per table row, including PID reuse, the legacy route, and the SessionEnd route requiring an owner block, plus a fail-open variant of the module that the tests show going red.\n- [ ] `docs/hooks.md` documents the owner block (fields, who writes it, heartbeat cadence, that a missing block means legacy and never an error).\n\nVerdict table the module implements:\n\n| Verdict | Requires |\n|---|---|\n| `live` | Any one of: the owner PID is alive on this host and its start time matches `pidStartedAt`; `heartbeatAt` is within 10 minutes; a worktree lock on the run's worktree reports an in-use PID (`lockVerdict`); the last commit on the run's worktree is under 10 minutes old (the `resume-freshness.js` probe). |\n| `dead` | All `live` probes negative and error-free, plus one of: the owner PID was checked on this host and is gone, or alive with a different start time; or status is `interrupted` with `lastEvent: session-end` and no owner heartbeat since. The SessionEnd route applies only to a run that has an owner block. |\n| `dead` (legacy route, runs with no owner block) | No owner-attributed event in `events.jsonl` (`ownEventRecency`) for 72 hours, no in-use lock, and no commit on the worktree for 72 hours. The SessionEnd route alone is never enough for a legacy run, so a false `interrupted` from #3845 cannot kill an idle but live legacy run. |\n| `unknown` | Anything else: another host, a probe that errored, a null start time with no SessionEnd, a legacy run short of the 72 hour route. |\n\nPrecedence and probe semantics (the table alone does not settle conflicting evidence):\n\n- Every probe is consulted, in the order owner PID, heartbeat, worktree lock, last commit, owner-event recency, so the evidence list is complete and deterministic; there is no short-circuit.\n- A `positive` live probe yields `live` even when another probe reported `error` (a live verdict never closes anything). Otherwise any `error` entry yields `unknown`, even when a death witness holds. Otherwise `dead` needs a death witness; with none, the verdict is `unknown`.\n- \"No owner heartbeat since\" the SessionEnd stamp means `owner.heartbeatAt` is earlier than the `ts` of the newest `session-end` event in the run's `events.jsonl` (appended by `session-end.js`); no new run-state field is added. An unreadable `events.jsonl` is an `error`.\n- The SessionEnd route is the death witness for the case the PID row cannot judge: the owner PID is alive on this host but `pidStartedAt` is `null`, or `pid` is `null`. When the PID row can judge (gone, mismatched start time, or matching start time), it decides and the SessionEnd route adds nothing.\n- The worktree lock and last-commit probes return `negative` with detail `no-worktree` when the run records no worktree or the worktree is gone; absence is not an error, and a missing worktree is never itself a death witness.\n- Owner-event recency: an unreadable `events.jsonl` is an `error`; a readable file with no owner-attributed events measures its age from the run id's own timestamp, so a legacy run with zero events still needs 72 hours.\n- Heartbeat and PID are separate: a long hook-less stretch (a long tool call) can exceed the 10 minute heartbeat window while the PID row still reports `live`; PID-gone counts as a death witness only together with a stale heartbeat, a negative lock and a negative commit probe.\n\n## Acceptance Criteria\n\n1. After `record-worktree`, `stampAdHocRunDir`, and `stampAdHocRunDirForDenial` each run against a fresh run dir, the written `run-state.json` contains `owner.sessionId`, `owner.host`, `owner.pid`, `owner.pidStartedAt` (a string, or `null` when the probe is injected to fail), and `owner.heartbeatAt`; a test per stamp site asserts every field.\n2. Two hook events from the owning session 30 seconds apart leave `owner.heartbeatAt` unchanged after the second; a third event 61 seconds after the first advances it. An event attributed `fallback` never changes `owner.heartbeatAt`. A hook from a different `sessionId` never changes the owner block, and a stamp from a different session over an existing owner block leaves it unchanged.\n3. A resumed session (same `sessionId`, new pid) leaves a run-state whose `owner.pid` and `owner.pidStartedAt` match the new process after its first event, written together in one `run-state.json` update, and `runLiveness` then returns `live` through the PID row. The SessionStart handler performs that re-stamp before the background reconcile pass is spawned; a test asserts the order.\n4. `runLiveness` returns `live` when the owner PID is alive on this host with a start time equal to `pidStartedAt`. When the PID is gone, and every other probe is a clean negative, it returns `dead`. When the PID is alive but its start time differs from `pidStartedAt` (PID reuse), the PID row does not report `live`, and with every other probe a clean negative the verdict is `dead`.\n5. Each remaining `live` probe (heartbeat under 10 minutes, in-use worktree lock, last commit under 10 minutes) alone yields `live`, tested one by one with every other probe negative.\n6. A run with an owner block whose PID is alive with `pidStartedAt` `null`, status `interrupted`, `lastEvent: session-end`, and a heartbeat earlier than the newest `session-end` event yields `dead` when every `live` probe is a clean negative; the same run with a heartbeat later than that event yields `live` when it is under 10 minutes old and `unknown` otherwise, never `dead`. A run with no owner block and the same `interrupted` shape yields `unknown`, never `dead`. A run whose PID is alive with a matching start time yields `live` whatever its status.\n7. A legacy run (no owner block) yields `dead` only when `ownEventRecency` is older than 72 hours, no in-use lock exists, and the last commit on the worktree is older than 72 hours; at 71 hours of event silence it yields `unknown`.\n8. A probe that throws or returns an error result yields `unknown`, for each probe in turn. A different `host`, and a null `pidStartedAt` with no SessionEnd evidence, each yield `unknown`.\n9. A fail-open variant of the module (probe error mapped to `dead`) is present in the test file as an injected fault and the probe-error tests fail against it; the evidence is recorded in the PR body.\n10. The `CLAUDE_PID` premise result, with the raw probe output, is recorded in the PR body, and the owner block's `pid` source in the code matches it.\n11. A `run-state.json` with no `owner` key is read by every existing reader without error and `runLiveness` treats it as legacy; a test pins this.\n12. Every verdict carries one evidence entry per probe consulted, each with `result` of `positive`, `negative`, or `error`; a test shows that an erroring probe yields an `error` entry (not `negative`) and verdict `unknown`.\n13. Precedence: a fixture with a positive heartbeat and an erroring lock probe yields `live`; a fixture with a death witness and an erroring commit probe yields `unknown`; the evidence list has one entry per probe in the stated order in both.\n14. A run recording no worktree yields `negative` (`no-worktree`) from the lock and commit probes, not `error`; a legacy run with a readable, empty `events.jsonl` ages from its run id timestamp (a run id 73 hours old yields `dead` through the legacy route, one 71 hours old yields `unknown`).\n15. `owner.pidSource` is `env` or `ancestry`; with neither source available `owner.pid` is `null`, and a run with a `null` pid never yields `dead` through the PID row.\n16. `docs/hooks.md` names the owner block's fields (including `pidSource`), the precedence rules, and the legacy rule.\n\n## Release Note\n\nAdded a per-run liveness record so claude-tweaks can tell a running session's run from an abandoned one, with no change to how runs behave yet.\n\n## Technical Approach\n\nThe owner block is additive to `run-state.json`, which installed builds read over this repo's directories and every consumer project's. Readers treat a missing block as legacy and never as an error; nothing is removed or renamed.\n\n`runLiveness` is a pure function over injected probes. Each probe returns a tagged result (positive, negative, or error) so that an error can never be conflated with a negative. The module composes per the precedence rules above: a positive `live` probe yields `live`; otherwise an `error` yields `unknown`; otherwise `dead` requires every `live` probe to be a clean negative plus a death witness; everything else is `unknown`.\n\n### Data / API Surface\n\n`run-state.json` gains:\n\n```json\n\"owner\": { \"sessionId\": \"string\", \"host\": \"os.hostname()\", \"pid\": 90405, \"pidSource\": \"env | ancestry\", \"pidStartedAt\": \"string or null\", \"heartbeatAt\": \"ISO-8601\" }\n```\n\n`runLiveness(runDir, { now, probes })` returns `{ verdict: 'live' | 'dead' | 'unknown', evidence: [{ probe, result: 'positive' | 'negative' | 'error', detail }] }`. The structured evidence lets a caller tell a probe error from a clean negative (a resume gate fails closed on an error but not on a clean negative). `probes` overrides any of: `pidAlive`, `pidStartTime`, `lockInUse`, `lastCommitAt`, `ownEventAt`, `hostname`.\n\n### Key Files\n\n- `plugin/bin/lib/run-liveness/index.js` — new module, `runLiveness` and the legacy/SessionEnd routes\n- `plugin/bin/lib/hooks/context.js` — `stampAdHocRunDirForDenial`, `writeRunState`, `isTrustedOwnedRun`; the shared owner-block builder and heartbeat helper belong here\n- `plugin/bin/hooks.js` — `record-worktree` stamp site\n- `plugin/bin/lib/hooks/post-tool-use.js` — `stampAdHocRunDir` stamp site\n- `plugin/bin/lib/hooks/session-start.js` — re-stamp of a resumed session's owner block before the background reconcile spawn\n- `plugin/bin/lib/hooks/worktree-reap.js` — `parseWorktreeList`, `isPidAlive`, `lockVerdict`, reused behind tagged wrappers\n- `plugin/bin/lib/hooks/resume-freshness.js` — last-commit-recency probe, reused behind a tagged wrapper (a read-only raw-timestamp export may be added)\n- `plugin/bin/lib/reconcile/archive-merged.js` — `ownEventRecency`, reused as-is\n- `docs/hooks.md` — owner block documentation\n- `tests/run-liveness.test.js` — new suite for the module and its fail-open variant\n\n## Gotchas\n\n- ASSUMPTION — verify at build: hook processes receive `CLAUDE_PID` — via Task 0's probe from a real hook invocation. If they do not, walk the parent chain to the `claude` process; do not fall back to `process.ppid` unverified.\n- `writeRunState` merges shallowly: writing `{ owner: { heartbeatAt } }` would erase `sessionId`, `pid`, and the rest. A heartbeat or re-stamp must read the existing `owner` and spread it into the patch.\n- Never refresh the heartbeat from a `fallback`-attributed event (`isTrustedOwnedRun`): that attribution is a guess at the newest unowned run and is routinely a sibling session's directory. Refreshing it would keep a dead run looking alive.\n- `ps -o lstart=` output is locale- and platform-dependent; store the raw trimmed string and compare for equality only, never parse it into a date.\n- A heartbeat write is a hook-path write to a shared file: it must honor the never-break-a-session invariant in `docs/hooks.md` (swallow errors, never throw) and be throttled by reading `owner.heartbeatAt`, not by a new marker file.\n- Legacy runs have no heartbeat, so \"no heartbeat since the SessionEnd stamp\" is always true for them; this is why the SessionEnd route requires an owner block.\n- The 10 minute window and the 1 minute throttle are coupled: keep the live window at least ten times the throttle through one shared constant pair and a test asserting the ratio. The window is not a liveness guarantee for a session inside a long tool call; the PID row is the backstop for that gap.\n- Residual risk, accepted by the design: on a platform where `pidStartedAt` is `null` (Windows, sandboxes), a nested `claude -p` that falsely marks the parent run `interrupted` (#3845) can make the SessionEnd route report `dead` while the parent is idle for more than 10 minutes. The next owner hook heartbeats the run back to `live`. #3845 removes the false stamp at the source.\n- Host equality is `os.hostname()` string equality. A container or sandbox with its own PID namespace and the same hostname can make a live owner look gone, which is why PID-gone is a death witness only together with a stale heartbeat and negative lock and commit probes. Process liveness means the session process exists, not that it still drives this run: one long-lived process can leave several runs `live`, which only costs an extra `leave`.\n- This module's table is the authority from the day it lands. The four old definitions are frozen (no edits) until #3979 migrates their callers and deletes them.\n- ASSUMPTION — verify at build: SessionStart resolves a resumed session's run by `sessionId` (`ctx.ownedRun`) early enough to re-stamp before it spawns the background reconcile pass (`plugin/bin/lib/hooks/session-start.js`); if it cannot, make the re-stamp the first action of the first hook that can.\n- Probe errors resolve to `unknown`, never `dead`. Every new probe wrapper needs a test where it throws.\n- Windows and sandboxes: PID and start-time probes degrade to `unknown`; apply the `windows-checkout-test-parity` skill to any new path-matching test.\n- Hold the in-progress neighbours in mind: #3845 (`session-end.js`), #3836/#3811/#3736 (`context.js` worktree path comparison), and #3937 (`post-tool-use.js` nested-session writes) edit nearby code.\n\n\n<!-- work-fingerprint: 2026-10-22-run-directory-cleanup:add-a-run-liveness-verdict-module-and-an-owner-block-in-run -->\nwork-fingerprint: 2026-10-22-run-directory-cleanup:add-a-run-liveness-verdict-module-and-an-owner-block-in-run",
-        "createdAt": "2026-10-22T17:03:46Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3973,
-        "state": "OPEN",
-        "title": "Add a run-liveness verdict module and an owner block in run-state.json (no behavior change)",
-        "updatedAt": "2026-10-23T22:42:55Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect light from #3859\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/init/claude-md-template.md`'s `## claude-tweaks Pipeline` section (added by #3859, PR #3966) opens its **Integration model** paragraph with the path `plugin/skills/_shared/integration-model.md`. That path is valid inside this repo, where the paragraph was copied from CLAUDE.md, but the template is what `/init` writes into consumer projects, and a consumer project has no `plugin/skills/` tree: the plugin is installed under the Claude Code plugin cache. Every other plugin file the same section cites is plugin-relative (`_shared/pr-first-merge.md`, `specify/SKILL.md`, `frontend-detection.md` in the design-wrapper skill's directory), so this one reference is the odd one out and points a consumer's agent at a file that does not exist.\n\n`checkConformance` (`plugin/bin/lib/init/claude-md-conformance.js`) compares the section body byte-for-byte after `.trim()`, so the template and this repo's CLAUDE.md must change together.\n\n## Deliverables\n\n- In `plugin/skills/init/claude-md-template.md` and in CLAUDE.md's `## claude-tweaks Pipeline` section, change the Integration model paragraph's citation from `plugin/skills/_shared/integration-model.md` to the plugin-relative `_shared/integration-model.md`, keeping the two sections byte-identical.\n- Confirm the live conformance test added by #3859 (`tests/bin-lib/init/claude-md-conformance.test.js`) still passes, and grep the repo for any other consumer-facing template text that cites a `plugin/skills/` path.\n\n## Acceptance Criteria\n\n- `grep -n 'plugin/skills/' plugin/skills/init/claude-md-template.md` finds no citation of a plugin file in text written into consumer projects.\n- `node --test tests/bin-lib/init/claude-md-conformance.test.js` passes, so CLAUDE.md and the template still agree.\n\n## Release Note\n\nNo user-visible change beyond the generated CLAUDE.md citing a path that resolves for the consumer.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/init/claude-md-template.md` — modify\n- `CLAUDE.md` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-22T16:05:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3968,
-        "state": "OPEN",
-        "title": "Init template cites a repo-relative plugin path in the Integration model paragraph",
-        "updatedAt": "2026-10-23T22:09:18Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3877\n\nDefer-reason: tangential\n\n## Current State\n\n#3877 added a prose guard to tidy's `## Arm ready PR` that must fail closed (hold, never arm). Its plan and acceptance criteria pinned that the rule text exists. Review then found fail-open edges that no pin named: `every record in the PR's Fixes lines carries demo:pending` is vacuously true for an empty set, a failed label, comment or `verify.json` read had no stated outcome, and the `{reason}`, `{command}` and `--run` placeholders were undefined. Fixing them took one review fix wave and six added pins. Nothing in `specify/red-team.md`, `build`'s plan checks, or `review`'s lens 3c asks a guard-shaped prose rule to enumerate empty, unreadable and malformed inputs.\n\n## Deliverables\n\n- `specify/red-team.md` gains a detection step for a prose guard whose job is to fail closed: the record must state the outcome for an empty input set, an unreadable source, and a malformed value, or list them as Open Questions.\n- `review/step3-lens-dispatch.md` lens 3c gains one question: does an `every`/`all` quantifier in a guard rule hold over an empty set, and is a failed read a hold rather than a pass?\n\n## Acceptance Criteria\n\n1. A conformance test pins the new red-team detection step and the new lens 3c question, and fails when either sentence is removed.\n2. The red-team step names the three input classes (empty, unreadable, malformed).\n3. `npm test` passes.\n\n## Release Note\n\nShaping and review now check that a fail-closed rule written in skill prose says what happens on empty, unreadable and malformed input.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/specify/red-team.md` — add the fail-closed guard detection step\n- `plugin/skills/review/step3-lens-dispatch.md` — add the lens 3c question\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-22T15:07:09Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxTu0eA",
-            "name": "by:reflect",
-            "description": "Origin: filed via /reflect (wrap-up Phase 1)",
-            "color": "ededed"
-          }
-        ],
-        "number": 3965,
-        "state": "OPEN",
-        "title": "Plan and review should enumerate failure branches of a fail-closed skill-prose guard (empty, unreadable, malformed)",
-        "updatedAt": "2026-10-23T22:09:14Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -1135,228 +542,6 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate\n\nDefer-reason: genuinely-larger\n\n## Current State\n\ntests/wall-clock-budget-conformance.test.js (#3491) fails any wall-clock budget under tests/ and pins the 12 that already existed on its ALLOWLIST, by comparison text, in 9 files: candidates-scale-readiness (2), dream/scan, flow/preflight, gif/palette, git-retry, health-core/premise-self-check, model-profiles/session-failures (2), wrap-up/pack, reconcile (2). Each entry carries a reason and is marked a candidate to move to perf/.\n\nThey are the flake the convention exists to prevent: tests/bin-lib/gif/palette.test.js:82 failed a full npm test run at 5235 ms against its 5 s bound under load, and passed in isolation (run 2026-10-22T061255-record-3491). docs/plugin-structure.md states that wall-clock budgets belong in perf/ (npm run test:perf), which npm test never runs.\n\nThe scan also cannot see one further budget in tests/bin-lib/wrap-up/pack.test.js (pack.durationMs < 600), because the duration comes from inside the code under test (the scan header lists this as known limit 1).\n\n## Deliverables\n\n- [ ] For each of the 12 pinned sites, split the test: the functional assertions stay in tests/, the timing assertion moves to a perf/*.test.js file with a header comment, keeping the same input and the same bound.\n\n- [ ] Remove each moved site from ALLOWLIST in tests/wall-clock-budget-conformance.test.js; delete a file entry when none of its sites remain.\n\n- [ ] Decide for tests/bin-lib/wrap-up/pack.test.js whether its pack.durationMs < 600 budget moves too.\n\n## Acceptance Criteria\n\nnpm test passes with ALLOWLIST empty or holding only entries whose reason says why the timing is inseparable from the functional assertion.\n\nnpm run test:perf runs every moved budget and passes on an idle machine.\n\nNo moved test lost its functional assertion: each tests/ file still passes and still asserts the behaviour the budget was guarding.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/bin-lib/code-health/candidates-scale-readiness.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/dream/scan.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/flow/preflight.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/gif/palette.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/git-retry.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/health-core/premise-self-check.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/model-profiles/session-failures.test.js` — move the timing assertion to perf/\n- `tests/bin-lib/wrap-up/pack.test.js` — move the timing assertion to perf/\n- `tests/reconcile.test.js` — move the timing assertion to perf/\n- `tests/wall-clock-budget-conformance.test.js` — drop moved sites from ALLOWLIST\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-22T08:14:01Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3939,
-        "state": "OPEN",
-        "title": "Move the 12 pinned wall-clock budgets from tests/ to perf/",
-        "updatedAt": "2026-10-23T22:08:34Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3845\n\nDefer-reason: tangential\n\n## Current State\n\nObserved during #3845 (run 2026-10-22T033950-record-3845): `_shared/pr-run-comments.md`'s Post-or-update Find step prescribes `gh pr view {pr-number} --repo {host}/{owner}/{repo} --json comments --jq '.comments[] | select(.body | startswith(\"<!-- run-comment: {kind} -->\")) | select(.authorAssociation == ...) | .id'`. In a worktree-isolated session (the shape every dispatched `pr-first` run is in) the harness refused it twice, as `wd-guard-refusal` / `harness-worktree-isolation` events (\"runs gh with the text .comments[] | select(.body |… inside a construct too complex to verify\"). The first refusal also tripped on the host-qualified `--repo github.com/...` form, whose `github` token reads as a git invocation. The skill text carries no worktree-safe form, so the executing agent rediscovers the workaround (fetch the comments JSON to a file with plain `gh pr view --json comments`, filter it with a `node -e` script) each run. `plugin/skills/_shared/scratch-worktree.md` section 7 records the pass/refuse boundary but does not list `gh --jq` filters.\n\n## Deliverables\n\nGive `_shared/pr-run-comments.md` Post-or-update step 1 (Find) a worktree-safe form: a plain `gh pr view {pr-number} --repo {owner}/{repo} --json comments` redirected to a scratch file, filtered by a small checked-in helper or `node` script that applies the same marker-prefix and trusted-author selection (reusing `bin/lib/issues/comment-trust.js`), keeping the current `--jq` form only as the non-isolated shortcut.\n\nRecord the refused `gh --jq` shape, and the `--repo` host-qualified token hazard, in `plugin/skills/_shared/scratch-worktree.md` section 7.\n\nCheck the other consumers that copy the same `--jq` select shape (`_shared/pr-checklist-refresh.md`, `wrap-up/verification-brief.md`) and point them at the same worktree-safe form.\n\n## Acceptance Criteria\n\nRunning the documented Find step from inside a worktree-isolated session no longer triggers a `wd-guard-refusal` event.\n\nThe Find step still selects only a comment whose body starts with the kind marker and whose author association is OWNER, MEMBER, or COLLABORATOR, and still reports skipped untrusted marker comments.\n\n`npm test` passes, including the prose/conformance suites that pin `_shared/pr-run-comments.md`.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/pr-run-comments.md` — worktree-safe Find step\n- `plugin/skills/_shared/scratch-worktree.md` — record the gh --jq refusal in section 7\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-22T06:35:48Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3936,
-        "state": "OPEN",
-        "title": "_shared/pr-run-comments.md: the Find step's gh --jq shape is refused in a worktree-isolated session",
-        "updatedAt": "2026-10-23T22:08:26Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3812\n\nDefer-reason: tangential\n\n## Current State\n\ntest/verification.md's \"Not skipped — execute\" block shows the pipeline command as `verify.js --run \"$PIPELINE_RUN_DIR\" --cmd ...` with no baseline flags. Every pipeline site must append `--baseline origin/{ref} --baseline-cmd {check}=\"{template}\"` (and `--cmd-env`), but that requirement sits about 100 lines later under Baseline adjudication (#3043), and the block itself only mentions baseline adjudication in passing in the Reading-the-result paragraph. In record #3812's review a caller followed the execute block, ran three verification passes (about an hour under machine load) that failed on load-induced timing and git ETIMEDOUT in unlisted files, and only the fourth run, with the baseline flags, adjudicated to a pass and stamped HEAD.\n\n## Deliverables\n\n1. Make the \"Not skipped — execute\" block of `plugin/skills/test/verification.md` state, in the block itself, that a pipeline site (`$PIPELINE_RUN_DIR` set) appends the baseline-adjudication flags when the declaration gives a `retry.{check}` template, citing the Baseline adjudication section for the exact form.\n2. Keep the pin tests for that file green.\n\n## Acceptance Criteria\n\n1. Reading only the \"Not skipped — execute\" block, a caller learns that pipeline sites append `--baseline`/`--baseline-cmd` and where the exact form lives.\n2. `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/test/verification.md` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-22T06:11:59Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3933,
-        "state": "OPEN",
-        "title": "verification.md execute block omits the pipeline-site baseline flags",
-        "updatedAt": "2026-10-23T22:08:23Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up leftover routing from #3679 (run 2026-10-21T225455-record-3679)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`bin/wrap-up-engine.js` `plan` resolves `repoRoot` through `resolveRepoRoot(process.cwd())`, which follows `git rev-parse --git-common-dir` to the MAIN checkout, and passes that as `cwd` to `gatherFacts` (`bin/lib/wrap-up/facts.js`). Every git fact (`git diff --name-only {base}...HEAD`, `--diff-filter=RD --name-status`, the heading-rename scan) then runs against the main checkout's HEAD, not the linked worktree the run builds in. The filesystem facts (`docs/journeys/`, `CLAUDE.md`, `.claude/skills/`) read the main checkout's files for the same reason.\n\nObserved on run `2026-10-21T225455-record-3679` (PR #3918): the branch renamed and deleted nothing, yet the plan opened the `references` row with ten `R` candidates that were other runs' archived `work/*-spec.md` files, moved on `main` after the branch point. The `journeys` row printed `candidates: []` although the diff changed `docs/journeys/stage-a-patch-that-conflicts-with-an-earlier-one-3290.md` and that file's `files:` frontmatter overlaps the diff. The gate for every row is computed the same way, so `changedFiles`, `multiFileDiff` and `headingRenamed` are also main's.\n\n#3017 introduced `resolveRepoRoot` so a shell sitting in a subdirectory of the checkout still finds `docs/journeys/`; the telemetry path rightly anchors to the main checkout (`resolveTelemetryPath`). The facts call reused the same root, which is the wrong anchor for a linked worktree.\n\n## Deliverables\n\n- [ ] Run `gatherFacts` against the current checkout's top level (`git rev-parse --show-toplevel`), not the common-dir root; keep `resolveTelemetryPath` anchored to the main checkout\n\n- [ ] Keep #3017's subdirectory fix: a shell in `<checkout>/web` still resolves the checkout root, now the worktree's own\n\n- [ ] Add a test that runs `plan` from a linked worktree whose branch differs from the main checkout's HEAD and asserts `changedFiles`, `renamedDeleted` and `journeyFiles` come from the worktree\n\n## Acceptance Criteria\n\n- [ ] From a linked worktree, `plan`'s `references` candidates and `journeys` candidates reflect the worktree branch's own diff against `--base`\n\n- [ ] The test fails when `gatherFacts` is handed the common-dir root again\n\n- [ ] `npm test` passes with no new skips\n\n## Release Note\n\nWrap-up's curation plan now judges the worktree's own diff, so the references and journeys rows no longer open or close on another branch's changes.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/wrap-up-engine.js` — pass the checkout top level to gatherFacts\n- `plugin/bin/lib/wrap-up/facts.js` — no change expected; the cwd it receives is what moves\n- `tests/bin-lib/wrap-up/engine-cli.test.js` — linked-worktree fixture\n\n_Filed by `wrap-up` via specShapedBody._",
         "createdAt": "2026-10-22T00:05:20Z",
         "labels": [
@@ -1478,7 +663,7 @@
         "number": 3917,
         "state": "OPEN",
         "title": "Add pathToFileURL-expectation pitfall row to windows-checkout-test-parity skill",
-        "updatedAt": "2026-10-23T22:08:03Z",
+        "updatedAt": "2026-10-24T07:42:08Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
@@ -1909,150 +1094,6 @@
     ],
     [
       {
-        "body": "Origin: wrap-up leftover from #3773 (ledger row 12)\n\nDefer-reason: tangential\n\n## Current State\n\nRecord 3773's reviews found drift in four project skills and one test header that predates that record and sits outside its diff, so it was left alone. (a) `tests/path-containment-conformance.test.js` asserts the stripper verdict is `ok` over the real tree but has no planted mis-parse case, unlike the windows-hide, git-status and path-guard scans. (c) `.claude/skills/parse-signal-discipline/SKILL.md` item 15 (line 281) says 'Each scan reports either one as an offender', but `tests/bin-lib/exit-code-conformance.test.js` never calls `stripperVerdict`; it uses `stripComments` plus its own `guardBlankedByStripper`. (d) The `tests/helpers/strip-comments.js` header lists four scans and omits path-containment, which also calls it. (e) `.claude/skills/parse-signal-discipline/SKILL.md` line 224 cites the branch-only sha `a7790fbed` where the squash commit `5c8e2a2e0` (#3023) belongs. The fifth item from the same audit, the `cli-wrapper-contract.md` first-versus-last guard wording, is already staged as `skills-1.patch` in the run.\n\n## Deliverables\n\nAdd a planted stripper mis-parse case to `tests/path-containment-conformance.test.js`, the way the windows-hide, git-status and path-guard scans each have one.\n\nReword `.claude/skills/parse-signal-discipline/SKILL.md` item 15 so it no longer says every scan reports `stripperVerdict`; name the exit-code scan's own `guardBlankedByStripper` detector.\n\nAdd path-containment to the list of scans in the `tests/helpers/strip-comments.js` header.\n\nReplace the `a7790fbed` citation at `.claude/skills/parse-signal-discipline/SKILL.md` line 224 with the squash commit `5c8e2a2e0` (#3023).\n\n## Acceptance Criteria\n\n`tests/path-containment-conformance.test.js` fails when its planted mis-parse case is run against a stripper verdict of `ok` (revert the helper change to see it go red).\n\n`grep -n a7790fbed .claude/skills/parse-signal-discipline/SKILL.md` prints nothing.\n\n`.claude/skills/parse-signal-discipline/SKILL.md` item 15 and the `tests/helpers/strip-comments.js` header both describe the five scans as they exist now.\n\n`npm test` passes in full.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/path-containment-conformance.test.js` — add a planted mis-parse case\n- `.claude/skills/parse-signal-discipline/SKILL.md` — reword item 15, fix the line 224 citation\n- `tests/helpers/strip-comments.js` — header lists path-containment\n\n_Filed by `wrap-up`. Close to resolve; label `wontfix` to suppress future reports of this finding._",
-        "createdAt": "2026-10-20T18:54:37Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3795,
-        "state": "OPEN",
-        "title": "Fix the pre-existing stripper-scan drift found during record 3773's review",
-        "updatedAt": "2026-10-23T22:04:48Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (final whole-branch review of #3671, ledger item 1)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3671 added `--text-file <path>` to `bin/log-decision.js` and `_shared/auto-decision-log.md`'s \"Text from git or a user\" rule: entry text that interpolates anything git or a user supplied (a file name, an error message) goes in a one-line file passed by `--text-file`, never in a double-quoted `--text`, because the shell expands `$(...)`, backticks and `$VAR` inside it. #3671 migrated only the two call sites that already carried escape prose. The final whole-branch review of #3671 found the other `log-decision.js --text \"...\"` call sites interpolate the same kind of text with no escaping at all, so they now contradict the rule: `flow/multispec-parallel-waves.md` (~line 36 `{stderr reason}`, ~58 `{reason}`, ~62 `{paths}`, ~141 `{reason}`), `tidy/release-note-repair.md` (~86 `{stderr reason}`), `dispatch/two-call-gate.md` (~9 `{message}`), `_shared/pr-check-gate.md` (~76 `{: reason}`), `_shared/git-discipline.md` (~162 `{integration-branch}`), and `flow/steps-and-gates.md`'s first #3014 log call (~62, the note carrying `pr.value.conflictNote`, which names the integration branch). Line numbers are approximate; grep for `log-decision.js` in each file.\n\n## Deliverables\n\n- [ ] Migrate each listed call site to `--text-file \"{text-file}\"`, naming the file's one-line content and citing `_shared/auto-decision-log.md`'s Text from git or a user paragraph, the way #3671 did for `flow/steps-and-gates.md`'s abort entry and `wrap-up/execution-and-verification.md`'s leave-open re-check.\n- [ ] Keep each file's conformance pins pointed at the new wording, and add a go-red control for each migrated site in the neighbouring pin test, as #3671 did.\n- [ ] Re-run `grep -rn \"log-decision.js\" plugin/skills` and confirm no remaining double-quoted `--text` interpolates git- or user-supplied text; any site found that this list missed is migrated or ledgered in the same change.\n- [ ] Check `wc -c` headroom on each edited skill file against its size ceiling before adding text.\n\n## Acceptance Criteria\n\n- No call site in `plugin/skills/**` passes git- or user-supplied text (a file name, a path list, a stderr reason, a branch name) inside a double-quoted `--text`; each uses `--text-file`.\n- Each migrated site names the file-based form and cites the canonical paragraph; none carries an escape instruction.\n- Each migrated site has a pin plus a go-red control that throws when the site reverts to `--text`.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/flow/multispec-parallel-waves.md` — migrate four log-decision call sites\n- `plugin/skills/tidy/release-note-repair.md` — migrate the stderr-reason log call\n- `plugin/skills/dispatch/two-call-gate.md` — migrate the message log call\n- `plugin/skills/_shared/pr-check-gate.md` — migrate the reason log call\n- `plugin/skills/_shared/git-discipline.md` — migrate the integration-branch log call\n- `plugin/skills/flow/steps-and-gates.md` — migrate the first #3014 conflictNote log call\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-20T18:42:56Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3792,
-        "state": "OPEN",
-        "title": "Migrate the remaining git-text log-decision.js --text call sites to --text-file",
-        "updatedAt": "2026-10-23T22:04:44Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: reflect full from #3712\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:build` runs its `plan-authoring-checks.md` checks against a plan, but none of them asks whether a project skill already governs a file the plan touches. Dispatched SDD implementers and reviewers see only their task brief, so a rule that lives only in a `.claude/skills/*/SKILL.md` never reaches them unless the plan quotes it.\n\nIn #3712 this cost one review fix. The plan's Global Constraints defined \"provably owned\" as `isTrustedOwnedRun` plus not ad-hoc, which is weaker than `pre-tool-use-gate-exemptions`' existing rule that a deny keyed on the caller's own run must also require `classifyOwnership === 'mine'`. Five task reviews, the whole-branch review and its re-review all passed the weaker check, and /review's lens 3a caught it (fixed in 0a5d6cf24).\n\n## Deliverables\n\n- [ ] Add a check to `plugin/skills/build/plan-authoring-checks.md`: for each file the plan creates or modifies, find the project skills under `.claude/skills/` whose description or body names that file or its module, and quote their applicable rule bullets verbatim into the plan's Global Constraints, or say why none apply.\n- [ ] Pin the new check with a conformance test, following the file's existing pinned checks.\n\n## Acceptance Criteria\n\n1. `plugin/skills/build/plan-authoring-checks.md` carries a check that names `.claude/skills/` and requires governing project-skill rules to be quoted into the plan's Global Constraints.\n2. A test under `tests/` fails when that check's paragraph is removed from `plan-authoring-checks.md`.\n3. `npm test` passes.\n\n## Release Note\n\nBuild plans now carry any project-skill rule that governs the files they touch, so subagents implementing a task see it.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/plan-authoring-checks.md` — add the governing-project-skill quote check\n\n_Filed by `reflect` via specShapedBody._",
         "createdAt": "2026-10-20T17:22:54Z",
         "labels": [
@@ -2131,84 +1172,6 @@
     ],
     [
       {
-        "body": "Origin: reflect full from #3713\n\nDefer-reason: tangential\n\n## Current State\n\n`tests/bin-lib/ports/registry.test.js` binds a real socket on `127.0.0.1:20003` (`POOL_BASE + 3`, line 59) to prove `allocate` skips a block whose port is taken. `20000+` is the machine-wide lease pool that dev servers and sibling test files also use, so under load the bind fails with `EADDRINUSE`. Evidence: on #3713's first full `npm test` run the suite reported `tests 14148, pass 14140, fail 1` with `registry.test.js` failing `EADDRINUSE 127.0.0.1:20003`; the file passed 10/10 in isolation and the second full run was green. Cost: one extra full-suite run (about 3 minutes) plus a manual isolate-and-rerun to tell load from regression. The file already routes its bookkeeping-only tests through an `alwaysFree` probe for this reason; the bind-detection tests still use the real pool range.\n\n## Deliverables\n\nMake the bind-detection test in `tests/bin-lib/ports/registry.test.js` independent of whether `POOL_BASE + 3` is free on the machine, for example by injecting the probe/bind seam or by choosing a free block at test time.\n\nKeep the assertion that `allocate` moves past a block with a taken port.\n\n## Acceptance Criteria\n\nWith another process already listening on `127.0.0.1:20003`, `node --test tests/bin-lib/ports/registry.test.js` passes.\n\nThe test still fails if `allocate` stops skipping a block with a taken port.\n\n`npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/bin-lib/ports/registry.test.js` — stop depending on a free real port in the shared 20000+ pool\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-20T16:58:15Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3759,
-        "state": "OPEN",
-        "title": "ports registry test: bind-detection test collides with the machine lease pool on port 20003",
-        "updatedAt": "2026-10-23T22:04:32Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\nOrigin: reflect (light mode, Friction lens) from #3675's wrap-up run (2026-10-20T162315-record-3675).\n**Related:** #3690 (absorbed), #3188, #3295, #3737, #3740, #3812, #3898, #3956, #3963\n\n## Current State\n\nIn #3675's dispatch group, both dispatched Task calls — `build,test` and `review,polish,wrap-up` — found mid-run that no `Agent`/`Task` tool was available, ran their work inline, and each self-reported the gap in `decisions.md` as a `DONE_WITH_CONCERNS` deviation. Nothing defective shipped, but the same discovery happened twice in one run.\n\nSince then, half of this is settled. #3078 (`364762254`) gave `_shared/subagent-dispatch-core.md`'s Foreground Execution Discipline a **Fallback** for \"no `Agent`/`Task` tool exists (`ToolSearch` finds none, deferred or otherwise — the normal case in a cloud routine sandbox)\", restated in `dispatch/task-prompt.md`'s Context pack item 7: judge the unit in-session, log the downgrade, mark its findings `unconfirmed`. That covers read-only units (lenses, single reads, judges) — the review call's side.\n\nThe build side is still uncovered, and two rules now contradict each other there:\n\n- The Fallback is explicitly limited to read-only units; for a write-capable child it says only that one still silent at the bound is never redone in-session (because an abandoned child keeps running and may still write).\n- `build/execution-mode-policy.md` (#491) rules that executing the plan's substance directly in-session, skipping Task dispatch, is **never licensed** — under a locked `execution-strategy: subagent-only` or otherwise.\n\nThe same environment has already produced two different outcomes. In run `2026-10-20T022848-record-3630` (record #3630, filed as #3690, absorbed here), the dispatched build stopped at `/build`'s Common Step 2 before any implementation (#3690's report calls it a HARD-GATE; `build/SKILL.md` has no gate by that literal name there, so the stop presumably came from the call honoring `execution-mode-policy.md`'s never-licensed rule), and Settle classified it `transient` and kept `auto:build`, so every retry in that sandbox would stop the same way. In #3675's run, the build ran inline instead and reported a concern.\n\nSo a dispatched `build,test` call under `execution-strategy: subagent-only` that has no `Agent` tool has no compliant path: `/superpowers:subagent-driven-development` cannot dispatch implementers, inline execution is forbidden, and nothing says to stop. #3675's call improvised inline execution and reported it as a concern. Nothing about this case is anomalous — the core file itself calls it the normal case in a cloud routine sandbox — yet each call discovers it mid-run, after the plan is written.\n\n## Deliverables\n\n- [ ] `_shared/subagent-dispatch-core.md`'s Foreground Execution Discipline names the **no-nested-agent environment** once, as an expected environment class, and distinguishes its two cases: a child abandoned at the bound (today's rule — a write-capable one is never redone in-session) versus a child that was **never launched because no `Agent` tool exists** (no child exists, so nothing can still be writing, and the unit — write-capable or not — is done in-session)\n- [ ] `build/execution-mode-policy.md` gains one carve-out to #491's \"never licensed\": a dispatched Task call (not the interactive orchestrating session) that has no `Agent` tool executes the plan in-session. State why this keeps #491's rationale: the dispatched call is already a clean room separate from the session that dispatched it, and the second Task call (`review,polish,wrap-up`) remains a separate agent, so the review is still independent of the code's author\n- [ ] `dispatch/task-prompt.md`'s first-call (`build,test`) template tells the call to probe for the `Agent` tool once, **before** choosing an execution strategy (one `ToolSearch`), and on no tool to take the carve-out from the start instead of discovering it mid-plan; Context pack item 7 carries the same distinction for any dispatch that writes\n- [ ] The downgrade logs as one canonical `decisions.md` `AUTO` entry (per `_shared/auto-decision-log.md`'s schema) naming the environment — e.g. `no nested Agent tool — plan executed in-session` — and the call returns `STATUS: DONE`, not `DONE_WITH_CONCERNS`, when that was the only deviation\n- [ ] The read-only Fallback keeps its `unconfirmed` marking unchanged — a self-judged lens finding is still weaker evidence than a second reader's\n\n## Acceptance Criteria\n\n- `subagent-dispatch-core.md` states that a write-capable unit whose child was never launched (no `Agent` tool) is executed in-session, and that a write-capable child abandoned at the bound still ends `STATUS: BLOCKED` — both rules present, and distinguishable by whether a child was ever launched\n- `build/execution-mode-policy.md` names the dispatched-call-with-no-`Agent`-tool carve-out and still states that the interactive orchestrating session may never execute the plan directly\n- `dispatch/task-prompt.md`'s `build,test` template contains the up-front probe instruction, ordered before the execution-strategy choice\n- `tests/foreground-execution-instruction.test.js` (or the suite that pins these sections) asserts the new never-launched-vs-abandoned distinction in the core section, item 7, and the build template, and reverting the core-file sentence turns it red\n- The canonical `AUTO` line's wording is pinned in one place and cited, not restated, by the template\n- A `/claude-tweaks:dispatch` firing against a `subagent-only` record, in an environment whose dispatched Task call has no `Agent` tool, builds via the carve-out rather than stopping at Common Step 2 or being settled `transient` (the #3690 failure)\n- `npm test` passes\n\n## Release Note\n\nDispatched builds in sandboxes without nested agents now follow a defined path instead of improvising and flagging a concern.\n\n## Technical Approach\n\nThe key distinction is whether a child was ever launched. The existing \"never redo a write-capable child in-session\" rule exists because an abandoned child keeps running and may still write (`subagent-dispatch-core.md`'s Fallback). With no `Agent` tool there is no child, so that hazard cannot occur, and in-session execution of a write-capable unit is safe. Write that reasoning into the core file once, and have `task-prompt.md` item 7 and the `build,test` template restate the rule (they are inlined verbatim into a `Task()` prompt whose agent never reads the core file — `docs/skill-graph.md`'s `subagent-dispatch-core.md` row).\n\nThe probe is one `ToolSearch` for the `Agent` tool at the start of the `build,test` call. A probe by the top-level dispatcher would not work: the dispatcher has a Task tool by construction (it is dispatching), and whether its children get a nested one depends on the environment and Claude Code version (`subagent-dispatch-core.md`'s Background-work paragraph, #3722's measurements).\n\n#491's carve-out is narrow on purpose: it licenses in-session execution only for a dispatched Task call that has no `Agent` tool. An interactive session that has the tool and chooses not to use it is still non-compliant.\n\n### Key Files\n\n- `plugin/skills/_shared/subagent-dispatch-core.md` — Foreground Execution Discipline: name the environment class; never-launched vs abandoned\n- `plugin/skills/build/execution-mode-policy.md` — the dispatched-call carve-out to #491\n- `plugin/skills/dispatch/task-prompt.md` — Context pack item 7 and the `build,test` template's up-front probe\n- `plugin/skills/_shared/auto-decision-log.md` — only if the canonical entry needs a new reason slug\n- `tests/foreground-execution-instruction.test.js` — pins the core section, item 7, and both templates\n- `tests/subagent-contract-clauses.test.js` — check for pinned Fallback wording\n- `docs/skill-graph.md` — the `subagent-dispatch-core.md` edge row describing what item 7 restates\n\n## Gotchas\n\n- `/flow`'s `multispec-parallel-waves.md` inlines item 7 and the `build,test` clause verbatim (`docs/skill-graph.md`), so changing either changes what parallel-wave members receive — update that file in the same change.\n- `tests/foreground-execution-instruction.test.js` pins the core section, item 7, and both templates against each other; edit all four together or it goes red.\n- The decision is about the dispatched Task call, not `/superpowers:subagent-driven-development` itself (an upstream skill this repo does not edit) — the carve-out tells the call to execute the plan in-session in place of invoking that skill.\n- #3188 (open) proposes mechanical enforcement of `execution-strategy: subagent-only` (a PreToolUse check or a `/build` Step 2 assertion). Whatever it lands must honor this carve-out — a dispatched call with no `Agent` tool executing in-session is compliant, not a violation.\n- `/build`'s Common Step 2 is where #3630's build stopped; the carve-out has to be reachable from there (the probe result decides the execution strategy before Common Step 2 resolves it), or the build stops anyway.\n- ASSUMPTION — verify at build: #3675's two calls lacked the tool because of the environment (cloud sandbox or a headless Claude Code version), not a one-off harness fault — the run's `decisions.md` was not preserved in the archive, so confirm the class by checking `subagent-dispatch-core.md`'s Background-work measurements against the run's environment if it can be identified.\n\n## Original request\n\nDispatch contract doesn't name or detect an Agent/Task-tool-less sandbox\n\nOrigin: reflect (light mode, Friction lens) from #3675's wrap-up run (2026-10-20T162315-record-3675).\nDefer-reason: tangential\n\n## Current State\n\n`_shared/subagent-dispatch-core.md`'s subagent contract, and `dispatch/settle-and-merge.md`'s\ntwo-call gate, assume `execution-strategy: subagent-only` dispatched Task calls have the\nAgent/Task tool available for nested fan-out. In this run's dispatch group (record #3675), both\ndispatched calls — `build,test` and `review,polish,wrap-up` — independently discovered mid-run\nthat no Agent/Task tool was available, and both fell back to running their work inline, each\nself-reporting the gap in `decisions.md` as a `DONE_WITH_CONCERNS` deviation. Both degraded\ngracefully and no defect landed in the shipped work, but the gap recurred identically across two\nindependent calls in the same run rather than being a one-off anomaly.\n\n## Open Question\n\nShould the dispatch contract (or dispatch's own two-call gate) detect Agent/Task-tool absence up\nfront — either declaring the limitation inline in the dispatch prompt's own preamble, or treating\na Task-tool-less sandbox as a named, expected environment class — rather than leaving each\ndispatched call to discover and self-report the gap independently every time? Or is the existing\nper-call self-report-and-degrade pattern (DONE_WITH_CONCERNS + a decisions.md note) sufficient as\nis, given it already surfaces the gap without blocking?\n\n## Release Note\n\nn/a — no code change proposed yet; this issue exists to get a maintainer decision on whether one\nis warranted.\n\n_Filed by `reflect` via specShapedBody._\n\n",
         "createdAt": "2026-10-20T16:55:56Z",
         "labels": [
@@ -2264,84 +1227,6 @@
           "risk": "medium",
           "size": "medium",
           "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: final whole-branch review of #3302\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/review/review-effort-derivation.md` (Step 2.5's `github-issues` record-label read) tells the reviewer to mint the review scratch dir with `build-review-context.js mint --print-dir --run \"$PIPELINE_RUN_DIR\"`, then run `gh issue view {n} --json labels > {ctx-dir}/record-{n}.json` and feed that file to a `parseRecordFacets` `node -e` one-liner.\n\nUnder `worktree-always`, `{ctx-dir}` is `{run}/review-ctx` in the main checkout, outside a worktree-isolated reviewing session's worktree. The harness refuses a shell redirect into a shared-checkout path, and the Write tool refuses a non-worktree path. #3302 hit this exact failure for `pre-dispatch-status.txt` and fixed it in `step3-lens-dispatch.md` by having `build-review-context.js build` write the file. This sibling instruction in `review-effort-derivation.md` still has the same defect. #3302's final whole-branch review found it.\n\n## Deliverables\n\n1. Remove the hand-written `{ctx-dir}/record-{n}.json` from `review-effort-derivation.md`. Either pipe `gh issue view {n} --json labels` straight into the `parseRecordFacets` one-liner on stdin, or write it to the session-scoped temp dir (`_shared/session-tmp-root.md`), which is how `step3-lens-dispatch.md` already handles its coordination inputs.\n\n2. Update any test that pins the old `> {ctx-dir}/record-{n}.json` form.\n\n## Acceptance Criteria\n\n- `review-effort-derivation.md` no longer tells the reviewer to write any file under `{ctx-dir}` by hand.\n\n- Step 2.5's risk/size read still works from a worktree-isolated session.\n\n- `npm test` passes.\n\n## Release Note\n\nReview's effort derivation no longer fails in worktree-isolated sessions.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/review-effort-derivation.md` — modify\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T15:12:50Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3744,
-        "state": "OPEN",
-        "title": "review: Step 2.5 record-label read writes {ctx-dir}/record-{n}.json by hand, failing in worktree-isolated sessions",
-        "updatedAt": "2026-10-23T22:04:28Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
           "needsDefinition": false,
@@ -2486,7 +1371,7 @@
         "number": 3737,
         "state": "OPEN",
         "title": "Lens dispatch prompts should forbid shell-variable paths and cd-chains (9 harness refusals in one review)",
-        "updatedAt": "2026-10-23T22:04:16Z",
+        "updatedAt": "2026-10-24T07:25:07Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -2898,78 +1783,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate\n\n## Current State\n\n`plugin/bin/lib/issues/record.js` is 898 lines with 28 top-level functions — the unified work-record taxonomy and payload assembly module (label vocabularies, `recordPayload`/`specShapedBody` composition, fingerprint extraction, dependency/blocker parsing, sub-issue queries, and, as of this same session, the newly-consolidated `extractSection`/`typeOf` helpers). A whole-branch review lens (3e, single-agent, unconfirmed) flagged it as module sprawl.\n\n## Deliverables\n\nA deliberate split into cohesive sub-modules (candidate boundaries: label/facet vocabulary and parsing, record-payload/specShapedBody composition, fingerprint handling, dependency/blocker/sub-issue query building) — done as a dedicated architecture pass, not a ledger-cleanup afterthought, since this file has high fan-in (compose-subject.js, decomposition-crossref.js, grouping.js, record-graph/encode.js, and more already import from it) and a careless split risks regressions across every consumer.\n\n## Acceptance Criteria\n\n- `record.js` itself shrinks to a size where its role is legible at a glance (no fixed line target — judged by the split's own boundaries, not a byte number)\n- Every existing consumer's imports still resolve (either from `record.js` re-exporting the split pieces, or updated to import from the new locations directly — the split's own call)\n- Full `npm test` passes with no regressions\n\n## Release Note\n\n`issues/record.js` split into cohesive sub-modules for maintainability; no behavior change.\n\n_Filed by `ledger resolve gate`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n",
-        "createdAt": "2026-09-29T02:00:03Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 2805,
-        "state": "OPEN",
-        "title": "Split issues/record.js into cohesive sub-modules (898 lines, 28 functions)",
-        "updatedAt": "2026-10-15T16:08:18Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
