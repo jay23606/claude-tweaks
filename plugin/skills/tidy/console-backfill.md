@@ -17,7 +17,7 @@ The tiebreak agents are dispatched from this session. If the procedure is runnin
 
 ## Step 3: Backend gate
 
-Read `work-backend` the way `step-1-records.md` does (the project's CLAUDE.md `## Work records` section; a missing flag is `local-files`). This mode files records and posts to the digest issue through GitHub, so any value but `github-issues` ends here, before anything is written, with `HELD — console backfill files through GitHub Issues; work-backend {value} is not supported yet`.
+Read `work-backend` the way `step-1-records.md` does (the project's CLAUDE.md `## Work records` section; a missing flag is `local-files`). This mode files records and posts to the digest issue through GitHub, so any value but `github-issues` ends here, before anything is written, with `HELD — console backfill needs work-backend: github-issues; local-files support is tracked as the backlog record "Console backfill: settle Review Console residue under work-backend: local-files"`.
 
 ## Step 4: Summary first
 

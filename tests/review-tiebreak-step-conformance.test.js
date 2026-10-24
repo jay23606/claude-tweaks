@@ -190,6 +190,23 @@ test('AC2.1 the dispatch template assertions can go red', () => {
   assertEachPatternGoesRed(fencedTemplate(sectionOf(tiebreakText(), 'Dispatch')), DISPATCH_TEMPLATE, dispatchTemplateMissing);
 });
 
+// Minor 11 (#3950, ruling R18 moved into the template): a bare filename or another file in Evidence fails
+// the resolver's path check and files a refuted finding, so the judge cites the Location path as given.
+const EVIDENCE_PATH = [
+  [/cite the Location path exactly as given \(the full repo-relative path, never a bare filename or another file\)/, 'the Evidence instruction cites the Location path exactly as given'],
+];
+const evidencePathMissing = missingFactsOf(EVIDENCE_PATH);
+
+test("minor 11: the tiebreak template tells the judge to cite the Location path exactly as given", () => {
+  const template = fencedTemplate(sectionOf(tiebreakText(), 'Dispatch'));
+  assert.deepEqual(evidencePathMissing(template), []);
+  assert.doesNotMatch(template, /the finding's own path/, 'the retired wording is gone');
+});
+
+test('minor 11 the evidence-path assertion can go red', () => {
+  assertEachPatternGoesRed(fencedTemplate(sectionOf(tiebreakText(), 'Dispatch')), EVIDENCE_PATH, evidencePathMissing);
+});
+
 const hasFrontier = (text) => /Frontier/.test(text);
 
 test('AC2.2 no Frontier in the tiebreak fan-out', () => {
@@ -481,20 +498,27 @@ test('AC4.1 the low-tier assertions can go red', () => {
 const DIRECT_VERIFICATION = /direct[- ]verification/i;
 const RETIRED_REPLACEMENT = "recoverable only through Step 3.7's tiebreak";
 
+// The one predicate both the positive test and its go-red proof call: the retirement facts the text breaks.
+function retirementProblems(text) {
+  const problems = [];
+  if (DIRECT_VERIFICATION.test(text)) problems.push('step3-lens-dispatch.md must not mention direct verification');
+  if (overrideParagraph(text) !== '') problems.push('the override paragraph must be gone');
+  if (/the override below/.test(text)) problems.push('no pointer to the retired override remains');
+  if (!text.includes(RETIRED_REPLACEMENT)) problems.push('the anchor note must name the tiebreak as the way back');
+  if (!text.includes('Reading source alone never lifts this downgrade: the only way back')) problems.push('the lens 3f downgrade rule survives the override');
+  return problems;
+}
+
 test("AC8.1: the Direct-verification override is retired", () => {
-  const text = readText(STEP3);
-  assert.doesNotMatch(text, DIRECT_VERIFICATION, 'step3-lens-dispatch.md must not mention direct verification');
-  assert.equal(overrideParagraph(text), '', 'the override paragraph must be gone');
-  assert.doesNotMatch(text, /the override below/, 'no pointer to the retired override remains');
-  assert.ok(text.includes(RETIRED_REPLACEMENT), 'the anchor note must name the tiebreak as the way back');
-  assert.ok(text.includes('Reading source alone never lifts this downgrade: the only way back'), 'the lens 3f downgrade rule survives the override');
+  assert.deepEqual(retirementProblems(readText(STEP3)), []);
 });
 
 test('AC8.1 the retirement assertions can go red', () => {
   const text = readText(STEP3);
-  assert.match(`${text}\n> **Direct-verification override.** planted`, DIRECT_VERIFICATION);
-  assert.notEqual(overrideParagraph(`${text}\n> **Direct-verification override.** planted`), '');
-  assert.ok(!text.replace(RETIRED_REPLACEMENT, 'recoverable only through the override').includes(RETIRED_REPLACEMENT));
+  assert.deepEqual(retirementProblems(`${text}\n> **Direct-verification override.** planted`), ['step3-lens-dispatch.md must not mention direct verification', 'the override paragraph must be gone']);
+  assert.deepEqual(retirementProblems(`${text}\nsee the override below`), ['no pointer to the retired override remains']);
+  assert.deepEqual(retirementProblems(text.replace(RETIRED_REPLACEMENT, 'recoverable only through the override')), ['the anchor note must name the tiebreak as the way back']);
+  assert.deepEqual(retirementProblems(text.replace('Reading source alone never lifts this downgrade: the only way back', 'Reading source lifts it')), ['the lens 3f downgrade rule survives the override']);
 });
 
 // AC8.2: the file stays under the rail (52,500 bytes, budgets.js's RAIL_BYTES — the single source) after the paragraph is removed.
@@ -783,7 +807,7 @@ test('AC6.1 the Inputs assertion can go red', () => {
 const routingTexts = () => ({ routing: routingText() });
 
 const SOURCE_BULLETS = [
-  [({ routing }) => noReproBullet(routing), /only the reviewing agent's own executed run re-confirms it/, 'the no-reproduction bullet keeps the lens 3f executed-run exception'],
+  [({ routing }) => noReproBullet(routing), /A lens 3f vacuity finding from either source is re-confirmed only by the reviewing agent's own executed run, never by source reading\./, 'the no-reproduction bullet states the lens 3f executed-run rule on its own'],
   [({ routing }) => lowTierBullet(routing), /goes to the tiebreak \(`step3-tiebreak\.md`\)/, 'the low-tier bullet hands findings to the tiebreak'],
   [({ routing }) => refutationBullet(routing), /Step 3\.7/, 'the refutation bullet hands the downgraded finding to Step 3.7'],
   [({ routing }) => refutationBullet(routing), /can't-tell/, "the refutation bullet names the can't-tell downgrade"],
@@ -798,6 +822,18 @@ test('AC6.1 the unconfirmed-source bullets say the tiebreak settles these findin
 
 test('AC6.1 the source-bullet assertions can go red', () => {
   assertEachSectionFactGoesRed(routingTexts(), SOURCE_BULLETS, sourceBulletsMissing);
+});
+
+// Minor 13: what the lens 3f rule was once an exception to is gone, so the bullet never calls it one.
+const orphanedException = (bullet) => /\bthe exception\b/.test(bullet);
+
+test('minor 13: the no-reproduction bullet states the lens 3f rule with no orphaned "the exception"', () => {
+  assert.equal(orphanedException(noReproBullet(routingText())), false);
+});
+
+test('minor 13 the orphaned-exception assertion can go red', () => {
+  const bullet = noReproBullet(routingText());
+  assert.equal(orphanedException(bullet.replace('is re-confirmed only by', 'is the exception: re-confirmed only by')), true);
 });
 
 const SURFACING = [

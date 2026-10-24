@@ -51,7 +51,7 @@ const FACTS = [
   // R15: the existing-records read carries titles, so a proposal filed before the backfill dedups by exact title.
   ['dedup read carries number, title and body', /--state all --limit \{count \+ 100\} --json number,title,body > "\{EXISTING\}"/],
   // R12: GitHub Issues only.
-  ['work-backend gate', /HELD — console backfill files through GitHub Issues; work-backend \{value\} is not supported yet/],
+  ['work-backend gate', /HELD — console backfill needs work-backend: github-issues; local-files support is tracked as the backlog record "Console backfill: settle Review Console residue under work-backend: local-files"/],
   // Minors.
   ['Type label on top of Labels', /On top of those, the Type row's expression/],
   ['first stale-hash exempt from the failed set', /except the first `stale-hash` refusal of an item/],
