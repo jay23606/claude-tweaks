@@ -615,16 +615,20 @@ function engineItems(snapshot, stagedIds) {
 // once reproduced (#3772). Case-sensitive so `not confirmed` never matches; a
 // keyless line is never superseded. A can't-tell `console` verdict supersedes
 // its STAGED line too, and re-enters as one `tiebreak:{id}` item (#3949).
-//
-// A coordination item's id is the readable lead plus a hash of the full line, so same-second lines
-// that share a lead-in stay distinct (#3816). Stored ids are opaque to every reader, so a console.json
-// written with the old 58-character id still reads and re-renders unchanged.
 function findingKey(line) {
   const lens = /\blens\s+"?([A-Za-z0-9_-]+)"?/i.exec(line);
   const loc = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/.exec(line);
   return lens && loc ? `${lens[1]}|${loc[1]}:${loc[2]}` : null;
 }
 
+// A coordination item's id is `decision:` + line.slice(2, 60) + `#` + the first 8 hex chars of
+// sha256(full line), plus `-{n}` for the n-th (n >= 2) byte-identical repeat among item-producing
+// lines. The hash keeps same-second lines that share a lead-in distinct (#3816).
+// The id is content-derived, so it is stable across re-renders only because decisions.md is
+// append-only: a later line can supersede a line but never rewrites it.
+// Stored ids are opaque to every reader, so a console.json written with the old 58-character id
+// still reads and re-renders unchanged. Old-shape ids are not unique (several stored items can
+// share one), so never join a stored old-shape id to a recomputed one.
 function coordinationItems(snapshot, stagedIds) {
   const out = [];
   const model = tiebreakModel(snapshot);

@@ -9,7 +9,7 @@ const path = require('path');
 const MOD = path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'resolve');
 const { classifyStagedItem, resolveAll, findingItems, renderStoredTable, parseTiebreakLine, approveAllDefault, readSnapshot, SECTION_STANCES, SECTION_MAP, ENGINE_ROW_SECTIONS, CANONICAL_PREFIXES, nearestCanonicalPrefixes, STAGING_EXEMPTIONS, stagingExemption } = require(MOD);
 const ROOT = path.join(__dirname, '..', '..', '..');
-const { unresolvedItems } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
+const { unresolvedItems, readRunResidue, formatResidueLines } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
 const { resolveTiebreak } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'tiebreak'));
 const { formatEntry } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'log-decision', 'append'));
 
@@ -647,6 +647,21 @@ test('AC2.1: a console.json written with the old 58-character id shape still rea
   assert.strictEqual(unresolvedItems(stored).length, 3);
   const table = renderStoredTable(stored);
   assert.strictEqual(table.split('\n').filter((l) => l.includes(oldId)).length, 3);
+});
+
+test('AC2.1: old-shape and new-shape decision ids coexist in one console.json — residue counts both and points both at decisions.md (#3816)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-resolve-'));
+  fs.writeFileSync(path.join(dir, 'decisions.md'), SAME_PREFIX);
+  const oldId = `decision:${SUPERSEDED.split('\n')[1].slice(2, 60)}`;
+  const items = [oldId, decisionId(SUPERSEDED.split('\n')[1])].map((id) => ({ id, section: 'Low-confidence findings', resolution: 'keep-staged', reason: 'r' }));
+  const text = JSON.stringify({ resolved: true, items });
+  fs.writeFileSync(path.join(dir, 'console.json'), text);
+  assert.strictEqual(unresolvedItems(JSON.parse(text)).length, 2);
+  const lines = formatResidueLines(readRunResidue(dir), { pluginRoot: '/p' });
+  const see = `    see "${path.join(dir, 'decisions.md')}"`;
+  assert.strictEqual(lines.filter((l) => l === see).length, 2);
+  assert.ok(!lines.some((l) => l.includes('undefined')), lines.join('\n'));
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test('a tiebreak confirmed line supersedes the real-emitter STAGED line (AC2.1, AC9.1, #3945)', () => {
