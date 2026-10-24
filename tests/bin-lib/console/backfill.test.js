@@ -14,7 +14,7 @@ const { execFileSync } = require('child_process');
 const {
   STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, consoleWorkItems, buildWorkList, summarize,
 } = require('../../../plugin/bin/lib/console/backfill');
-const { digestTextOf } = require('../../../plugin/bin/lib/console/backfill-dispose');
+const { digestTextOf } = require('../../../plugin/bin/lib/console/staged-digest-text');
 const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state');
 const { writeRunState } = require('../../../plugin/bin/lib/hooks/context');
 const { scanUnresolvedConsoles } = require('../../../plugin/bin/lib/hooks/session-residue');
@@ -534,6 +534,45 @@ test('R17: a trailing ledger-row clause outside parentheses is removed from the 
   // The clause is only dropped at the end: one inside the claim's own sentence stays.
   const mid = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/a.js:1 not reproduced: the writer repeats ledger row 4 in its own header before it writes anything. Staged to Review Console as low-confidence.';
   assert.ok(splitDecisionLine(mid).findings[0].claim.includes('ledger row 4'));
+});
+
+// R17 round 3: the strips remove meta, never claim text.
+const r3Line = (claim) => `- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/a.js:10 ${claim} Staged to Review Console as low-confidence. Reversibility: high.`;
+
+test('R17: a ledger-row mention inside the claim\'s own sentence is kept', () => {
+  for (const claim of [
+    'the resolver corrupts ledger row 4',
+    'the writer breaks the parse of ledger row 4.',
+    'the writer drops the ledger row 4 (this drops data silently when the cell has a pipe)',
+  ]) {
+    const [item, ...rest] = itemsForLine(r3Line(claim));
+    assert.deepStrictEqual([item.kind, rest.length], ['finding', 0], claim);
+    assert.strictEqual(item.claimText, claim, claim);
+  }
+  // Set off by a sentence boundary, the clause is still meta.
+  assert.strictEqual(splitDecisionLine(r3Line('the writer drops the cell. same as ledger row 4 (observation).')).findings[0].claim, 'the writer drops the cell.');
+});
+
+test('R17: a leading slash before a letter and a bare number in prose are claim text, not fragments', () => {
+  assert.strictEqual(splitDecisionLine(r3Line('/claude-tweaks:flow is invoked with the spec number before any build starts')).findings[0].claim, '/claude-tweaks:flow is invoked with the spec number before any build starts');
+  assert.strictEqual(splitDecisionLine(r3Line('-1 is returned when the guard finds no match')).findings[0].claim, '-1 is returned when the guard finds no match');
+  // A ref glued to the path token (the location sits inside a parenthetical, so only the path is split) is its tail.
+  const glued = '- STAGED 23:18:47 — log-decision: Reproduction: lens 3a/3f cosmetic findings (record.js:803 stale signature summary, harness-health/issue-payload.js:17 nodePath alias, harness issue-payload.test.js:500 comment misattributes the premiseCheck guard, code-health anchor path:line / String(undefined) edge) not reproduced. Staged to Review Console as low-confidence. Artifact: ledger row 23. Reversibility: high.';
+  assert.ok(splitDecisionLine(glued).findings[0].claim.startsWith('nodePath alias, harness issue-payload.test.js:500'), splitDecisionLine(glued).findings[0].claim);
+  // The fragments the earlier rules strip still go.
+  assert.strictEqual(splitDecisionLine(r3Line('/127 . the guard finds no match for the key')).findings[0].claim, 'the guard finds no match for the key');
+  assert.strictEqual(splitDecisionLine(r3Line('/:127 / :128 . the guard finds no match for the key')).findings[0].claim, 'the guard finds no match for the key');
+});
+
+test('R17: a parenthetical left with only connectives and refs after the ledger strip is dropped', () => {
+  const claim = splitDecisionLine(r3Line('the guard skips the pipe (ledger row 3 and 4) when the cell is empty')).findings[0].claim;
+  assert.strictEqual(claim, 'the guard skips the pipe when the cell is empty');
+  assert.strictEqual(splitDecisionLine(r3Line('the guard skips the pipe (ledger rows 3, 4 or 5) when the cell is empty')).findings[0].claim, 'the guard skips the pipe when the cell is empty');
+});
+
+test('staged-digest-text.js is a leaf: it requires nothing from the backfill modules', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'staged-digest-text.js'), 'utf8');
+  assert.deepStrictEqual(source.match(/require\([^)]*\)/g) || [], []);
 });
 
 test('R17: a leading em dash left after a location is not part of the claim', () => {

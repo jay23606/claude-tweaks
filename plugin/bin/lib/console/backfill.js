@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { classifyStagedItem, SHADOW_DUP_RE, SECTIONS, runIdOf, parseTiebreakLine } = require('./resolve');
+const { digestTextOf } = require('./staged-digest-text');
 const { UNRESOLVED_RESOLUTIONS } = require('./residue');
 const { readRunState, isStaleClaim, RUN_ID_RE } = require('../hooks/context');
 const { lstatType } = require('../path-guard');
@@ -35,12 +36,17 @@ const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 const STAGING_NOTE_RE = /(?:\bboth\s+)?\bstaged\s+(?:to\s+Review\s+Console\s+)?as\s+low-confidence\b(?:[.:;]|\s*—)?/gi;
 const BOILERPLATE = [/not reproduced/g, STAGING_NOTE_RE, /Reversibility: \S+\./g, /Artifact: [^.]*\./g];
 // A ledger-row reference is meta about the console's ledger, never about the finding (R17).
-const LEDGER_REF_RE = /(?:\b[\w-]+\s+case\s*=\s*)?(?:\b(?:already|same\s+as)\s+)?\bledger\s+(?:row\s+|#)\d+\b\s*[,;]?/gi;
+const LEDGER_REF_RE = /(?:\b[\w-]+\s+case\s*=\s*)?(?:\b(?:already|same\s+as)\s+)?\bledger\s+(?:rows?\s+|#)\d+\b\s*[,;]?/gi;
 // A trailing clause outside parentheses that only points at the ledger (`— ledger row 8.`, `ledger item 4`,
 // `same as ledger row 4 (observation)`, `same observation already ledgered as row 6 (observation)`) is meta too.
-const TRAILING_LEDGER_RE = /(?:\s*—\s*|\s+)(?:(?:same\s+as\s+)?ledger\s+(?:row|item)\s+\d+|same\s+observation\s+already\s+ledgered\s+as\s+row\s+\d+)(?:\s*\([^()]*\))?\s*\.?\s*$/i;
-// What a multi-location list leaves in front of a claim: separators, `and`, and bare line refs (`:335`, `-133`, `/127`).
-const LEAD_FRAGMENT_RE = /^(?:\s+|[:\-/]\d+(?:-\d+)?(?=[\s.,;/)]|$)|[/,;:.)—](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
+// It must be set off: by an em dash, by a sentence boundary (`.` `;` `,`) before it, or be the whole claim;
+// "the resolver corrupts ledger row 4" is a claim about a ledger row. Only `(observation)` may follow it.
+const TRAILING_LEDGER_RE = /(?:^|\s*—\s*|(?<=[.;,])\s+)(?:(?:same\s+as\s+)?ledger\s+(?:row|item)\s+\d+|same\s+observation\s+already\s+ledgered\s+as\s+row\s+\d+)(?:\s*\(observation\))?\s*\.?\s*$/i;
+// What a multi-location list leaves in front of a claim: separators, `and`, and bare line refs (`:335`, `-133`,
+// `/127`). A `/` is a separator only before whitespace or a ref (`/claude-tweaks:flow` keeps its slash). A bare ref
+// right after a separator is a continuation; one that opens the claim is stripped only when a separator, another
+// ref, `and` or the end follows it (`-1 is returned` is prose). Matched against trimmed text.
+const LEAD_FRAGMENT_RE = /^(?:\s+|(?<=[\s/,;:.)—])[:\-/]\d+(?:-\d+)?|[:\-/]\d+(?:-\d+)?(?=\s*(?:$|[/,;.)—(]|[:\-/]\d)|\s+and\s*(?:$|[/,:.\-]))|\/(?=\s|:\d|$)|[,;:.)—](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
 
 const defaultDeps = {
   readFile: (p) => fs.readFileSync(p, 'utf8'),
@@ -110,7 +116,7 @@ function cleanParenthetical(inner) {
   text = text.replace(LEDGER_REF_RE, () => { ledger = true; return ''; });
   if (ledger) {
     text = text.replace(/\s+/g, ' ').replace(/^[\s,;:]+|[\s,;]+$/g, '');
-    if (wordCount(text) === 0) return '';
+    if (wordCount(text) === 0 || /^(?:\b(?:and|or)\b|[\d#,;&\s])*$/i.test(text)) return '';
   }
   let meta = false;
   let stripped = text;
@@ -123,9 +129,10 @@ function cleanParenthetical(inner) {
 // boilerplate come out, whitespace squashes, the location-list fragments in front go, and a claim
 // that is exactly one parenthetical (with at most a lone trailing `.`) is unwrapped.
 function cleanSegment(segment) {
-  let text = segment.replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
+  // A ref glued to the location token (`path:125` + `-133`, `path:122` + `/127`, `path` + `:17`) is that location's own tail.
+  let text = segment.replace(/^[:\-/]\d+(?:-\d+)?/, '').replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
   for (const re of BOILERPLATE) text = text.replace(re, '');
-  text = text.replace(/\s+/g, ' ').replace(TRAILING_LEDGER_RE, '').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
+  text = text.replace(/\s+/g, ' ').trim().replace(TRAILING_LEDGER_RE, '').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
   const whole = /^\(([^()]*)\)\s*\.?$/.exec(text);
   return whole ? whole[1].trim() : text;
 }
@@ -242,11 +249,10 @@ function stagedFindingItem(name, text, base, itemId, section) {
   const sev = /Severity:\s*(\w+)/.exec(text);
   const lens = /Lens:\s*([\w-]+)/.exec(text) || /lens\s+"?([\w-]+)/.exec(text);
   const findingLine = /^[-*\s]*Finding:\**\s*(.+)$/m.exec(text);
-  // No `Finding:` line: the digest text (backfill-dispose.js), which skips a header block, metadata and a
-  // table header; the joined text only when that yields nothing. Required here, not at the top: backfill-dispose
-  // requires backfill-apply, which requires this module.
+  // No `Finding:` line: the digest text (staged-digest-text.js), which skips a header block, metadata and a
+  // table header; the joined text only when that yields nothing.
   const joined = () => text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ');
-  const claim = (findingLine ? findingLine[1] : require('./backfill-dispose').digestTextOf(text) || joined()).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
+  const claim = (findingLine ? findingLine[1] : digestTextOf(text) || joined()).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
   const where = { lens: lens ? lens[1] : 'unknown', path: loc ? loc[1] : shaped[0], line: loc ? Number(loc[2]) : null };
   if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: where, context: text };
   return {
