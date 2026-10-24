@@ -30,7 +30,14 @@ const PATH_SHAPED_RE = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/;
 // split one.
 const META_PHRASES = [/present in only one\b[^)]*/gi, /partner agents?\b[^)]*/gi, /single agent/gi, /single[- ]read/gi, /no findings/gi, /\breproduc\w*/gi, /\bagents?\b/gi];
 const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
-const BOILERPLATE = [/not reproduced/g, /Staged to Review Console as low-confidence\./g, /Reversibility: \S+\./g, /Artifact: [^.]*\./g];
+// The producer's own staging note, in any case and followed by any of `.` `:` `;` ` —` or nothing
+// (`Staged to Review Console as low-confidence`, `both staged as low-confidence`, mid-sentence lowercase).
+const STAGING_NOTE_RE = /(?:\bboth\s+)?\bstaged\s+(?:to\s+Review\s+Console\s+)?as\s+low-confidence\b(?:[.:;]|\s*—)?/gi;
+const BOILERPLATE = [/not reproduced/g, STAGING_NOTE_RE, /Reversibility: \S+\./g, /Artifact: [^.]*\./g];
+// A ledger-row reference is meta about the console's ledger, never about the finding (R17).
+const LEDGER_REF_RE = /(?:\b[\w-]+\s+case\s*=\s*)?(?:\b(?:already|same\s+as)\s+)?\bledger\s+(?:row\s+|#)\d+\b\s*[,;]?/gi;
+// What a multi-location list leaves in front of a claim: separators, `and`, and bare line refs (`:335`, `-133`, `/127`).
+const LEAD_FRAGMENT_RE = /^(?:\s+|[:\-/]\d+(?:-\d+)?(?=[\s.,;/)]|$)|[/,;:.)](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
 
 const defaultDeps = {
   readFile: (p) => fs.readFileSync(p, 'utf8'),
@@ -88,24 +95,36 @@ function enumerateRuns(pipelinesRoot, deps = {}) {
   return { closed, live };
 }
 
-const wordCount = (text) => text.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+// A word has a letter: a bare line ref (`:335`) left by a location list is not one.
+const wordCount = (text) => text.split(/\s+/).filter((w) => /[A-Za-z]/.test(w)).length;
 
-// A parenthetical holding reproduction meta loses those phrases, and is dropped
-// whole when fewer than 3 words remain; one with no meta is kept as written.
+// A parenthetical loses its ledger-row references (dropped whole when nothing else is left), then
+// holding reproduction meta loses those phrases, and is dropped whole when fewer than 3 words
+// remain; one with neither is kept as written.
 function cleanParenthetical(inner) {
+  let text = inner;
+  let ledger = false;
+  text = text.replace(LEDGER_REF_RE, () => { ledger = true; return ''; });
+  if (ledger) {
+    text = text.replace(/\s+/g, ' ').replace(/^[\s,;:]+|[\s,;]+$/g, '');
+    if (wordCount(text) === 0) return '';
+  }
   let meta = false;
-  let stripped = inner;
+  let stripped = text;
   for (const re of META_PHRASES) stripped = stripped.replace(re, () => { meta = true; return ''; });
-  if (!meta) return `(${inner})`;
+  if (!meta) return `(${text})`;
   return wordCount(stripped) < 3 ? '' : `(${stripped.replace(/\s+/g, ' ').trim()})`;
 }
 
-// The whole segment is the claim: reproduction-meta parentheticals and the
-// producer's boilerplate come out, whitespace squashes, leading punctuation goes.
+// The whole segment is the claim: reproduction-meta parentheticals and the producer's
+// boilerplate come out, whitespace squashes, the location-list fragments in front go, and a claim
+// that is exactly one parenthetical (with at most a lone trailing `.`) is unwrapped.
 function cleanSegment(segment) {
   let text = segment.replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
   for (const re of BOILERPLATE) text = text.replace(re, '');
-  return text.replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
+  text = text.replace(/\s+/g, ' ').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
+  const whole = /^\(([^()]*)\)\s*\.?$/.exec(text);
+  return whole ? whole[1].trim() : text;
 }
 
 // `low-confidence` describes the staging, never a severity.

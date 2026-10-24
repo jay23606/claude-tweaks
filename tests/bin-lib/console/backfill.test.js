@@ -432,6 +432,96 @@ test('R14a: a line with no path stays locationless', () => {
   assert.strictEqual(item.finding, undefined);
 });
 
+// R17: a claim is never the producer's own note. Verbatim real lines from the acceptance run's
+// decisions.md files (the ones the earlier cleaning left boilerplate, ledger-row refs or location
+// fragments in).
+const R17_LEDGER_ONLY = '- STAGED 11:23:36 — log-decision: Reproduction: lens "3a" finding plugin/bin/lib/hooks/teardown-run.js:312 not reproduced. Staged to Review Console as low-confidence (ledger row 11). Reversibility: high. Reversibility: high.';
+const R17_RESIDUE = '- STAGED 06:21:45 — log-decision: Reproduction: lens "3c" findings plugin/bin/lib/reconcile/ledger-residue.js:316 / :335 / :411 / :185 / :221 and plugin/bin/lib/reconcile/index.js:429 not reproduced (failure causes are reduced to a reason code; network-failure is quiet for non-network gh errors; no try/catch around the ledgerResidue call, matching prune-remote). Staged to Review Console as low-confidence. Reversibility: high. Reversibility: high.';
+const R17_COLON = '- STAGED 13:49:40 — Step 3 reproduction: lens "3b" finding plugin/skills/release/bookkeeping.md:28 not reproduced. Staged to Review Console as low-confidence: Shipped-comment check unfiltered — already listed exempt in PR #3385 inventory; no action. Reversibility: high.';
+const R17_PAREN_ONLY = '- STAGED 00:57:58 — log-decision: Reproduction: lens "3b" finding plugin/skills/build/adopted-branch-collision-check.md:44 not reproduced. Staged to Review Console as low-confidence (records parse of empty string yields [0]; already ledger row 6, deferred). Reversibility: high.';
+const R17_DOC_RULE = '- STAGED 23:02:56 — Step 3 lens 3f: Reproduction: lens "3f" finding docs/plugin-structure.md:169 (docs rule has no test) not reproduced. Staged to Review Console as low-confidence. Reversibility: high.';
+const R17_RANGE = '- STAGED 13:49:40 — Step 3 reproduction: lens "3f" finding tests/comment-trust-conformance.test.js:125-133 not reproduced. Staged to Review Console as low-confidence: states-the-fixed-facts pin uses generic tokens (missing/viewer) and has no go-red control — both agents, lines ±2, substance near. Reversibility: high.';
+const R17_SLASH = '- STAGED 13:49:40 — Step 3 reproduction: lens "3a+3b" finding plugin/skills/tidy/scan-procedures.md:122/127 not reproduced. Staged to Review Console as low-confidence: unrelated prose trims — mandated by tests/release-lifecycle-byte-budget.test.js (net-zero-or-shrink); build ruling T4; no action. Reversibility: high.';
+const R17_AND = '- STAGED 00:58:04 — log-decision: Reproduction: lens "3c" findings plugin/bin/lib/worktree/remote-branch-collision.js:179 and :134 not reproduced. Staged to Review Console as low-confidence (findPrsForBranch parsed JSON not array-checked; widened --json field list degrades stop-card PR context on an old gh, already ledger row 12). Reversibility: high.';
+const R17_SLASH_COLON = '- STAGED 00:58:00 — log-decision: Reproduction: lens "3b" findings plugin/bin/lib/worktree/remote-branch-collision.js:146 / :147 share a location but not substance by score; both staged. Staged to Review Console as low-confidence (closingIssuesReferences matched on number only, repository not compared; needs write access to exploit). Reversibility: high.';
+const R17_LIST = '- STAGED 02:06:13 — log-decision: Reproduction: lens 3f findings tests/ledger-pipe-escape-rule-conformance.test.js:27 / :29 / :31 (citer list hard-coded to three writers, cite check is substring co-occurrence), tests/bin-lib/wrap-up/pack.test.js:832 (second parseLedger case also passes pre-change; the pre-change run in a scratch copy confirmed only the Item-pipe case fails), plugin/bin/lib/wrap-up/ledger-write.js:114-115 (no raw-pipe-in-Resolution or CLI-level legacy-row refusal test) share locations across the pair but not substance; staged to Review Console as low-confidence. Reversibility: high.';
+const R17_LOWER = '- STAGED 22:55:22 — log-decision: Reproduction: lens "3b" finding plugin/bin/lib/health-core/materiality-digest.js:83 not reproduced (string input trusted, low). Direct read: local-files single-writer string is trusted by design; staged to Review Console as low-confidence. Reversibility: high.';
+const R17_DASH = '- STAGED 23:44:20 — spec #3412 — Step 3 reproduction: Reproduction: lens "3a" finding plugin/bin/lib/reconcile/pr-state.js:39 (older gh builds reject an unknown --json field, no version fallback) not reproduced. Staged to Review Console as low-confidence — not elevated: the reviewing pass did not verify which gh version introduced closingIssuesReferences. Reversibility: high.';
+const R17_LEDGER_IN_PAREN = '- STAGED 22:18:43 — Reproduction: lens "3f" finding tests/bin-lib/compose-subject.test.js:366 not reproduced (three hand-built deps literals carry the two policy-reader stubs; a future literal without them throws a TypeError). Staged to Review Console as low-confidence — SDD ruling already recorded (ledger row 4: explicit deps over a silent fallback). Info-severity rows dropped below the floor: AC3.1/neither-flag test overlap, provenance-bearing test titles, GIT_TIMEOUT_MS wording vs gh-api-module-pattern (ledgered as a review/skill row instead). Reversibility: high.';
+const R17_CASE_REF = '- STAGED 13:49:40 — Step 3 reproduction: lens "3f" finding plugin/bin/lib/issues/comment-trust.js:72 not reproduced. Staged to Review Console as low-confidence: untrustedJqNote() prints "()" for an empty-string authorAssociation and "null" for a missing url where the JS prints "no association"/"unknown" (GitHub never sends an empty association; url case = ledger row 14). Reversibility: high.';
+
+test('R17: a line whose only claim text is the staging note and a ledger-row ref is claim-empty', () => {
+  assert.deepStrictEqual(splitDecisionLine(R17_LEDGER_ONLY), { findings: [], noClaim: 'claim-empty' });
+});
+
+test('R17: a leading location-continuation list is not a claim, and the next finding keeps its own', () => {
+  const { findings } = splitDecisionLine(R17_RESIDUE);
+  assert.deepStrictEqual(findings.map((f) => [f.path, f.line, f.claim === '' ? 'empty' : 'claim']), [
+    ['plugin/bin/lib/reconcile/ledger-residue.js', 316, 'empty'], ['plugin/bin/lib/reconcile/index.js', 429, 'claim'],
+  ]);
+  assert.ok(findings[1].claim.startsWith('failure causes are reduced to a reason code'), findings[1].claim);
+  const [empty, claimed] = itemsForLine(R17_RESIDUE);
+  assert.deepStrictEqual([empty.kind, empty.noClaimReason, claimed.kind], ['no-claim', 'claim-empty', 'finding']);
+});
+
+test('R17: the staging note is removed in every punctuation and case, keeping the text after it', () => {
+  assert.strictEqual(splitDecisionLine(R17_COLON).findings[0].claim, 'Shipped-comment check unfiltered — already listed exempt in PR #3385 inventory; no action.');
+  assert.ok(splitDecisionLine(R17_RANGE).findings[0].claim.startsWith('states-the-fixed-facts pin uses generic tokens'));
+  assert.ok(splitDecisionLine(R17_DASH).findings[0].claim.endsWith('not elevated: the reviewing pass did not verify which gh version introduced closingIssuesReferences.'));
+  // Lowercase, mid-sentence, after a `;`.
+  assert.strictEqual(splitDecisionLine(R17_LOWER).findings[0].claim, '(string input trusted, low). Direct read: local-files single-writer string is trusted by design');
+  // `both staged as low-confidence`.
+  for (const f of splitDecisionLine(COMPOSE_SUBJECT).findings) assert.ok(!/staged as low-confidence/i.test(f.claim), f.claim);
+  assert.ok(splitDecisionLine(COMPOSE_SUBJECT).findings[1].claim.includes('Direct-verification override not applied'));
+});
+
+test('R17: a claim that is exactly one parenthetical is unwrapped, with no note or ledger-row text', () => {
+  const [f] = splitDecisionLine(R17_PAREN_ONLY).findings;
+  assert.strictEqual(f.claim, 'records parse of empty string yields [0]; deferred');
+  assert.ok(!/Staged to Review Console/i.test(f.claim) && !/ledger row/i.test(f.claim), f.claim);
+  assert.strictEqual(splitDecisionLine(R17_DOC_RULE).findings[0].claim, 'docs rule has no test');
+  assert.strictEqual(splitDecisionLine(R17_AND).findings[0].claim, 'findPrsForBranch parsed JSON not array-checked; widened --json field list degrades stop-card PR context on an old gh');
+});
+
+test('R17: a ledger-row ref inside a longer parenthetical is removed and the rest kept', () => {
+  const [f] = splitDecisionLine(R17_LEDGER_IN_PAREN).findings;
+  assert.ok(f.claim.includes('SDD ruling already recorded (explicit deps over a silent fallback)'), f.claim);
+  assert.ok(!/ledger row/i.test(f.claim), f.claim);
+  const [g] = splitDecisionLine(R17_CASE_REF).findings;
+  assert.ok(g.claim.endsWith('(GitHub never sends an empty association).'), g.claim);
+});
+
+test('R17: a claim never starts with a bare line ref, a separator or `and`', () => {
+  for (const line of [R17_RANGE, R17_SLASH, R17_AND, R17_SLASH_COLON, R17_LIST]) {
+    for (const f of splitDecisionLine(line).findings) assert.ok(f.claim === '' || /^[A-Za-z(]/.test(f.claim), f.claim);
+  }
+  assert.ok(splitDecisionLine(R17_SLASH).findings[0].claim.startsWith('unrelated prose trims'));
+  assert.ok(splitDecisionLine(R17_SLASH_COLON).findings[0].claim.startsWith('share a location but not substance'));
+  assert.ok(splitDecisionLine(R17_LIST).findings[0].claim.startsWith('citer list hard-coded'));
+  assert.ok(splitDecisionLine(R17_AND).findings[0].claim.startsWith('findPrsForBranch'));
+});
+
+// Ids derived by the pre-R17 backfill.js (BASE bc4a523a3) for these lines under the run id of itemsForLine.
+// A claim change never moves an id; a line whose every finding became claim-empty is one line-level
+// no-claim item, exactly as CLAIMLESS is.
+const R17_PRE_CHANGE_IDS = [
+  [R17_RESIDUE, ['bf:578ccf931a0f71e8', 'bf:bc60af879b36a50e']],
+  [R17_PAREN_ONLY, ['bf:bcc67715f08ba172']],
+  [R17_SLASH_COLON, ['bf:0532ed558a527422']],
+  [R17_AND, ['bf:bd8326a164434de2']],
+  [R17_DOC_RULE, ['bf:5206c514fee8fe63']],
+  [R17_RANGE, ['bf:342b3d62744a7fb7']],
+  [R17_SLASH, ['bf:c16d2e1bc262e35c']],
+  [R17_COLON, ['bf:fa3087836d757d99']],
+  [R17_LIST, ['bf:84c92360bce3bc1a', 'bf:8cbb54436bdf2ef6']],
+];
+
+test('R17: item ids are byte-identical to the pre-change derivation', () => {
+  for (const [line, ids] of R17_PRE_CHANGE_IDS) assert.deepStrictEqual(itemsForLine(line).map((i) => i.itemId), ids, line.slice(0, 60));
+  const RUN = '2026-10-24T090000-record-1';
+  assert.deepStrictEqual(itemsForLine(R17_LEDGER_ONLY).map((i) => [i.kind, i.noClaimReason, i.itemId]), [['no-claim', 'claim-empty', backfillItemId({ runId: RUN, sourceKey: R17_LEDGER_ONLY, findingKey: '' })]]);
+});
+
 test('summarize counts kinds', () => {
   const { pipelines } = fixtureRoot();
   const run = mkArchived(pipelines, '2026-10-20T000000-spec-13');
