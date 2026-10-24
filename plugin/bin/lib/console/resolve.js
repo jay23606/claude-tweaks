@@ -236,9 +236,13 @@ function parseCategory(text) {
 // never counts. Prose twin: wrap-up/review-console-appendix.md's sdd-ruling-*
 // bullet. Returns null when the item may resolve as today, else the reason it
 // resolves pending under.
+// `UNREADABLE` is decided by the callers that attempted the read (`stagedItems` here,
+// `decideConsoleExecute` in `reconcile/console-execute.js`), never by
+// `sddRulingDeferralReason`, which only ever sees text (#4049).
 const SDD_RULING_REASONS = Object.freeze({
   NO_DEFER_REASON: 'sdd-ruling-deferral-no-defer-reason',
   UNCLASSIFIED: 'sdd-ruling-unclassified',
+  UNREADABLE: 'sdd-ruling-unreadable',
 });
 
 function sddRulingDeferralReason(text) {
@@ -328,6 +332,21 @@ function parseInvariant(patchText) {
   return m ? m[1].trim() : null;
 }
 
+// Only `.patch` / `.md` / shadow-dup entries and shadow-dup anchors (`isAnchor`) are read. `readError`
+// is true only when such an attempted read threw (#4049), so a caller can tell an unreadable file
+// from one that was never read at all.
+function readStagedEntry(deps, stagedDir, name, isAnchor = false) {
+  const file = path.join(stagedDir, name);
+  const entry = { name, path: file, text: null, readError: false };
+  if (!(name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name) || isAnchor)) return entry;
+  try {
+    entry.text = deps.readFile(file);
+  } catch {
+    entry.readError = true;
+  }
+  return entry;
+}
+
 // The run-dir files the finding items derive from. findingItems reads only
 // these: settling a finding needs no members, grants or patch checks.
 function readRunFiles({ runDir, deps }) {
@@ -337,11 +356,7 @@ function readRunFiles({ runDir, deps }) {
   // A shadow-dup copy's anchor is read whatever its extension, so the duplicate check compares
   // the same bytes bin/shadow-dup-proposal.js reads from disk (#3946 M1).
   const anchors = new Set(names.map((n) => SHADOW_DUP_RE.exec(n)).filter(Boolean).map((m) => m[1]));
-  const staged = names.map((name) => ({
-    name,
-    path: path.join(stagedDir, name),
-    text: (name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name) || anchors.has(name)) ? readText(deps, path.join(stagedDir, name)) : null,
-  }));
+  const staged = names.map((name) => readStagedEntry(deps, stagedDir, name, anchors.has(name)));
   const engineState = readJson(deps, path.join(runDir, 'engine-state.json'));
   // The tiebreak findings artifact: absent, unparseable or not an array reads as [].
   const reviewFindings = readJson(deps, path.join(runDir, FINDINGS_ARTIFACT));
@@ -601,7 +616,7 @@ function stagedItems(snapshot) {
     if (outcome) return { id: s.name, section, resolution: SECTION_STANCES[section].resolution, reason: `${outcome} — ${SHADOW_DUP_OUTCOMES[outcome].note}` };
     if (reason) return { id: s.name, section, resolution: 'pending', reason };
     if (/^sdd-ruling-/.test(s.name)) {
-      const r = sddRulingDeferralReason(s.text);
+      const r = s.readError ? SDD_RULING_REASONS.UNREADABLE : sddRulingDeferralReason(s.text);
       if (r) return { id: s.name, section, resolution: 'pending', reason: r };
     }
     const settled = model.settledFiles.get(s.name);
