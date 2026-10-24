@@ -783,7 +783,8 @@ test('AC6.1 the source-bullet assertions can go red', () => {
 
 const SURFACING = [
   [({ routing }) => surfacingParagraph(routing), /Step 3\.7's `confirmed` outcome \(`step3-tiebreak\.md`\)/, "unconfirmed/contested findings reach the table only through Step 3.7's confirmed outcome"],
-  [({ routing }) => surfacingParagraph(routing), /`console` outcome reaches the Wrap-Up Review Console through the finding's earlier STAGED line/, "a tiebreak console outcome reaches the Review Console through the earlier STAGED line"],
+  // #3949 retired "through the finding's earlier STAGED line": the verdict supersedes that line.
+  [({ routing }) => surfacingParagraph(routing), /`console` outcome reaches the Wrap-Up Review Console as its own row, per `step3-tiebreak\.md`'s `console` bullet/, "a tiebreak console outcome reaches the Review Console as its own row, citing step3-tiebreak.md"],
   [({ routing }) => xhighParagraph(routing), /can't-tell/, "the xhigh paragraph names the tiebreak's can't-tell outcomes"],
   [({ routing }) => xhighParagraph(routing), /surfacing inline doesn't remove the staging/, 'the xhigh paragraph keeps the staging wording'],
   [({ routing }) => maxParagraph(routing), /on top of the .{0,40}rows `xhigh` already added/, 'the max paragraph still stacks on the xhigh rows'],

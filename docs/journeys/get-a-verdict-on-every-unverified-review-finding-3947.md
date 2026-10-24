@@ -53,12 +53,12 @@ files:
 - **Action:** the developer reads the counts for confirmed, dropped, digest and console.
   - Confirmed findings appear in Step 3 Routing at the resolver's severity.
   - Can't-tell findings at `low`/`info` go to the digest with `Defer-reason: tiebreak-cant-tell`.
-  - In a pipeline run, can't-tell findings at `medium` and above stay on the console through their earlier STAGED line.
+  - In a pipeline run, can't-tell findings at `medium` and above appear on the console as their own rows, with the tiebreak's severity and recommendation.
   - Standalone, they are listed in the closing output with the tiebreak's recommendation, and nothing is staged.
 - **Should feel:** short. The console holds only what an independent reader could not settle, not every finding one agent happened to report.
 - **Should understand:**
-  - A `confirmed` verdict replaces the console item when the earlier STAGED line carries `lens "{lens}"` and `{path}:{line}`.
-  - A contested finding's `staged/review-contested-{N}.md` still shows until the console sub-issue lands.
+  - A verdict replaces the console item when the earlier STAGED line carries `lens "{lens}"` and `{path}:{line}`.
+  - A staged review file that line names (`staged/review-contested-{N}.md`, for example) takes the verdict's outcome too, and does not linger on the console.
   - The run cannot archive while a listed finding lacks a verdict line (`clear-an-archive-refusal-for-an-untiebroken-finding-3945.md`).
   - A finding has no verdict when its `resolve-tiebreak` call exits non-zero, or when `log-decision.js` fails twice to write its line. Standalone, it is listed as `no verdict (resolve-tiebreak exited {exit})`. In a pipeline run, the summary names it and the archive gate refuses the run.
 - **Red flags:**

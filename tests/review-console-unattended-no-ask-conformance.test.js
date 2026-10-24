@@ -31,22 +31,35 @@ function section(text, heading) {
 
 const SHORT_CIRCUIT = '## Auto-resolution short-circuit (`consoleAutoResolve`)';
 
-// Every AskUserQuestion mention in the unattended branch must be a negation (zero / skip / never / no).
-function askLinesWithoutNegation(text) {
-  const lines = section(text, SHORT_CIRCUIT).split('\n').filter((l) => l.includes('AskUserQuestion'));
-  assert.ok(lines.length > 0, 'anchor vanished — the section names no AskUserQuestion, so the sweep is vacuous');
-  return lines.filter((l) => !/zero|skip|never|no /i.test(l));
+// The unattended branch may name AskUserQuestion only in these negations, each exactly once. A per-line
+// negation-word check cannot see an affirmative mention planted inside a long paragraph that already
+// says "never" elsewhere, so the occurrence set is pinned exactly instead.
+const ALLOWED_ASK_PHRASES = ['**zero** `AskUserQuestion` calls', 'its `AskUserQuestion` call entirely'];
+
+// Problems with the branch's AskUserQuestion mentions; [] when the set is exactly the allowed phrases.
+function askProblems(text) {
+  const body = section(text, SHORT_CIRCUIT);
+  const count = (needle) => body.split(needle).length - 1;
+  const problems = ALLOWED_ASK_PHRASES.filter((p) => count(p) !== 1).map((p) => `allowed phrase not present exactly once: ${p}`);
+  const total = count('AskUserQuestion');
+  if (total !== ALLOWED_ASK_PHRASES.length) problems.push(`AskUserQuestion occurs ${total} times, expected ${ALLOWED_ASK_PHRASES.length}`);
+  return problems;
 }
 
-test('AC7: every AskUserQuestion line in the unattended branch is a negation', () => {
-  assert.deepStrictEqual(askLinesWithoutNegation(REVIEW_CONSOLE), []);
+test('AC7: the unattended branch names AskUserQuestion only in its two negations', () => {
+  assert.deepStrictEqual(askProblems(REVIEW_CONSOLE), []);
 });
 
-test('AC7 control: an affirmative AskUserQuestion line in the branch is caught', () => {
-  const planted = 'Then call `AskUserQuestion` to confirm each filing.';
-  const mutated = REVIEW_CONSOLE.replace('\nAfter resolving, proceed directly', `\n${planted}\n\nAfter resolving, proceed directly`);
+test('AC7 control: an affirmative AskUserQuestion planted inside an existing paragraph is caught', () => {
+  const mutated = REVIEW_CONSOLE.replace('it never calls `gh`.', 'it never calls `gh`. Confirm each filing with the user via `AskUserQuestion`, then continue.');
   assert.notStrictEqual(mutated, REVIEW_CONSOLE);
-  assert.deepStrictEqual(askLinesWithoutNegation(mutated), [planted]);
+  assert.deepStrictEqual(askProblems(mutated), ['AskUserQuestion occurs 3 times, expected 2']);
+});
+
+test('AC7 control: losing an allowed negation is caught', () => {
+  const mutated = REVIEW_CONSOLE.replace('**zero** `AskUserQuestion` calls', 'one `AskUserQuestion` call');
+  assert.notStrictEqual(mutated, REVIEW_CONSOLE);
+  assert.deepStrictEqual(askProblems(mutated), ['allowed phrase not present exactly once: **zero** `AskUserQuestion` calls']);
 });
 
 function namesConsoleFilings(text) {
