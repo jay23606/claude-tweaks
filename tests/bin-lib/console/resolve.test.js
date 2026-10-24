@@ -652,8 +652,9 @@ test('AC2.1: a console.json written with the old 58-character id shape still rea
 test('AC2.1: old-shape and new-shape decision ids coexist in one console.json — residue counts both and points both at decisions.md (#3816)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-resolve-'));
   fs.writeFileSync(path.join(dir, 'decisions.md'), SAME_PREFIX);
-  const oldId = `decision:${SUPERSEDED.split('\n')[1].slice(2, 60)}`;
-  const items = [oldId, decisionId(SUPERSEDED.split('\n')[1])].map((id) => ({ id, section: 'Low-confidence findings', resolution: 'keep-staged', reason: 'r' }));
+  const line = SUPERSEDED.split('\n')[1];
+  const oldId = `decision:${line.slice(2, 60)}`;
+  const items = [oldId, decisionId(line)].map((id) => ({ id, section: 'Low-confidence findings', resolution: 'keep-staged', reason: 'r' }));
   const text = JSON.stringify({ resolved: true, items });
   fs.writeFileSync(path.join(dir, 'console.json'), text);
   assert.strictEqual(unresolvedItems(JSON.parse(text)).length, 2);

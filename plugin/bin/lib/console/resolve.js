@@ -653,7 +653,8 @@ function coordinationItems(snapshot, stagedIds) {
     const seen = (occurrences.get(line) || 0) + 1;
     occurrences.set(line, seen);
     const hash = crypto.createHash('sha256').update(line).digest('hex').slice(0, 8);
-    out.push({ id: `decision:${line.slice(2, 60)}#${hash}${seen > 1 ? `-${seen}` : ''}`, section, resolution: 'keep-staged', reason: SECTION_STANCES[section].reason });
+    const repeatSuffix = seen > 1 ? `-${seen}` : '';
+    out.push({ id: `decision:${line.slice(2, 60)}#${hash}${repeatSuffix}`, section, resolution: 'keep-staged', reason: SECTION_STANCES[section].reason });
   }
   // A can't-tell verdict no settled staged file carries is its own item; it takes Contested when
   // an earlier line for the same finding was a debate, else Low-confidence.
