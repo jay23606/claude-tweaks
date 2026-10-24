@@ -39,9 +39,9 @@ A `SCANNED` entry (skill-curation's scan-summary log line — see `_shared/auto-
 
 Renders only when non-empty; aggregated across every spec in the run, `Spec`-tagged, and the rows take the next numbers of the global sequence. Which copies belong here: `wrap-up/console-template.md`'s Dismissed duplicates `cmp -s` rule, run against the `staged/` the copy came from.
 
-#### Low-confidence findings (not reproduced)
+#### Low-confidence findings (not reproduced — Approve all files or drops each per its tiebreak recommendation)
 
-Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
+Rendered and built per `wrap-up/console-template.md`'s Low-confidence findings section, from each `spec-{N}` dir's `--list` call. Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
 
 | # | Spec | Item | Path:Line | Finding | Severity | Lens | Recommendation |
 |---|---|---|---|---|---|---|---|
@@ -50,9 +50,9 @@ Render this section only when `decisions.md` contains STAGED entries with the un
 
 > These findings were surfaced by exactly one reviewer agent (or downgraded by a debate that converged negative), and the tiebreak could not settle them. The columns and the Approve-all default — each row's recommendation; a legacy no-verdict row stays undecided — are `wrap-up/console-template.md`'s Low-confidence findings section, per spec.
 
-#### Contested findings (debate inconclusive)
+#### Contested findings (debate inconclusive — Approve all files or drops each per its tiebreak recommendation)
 
-Render this section only when `decisions.md` contains STAGED entries from cross-lens debate with mixed/partial verdicts. Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
+Rendered and built per `wrap-up/console-template.md`'s Contested findings section, from each `spec-{N}` dir's `--list` call. Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
 
 | # | Spec | Item | Path:Line | Lens A verdict | Lens B verdict | Severity | Recommendation |
 |---|---|---|---|---|---|---|---|

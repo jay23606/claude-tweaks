@@ -39,7 +39,8 @@ Every renderable row gets a stable id: `{kind}-{n}` where `{kind}` is one of `st
 section from Auto-applied through Cleanup actions — reusing the console's own global `#` sequence
 as `{n}`), `q` (Queue writes, `{n}` = the `Q#` number), `m` (Memory updates, `{n}` = the `M#`
 number), `u` (Upstream feedback, `{n}` = the `U#` number), or `r` (Reflection insights, `{n}` =
-the `R#` number). The multi-spec console qualifies
+the `R#` number). Low-confidence and Contested rows are `staged` rows, built from
+`console-filings.js --list` (Row shape below). The multi-spec console qualifies
 every id with its spec slug — `{spec-slug}-{kind}-{n}` — so ids stay unique across every spec's
 rows sharing one comment set. One further id, always present, always last: `resolve`.
 
@@ -80,6 +81,16 @@ like `isMergeRow` above, omitted on every other item, never `false` — the flag
 reads to record an unticked or `--decline`d ruling as `reversed`, not `declined`, and the
 reconciler's detection forwards it to the executing session.
 
+**A Low-confidence or Contested row** (#3949) comes from `console-filings.js --run "{item-run-dir}" --list`
+(`wrap-up/review-console.md` step 7) — one row per printed entry, never derived by hand from
+`decisions.md`. An entry with `cantTell: true` is a can't-tell finding: its label carries
+`— tick = file · untick = drop` after the source reference, and it renders **pre-ticked** when
+the entry's `resolution` (its Approve-all default) is `filed` and unticked when it is `dropped`. It
+carries `"findingItem": "{id}"` (the entry's `id`) on its `console.json` item object — omitted on
+every other item, never empty — which detection forwards and `resolve-console` reads to record an
+unticked or `--decline`d row as `dropped`, never `declined`. An entry with `cantTell: false` (a
+legacy row, or a staged file a tiebreak already settled) renders as an ordinary row.
+
 ## Legend (verbatim — AC4)
 
 Render this block, unmodified, immediately before the final Resolve checkbox:
@@ -91,14 +102,17 @@ Render this block, unmodified, immediately before the final Resolve checkbox:
 - **Unticked when Resolve console is ticked** = declined.
 - **Exception — an SDD ruling row** (`sdd-ruling-*`): ticked = ratify; unticked when Resolve
   console is ticked = **reverse** (a reversal record is filed), never a bare decline.
+- **Exception — a finding row** (`tick = file · untick = drop`): ticked = file it as a backlog
+  record; unticked when Resolve console is ticked = **drop** (nothing is filed).
 - Tick every item you approve, then tick **Resolve console** last to confirm — a half-ticked
   list is never read as an answer on its own.
 - **The PR itself needs no checkbox**: mark it ready and merge it = "merge"; close it =
   "discard"; leave it as-is = "keep parked".
 ```
 
-The SDD-ruling bullet is the one exception to the declined rule: the executing session performs the
-ratify or reverse write-back per `wrap-up/review-console-appendix.md`'s `sdd-ruling-*` bullet
+The SDD-ruling and finding-row bullets are the two exceptions to the declined rule: the executing
+session performs the ratify or reverse write-back per `wrap-up/review-console-appendix.md`'s
+`sdd-ruling-*` bullet, and the file or drop per `wrap-up/review-console.md` step 7
 (`_shared/console-execution.md`'s Execution routing).
 
 ## Resolve checkbox

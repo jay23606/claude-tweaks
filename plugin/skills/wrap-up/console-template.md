@@ -40,9 +40,9 @@ A `FAILED` entry (a batch write that errored — see `_shared/auto-decision-log.
 
 Renders only when non-empty; rows take the next numbers of the global sequence. A `.shadow-dup` copy goes here only when `cmp -s "{run-dir}/staged/{copy}" "{run-dir}/staged/{anchor}"` exits 0 (`{anchor}`: the copy's name minus its `.shadow-dup`/`.shadow-dup-{n}` suffix); any other copy, a missing or unreadable anchor included, is a `Q#` row.
 
-#### Low-confidence findings (not reproduced)
+#### Low-confidence findings (not reproduced — Approve all files or drops each per its tiebreak recommendation)
 
-Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Omit the section entirely when empty.
+Render this section only when `console-filings.js --run "{item-run-dir}" --list` (`review-console.md` step 7) prints a `Low-confidence findings` row — a STAGED unconfirmed-finding line, a staged review file, or a tiebreak `console` verdict — and build every row from that output: `Item` is its `id`, `Path:Line`/`Severity`/`Lens`/`Recommendation` its fields (`—` for a null), `Finding` the claim its STAGED line or staged file states. Omit the section entirely when empty.
 
 | # | Item | Path:Line | Finding | Severity | Lens | Recommendation |
 |---|---|---|---|---|---|---|
@@ -53,9 +53,9 @@ Render this section only when `decisions.md` contains STAGED entries with the un
 
 `Item` is the console item id — the staged file, or `tiebreak:{id}` for a verdict no staged file carries — the value `review-console.md` step 7's `--only` takes. `Severity` and `Recommendation` are the tiebreak verdict's. **Approve all resolves each row to its recommendation:** `file`, or none, → `filed` (a backlog record, step 7); `drop` → `dropped` (nothing executes). A human choosing Approve all on a `drop` row is a human decision: `_shared/auto-mode-contract.md`'s `### Tiebreak-refuted drop (one-decision amendment)` governs autonomous resolution, which files every can't-tell item. A legacy row whose STAGED line carries no tiebreak verdict shows `—` and stays undecided (`keep-staged`) under Approve all — never resolved `dropped`.
 
-#### Contested findings (debate inconclusive)
+#### Contested findings (debate inconclusive — Approve all files or drops each per its tiebreak recommendation)
 
-Render this section only when `decisions.md` contains STAGED entries from cross-lens debate with mixed/partial verdicts. Omit the section entirely when empty.
+Render this section only when `--list` prints a `Contested findings` row (a cross-lens debate with mixed/partial verdicts), built as Low-confidence findings' rows are. Omit the section entirely when empty.
 
 | # | Item | Path:Line | Lens A verdict | Lens B verdict | Severity | Recommendation |
 |---|---|---|---|---|---|---|

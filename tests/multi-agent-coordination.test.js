@@ -1314,11 +1314,11 @@ test('/review summary assembly: confirmed flow to summary; unconfirmed + contest
   // the console" section points readers there rather than inlining it (so review-console.md stays lean).
   const REVIEW_CONSOLE = readSkillFile('wrap-up', 'console-template.md');
   assert.ok(
-    REVIEW_CONSOLE.includes('Low-confidence findings (not reproduced)'),
+    REVIEW_CONSOLE.includes('#### Low-confidence findings (not reproduced'),
     'console-template.md must document the Low-confidence subsection',
   );
   assert.ok(
-    REVIEW_CONSOLE.includes('Contested findings (debate inconclusive)'),
+    REVIEW_CONSOLE.includes('#### Contested findings (debate inconclusive'),
     'console-template.md must document the Contested subsection',
   );
 });
