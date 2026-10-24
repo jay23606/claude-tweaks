@@ -724,7 +724,10 @@ async function main(argv) {
           process.stderr.write('claude-tweaks: record-worktree --dispatch without CLAUDE_CODE_SESSION_ID — dispatchSessionId recorded as null; wrap-up will treat this run as human-run\n');
         }
       }
-      const result = ctxLib.writeRunState(runDir, patch);
+      // #3973: the owner block, only with a session id (record-worktree is the adoption
+      // path, so it replaces another session's block).
+      const result = ctxLib.writeRunState(runDir,
+        ctxLib.patchWithOwnerBlock(patch, process.env.CLAUDE_CODE_SESSION_ID, { replacesSessionId: true }));
       if (result) {
         process.stdout.write(`claude-tweaks: worktree recorded for ${path.basename(runDir)}\n`);
       } else {
@@ -1820,6 +1823,11 @@ async function main(argv) {
     try {
       fs.writeSync(2, `attribution: no run dir attributed — no fallback run dir matches ${cwd}; skipped ${ownedRun.dropped.join(', ')}\n`);
     } catch { /* diagnostics never break a session */ }
+  }
+  // #3973: the owner's own events keep the run's owner block fresh. session-start
+  // refreshes it itself, before its reconcile spawn.
+  if (cmd !== 'session-start') {
+    try { ctxLib.refreshOwnerBlock({ input, ownedRun }); } catch { /* never breaks a session */ }
   }
   const out = (await mod.run({ input, runDir, runState, ownedRun, cwd })) || {};
   if (out.json) fs.writeSync(1, JSON.stringify(out.json));
