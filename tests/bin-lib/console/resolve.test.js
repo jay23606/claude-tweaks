@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const MOD = path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'resolve');
-const { classifyStagedItem, resolveAll, SECTION_STANCES, SECTION_MAP, ENGINE_ROW_SECTIONS, CANONICAL_PREFIXES, nearestCanonicalPrefixes, STAGING_EXEMPTIONS, stagingExemption } = require(MOD);
+const { classifyStagedItem, resolveAll, findingItems, parseTiebreakLine, approveAllDefault, readSnapshot, SECTION_STANCES, SECTION_MAP, ENGINE_ROW_SECTIONS, CANONICAL_PREFIXES, nearestCanonicalPrefixes, STAGING_EXEMPTIONS, stagingExemption } = require(MOD);
 const ROOT = path.join(__dirname, '..', '..', '..');
 const { unresolvedItems } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
 const { resolveTiebreak } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'tiebreak'));
@@ -630,7 +630,179 @@ test('a tiebreak confirmed line supersedes the real-emitter STAGED line (AC2.1, 
   assert.strictEqual(lowItems(`${staged}\n${confirmedEntry}\n`).length, 0, 'the confirmed line supersedes it');
   const dropped = verdict('refuted');
   assert.strictEqual(dropped.outcome, 'drop');
-  assert.strictEqual(lowItems(`${staged}\n- ${dropped.logLine}\n`).length, 1, 'a drop line never supersedes');
+  assert.strictEqual(lowItems(`${staged}\n- ${dropped.logLine}\n`).length, 0, 'a refuted drop supersedes the STAGED line too (#3949)');
+});
+
+// ---- #3949: a tiebreak verdict is a finding's final outcome ----
+const TB_NOW = new Date(2026, 9, 24, 10, 0, 0);
+const TB_FILE = Array.from({ length: 300 }, () => 'quote text here').join('\n');
+const tbFinding = (over = {}) => ({ lens: '3a', path: 'src/a.js', line: 9, claim: 'claim one', reporterSeverity: 'medium', kind: 'unconfirmed', ...over });
+// A verdict line built through the real resolver and the sanctioned formatter, never typed by hand.
+function tbVerdict(finding, { verdict = 'cant-tell', severity = 'medium', recommendation = null } = {}) {
+  const evidence = verdict === 'cant-tell' ? '' : `Evidence: ${finding.path}:${finding.line} \`quote text here\`\n`;
+  const rec = recommendation ? `Recommendation: ${recommendation}\n` : '';
+  const r = resolveTiebreak(finding, `Verdict: ${verdict}\n${evidence}Severity: ${severity}\n${rec}STATUS: DONE`, { readFile: () => TB_FILE, now: TB_NOW });
+  return { r, entry: formatEntry({ status: r.logStatus, now: TB_NOW, step: r.logStep, text: r.logText, reversibility: 'high' }) };
+}
+const tbStaged = (f) => `- STAGED 09:59:00 — Reproduction: lens "${f.lens}" finding ${f.path}:${f.line} not reproduced. Staged to Review Console as low-confidence. Reversibility: high.`;
+const tbCoincidence = (f, lineB) => `- STAGED 09:59:00 — Reproduction: lens "${f.lens}" findings ${f.path}:${f.line} / ${f.path}:${lineB} share a location but not substance; both staged unconfirmed. Reversibility: high.`;
+const tbDebate = (f, file) => `- STAGED 09:59:00 — Debate: lens "${f.lens}" cross-lens disagreement on ${f.path}:${f.line} inconclusive (positions differ). Both verdicts staged. Stage path: staged/${file}. Reversibility: high.`;
+const bareDeps = () => ({ readFile: (p) => fs.readFileSync(p, 'utf8'), readdir: (p) => { try { return fs.readdirSync(p); } catch { return []; } } });
+const findings = (decisions, staged = {}) => findingItems({ runDir: fixture({ decisions: `${decisions}\n`, staged }), deps: bareDeps() });
+const OPEN = ['pending', 'keep-staged'];
+
+test('approve-all: a console verdict with Recommendation file resolves filed, drop resolves dropped (#3949 AC2)', () => {
+  const f1 = tbFinding();
+  const f2 = tbFinding({ path: 'src/b.js', line: 3, claim: 'claim two' });
+  const v1 = tbVerdict(f1, { recommendation: 'file' });
+  const v2 = tbVerdict(f2, { recommendation: 'drop' });
+  const decisions = [tbStaged(f1), tbStaged(f2), v1.entry, v2.entry].join('\n');
+  const items = findings(decisions);
+  assert.deepStrictEqual(items.map((i) => [i.id, i.section, i.resolution]), [
+    [`tiebreak:${v1.r.id}`, 'Low-confidence findings', 'filed'],
+    [`tiebreak:${v2.r.id}`, 'Low-confidence findings', 'dropped'],
+  ], 'the earlier STAGED lines are superseded, not items');
+  assert.deepStrictEqual(items[0].tiebreak, { id: v1.r.id, key: '3a|src/a.js:9', lens: '3a', path: 'src/a.js', line: 9, severity: 'medium', recommendation: 'file', reason: 'verdict:cant-tell' });
+  assert.strictEqual(items[1].tiebreak.recommendation, 'drop');
+  const viaResolveAll = resolveAll({ runDir: fixture({ decisions: `${decisions}\n`, headers: [7] }), policy: 'console-auto', deps: deps() }).items;
+  assert.deepStrictEqual(viaResolveAll, items, 'resolveAll carries the same finding items for now');
+});
+
+test('a console verdict with Recommendation none resolves filed, never dropped (#3949)', () => {
+  const f = tbFinding();
+  const v = tbVerdict(f);
+  assert.strictEqual(v.r.recommendation, null);
+  const [item] = findings([tbStaged(f), v.entry].join('\n'));
+  assert.strictEqual(item.resolution, 'filed');
+  assert.strictEqual(item.tiebreak.recommendation, null);
+  assert.strictEqual(approveAllDefault(null), 'filed');
+  assert.strictEqual(approveAllDefault('file'), 'filed');
+  assert.strictEqual(approveAllDefault('drop'), 'dropped');
+});
+
+test('a legacy STAGED line with no verdict stays keep-staged and is in unresolvedItems (#3949 AC2)', () => {
+  const items = findings(tbStaged(tbFinding()));
+  assert.strictEqual(items.length, 1);
+  assert.strictEqual(items[0].resolution, 'keep-staged');
+  assert.strictEqual(items[0].reason, SECTION_STANCES['Low-confidence findings'].reason);
+  assert.match(items[0].reason, /no tiebreak recommendation \(legacy shape\)/);
+  assert.deepStrictEqual(unresolvedItems({ items }), items);
+  const file = findings('', { 'review-unconfirmed-1.md': 'x' });
+  assert.deepStrictEqual(file.map((i) => [i.id, i.resolution]), [['review-unconfirmed-1.md', 'keep-staged']], 'a staged file nothing links to stays keep-staged');
+});
+
+test('a refuted drop supersedes the earlier STAGED line, at low and at high severity (#3949 AC1)', () => {
+  for (const severity of ['low', 'high']) {
+    const f = tbFinding({ reporterSeverity: severity });
+    const v = tbVerdict(f, { verdict: 'refuted', severity });
+    assert.strictEqual(v.r.outcome, 'drop');
+    assert.deepStrictEqual(findings([tbStaged(f), v.entry].join('\n')), [], `${severity}: no console item`);
+  }
+});
+
+test('a digested verdict supersedes the earlier STAGED line (#3949 AC1)', () => {
+  const f = tbFinding({ reporterSeverity: 'low' });
+  const v = tbVerdict(f, { severity: 'low' });
+  assert.strictEqual(v.r.outcome, 'digest');
+  assert.deepStrictEqual(findings([tbStaged(f), v.entry].join('\n')), []);
+});
+
+test('a confirmed contested finding no longer appears in Contested — its staged review-contested file resolves dismissed (#3949 comment 1)', () => {
+  const f = tbFinding();
+  const v = tbVerdict(f, { verdict: 'confirmed', severity: 'medium' });
+  assert.strictEqual(v.r.outcome, 'confirmed');
+  const items = findings([tbDebate(f, 'review-contested-1.md'), v.entry].join('\n'), { 'review-contested-1.md': 'contested' });
+  assert.deepStrictEqual(items.map((i) => [i.id, i.section, i.resolution]), [['review-contested-1.md', 'Contested findings', 'dismissed']]);
+  assert.match(items[0].reason, /superseded — tiebreak confirmed it; routed through Step 3 Routing/);
+  assert.strictEqual(items.filter((i) => i.resolution === 'keep-staged').length, 0);
+});
+
+test('a staged review file settled by a dropped, digested or console verdict resolves finally (#3949)', () => {
+  const run = (finding, opts, file) => findings([tbDebate(finding, file), tbVerdict(finding, opts).entry].join('\n'), { [file]: 'x' })[0];
+  const dropped = run(tbFinding({ reporterSeverity: 'low' }), { verdict: 'refuted', severity: 'low' }, 'review-contested-2.md');
+  assert.deepStrictEqual([dropped.resolution, dropped.reason], ['dropped', 'refuted by tiebreak']);
+  const digested = run(tbFinding({ reporterSeverity: 'low' }), { severity: 'low' }, 'review-debate-3.md');
+  assert.deepStrictEqual([digested.resolution, digested.reason], ['dismissed', 'can\'t-tell below medium — logged to the materiality digest']);
+  const cons = run(tbFinding(), { recommendation: 'drop' }, 'review-unconfirmed-4.md');
+  assert.deepStrictEqual([cons.id, cons.section, cons.resolution, cons.tiebreak.recommendation], ['review-unconfirmed-4.md', 'Low-confidence findings', 'dropped', 'drop']);
+});
+
+test('a console verdict on a contested finding takes the Contested section (#3949)', () => {
+  const f = tbFinding();
+  const v = tbVerdict(f, { recommendation: 'file' });
+  const items = findings([tbDebate(f, 'review-contested-9.md'), v.entry].join('\n'));
+  assert.deepStrictEqual(items.map((i) => [i.id, i.section, i.resolution]), [[`tiebreak:${v.r.id}`, 'Contested findings', 'filed']]);
+});
+
+test('tiebreak lines are read by shape, not by keyword (#3949)', () => {
+  const f = tbFinding({ path: 'plugin/skills/review/step3-debate-and-refutation.md', line: 12 });
+  const v = tbVerdict(f, { recommendation: 'file' });
+  const items = findings(v.entry);
+  assert.deepStrictEqual(items.map((i) => [i.id, i.section]), [[`tiebreak:${v.r.id}`, 'Low-confidence findings']], 'the debate in the path never makes it Contested or a second item');
+  assert.strictEqual(parseTiebreakLine('- STAGED 10:00:00 — Step 3: lens "3a" finding src/a.js:9 mentions tiebreak:0123456789ab in passing, console: nope. Severity: high.'), null);
+});
+
+test('a two-finding coincidence line needs both verdicts (#3949)', () => {
+  const a = tbFinding({ line: 4, claim: 'a' });
+  const b = tbFinding({ line: 9, claim: 'b' });
+  const va = tbVerdict(a, { verdict: 'confirmed' });
+  const vb = tbVerdict(b, { verdict: 'confirmed' });
+  const line = tbCoincidence(a, 9);
+  assert.strictEqual(findings([line, va.entry].join('\n')).length, 1, 'one verdict leaves the line open');
+  assert.strictEqual(findings([line, va.entry].join('\n'))[0].resolution, 'keep-staged');
+  assert.deepStrictEqual(findings([line, va.entry, vb.entry].join('\n')), [], 'both verdicts supersede it');
+});
+
+test('a verdict logged before the STAGED line does not supersede it (#3949)', () => {
+  const f = tbFinding();
+  assert.strictEqual(findings([tbVerdict(f, { verdict: 'confirmed' }).entry, tbStaged(f)].join('\n')).length, 1);
+});
+
+test('AC1: every tiebreak outcome together leaves zero keep-staged and zero pending (#3949)', () => {
+  const mk = (n, over, opts) => { const f = tbFinding({ path: `src/f${n}.js`, claim: `claim ${n}`, ...over }); return { f, v: tbVerdict(f, opts) }; };
+  const confirmed = mk(1, {}, { verdict: 'confirmed' });
+  const refutedLow = mk(2, { reporterSeverity: 'low' }, { verdict: 'refuted', severity: 'low' });
+  const refutedHigh = mk(3, { reporterSeverity: 'high' }, { verdict: 'refuted', severity: 'high' });
+  const digest = mk(4, { reporterSeverity: 'low' }, { severity: 'low' });
+  const consoleFile = mk(5, {}, { recommendation: 'file' });
+  const consoleDrop = mk(6, {}, { recommendation: 'drop' });
+  const fileFinding = mk(7, {}, { recommendation: 'file' });
+  const all = [confirmed, refutedLow, refutedHigh, digest, consoleFile, consoleDrop, fileFinding];
+  const decisions = [...all.map(({ f }, i) => (i === 6 ? tbDebate(f, 'review-contested-1.md') : tbStaged(f))), ...all.map(({ v }) => v.entry)].join('\n');
+  const items = findings(decisions, { 'review-contested-1.md': 'x' });
+  assert.ok(items.length > 0);
+  assert.deepStrictEqual(items.filter((i) => OPEN.includes(i.resolution)), []);
+  assert.deepStrictEqual(items.map((i) => [i.id, i.resolution]), [
+    ['review-contested-1.md', 'filed'],
+    [`tiebreak:${consoleFile.v.r.id}`, 'filed'],
+    [`tiebreak:${consoleDrop.v.r.id}`, 'dropped'],
+  ]);
+});
+
+test('parseTiebreakLine reads all four resolver shapes and nothing else (#3949)', () => {
+  const f = tbFinding();
+  const parsed = (opts) => parseTiebreakLine(tbVerdict(f, opts).entry);
+  assert.deepStrictEqual(parsed({ recommendation: 'drop' }), { kind: 'console', id: tbVerdict(f).r.id, key: '3a|src/a.js:9', lens: '3a', path: 'src/a.js', line: 9, severity: 'medium', recommendation: 'drop', reason: 'verdict:cant-tell', evidence: null });
+  const digested = parseTiebreakLine(tbVerdict(tbFinding({ reporterSeverity: 'low' }), { severity: 'low' }).entry);
+  assert.deepStrictEqual([digested.kind, digested.reason, digested.severity, digested.recommendation], ['digested', 'verdict:cant-tell', 'low', null]);
+  const dropped = parsed({ verdict: 'refuted', severity: 'high' });
+  assert.deepStrictEqual([dropped.kind, dropped.severity, dropped.evidence], ['dropped', 'high', 'src/a.js:9 "quote text here"']);
+  const confirmed = parsed({ verdict: 'confirmed' });
+  assert.deepStrictEqual([confirmed.kind, confirmed.id, confirmed.key, confirmed.severity], ['confirmed', tbVerdict(f).r.id, '3a|src/a.js:9', null]);
+  assert.strictEqual(parseTiebreakLine(tbStaged(f)), null);
+  assert.strictEqual(parseTiebreakLine('- AUTO 10:00:00 — Reproduction: lens "3a" finding src/a.js:9 elevated. Confirmed.'), null);
+});
+
+test('readSnapshot reads review-findings.json through deps.readFile: absent, unparseable and non-array give [] (#3949)', () => {
+  const snap = (body) => {
+    const runDir = fixture({ headers: [7] });
+    if (body !== undefined) fs.writeFileSync(path.join(runDir, 'review-findings.json'), body);
+    return readSnapshot({ runDir, deps: deps() }).findings;
+  };
+  assert.deepStrictEqual(snap(undefined), []);
+  assert.deepStrictEqual(snap('not json'), []);
+  assert.deepStrictEqual(snap('{"a":1}'), []);
+  assert.deepStrictEqual(snap('[{"id":"0123456789ab","lens":"3a"}]'), [{ id: '0123456789ab', lens: '3a' }]);
 });
 
 test('a same-location AUTO elevation under a different lens does not supersede (#3772)', () => {

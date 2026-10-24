@@ -190,15 +190,17 @@ const SHADOW_DUP_OUTCOMES = Object.freeze({
 //   apply (after git apply --check), curation rows approve;
 // - Low-confidence / Contested rows have no pre-checked default ("the user
 //   decides whether to apply, ignore, or escalate") — Approve-all applies
-//   nothing, so they stay staged (never auto-applied);
+//   nothing, so they stay staged (never auto-applied) — unless the finding
+//   carries a tiebreak verdict (#3949), which settles it (tiebreakModel,
+//   approveAllDefault below);
 // - Q#/M# resolve to Apply, their pre-checked default;
 // - U# resolves to FILED — the one point where unattended diverges from an
 //   interactive Approve all (#347's Decision Rationale).
 const SECTION_STANCES = {
   [SECTIONS.AUTO]: { resolution: 'applied', reason: 'already in commits — override = revert' },
   [SECTIONS.PENDING]: { resolution: 'apply', reason: 'Approve-all default (patch validated with git apply --check first)' },
-  [SECTIONS.LOW]: { resolution: 'keep-staged', reason: 'unconfirmed finding — no Approve-all default; never auto-applied' },
-  [SECTIONS.CONTESTED]: { resolution: 'keep-staged', reason: 'debate inconclusive — no Approve-all default; never auto-applied' },
+  [SECTIONS.LOW]: { resolution: 'keep-staged', reason: 'unconfirmed finding with no tiebreak recommendation (legacy shape) — no Approve-all default; never auto-applied' },
+  [SECTIONS.CONTESTED]: { resolution: 'keep-staged', reason: 'debate inconclusive with no tiebreak recommendation (legacy shape) — no Approve-all default; never auto-applied' },
   [SECTIONS.SKILL]: { resolution: 'approve', reason: 'Approve-all default' },
   [SECTIONS.DOC]: { resolution: 'approve', reason: 'Approve-all default' },
   [SECTIONS.JOURNEY]: { resolution: 'approve', reason: 'Approve-all default' },
@@ -288,8 +290,9 @@ function parseInvariant(patchText) {
   return m ? m[1].trim() : null;
 }
 
-// Everything resolveAll reads, read once. No resolution is computed here.
-function readSnapshot({ runDir, deps }) {
+// The run-dir files the finding items derive from. findingItems reads only
+// these: settling a finding needs no members, grants or patch checks.
+function readRunFiles({ runDir, deps }) {
   const decisions = readText(deps, path.join(runDir, 'decisions.md')) || '';
   const stagedDir = path.join(runDir, 'staged');
   const names = deps.readdir(stagedDir).filter((n) => !n.startsWith('.')).sort();
@@ -302,6 +305,14 @@ function readSnapshot({ runDir, deps }) {
     text: (name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name) || anchors.has(name)) ? readText(deps, path.join(stagedDir, name)) : null,
   }));
   const engineState = readJson(deps, path.join(runDir, 'engine-state.json'));
+  // review-findings.json (tiebreak.js's FINDINGS_ARTIFACT): absent, unparseable or not an array reads as [].
+  const reviewFindings = readJson(deps, path.join(runDir, 'review-findings.json'));
+  return { decisions, staged, engineState, findings: Array.isArray(reviewFindings) ? reviewFindings : [] };
+}
+
+// Everything resolveAll reads, read once. No resolution is computed here.
+function readSnapshot({ runDir, deps }) {
+  const files = readRunFiles({ runDir, deps });
   const members = readMembers(deps, runDir);
   let grants = null;
   let grantsError = null;
@@ -311,11 +322,11 @@ function readSnapshot({ runDir, deps }) {
   // A re-derived patch (#3290) applies only on top of its earlier patch, so when the caller supplies
   // a stacked check the verdicts come from ONE walk over the .patch entries in apply order; without
   // it, each patch is checked alone against the unmodified worktree.
-  const patchItems = staged.filter((item) => item.name.endsWith('.patch'));
+  const patchItems = files.staged.filter((item) => item.name.endsWith('.patch'));
   const patchChecks = deps.checkPatchStack
     ? deps.checkPatchStack(patchItems.map((item) => item.path))
     : Object.fromEntries(patchItems.map((item) => [item.name, deps.gitApplyCheck(item.path)]));
-  return { decisions, staged, engineState, members, grants, grantsError, patchChecks };
+  return { ...files, members, grants, grantsError, patchChecks };
 }
 
 function decisionLines(decisions) {
@@ -410,7 +421,116 @@ function mergeResolution(snapshot, deps) {
   return { resolution: 'merge', reason: 'every member carries auto:merge or a matured auto:merge-pending; no needs-human verdict' };
 }
 
+// ---- tiebreak verdicts are a finding's final outcome (#3949) ----
+//
+// tiebreak.js's resolveTiebreak writes exactly four decisions.md shapes, read
+// here by shape (never by the keywords the legacy classifier uses — a finding
+// path containing "debate" must not reclassify its own verdict line):
+//   STAGED … Tiebreak tiebreak:{id}: lens "L" finding P:N console: {reason}. Severity: {s}. Recommendation: {r}.
+//   AUTO   … Tiebreak tiebreak:{id}: lens "L" finding P:N digested: {reason}. Severity: {s}.
+//   AUTO   … Tiebreak tiebreak:{id}: lens "L" finding P:N dropped: refuted by tiebreak. Evidence: {e}. Severity: {s}.
+//   AUTO   … Reproduction: lens "L" finding P:N confirmed by tiebreak:{id}. Confirmed.
+const TIEBREAK_STEP_RE = /Tiebreak tiebreak:([0-9a-f]{12}): lens "([^"]*)" finding (\S+):([^\s:]+) (console|digested|dropped): /;
+const TIEBREAK_CONFIRMED_RE = /\blens "([^"]*)" finding (\S+):([^\s:]+) confirmed by tiebreak:([0-9a-f]{12})\. Confirmed\./;
+const TIEBREAK_SEVERITY_RE = /Severity: (critical|high|medium|low|info)\./g;
+const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
+
+function parseTiebreakLine(line) {
+  if (!/^- (STAGED|AUTO) /.test(line)) return null;
+  const c = TIEBREAK_CONFIRMED_RE.exec(line);
+  const s = c ? null : TIEBREAK_STEP_RE.exec(line);
+  if (!c && !s) return null;
+  const [id, lens, file, lineNo] = c ? [c[4], c[1], c[2], c[3]] : [s[1], s[2], s[3], s[4]];
+  const kind = c ? 'confirmed' : s[5] === 'console' ? 'console' : s[5] === 'digested' ? 'digested' : 'dropped';
+  const tail = s ? line.slice(s.index + s[0].length) : '';
+  const severity = [...tail.matchAll(TIEBREAK_SEVERITY_RE)].map((m) => m[1]).pop() || null;
+  const rec = /Recommendation: (file|drop|none)\./.exec(tail);
+  const reason = kind === 'console' || kind === 'digested' ? (/^(.*?)\. Severity: /.exec(tail) || [])[1] || null : null;
+  const evidence = kind === 'dropped' ? (/Evidence: (.*)\. Severity: (?:critical|high|medium|low|info)\./.exec(tail) || [])[1] || null : null;
+  return {
+    kind, id, key: findingKey(line), lens, path: file, line: /^\d+$/.test(lineNo) ? Number(lineNo) : lineNo,
+    severity, recommendation: rec && rec[1] !== 'none' ? rec[1] : null, reason, evidence,
+  };
+}
+
+// An agent that could not tell is not licensed to drop: only an explicit `drop` recommendation drops.
+function approveAllDefault(recommendation) {
+  return recommendation === 'drop' ? 'dropped' : 'filed';
+}
+
+// A STAGED line's finding keys: its first location's, plus the second location of a
+// two-finding coincidence line (step3-lens-dispatch.md: `lens "L" findings P:A / P:B share a location …`).
+function lineKeys(line) {
+  const keys = [findingKey(line)];
+  const co = /\blens\s+"?([A-Za-z0-9_-]+)"?\s+findings\s+\S+?:\d+\s+\/\s+(\S+?):(\d+)\s+share a location/.exec(line);
+  if (co) keys.push(`${co[1]}|${co[2]}:${co[3]}`);
+  return keys.filter(Boolean);
+}
+
+const FINDING_SECTIONS = [SECTIONS.LOW, SECTIONS.CONTESTED];
+// Which verdict decides a staged file settled by several: the one needing a human first.
+const VERDICT_PRECEDENCE = ['console', 'confirmed', 'digested', 'dropped'];
+
+// Every tiebreak verdict in decisions.md, indexed by the finding key it settles (latest wins) and by
+// its id, plus which staged review-* files those verdicts settle. A key is settled for a STAGED line
+// only by a verdict logged AFTER it; a keyless line is never settled.
+function tiebreakModel(snapshot) {
+  const lines = decisionLines(snapshot.decisions);
+  const settledByKey = new Map();
+  const latestById = new Map();
+  lines.forEach((line, index) => {
+    const t = parseTiebreakLine(line);
+    if (t) {
+      const v = { index, ...t };
+      latestById.set(v.id, v);
+      if (v.key) settledByKey.set(v.key, v);
+    } else if (/^- AUTO /.test(line) && /\bConfirmed\b/.test(line)) { // #3772: the producer's own elevation sentence
+      const key = findingKey(line);
+      if (key) settledByKey.set(key, { index, kind: 'confirmed', id: null, key });
+    }
+  });
+  const settledAfter = (index, keys) => keys.length > 0 && keys.every((k) => settledByKey.has(k) && settledByKey.get(k).index > index);
+
+  const stagedNames = new Set(snapshot.staged.map((s) => s.name));
+  const refused = refusedStagedNames(snapshot.decisions);
+  const naming = new Map();
+  lines.forEach((line, index) => {
+    if (!/^- STAGED /.test(line) || parseTiebreakLine(line)) return;
+    const m = STAGED_FILE_RE.exec(line);
+    if (!m || !stagedNames.has(m[1])) return;
+    naming.set(m[1], [...(naming.get(m[1]) || []), { index, keys: lineKeys(line) }]);
+  });
+  const settledFiles = new Map();
+  const absorbed = new Set();
+  for (const [name, refs] of naming) {
+    const cls = classifyStagedItem(name);
+    if (refused.has(name) || cls.outcome || cls.reason || !FINDING_SECTIONS.includes(cls.section)) continue;
+    if (!refs.every((r) => settledAfter(r.index, r.keys))) continue;
+    const verdicts = refs.flatMap((r) => r.keys.map((k) => settledByKey.get(k)));
+    const chosen = VERDICT_PRECEDENCE.map((kind) => verdicts.find((v) => v.kind === kind)).find(Boolean);
+    settledFiles.set(name, chosen);
+    verdicts.filter((v) => v.kind === 'console').forEach((v) => absorbed.add(v.id));
+  }
+  return { lines, latestById, settledAfter, settledFiles, absorbed };
+}
+
+const tiebreakField = (v) => ({ id: v.id, key: v.key, lens: v.lens, path: v.path, line: v.line, severity: v.severity, recommendation: v.recommendation, reason: v.reason });
+
+function consoleVerdictResolution(v) {
+  const resolution = approveAllDefault(v.recommendation);
+  return { resolution, reason: `tiebreak could not settle it (${v.reason}, severity ${v.severity}); recommendation ${v.recommendation || 'none'} — Approve-all default ${resolution}`, tiebreak: tiebreakField(v) };
+}
+
+// The final outcome a settled staged file takes instead of keep-staged.
+function settledFileResolution(v) {
+  if (v.kind === 'confirmed') return { resolution: 'dismissed', reason: 'superseded — tiebreak confirmed it; routed through Step 3 Routing' };
+  if (v.kind === 'dropped') return { resolution: 'dropped', reason: 'refuted by tiebreak' };
+  if (v.kind === 'digested') return { resolution: 'dismissed', reason: 'can\'t-tell below medium — logged to the materiality digest' };
+  return consoleVerdictResolution(v);
+}
+
 function stagedItems(snapshot) {
+  const model = tiebreakModel(snapshot);
   // Refusal is a decisions.md fact about the item, not a fact about its name —
   // so it is decided before SECTION_MAP ever runs and outranks every stance.
   const refused = refusedStagedNames(snapshot.decisions);
@@ -425,6 +545,8 @@ function stagedItems(snapshot) {
     const { section, reason, outcome } = classifyStagedItem(s.name, s.text, siblingText);
     if (outcome) return { id: s.name, section, resolution: SECTION_STANCES[section].resolution, reason: `${outcome} — ${SHADOW_DUP_OUTCOMES[outcome].note}` };
     if (reason) return { id: s.name, section, resolution: 'pending', reason };
+    const settled = model.settledFiles.get(s.name);
+    if (settled) return { id: s.name, section, ...settledFileResolution(settled) };
     const stance = SECTION_STANCES[section];
     if (s.name.endsWith('.patch')) {
       const check = snapshot.patchChecks[s.name] || { ok: false, error: 'not checked' };
@@ -466,12 +588,13 @@ function engineItems(snapshot, stagedIds) {
 // file of their own (single-read unconfirmed findings). A line naming a
 // staged/ path that exists is the same item as that file.
 //
-// A STAGED line is superseded (no item) when a LATER `- AUTO` line in the same
-// decisions.md carries the same finding key (lens + first path:line) and the
-// producer's `Confirmed` sentence — review step 3 stages a finding as
-// low-confidence, then logs the elevation as AUTO once reproduced (#3772).
-// Case-sensitive so `not confirmed` never matches; a keyless line is never
-// superseded.
+// A STAGED line is superseded (no item) when every one of its finding keys
+// (lens + path:line; tiebreakModel's lineKeys) is settled by a LATER tiebreak
+// verdict line, or by the producer's own `Confirmed` AUTO sentence — review
+// step 3 stages a finding as low-confidence, then logs the elevation as AUTO
+// once reproduced (#3772). Case-sensitive so `not confirmed` never matches; a
+// keyless line is never superseded. A can't-tell `console` verdict supersedes
+// its STAGED line too, and re-enters as one `tiebreak:{id}` item (#3949).
 function findingKey(line) {
   const lens = /\blens\s+"?([A-Za-z0-9_-]+)"?/i.exec(line);
   const loc = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/.exec(line);
@@ -480,23 +603,43 @@ function findingKey(line) {
 
 function coordinationItems(snapshot, stagedIds) {
   const out = [];
-  const lines = decisionLines(snapshot.decisions);
-  const confirmedAfter = (i, key) => lines.slice(i + 1).some((l) => /^- AUTO /.test(l) && /\bConfirmed\b/.test(l) && findingKey(l) === key);
-  for (const [i, line] of lines.entries()) {
-    if (!/^- STAGED /.test(line)) continue;
-    const key = findingKey(line);
-    if (key && confirmedAfter(i, key)) continue;
+  const model = tiebreakModel(snapshot);
+  const lineSection = (line) => {
+    const named = STAGED_FILE_RE.exec(line);
+    if (named && stagedIds.has(named[1])) return classifyStagedItem(named[1]).section;
+    if (/low-confidence|not directly verified|unconfirmed/i.test(line)) return SECTIONS.LOW;
+    if (/contested|debate/i.test(line)) return SECTIONS.CONTESTED;
+    return null;
+  };
+  for (const [i, line] of model.lines.entries()) {
+    if (!/^- STAGED /.test(line) || parseTiebreakLine(line)) continue;
+    if (model.settledAfter(i, lineKeys(line))) continue;
     // Extension-anchored so trailing sentence punctuation (a period ending
     // the decisions.md line right after ".md") is never captured into the
     // filename — `.` is deliberately excluded from the body class.
-    const named = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/.exec(line);
+    const named = STAGED_FILE_RE.exec(line);
     if (named && stagedIds.has(named[1])) continue;
-    let section = null;
-    if (/low-confidence|not directly verified|unconfirmed/i.test(line)) section = SECTIONS.LOW;
-    else if (/contested|debate/i.test(line)) section = SECTIONS.CONTESTED;
+    const section = lineSection(line);
     if (section) out.push({ id: `decision:${line.slice(2, 60)}`, section, resolution: 'keep-staged', reason: SECTION_STANCES[section].reason });
   }
+  // A can't-tell verdict no settled staged file carries is its own item; it takes Contested when
+  // an earlier line for the same finding was a debate, else Low-confidence.
+  for (const v of model.latestById.values()) {
+    if (v.kind !== 'console' || model.absorbed.has(v.id)) continue;
+    const contested = model.lines.some((line, i) => i < v.index && /^- STAGED /.test(line) && !parseTiebreakLine(line)
+      && lineKeys(line).includes(v.key) && lineSection(line) === SECTIONS.CONTESTED);
+    out.push({ id: `tiebreak:${v.id}`, section: contested ? SECTIONS.CONTESTED : SECTIONS.LOW, ...consoleVerdictResolution(v) });
+  }
   return out;
+}
+
+// The Low-confidence / Contested items alone, from the run-dir files alone (no members, grants,
+// patch checks or engine state): staged review-* files, STAGED coordination lines, and
+// can't-tell verdicts, each at its Approve-all default. resolveAll carries the same items.
+function findingItems({ runDir, deps }) {
+  const snapshot = { ...readRunFiles({ runDir, deps }), patchChecks: {} };
+  const stagedIds = new Set(snapshot.staged.map((s) => s.name));
+  return [...stagedItems(snapshot), ...coordinationItems(snapshot, stagedIds)].filter((i) => FINDING_SECTIONS.includes(i.section));
 }
 
 // Every cell is escaped, ids included: a staged filename is producer-supplied
@@ -553,4 +696,4 @@ function resolveAll({ runDir, policy, deps }) {
   return result;
 }
 
-module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, renderTable, renderStoredTable, drainOverlapHoldPrs };
+module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, findingItems, parseTiebreakLine, approveAllDefault, renderTable, renderStoredTable, drainOverlapHoldPrs };
