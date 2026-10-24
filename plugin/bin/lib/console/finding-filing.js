@@ -32,15 +32,23 @@ function findingFingerprint({ lens, path, claim }) {
 const squash = (s) => String(s).replace(/\s+/g, ' ').trim();
 const oneLine = (s) => defuse(squash(s));
 
-// { item, finding, runId } -> { fingerprint, title, proposal }
+// { item, finding, runId } -> { fingerprint, title, proposal, claimMissing }
 // `item` is a console item carrying `tiebreak`; `finding` is the review-findings.json entry whose
-// `id` equals item.tiebreak.id, or null — then the claim is `tiebreak:{id}`.
+// `id` equals item.tiebreak.id, or null. With no entry the claim is `tiebreak:{id}` and
+// `claimMissing` is true: the record says the claim text was lost rather than read as a finding,
+// and the caller reports the degrade (bin/console-filings.js). The id hashes the line, so such a
+// record can twin a later run's filing of the same finding — accepted: the artifact is written
+// before any tiebreak dispatch (review/step3-tiebreak.md), so only a hand-removed artifact gets here.
 function composeFindingProposal({ item, finding, runId }) {
   const t = item.tiebreak;
-  const claim = finding && typeof finding.claim === 'string' && finding.claim.trim() ? finding.claim : `tiebreak:${t.id}`;
+  const claimMissing = !(finding && typeof finding.claim === 'string' && finding.claim.trim());
+  const claim = claimMissing ? `tiebreak:${t.id}` : finding.claim;
   const fingerprint = findingFingerprint({ lens: t.lens, path: t.path, claim });
   const title = `Review finding (can't-tell): ${oneLine(t.path)} — ${defuse(squash(claim).slice(0, TITLE_CLAIM_MAX))}`;
   const where = `${oneLine(t.path)}:${oneLine(t.line)}`;
+  const claimLines = claimMissing
+    ? [`Review lens \`${oneLine(t.lens)}\` reported a finding at \`${where}\` (severity ${oneLine(t.severity)}). Its claim text is unavailable: the run's review-findings.json has no entry for \`${defuse(`tiebreak:${t.id}`)}\`, so only the verdict line in the run's decisions.md names it.`]
+    : [`Review lens \`${oneLine(t.lens)}\` reported a finding at \`${where}\` (severity ${oneLine(t.severity)}). The claim follows.`, fencedBlock(defuse(claim))];
   const body = recordPayload({
     title,
     type: 'task',
@@ -49,8 +57,7 @@ function composeFindingProposal({ item, finding, runId }) {
     body: specShapedBody({
       provenance: { origin: `wrap-up Review Console, run ${oneLine(runId)}: can't-tell finding ${where}`, deferReason: DEFER_REASON },
       currentState: [
-        `Review lens \`${oneLine(t.lens)}\` reported a finding at \`${where}\` (severity ${oneLine(t.severity)}). The claim follows.`,
-        fencedBlock(defuse(claim)),
+        ...claimLines,
         `The tiebreak could not settle it: can't-tell (${oneLine(t.reason)}). Recommendation: ${oneLine(t.recommendation || 'none')}. Run: ${oneLine(runId)}.`,
       ],
       deliverables: '- [ ] decide whether the finding holds at the cited location; fix it if it does, or close this record if it does not',
@@ -64,10 +71,11 @@ function composeFindingProposal({ item, finding, runId }) {
     fingerprint,
     title,
     proposal: `Title: ${title}\nType: task\nLabels: ${LABELS.NEEDS_DEFINITION}\nDefer-reason: ${DEFER_REASON}\n\n${body}`,
+    claimMissing,
   };
 }
 
-// { items, findings, runId } -> [{ item, fingerprint, title, proposal }]: one per item resolved
+// { items, findings, runId } -> [{ item, fingerprint, title, proposal, claimMissing }]: one per item resolved
 // `filed` that carries `tiebreak`, deduplicated by fingerprint within the batch (first wins).
 function planFilings({ items, findings, runId }) {
   const byId = new Map((Array.isArray(findings) ? findings : []).map((f) => [f && f.id, f]));

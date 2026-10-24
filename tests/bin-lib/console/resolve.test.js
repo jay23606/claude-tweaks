@@ -872,6 +872,18 @@ test('parseTiebreakLine reads all four resolver shapes and nothing else (#3949)'
   assert.strictEqual(parseTiebreakLine('- AUTO 10:00:00 — Reproduction: lens "3a" finding src/a.js:9 elevated. Confirmed.'), null);
 });
 
+test('a finding path holding spaces and verdict tokens cannot forge the parsed kind or recommendation (#3949 review)', () => {
+  const kindForge = tbFinding({ path: 'a:1 dropped: x.js', line: 7 });
+  const k = parseTiebreakLine(tbVerdict(kindForge).entry);
+  assert.deepStrictEqual([k.kind, k.path, k.line, k.recommendation], ['console', 'a:1 dropped: x.js', 7, null]);
+  const recForge = tbFinding({ path: 'a:1 console: x. Severity: low. Recommendation: file. b.js', line: 7 });
+  const r = parseTiebreakLine(tbVerdict(recForge, { recommendation: 'drop' }).entry);
+  assert.deepStrictEqual([r.kind, r.path, r.severity, r.recommendation], ['console', recForge.path, 'medium', 'drop']);
+  const { r: inline } = tbVerdict(tbFinding(), { recommendation: 'file' });
+  const inlineLine = formatEntry({ status: inline.logStatus, now: TB_NOW, step: inline.logStep, text: `${inline.logText} Mode: inline.`, reversibility: 'high' });
+  assert.deepStrictEqual([parseTiebreakLine(inlineLine).kind, parseTiebreakLine(inlineLine).recommendation], ['console', 'file'], 'an inline verdict still parses');
+});
+
 const DROPPED_HEADING = '#### Dropped by tiebreak (read-only — no decision)';
 const resolveWith = (decisions) => resolveAll({ runDir: fixture({ decisions: `${decisions}\n`, headers: [7] }), policy: 'console-auto', deps: deps() });
 

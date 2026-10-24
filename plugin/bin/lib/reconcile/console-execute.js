@@ -463,11 +463,13 @@ async function resolveConsoleExecution(runDir, {
   const primary = byId.get(commentIds[0]);
   if (!primary) return { status: 'error', reason: 'comment-not-found' };
 
-  // Validate every named id against the comment's own parsed rows BEFORE
+  // Validate every named id against the comments' own parsed rows BEFORE
   // any write — a partial write followed by an error would leave the
-  // console in an inconsistent state.
-  const ticks = parseItemTicks(primary.body);
-  const knownIds = new Set(Object.keys(ticks));
+  // console in an inconsistent state. Overflow comments carry their own
+  // item ticks (decideConsoleExecute reads them the same way).
+  const ticksByComment = new Map(commentIds.map((id) => [id, byId.has(id) ? parseItemTicks(byId.get(id).body) : {}]));
+  const ticksOf = (item) => ticksByComment.get(item.commentId && commentIds.includes(item.commentId) ? item.commentId : commentIds[0]) || {};
+  const knownIds = new Set([...ticksByComment.values()].flatMap((t) => Object.keys(t)));
   const namedIds = [...new Set([...approve, ...decline, ...reverseFailed, ...filingFailed])];
   const unknownIds = namedIds.filter((id) => !knownIds.has(id));
   if (unknownIds.length) return { status: 'error', reason: 'unknown-item-ids', ids: unknownIds };
@@ -497,9 +499,12 @@ async function resolveConsoleExecution(runDir, {
   // or named in --decline (`_shared/console-execution.md`). A flagged ruling
   // named in --reverse-failed outranks all of it: its reverse was refused or
   // never created, so it reads reverse-failed and is not cleared. A finding
-  // row follows the same shape: not approved it is dropped (cleared), and
-  // named in --filing-failed it reads filing-failed (not cleared).
+  // row follows the same shape: unticked or declined it is dropped (cleared),
+  // named in --filing-failed it reads filing-failed (not cleared), and a row
+  // whose tick no comment carries is declined (not cleared) — a drop needs
+  // the untick, never an absent row.
   const outcomes = items.map((item) => {
+    const ticks = ticksOf(item);
     if (item.isRulingRow === true && reverseFailedSet.has(item.id)) {
       return {
         id: item.id, kind: item.kind, outcome: 'reverse-failed', note: REVERSE_FAILED_NOTE, isMergeRow: item.isMergeRow === true, isRulingRow: true,
@@ -518,7 +523,7 @@ async function resolveConsoleExecution(runDir, {
         id: item.id, kind: item.kind, outcome: 'reversed', note: REVERSED_LABEL, isMergeRow: item.isMergeRow === true, isRulingRow: true,
       };
     }
-    if (isFindingRow(item)) {
+    if (isFindingRow(item) && (declineSet.has(item.id) || ticks[item.id] === false)) {
       return {
         id: item.id, kind: item.kind, outcome: 'dropped', note: DROPPED_NOTE, isMergeRow: item.isMergeRow === true, findingItem: item.findingItem,
       };

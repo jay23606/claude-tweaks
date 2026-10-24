@@ -67,7 +67,9 @@ step 7's can't-tell clause, `--only` naming the ticked rows' `findingItem` ids a
 the run dir whose findings hold them (on a multi-spec console, the `spec-{N}` dir its spec slug
 names); unticked at Resolve time, or named in `resolve-console --decline`, it is **dropped** —
 nothing filed, logged as Override's `drop {#}` is (`wrap-up/review-console-interactive.md`), and
-`resolve-console` records it `dropped`, which counts as cleared. A ticked row whose filing failed
+`resolve-console` records it `dropped`, which counts as cleared. Its tick is read from whichever
+console comment carries its row (an overflow comment included); a row no comment carries is
+recorded `declined`, not cleared — a drop needs the untick. A ticked row whose filing failed
 (a non-zero `console-filings.js` exit, or a failed create) goes in `resolve-console --filing-failed`:
 its reply reads `filing failed — see decisions.md`, Resolve stays unticked, and it is carried as
 step 7 carries a failed filing — never recorded `executed`.

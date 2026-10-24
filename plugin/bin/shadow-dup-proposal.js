@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveTarget, sanitizeId } = require('./lib/stage-item/write');
 const { composeShadowDupProposal } = require('./lib/console/shadow-dup-proposal');
-const { SHADOW_DUP_RE } = require('./lib/console/resolve');
+const { SHADOW_DUP_RE, runIdOf } = require('./lib/console/resolve');
 
 const USAGE = 'usage: shadow-dup-proposal.js --run <run-dir> --item <staged-name> --out <file> [--help]\n'
   + '  exit 0 wrote --out; 2 malformed invocation (incl. a byte-identical duplicate, refused); 3 run dir missing/not anchored, or --out unwritable\n';
@@ -95,11 +95,8 @@ function run(argv, deps = realDeps) {
   let anchorText = null;
   try { anchorText = deps.readFile(path.join(stagedDir, match[1])); } catch { /* absent or unreadable anchor reads as no anchor */ }
 
-  // A multi-spec per-spec run dir is {pipelines}/{parent-run-id}/spec-{N}: name the parent run too.
-  const base = path.basename(target.dir);
-  const runId = /^spec-\d+$/.test(base) ? `${path.basename(path.dirname(target.dir))}/${base}` : base;
   const composed = composeShadowDupProposal({
-    name: item, text, anchorText, runId,
+    name: item, text, anchorText, runId: runIdOf(target.dir),
   });
   if (!composed.ok) {
     if (composed.reason === 'shadow-dup-duplicate') deps.stderr('shadow-dup-proposal.js: refused (shadow-dup-duplicate): dismissed, nothing to file\n');

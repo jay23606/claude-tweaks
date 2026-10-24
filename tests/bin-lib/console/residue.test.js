@@ -101,6 +101,15 @@ test('readRunResidue skips an unparseable console.json and reads spec-*/console.
   assert.deepStrictEqual(res.unreadable, [path.join(dir, 'console.json')], 'an existing but unparseable console.json is reported, not silently dropped');
 });
 
+test('readRunResidue reports a spec console.json holding JSON null as unreadable instead of throwing', () => {
+  const dir = tmpRun();
+  fs.mkdirSync(path.join(dir, 'spec-12'));
+  fs.writeFileSync(path.join(dir, 'spec-12', 'console.json'), 'null');
+  const res = readRunResidue(dir);
+  assert.deepStrictEqual(res.consoles, []);
+  assert.deepStrictEqual(res.unreadable, [path.join(dir, 'spec-12', 'console.json')]);
+});
+
 test('readRunResidue reports no unreadable console for an absent console.json or an absent run dir', () => {
   const dir = tmpRun();
   assert.deepStrictEqual(readRunResidue(dir).unreadable, []);

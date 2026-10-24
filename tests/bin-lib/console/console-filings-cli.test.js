@@ -135,6 +135,20 @@ test('AC5: a closed record still deduplicates', () => {
   assert.deepEqual(result.deduped.map((d) => d.number), [7]);
 });
 
+test('a finding missing from review-findings.json is flagged claimMissing and named on stderr', () => {
+  const f = fixture();
+  const { findings } = seed(f, { n: 2 });
+  fs.writeFileSync(path.join(f.runDir, 'review-findings.json'), JSON.stringify(findings.slice(1)));
+  noRecords(f);
+  const { deps, out, err } = fakeDeps(f.main);
+  assert.equal(run(argvOf(f), deps), 0);
+  const result = JSON.parse(out.join(''));
+  const lost = result.file.find((x) => x.item === `tiebreak:${findings[0].id}`);
+  assert.equal(lost.claimMissing, true);
+  assert.equal(result.file.find((x) => x.item === `tiebreak:${findings[1].id}`).claimMissing, undefined);
+  assert.match(err.join(''), new RegExp(`tiebreak:${findings[0].id}: the finding's claim text is unavailable`));
+});
+
 test('records without a fingerprint, or with an unrelated one, dedup nothing', () => {
   const f = fixture();
   seed(f, { n: 2 });

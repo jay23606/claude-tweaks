@@ -11,6 +11,7 @@ const path = require('path');
 const { evaluateMaturation } = require('../issues/grant-maturation');
 const { resolveRecords } = require('../wrap-up/pack');
 const { planFilings } = require('./finding-filing');
+const { FINDINGS_ARTIFACT } = require('../tiebreak');
 
 // Section names exactly as the console renders them (console-template.md;
 // engine-render.js's SECTION_SPECS for the five curation sections).
@@ -306,8 +307,8 @@ function readRunFiles({ runDir, deps }) {
     text: (name.endsWith('.patch') || name.endsWith('.md') || SHADOW_DUP_RE.test(name) || anchors.has(name)) ? readText(deps, path.join(stagedDir, name)) : null,
   }));
   const engineState = readJson(deps, path.join(runDir, 'engine-state.json'));
-  // review-findings.json (tiebreak.js's FINDINGS_ARTIFACT): absent, unparseable or not an array reads as [].
-  const reviewFindings = readJson(deps, path.join(runDir, 'review-findings.json'));
+  // The tiebreak findings artifact: absent, unparseable or not an array reads as [].
+  const reviewFindings = readJson(deps, path.join(runDir, FINDINGS_ARTIFACT));
   return { decisions, staged, engineState, findings: Array.isArray(reviewFindings) ? reviewFindings : [] };
 }
 
@@ -432,28 +433,33 @@ function mergeResolution(snapshot, deps) {
 //   AUTO   … Tiebreak tiebreak:{id}: lens "L" finding P:N dropped: refuted by tiebreak. Evidence: {e}. Severity: {s}.
 //   AUTO   … Reproduction: lens "L" finding P:N confirmed by tiebreak:{id}. Confirmed.
 // Anchored on the verdict line's own shape, mirroring tiebreak.js's verdictLineRe, so a marker quoted
-// inside another line's text never parses as a verdict.
+// inside another line's text never parses as a verdict. The finding path is producer-supplied and may
+// hold spaces, so everything after it is matched against the resolver-written rest of the line, anchored
+// on the line's end: a path can never forge the kind, severity or recommendation (#3949 review).
 const VERDICT_LINE_HEAD = '^- (?:AUTO|STAGED) \\d{2}:\\d{2}:\\d{2} — ';
-const TIEBREAK_STEP_RE = new RegExp(`${VERDICT_LINE_HEAD}Tiebreak tiebreak:([0-9a-f]{12}): lens "([^"]*)" finding (\\S+):([^\\s:]+) (console|digested|dropped): `);
+const VERDICT_SEV = '(critical|high|medium|low|info)';
+const VERDICT_LINE_END = '(?: Mode: inline\\.)?(?: Reversibility: \\S+\\.)?\\s*$';
+const TIEBREAK_STEP_HEAD = `${VERDICT_LINE_HEAD}Tiebreak tiebreak:([0-9a-f]{12}): lens "([^"]*)" finding (.+):([^\\s:]+) `;
+// The reason is one of resolveTiebreak's own tokens (`verdict:cant-tell`, `status:BLOCKED`, …), never free text.
+const TIEBREAK_CANT_TELL_RE = new RegExp(`${TIEBREAK_STEP_HEAD}(console|digested): ([A-Za-z0-9:_-]+)\\. Severity: ${VERDICT_SEV}\\.(?: Recommendation: (file|drop|none)\\.)?${VERDICT_LINE_END}`);
+// The evidence path always equals the finding path (tiebreak.js's evidenceProblem), so it is a backreference.
+const TIEBREAK_DROPPED_RE = new RegExp(`${TIEBREAK_STEP_HEAD}dropped: refuted by tiebreak\\. Evidence: (\\3:\\d+ .*)\\. Severity: ${VERDICT_SEV}\\.${VERDICT_LINE_END}`);
 const TIEBREAK_CONFIRMED_RE = new RegExp(`${VERDICT_LINE_HEAD}Reproduction: lens "([^"]*)" finding (\\S+):([^\\s:]+) confirmed by tiebreak:([0-9a-f]{12})\\. Confirmed\\.`);
-const TIEBREAK_SEVERITY_RE = /Severity: (critical|high|medium|low|info)\./g;
 const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 
 function parseTiebreakLine(line) {
   if (!/^- (STAGED|AUTO) /.test(line)) return null;
   const c = TIEBREAK_CONFIRMED_RE.exec(line);
-  const s = c ? null : TIEBREAK_STEP_RE.exec(line);
-  if (!c && !s) return null;
-  const [id, lens, file, lineNo] = c ? [c[4], c[1], c[2], c[3]] : [s[1], s[2], s[3], s[4]];
-  const kind = c ? 'confirmed' : s[5]; // TIEBREAK_STEP_RE admits only console | digested | dropped
-  const tail = s ? line.slice(s.index + s[0].length) : '';
-  const severity = [...tail.matchAll(TIEBREAK_SEVERITY_RE)].map((m) => m[1]).pop() || null;
-  const rec = /Recommendation: (file|drop|none)\./.exec(tail);
-  const reason = kind === 'console' || kind === 'digested' ? (/^(.*?)\. Severity: /.exec(tail) || [])[1] || null : null;
-  const evidence = kind === 'dropped' ? (/Evidence: (.*)\. Severity: (?:critical|high|medium|low|info)\./.exec(tail) || [])[1] || null : null;
+  const ct = c ? null : TIEBREAK_CANT_TELL_RE.exec(line);
+  const d = c || ct ? null : TIEBREAK_DROPPED_RE.exec(line);
+  const m = c || ct || d;
+  if (!m) return null;
+  const [id, lens, file, lineNo] = c ? [c[4], c[1], c[2], c[3]] : [m[1], m[2], m[3], m[4]];
+  const kind = c ? 'confirmed' : ct ? ct[5] : 'dropped';
+  const rec = ct && ct[8] !== undefined && ct[8] !== 'none' ? ct[8] : null;
   return {
     kind, id, key: findingKey(line), lens, path: file, line: /^\d+$/.test(lineNo) ? Number(lineNo) : lineNo,
-    severity, recommendation: rec && rec[1] !== 'none' ? rec[1] : null, reason, evidence,
+    severity: ct ? ct[7] : d ? d[6] : null, recommendation: rec, reason: ct ? ct[6] : null, evidence: d ? d[5] : null,
   };
 }
 

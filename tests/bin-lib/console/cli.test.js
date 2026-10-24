@@ -328,8 +328,11 @@ test('trusted: exit 4 and nothing written (#1932 AC5)', async () => {
 
 // #3949 AC6: below `unattended` with no human, the resolver files nothing, drops
 // nothing, and leaves every item unresolved — no console.json, so the archive
-// guard (readConsoleState 'none' with staged items) keeps refusing.
-test('AC6: console-resolve.js below unattended exits 4 and writes no console.json', async () => {
+// guard (readConsoleState 'none' with staged items) refuses with
+// console-never-rendered-staged-pending, a structurally-stuck reason reconcile
+// escalates to a human (escalate-residue.js).
+test('AC6: console-resolve.js below unattended exits 4, writes no console.json, and archival refuses', async () => {
+  const { readConsoleState, decideArchiveCore, STRUCTURALLY_STUCK_REASONS } = require(path.join(PLUGIN_ROOT, 'bin', 'lib', 'reconcile', 'archive-merged.js'));
   for (const autonomy of ['supervised', 'trusted']) {
     const fx = mainCheckoutWithRun({ autonomy, staged: NEEDS });
     const calls = [];
@@ -341,6 +344,12 @@ test('AC6: console-resolve.js below unattended exits 4 and writes no console.jso
     for (const [n, b] of Object.entries(NEEDS)) {
       assert.strictEqual(fs.readFileSync(path.join(fx.runDir, 'staged', n), 'utf8'), b, `${autonomy}: ${n} untouched`);
     }
+    const consoleState = readConsoleState(fx.runDir);
+    assert.strictEqual(consoleState, 'none', autonomy);
+    const hasStagedPending = fs.readdirSync(path.join(fx.runDir, 'staged')).some((n) => !n.startsWith('.'));
+    const decision = decideArchiveCore({ state: 'MERGED' }, consoleState, hasStagedPending);
+    assert.deepStrictEqual(decision, { action: 'skip', reason: 'console-never-rendered-staged-pending' }, `${autonomy}: a merged run still refuses archival`);
+    assert.ok(STRUCTURALLY_STUCK_REASONS.has(decision.reason), 'the refusal escalates to a human');
   }
 });
 

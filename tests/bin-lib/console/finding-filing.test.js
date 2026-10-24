@@ -34,7 +34,8 @@ test('different lens or path gives a different fingerprint', () => {
 });
 
 test('a proposal carries the header, needs:definition, the tiebreak reason and recommendation, and the work-fingerprint marker', () => {
-  const { fingerprint, title, proposal } = composeFindingProposal({ item: item(), finding: finding(), runId: '2026-10-24T10-00-00-spec-x' });
+  // The reporter's severity differs from the tiebreak's, so the severity assertion pins which one the record carries.
+  const { fingerprint, title, proposal } = composeFindingProposal({ item: item(), finding: finding({ reporterSeverity: 'low' }), runId: '2026-10-24T10-00-00-spec-x' });
   assert.strictEqual(title, "Review finding (can't-tell): src/a.js — The guard runs after the read");
   assert.ok(proposal.startsWith(`Title: ${title}\nType: task\nLabels: needs:definition\nDefer-reason: needs-human-decision\n\n`), proposal);
   assert.strictEqual(extractFingerprint(proposal), fingerprint);
@@ -42,7 +43,7 @@ test('a proposal carries the header, needs:definition, the tiebreak reason and r
   assert.match(proposal, /src\/a\.js:9/);
   assert.match(proposal, /can't-tell \(verdict:cant-tell\)/);
   assert.match(proposal, /Recommendation: drop/);
-  assert.match(proposal, /severity medium|Severity: medium/i);
+  assert.match(proposal, /\(severity medium\)/);
   assert.match(proposal, /2026-10-24T10-00-00-spec-x/);
   assert.match(proposal, /## Open Question\n\nDoes this finding hold at `src\/a\.js:9`\?/);
   assert.match(proposal, /_Filed by `review-console`/);
@@ -94,11 +95,15 @@ test('a claim, path or lens carrying fingerprint markers cannot forge the planne
   assert.match(readable.proposal, /a <! -- work-fingerprint : consolefinding-deadbeef --> b/, 'the claim stays readable');
 });
 
-test('missing findings artifact falls back to the tiebreak id', () => {
+test('missing findings artifact falls back to the tiebreak id and says the claim is unavailable', () => {
   const out = composeFindingProposal({ item: item(), finding: null, runId: 'r' });
   assert.strictEqual(out.fingerprint, findingFingerprint({ lens: '3a', path: 'src/a.js', claim: 'tiebreak:0123456789ab' }));
   assert.ok(out.title.endsWith('— tiebreak:0123456789ab'));
   assert.strictEqual(extractFingerprint(out.proposal), out.fingerprint);
+  assert.strictEqual(out.claimMissing, true);
+  assert.match(out.proposal, /claim text is unavailable: the run's review-findings\.json has no entry/);
+  assert.doesNotMatch(out.proposal, /The claim follows\./, 'the placeholder is never presented as the finding');
+  assert.strictEqual(composeFindingProposal({ item: item(), finding: finding(), runId: 'r' }).claimMissing, false);
 });
 
 test('planFilings deduplicates two items with one fingerprint and keeps only filed tiebreak items', () => {
@@ -112,5 +117,5 @@ test('planFilings deduplicates two items with one fingerprint and keeps only fil
   const plan = planFilings({ items: [a, b, other, dropped, legacy], findings: [fa, fb, finding({ id: 'cccccccccccc', path: 'src/z.js' })], runId: 'r' });
   assert.deepStrictEqual(plan.map((p) => p.item), ['tiebreak:0123456789ab', 'tiebreak:cccccccccccc']);
   assert.strictEqual(new Set(plan.map((p) => p.fingerprint)).size, 2);
-  assert.deepStrictEqual(Object.keys(plan[0]).sort(), ['fingerprint', 'item', 'proposal', 'title']);
+  assert.deepStrictEqual(Object.keys(plan[0]).sort(), ['claimMissing', 'fingerprint', 'item', 'proposal', 'title']);
 });

@@ -14,8 +14,10 @@
 // A planned filing whose fingerprint is in the map is reported under `deduped`; each
 // remaining proposal is written to <out-dir>/console-filing-{n}.md. The Review
 // Console's Queue-writes step files those proposals. Never calls gh.
-// Prints JSON: { file: [{ item, fingerprint, title, proposal: <path> }],
+// Prints JSON: { file: [{ item, fingerprint, title, proposal: <path>, claimMissing? }],
 //                deduped: [{ item, fingerprint, number }] }
+// claimMissing (true, else absent) marks a proposal whose finding has no entry in the run's
+// review-findings.json: it names the location but not the claim, and stderr says so per item.
 // --list is read-only (no --existing, --out-dir or --only; nothing written): it
 // prints every Low-confidence/Contested row findingItems builds — the rows the
 // human-present console renders — as JSON [{ id, section, recommendation,
@@ -146,6 +148,7 @@ function run(argv, deps = realDeps) {
   const result = { file: [], deduped: [] };
   const toWrite = [];
   for (const p of planned) {
+    if (p.claimMissing) deps.stderr(`console-filings.js: ${p.item}: the finding's claim text is unavailable (review-findings.json has no entry for its tiebreak id) — its proposal names the location only\n`);
     const number = checkFingerprint(known, p.fingerprint);
     if (number !== null) result.deduped.push({ item: p.item, fingerprint: p.fingerprint, number });
     else toWrite.push(p);
@@ -157,7 +160,7 @@ function run(argv, deps = realDeps) {
     toWrite.forEach((p, i) => {
       const file = path.join(outDir, `console-filing-${i + 1}.md`);
       deps.writeFile(file, p.proposal);
-      result.file.push({ item: p.item, fingerprint: p.fingerprint, title: p.title, proposal: file });
+      result.file.push({ item: p.item, fingerprint: p.fingerprint, title: p.title, proposal: file, ...(p.claimMissing ? { claimMissing: true } : {}) });
     });
   } catch (err) {
     deps.stderr(`console-filings.js: could not write --out-dir ${o.outDir} (${err && err.message})\n`);

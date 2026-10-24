@@ -309,6 +309,34 @@ test('a finding row named in filingFailed reads filing-failed, uncleared, Resolv
   assert.equal(written.resolved, false);
 });
 
+// #3949 review: a long console splits into overflow comments, each carrying its own rows' ticks.
+async function runOverflow(overflowBody) {
+  const dir = makeRunDir();
+  writeConsoleJson(dir, { commentIds: ['IC_primary', 'IC_overflow1'], items: [FINDING_ITEMS[0], { ...FINDING_ITEMS[1], commentId: 'IC_overflow1' }] });
+  const ghCalls = [];
+  const writeCalls = [];
+  const extraComments = overflowBody === null ? [] : [{ id: 'IC_overflow1', body: overflowBody }];
+  const result = await resolveConsoleExecution(dir, { approve: ['1'], decline: [] }, {
+    now: () => Date.now(),
+    gh: fakeGh(ghCalls, { prViewBody: primaryCommentBody(['1']), extraComments }),
+    writeFile: (p, c) => writeCalls.push({ p, c }),
+  });
+  return { result, written: writeCalls.length ? JSON.parse(writeCalls[0].c) : null };
+}
+
+test('a finding row ticked in an overflow comment reads executed, not dropped', async () => {
+  const { result } = await runOverflow('<!-- console-item: f1 -->\n- [x] item f1');
+  assert.equal(result.outcomes.find((o) => o.id === 'f1').outcome, 'executed');
+  assert.equal(result.resolved, true);
+});
+
+test('a finding row whose tick no comment carries reads declined and leaves Resolve unticked', async () => {
+  const { result, written } = await runOverflow(null);
+  assert.equal(result.outcomes.find((o) => o.id === 'f1').outcome, 'declined');
+  assert.equal(result.resolved, false);
+  assert.equal(written.resolved, false);
+});
+
 test('an id without findingItem in filingFailed is rejected as not-finding-items before any write', async () => {
   const dir = makeRunDir();
   writeConsoleJson(dir, { items: FINDING_ITEMS });

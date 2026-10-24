@@ -5,7 +5,7 @@
 // declared contract the resolver and console-filings.js execute, so editing them is the intended
 // response to a contract change, the [IL-80] carve-out. Every helper is proved red on a mutated
 // copy of the live text, each against its own failure.
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
@@ -89,6 +89,29 @@ test('AC7: a failed console-filings.js filing is carried into the Needs a human 
   assert.ok(!carriesFailedFiling(mutated), 'control: without the carry line the check goes red');
 });
 
+// AC5's "a record that has since been closed still dedups (state all)" rests on the record list the
+// prose fetches: console-filings.js dedups against whatever --existing holds, closed records included.
+const FETCH_ALL = 'gh issue list --state all --json number,body';
+const fetchesEveryRecord = (text) => section(text, SHORT_CIRCUIT).includes(FETCH_ALL);
+
+test('AC5: the can\'t-tell filings fetch every record, closed ones included, for dedup', () => {
+  assert.ok(fetchesEveryRecord(REVIEW_CONSOLE));
+  const mutated = REVIEW_CONSOLE.replace(FETCH_ALL, 'gh issue list --state open --json number,body');
+  assert.notStrictEqual(mutated, REVIEW_CONSOLE);
+  assert.ok(!fetchesEveryRecord(mutated), 'control: an open-only fetch goes red');
+});
+
+// A can't-tell finding's filed title quotes a reviewer's claim, so step 7 never lets the shell read it.
+const NO_SHELL_TITLE = 'pass the body through `--body-file`, and the title single-quoted with each `\'` inside it written `\'\\\'\'`';
+const quotesTitle = (text) => section(text, '## On approval (option 1)').includes(NO_SHELL_TITLE);
+
+test('step 7 passes a filed record\'s title and body without shell interpolation', () => {
+  assert.ok(quotesTitle(REVIEW_CONSOLE));
+  const mutated = REVIEW_CONSOLE.replace(NO_SHELL_TITLE, 'pass the title and body');
+  assert.notStrictEqual(mutated, REVIEW_CONSOLE);
+  assert.ok(!quotesTitle(mutated), 'control: dropping the quoting rule goes red');
+});
+
 test('AC7: console-resolve.js and console-filings.js source contain no AskUserQuestion', () => {
   for (const cli of ['console-resolve.js', 'console-filings.js']) {
     const src = read('plugin', 'bin', cli);
@@ -116,6 +139,9 @@ function verdict(f, { verdict: v = 'cant-tell', severity = 'medium', recommendat
 }
 const stagedLine = (f) => `- STAGED 09:59:00 — Reproduction: lens "${f.lens}" finding ${f.path}:${f.line} not reproduced. Staged to Review Console as low-confidence. Reversibility: high.`;
 
+const fixtureRoots = [];
+after(() => { for (const r of fixtureRoots) fs.rmSync(r, { recursive: true, force: true }); });
+
 function everyOutcomeRun() {
   const outcomes = [
     [finding(1), { verdict: 'confirmed' }],
@@ -127,6 +153,7 @@ function everyOutcomeRun() {
   ];
   const decisions = [...outcomes.map(([f]) => stagedLine(f)), ...outcomes.map(([f, o]) => verdict(f, o))].join('\n');
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'console-no-ask-')));
+  fixtureRoots.push(root);
   const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   git('init', '-q'); git('config', 'user.email', 't@example.invalid'); git('config', 'user.name', 't'); git('commit', '-q', '--allow-empty', '-m', 'init');
   fs.mkdirSync(path.join(root, '.claude-tweaks'), { recursive: true });
