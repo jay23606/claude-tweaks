@@ -449,18 +449,20 @@ const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 
 function parseTiebreakLine(line) {
   if (!/^- (STAGED|AUTO) /.test(line)) return null;
-  const c = TIEBREAK_CONFIRMED_RE.exec(line);
-  const ct = c ? null : TIEBREAK_CANT_TELL_RE.exec(line);
-  const d = c || ct ? null : TIEBREAK_DROPPED_RE.exec(line);
-  const m = c || ct || d;
-  if (!m) return null;
-  const [id, lens, file, lineNo] = c ? [c[4], c[1], c[2], c[3]] : [m[1], m[2], m[3], m[4]];
-  const kind = c ? 'confirmed' : ct ? ct[5] : 'dropped';
-  const rec = ct && ct[8] !== undefined && ct[8] !== 'none' ? ct[8] : null;
-  return {
+  const verdict = (kind, [id, lens, file, lineNo], rest) => ({
     kind, id, key: findingKey(line), lens, path: file, line: /^\d+$/.test(lineNo) ? Number(lineNo) : lineNo,
-    severity: ct ? ct[7] : d ? d[6] : null, recommendation: rec, reason: ct ? ct[6] : null, evidence: d ? d[5] : null,
-  };
+    severity: null, recommendation: null, reason: null, evidence: null, ...rest,
+  });
+  const c = TIEBREAK_CONFIRMED_RE.exec(line);
+  if (c) return verdict('confirmed', [c[4], c[1], c[2], c[3]], {});
+  const ct = TIEBREAK_CANT_TELL_RE.exec(line);
+  if (ct) {
+    const recommendation = ct[8] !== undefined && ct[8] !== 'none' ? ct[8] : null;
+    return verdict(ct[5], ct.slice(1, 5), { severity: ct[7], recommendation, reason: ct[6] });
+  }
+  const d = TIEBREAK_DROPPED_RE.exec(line);
+  if (d) return verdict('dropped', d.slice(1, 5), { severity: d[6], evidence: d[5] });
+  return null;
 }
 
 // An agent that could not tell is not licensed to drop: only an explicit `drop` recommendation drops.

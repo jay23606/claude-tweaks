@@ -468,7 +468,7 @@ async function resolveConsoleExecution(runDir, {
   // console in an inconsistent state. Overflow comments carry their own
   // item ticks (decideConsoleExecute reads them the same way).
   const ticksByComment = new Map(commentIds.map((id) => [id, byId.has(id) ? parseItemTicks(byId.get(id).body) : {}]));
-  const ticksOf = (item) => ticksByComment.get(item.commentId && commentIds.includes(item.commentId) ? item.commentId : commentIds[0]) || {};
+  const ticksOf = (item) => ticksByComment.get(commentIds.includes(item.commentId) ? item.commentId : commentIds[0]);
   const knownIds = new Set([...ticksByComment.values()].flatMap((t) => Object.keys(t)));
   const namedIds = [...new Set([...approve, ...decline, ...reverseFailed, ...filingFailed])];
   const unknownIds = namedIds.filter((id) => !knownIds.has(id));
