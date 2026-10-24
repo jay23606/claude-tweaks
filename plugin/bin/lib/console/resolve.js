@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { evaluateMaturation } = require('../issues/grant-maturation');
 const { resolveRecords } = require('../wrap-up/pack');
+const { DEFER_REASONS } = require('../issues/record');
 const { planFilings } = require('./finding-filing');
 const { FINDINGS_ARTIFACT } = require('../tiebreak');
 
@@ -227,6 +228,40 @@ function parseCategory(text) {
   if (!text) return null;
   const m = /^\*\*Category:\*\*\s*(\S+)/m.exec(text);
   return m ? m[1] : null;
+}
+
+// #3880: an `sdd-ruling-*` proposal that defers work must carry a valid defer
+// reason before it may auto-ratify. The header is the lines before the first
+// blank line; a Defer-reason: key anywhere else (the Ruling: line, the body)
+// never counts. Prose twin: wrap-up/review-console-appendix.md's sdd-ruling-*
+// bullet. Returns null when the item may resolve as today, else the reason it
+// resolves pending under.
+const SDD_RULING_REASONS = Object.freeze({
+  NO_DEFER_REASON: 'sdd-ruling-deferral-no-defer-reason',
+  UNCLASSIFIED: 'sdd-ruling-unclassified',
+});
+
+function sddRulingDeferralReason(text) {
+  if (text === null || text === undefined) return SDD_RULING_REASONS.UNCLASSIFIED;
+  const header = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, '');
+    if (line === '') break;
+    header.push(line);
+  }
+  // Both header keys match case-insensitively; the reason VALUE check below stays exact. More than one
+  // `Defers:` line fails closed (the first line must not silently win).
+  const defersMatches = header.map((l) => /^defers:[ \t]*(\S+)$/i.exec(l)).filter(Boolean);
+  if (defersMatches.length > 1) return SDD_RULING_REASONS.UNCLASSIFIED;
+  const defers = defersMatches.length ? defersMatches[0][1].toLowerCase() : null;
+  // Every header line beginning with `Defer-reason:` is a reason line, whatever its value looks like
+  // (#3880 fix round 1): a malformed one must fail closed, not fall through as if it were absent.
+  const reasons = header.map((l) => /^defer-reason:(.*)$/i.exec(l)).filter(Boolean).map((m) => m[1].trim());
+  if (defers === 'yes' || reasons.length > 0) {
+    return reasons.length === 1 && DEFER_REASONS.includes(reasons[0]) ? null : SDD_RULING_REASONS.NO_DEFER_REASON;
+  }
+  if (defers === 'no') return null;
+  return SDD_RULING_REASONS.UNCLASSIFIED;
 }
 
 // `text` is the staged file's own content, when the caller has it (readSnapshot loads it for
@@ -565,6 +600,10 @@ function stagedItems(snapshot) {
     const { section, reason, outcome } = classifyStagedItem(s.name, s.text, siblingText);
     if (outcome) return { id: s.name, section, resolution: SECTION_STANCES[section].resolution, reason: `${outcome} — ${SHADOW_DUP_OUTCOMES[outcome].note}` };
     if (reason) return { id: s.name, section, resolution: 'pending', reason };
+    if (/^sdd-ruling-/.test(s.name)) {
+      const r = sddRulingDeferralReason(s.text);
+      if (r) return { id: s.name, section, resolution: 'pending', reason: r };
+    }
     const settled = model.settledFiles.get(s.name);
     if (settled) return { id: s.name, section, ...settledFileResolution(settled) };
     const stance = SECTION_STANCES[section];
@@ -761,4 +800,4 @@ function resolveAll({ runDir, policy, deps }) {
   return result;
 }
 
-module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, findingItems, runIdOf, parseTiebreakLine, approveAllDefault, renderTable, renderStoredTable, drainOverlapHoldPrs };
+module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, SDD_RULING_REASONS, sddRulingDeferralReason, classifyStagedItem, readSnapshot, resolveAll, findingItems, runIdOf, parseTiebreakLine, approveAllDefault, renderTable, renderStoredTable, drainOverlapHoldPrs };
