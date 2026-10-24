@@ -602,6 +602,58 @@ test('planBatch dedups a fingerprint-less filing against a record carrying its m
   assert.deepStrictEqual(again.entries.map((e) => e.ref), ['#500', '#501']);
 });
 
+// R15: a proposal filed before the backfill existed carries no marker, so its minted fingerprint matches
+// nothing; the exact title of the record it became is the only join.
+const QUEUE_TITLE = 'Reconcile archives a live run when an earlier PR… merged';
+const queueProposal = (title = QUEUE_TITLE) => `Title: ${title}\nType: task\nLabels: needs:definition\n\nbody\n`;
+const planQueue = (existingIssues, text = queueProposal()) => plan({
+  workList: workList([stagedItem({ name: 'reconcile-live-run-archived.md', section: 'Queue writes' }, { itemId: 'bf:00000000000000b1' })]),
+  existingIssues,
+  readStaged: files({ 'reconcile-live-run-archived.md': text }),
+});
+
+test('R15: a minted-fingerprint proposal settles as reuse when an existing record has its exact title', () => {
+  const out = planQueue([{ number: 3416, title: QUEUE_TITLE, body: 'Filed 2026-10-17, no marker.' }]);
+  assert.deepStrictEqual(out.file, []);
+  assert.deepStrictEqual(out.reuse, [{ itemId: 'bf:00000000000000b1', number: 3416 }]);
+  assert.deepStrictEqual(out.entries, [{ runDir: '/x/pipelines/archive/run-0', itemId: 'bf:00000000000000b1', itemHash: 'h3', outcome: 'filed', source: 'staged-kind', ref: '#3416' }]);
+  const shadow = plan({
+    workList: workList([stagedItem({ name: 'x-1.md.shadow-dup', section: 'Queue writes', outcome: 'shadow-dup-collision' })]),
+    existingIssues: [{ number: 77, title: 'Reconcile staged copy x-1.md.shadow-dup', body: '' }],
+    readStaged: files({ 'x-1.md.shadow-dup': 'COPY\n' }),
+  });
+  assert.deepStrictEqual(shadow.reuse.map((r) => r.number), [77], 'a shadow-dup reconcile record is title-matched too');
+});
+
+test('R15: a different existing title stays a new filing', () => {
+  const out = planQueue([{ number: 3416, title: 'Some other record', body: '' }, { number: 3417, title: QUEUE_TITLE.toLowerCase(), body: '' }]);
+  assert.deepStrictEqual(out.reuse, []);
+  assert.deepStrictEqual(out.file.map((f) => f.itemId), ['bf:00000000000000b1'], 'the match is case-sensitive');
+});
+
+test('R15: a whitespace-only difference in the title still matches', () => {
+  const out = planQueue([{ number: 3414, title: `  ${QUEUE_TITLE.replace(/ /g, '  ')}\t`, body: '' }], queueProposal(`  ${QUEUE_TITLE}  `));
+  assert.deepStrictEqual(out.reuse, [{ itemId: 'bf:00000000000000b1', number: 3414 }]);
+  assert.deepStrictEqual(out.file, []);
+});
+
+test('R15 control: a proposal with its own marker is never title-matched', () => {
+  const marked = `Title: ${QUEUE_TITLE}\nType: task\n\nbody\n<!-- work-fingerprint: tidy-abcd1234 -->\n`;
+  const out = planQueue([{ number: 3416, title: QUEUE_TITLE, body: 'other fingerprint <!-- work-fingerprint: tidy-ffffffff -->' }], marked);
+  assert.deepStrictEqual(out.reuse, []);
+  assert.strictEqual(out.file.length, 1);
+  const same = planQueue([{ number: 3416, title: 'unrelated', body: 'x <!-- work-fingerprint: tidy-abcd1234 -->' }], marked);
+  assert.deepStrictEqual(same.reuse, [{ itemId: 'bf:00000000000000b1', number: 3416 }], 'its own marker still dedups by fingerprint');
+});
+
+test('R15 control: a finding filing is never title-matched, only fingerprint-matched', () => {
+  const item = findingItem({ itemId: 'bf:00000000000000c1' });
+  const title = dispose(item, consoleV).proposal.title;
+  const out = plan({ workList: workList([item]), verdicts: { 'bf:00000000000000c1': consoleV }, existingIssues: [{ number: 9, title, body: 'a different record <!-- work-fingerprint: consolefinding-00000000 -->' }] });
+  assert.deepStrictEqual(out.reuse, []);
+  assert.deepStrictEqual(out.file.map((f) => f.itemId), ['bf:00000000000000c1']);
+});
+
 test('a staged name that climbs out of the staged directory is never read', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bf-dispose-'));
   try {

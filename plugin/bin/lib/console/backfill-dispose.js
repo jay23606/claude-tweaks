@@ -268,7 +268,7 @@ function withFingerprint(item, text) {
   if (own) return { fingerprint: own, text };
   const fingerprint = fingerprintFromBasis('consolebackfill', [item.itemId]);
   const gap = text.endsWith('\n') ? '\n' : '\n\n';
-  return { fingerprint, text: `${text}${gap}<!-- work-fingerprint: ${fingerprint} -->\nwork-fingerprint: ${fingerprint}\n` };
+  return { fingerprint, minted: true, text: `${text}${gap}<!-- work-fingerprint: ${fingerprint} -->\nwork-fingerprint: ${fingerprint}\n` };
 }
 
 // A backfill filing never adds or removes an auto:* / bot:* label by itself (they are granted, not
@@ -301,16 +301,16 @@ function disposeStaged({ item, runId, readStaged }) {
     text = read(s.name);
     const composed = composeShadowDupProposal({ name: s.name, text, anchorText: read(shadow[1]), runId });
     if (composed.ok) {
-      const { fingerprint, text: proposal } = withFingerprint(item, composed.proposal);
-      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, title: composed.title, text: proposal } });
+      const { fingerprint, minted, text: proposal } = withFingerprint(item, composed.proposal);
+      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, minted, title: composed.title, text: proposal } });
     }
   } else if (typeof s.name === 'string' && s.reason !== 'engine-row') {
     text = read(s.name);
     if (s.section === SECTIONS.QUEUE && !s.reason && typeof text === 'string' && text.startsWith('Title:')) {
       const stripped = stripGrantLabels(text);
       const title = squash(/^Title:(.*)$/m.exec(stripped)[1]);
-      const { fingerprint, text: proposal } = withFingerprint(item, stripped);
-      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, title, text: proposal } });
+      const { fingerprint, minted, text: proposal } = withFingerprint(item, stripped);
+      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, minted, title, text: proposal } });
     }
   }
 
@@ -353,6 +353,20 @@ function disposeItem({ item, verdict, runId, mainSha, readStaged = defaultReadSt
   throw new TypeError(`unknown work item kind: ${JSON.stringify(item.kind)}`);
 }
 
+// A title compared as the filing procedure would see it: trimmed, internal whitespace collapsed, case kept.
+const normalizeTitle = (t) => squash(String(t));
+
+// title -> record number from `gh issue list --json number,title,body` rows; the first row with a title wins.
+function titleMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || typeof row.title !== 'string' || !Number.isInteger(row.number) || row.number <= 0) continue;
+    const key = normalizeTitle(row.title);
+    if (key !== '' && !map.has(key)) map.set(key, row.number);
+  }
+  return map;
+}
+
 const verdictOf = (verdicts, id) => {
   if (!verdicts) return undefined;
   if (verdicts instanceof Map) return verdicts.get(id);
@@ -371,7 +385,7 @@ function prefiledFingerprint(item) {
 // under `awaitingVerdict` and takes no slot — unless its filing fingerprint already has a record, which
 // settles it as a `reuse` with no verdict, and so does one whose digest line a trusted digest comment
 // already carries (settled `digested`, listed under `digest.duplicates`); stops after `limit` dispositions.
-//   existingIssues  `gh issue list --state all --json number,body` rows (the fingerprint map's source)
+//   existingIssues  `gh issue list --state all --json number,title,body` rows (the fingerprint map's source; the titles dedup a minted-fingerprint staged proposal)
 //   digestComments  the open digest issue's comment objects, with their author association
 // Returns { dispositions, file, reuse, digest: { lines, duplicates }, entries, awaitingVerdict }:
 //   file     new records to create (a fingerprint-less proposal is always new)
@@ -381,7 +395,9 @@ function prefiledFingerprint(item) {
 //   entries  the settled list for backfill-apply; `ref` is pre-filled for drop/dismiss and for an
 //            existing record, `null` where the procedure fills it (a new filing, a digest comment).
 function planBatch({ workList, verdicts, existingIssues, digestComments, limit = DEFAULT_LIMIT, readStaged }) {
-  const known = fingerprintMap(Array.isArray(existingIssues) ? existingIssues : []);
+  const rows = Array.isArray(existingIssues) ? existingIssues : [];
+  const known = fingerprintMap(rows);
+  const titles = titleMap(rows);
   const out = {
     dispositions: [], file: [], reuse: [], digest: { lines: [], duplicates: [] }, entries: [], awaitingVerdict: [],
   };
@@ -434,10 +450,15 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
 
       if (d.action === 'file') {
         const fp = d.proposal.fingerprint;
+        // A staged proposal whose fingerprint was minted here (its text carried no marker) cannot match a record
+        // filed before the backfill existed, so it also dedups by exact title. Anything with a marker of its own,
+        // and every finding filing, is fingerprint-only.
         const number = fp ? checkFingerprint(known, fp) : null;
-        if (number !== null) {
-          out.reuse.push({ itemId: d.itemId, number });
-          ref = `#${number}`;
+        const byTitle = number === null && d.source === 'staged-kind' && d.proposal.minted === true ? titles.get(normalizeTitle(d.proposal.title)) : undefined;
+        const matched = number !== null ? number : (byTitle === undefined ? null : byTitle);
+        if (matched !== null) {
+          out.reuse.push({ itemId: d.itemId, number: matched });
+          ref = `#${matched}`;
         } else if (fp && batchFiled.has(fp)) {
           out.reuse.push({ itemId: d.itemId, number: null, sameAs: batchFiled.get(fp) });
         } else {

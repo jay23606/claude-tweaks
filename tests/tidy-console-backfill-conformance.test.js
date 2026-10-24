@@ -48,6 +48,8 @@ const FACTS = [
   // R11: the dedup read is sized from the repo; a count at the cap is truncated.
   ['dedup read counted at the cap', /--limit 100000 --json number --jq length/],
   ['count equal to the cap is truncated', /equal to 100000 is truncated, not complete/],
+  // R15: the existing-records read carries titles, so a proposal filed before the backfill dedups by exact title.
+  ['dedup read carries number, title and body', /--state all --limit \{count \+ 100\} --json number,title,body > "\{EXISTING\}"/],
   // R12: GitHub Issues only.
   ['work-backend gate', /HELD — console backfill files through GitHub Issues; work-backend \{value\} is not supported yet/],
   // Minors.

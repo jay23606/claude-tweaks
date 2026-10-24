@@ -12,7 +12,7 @@
 // it to --out; list --dry-run prints the human summary and writes nothing. dispose runs
 // planBatch (lib/console/backfill-dispose.js) over a work-list file: --verdicts is a JSON
 // object keyed by item id (resolve-tiebreak's verdicts), --existing the
-// `gh issue list --state all --json number,body` array, --digest-comments the digest
+// `gh issue list --state all --json number,title,body` array, --digest-comments the digest
 // issue's comment objects, --limit the batch size (default 24). Each new filing is
 // written to <out-dir>/backfill-filing-{item id without `bf:`}.md (named by item, so batches
 // into one directory never collide); the printed result carries that path as file[].path and
@@ -199,7 +199,7 @@ function runDispose(o, ctx) {
   const specs = [
     ['workList', '--work-list', (v) => (isPlainObject(v) && Array.isArray(v.runs) ? null : 'must be a work list ({ runs: [...] })')],
     ['verdicts', '--verdicts', (v) => (isPlainObject(v) ? null : 'must be a JSON object keyed by item id')],
-    ['existing', '--existing', (v) => (Array.isArray(v) ? null : 'must be a JSON array of { number, body }')],
+    ['existing', '--existing', (v) => (Array.isArray(v) ? null : 'must be a JSON array of { number, title, body }')],
     ['digestComments', '--digest-comments', (v) => (Array.isArray(v) ? null : 'must be a JSON array of comments')],
   ];
   for (const [key, flag, check] of specs) {
