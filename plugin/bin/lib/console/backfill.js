@@ -36,8 +36,11 @@ const STAGING_NOTE_RE = /(?:\bboth\s+)?\bstaged\s+(?:to\s+Review\s+Console\s+)?a
 const BOILERPLATE = [/not reproduced/g, STAGING_NOTE_RE, /Reversibility: \S+\./g, /Artifact: [^.]*\./g];
 // A ledger-row reference is meta about the console's ledger, never about the finding (R17).
 const LEDGER_REF_RE = /(?:\b[\w-]+\s+case\s*=\s*)?(?:\b(?:already|same\s+as)\s+)?\bledger\s+(?:row\s+|#)\d+\b\s*[,;]?/gi;
+// A trailing clause outside parentheses that only points at the ledger (`— ledger row 8.`, `ledger item 4`,
+// `same as ledger row 4 (observation)`, `same observation already ledgered as row 6 (observation)`) is meta too.
+const TRAILING_LEDGER_RE = /(?:\s*—\s*|\s+)(?:(?:same\s+as\s+)?ledger\s+(?:row|item)\s+\d+|same\s+observation\s+already\s+ledgered\s+as\s+row\s+\d+)(?:\s*\([^()]*\))?\s*\.?\s*$/i;
 // What a multi-location list leaves in front of a claim: separators, `and`, and bare line refs (`:335`, `-133`, `/127`).
-const LEAD_FRAGMENT_RE = /^(?:\s+|[:\-/]\d+(?:-\d+)?(?=[\s.,;/)]|$)|[/,;:.)](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
+const LEAD_FRAGMENT_RE = /^(?:\s+|[:\-/]\d+(?:-\d+)?(?=[\s.,;/)]|$)|[/,;:.)—](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
 
 const defaultDeps = {
   readFile: (p) => fs.readFileSync(p, 'utf8'),
@@ -122,7 +125,7 @@ function cleanParenthetical(inner) {
 function cleanSegment(segment) {
   let text = segment.replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
   for (const re of BOILERPLATE) text = text.replace(re, '');
-  text = text.replace(/\s+/g, ' ').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
+  text = text.replace(/\s+/g, ' ').replace(TRAILING_LEDGER_RE, '').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
   const whole = /^\(([^()]*)\)\s*\.?$/.exec(text);
   return whole ? whole[1].trim() : text;
 }
@@ -239,7 +242,11 @@ function stagedFindingItem(name, text, base, itemId, section) {
   const sev = /Severity:\s*(\w+)/.exec(text);
   const lens = /Lens:\s*([\w-]+)/.exec(text) || /lens\s+"?([\w-]+)/.exec(text);
   const findingLine = /^[-*\s]*Finding:\**\s*(.+)$/m.exec(text);
-  const claim = (findingLine ? findingLine[1] : text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ')).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
+  // No `Finding:` line: the digest text (backfill-dispose.js), which skips a header block, metadata and a
+  // table header; the joined text only when that yields nothing. Required here, not at the top: backfill-dispose
+  // requires backfill-apply, which requires this module.
+  const joined = () => text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ');
+  const claim = (findingLine ? findingLine[1] : require('./backfill-dispose').digestTextOf(text) || joined()).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
   const where = { lens: lens ? lens[1] : 'unknown', path: loc ? loc[1] : shaped[0], line: loc ? Number(loc[2]) : null };
   if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: where, context: text };
   return {

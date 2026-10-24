@@ -482,5 +482,5 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
 }
 
 module.exports = {
-  DIGEST_REASONS, areaFor, disposeItem, planBatch,
+  DIGEST_REASONS, areaFor, disposeItem, planBatch, digestTextOf,
 };

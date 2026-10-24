@@ -14,6 +14,7 @@ const { execFileSync } = require('child_process');
 const {
   STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, consoleWorkItems, buildWorkList, summarize,
 } = require('../../../plugin/bin/lib/console/backfill');
+const { digestTextOf } = require('../../../plugin/bin/lib/console/backfill-dispose');
 const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state');
 const { writeRunState } = require('../../../plugin/bin/lib/hooks/context');
 const { scanUnresolvedConsoles } = require('../../../plugin/bin/lib/hooks/session-residue');
@@ -175,7 +176,8 @@ test('R5b: a parenthetical is dropped only when reproduction meta leaves fewer t
   assert.ok(extract.claim.startsWith('(a jest log concatenated with a pytest run'), extract.claim);
   assert.ok(!/\bagent\b/.test(extract.claim), extract.claim);
   const [excl] = splitDecisionLine(EXCLUSIONS).findings;
-  assert.strictEqual(excl.claim, '(readExclusions silently degrades malformed JSON to [] with no logging) .');
+  // R17 rule 4 unwraps a claim that is one parenthetical (and drops its lone trailing ` .`).
+  assert.strictEqual(excl.claim, 'readExclusions silently degrades malformed JSON to [] with no logging');
   assert.deepStrictEqual(splitDecisionLine(CLAIMLESS), { findings: [], noClaim: 'claim-empty' });
 });
 
@@ -520,6 +522,59 @@ test('R17: item ids are byte-identical to the pre-change derivation', () => {
   for (const [line, ids] of R17_PRE_CHANGE_IDS) assert.deepStrictEqual(itemsForLine(line).map((i) => i.itemId), ids, line.slice(0, 60));
   const RUN = '2026-10-24T090000-record-1';
   assert.deepStrictEqual(itemsForLine(R17_LEDGER_ONLY).map((i) => [i.kind, i.noClaimReason, i.itemId]), [['no-claim', 'claim-empty', backfillItemId({ runId: RUN, sourceKey: R17_LEDGER_ONLY, findingKey: '' })]]);
+});
+
+// R17 round 2: a trailing clause outside parentheses that only points at the ledger is meta.
+const R17_LEDGER_TAIL = '- STAGED 13:49:40 — Step 3 reproduction: lens "3f" finding plugin/bin/hooks.js:1211 not reproduced. Staged to Review Console as low-confidence: resolve-console success stdout path (renderExecutedLines) has no CLI-level test — ledger row 8. Reversibility: high.';
+const R17_LEDGER_SAME_AS = '- STAGED 13:49:40 — Step 3 reproduction: lens "3b" finding plugin/bin/lib/wrap-up/engine-verify.js:786 not reproduced. Staged to Review Console as low-confidence: untrusted pointer on a non-PR run not named — same as ledger row 4 (observation). Reversibility: high.';
+
+test('R17: a trailing ledger-row clause outside parentheses is removed from the claim', () => {
+  assert.strictEqual(splitDecisionLine(R17_LEDGER_TAIL).findings[0].claim, 'resolve-console success stdout path (renderExecutedLines) has no CLI-level test');
+  assert.strictEqual(splitDecisionLine(R17_LEDGER_SAME_AS).findings[0].claim, 'untrusted pointer on a non-PR run not named');
+  // The clause is only dropped at the end: one inside the claim's own sentence stays.
+  const mid = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/a.js:1 not reproduced: the writer repeats ledger row 4 in its own header before it writes anything. Staged to Review Console as low-confidence.';
+  assert.ok(splitDecisionLine(mid).findings[0].claim.includes('ledger row 4'));
+});
+
+test('R17: a leading em dash left after a location is not part of the claim', () => {
+  const line = '- STAGED 10:00:00 — Reproduction: lens "3f" finding tests/a.test.js:12 — argument-hint mirror overlap; reviewer read: do not fix, AC2 needs the token pin. Staged to Review Console as low-confidence.';
+  assert.ok(splitDecisionLine(line).findings[0].claim.startsWith('argument-hint mirror overlap'));
+});
+
+// R17b: a staged finding file with no `Finding:` line takes its claim from the digest text, not the whole
+// file joined. Texts verbatim from real archived staged files.
+const R17B_TITLE = "Title: Review of #3642 — low-confidence findings (not reproduced by both agents of a pair)\nKind: review-unconfirmed\n\nReproduction pairs at review-effort `medium` (lenses 3a, 3b, 3c, 3f). 3b and 3c returned no findings from either agent. These findings came from one agent only and entered `unconfirmed`:\n\n| Lens | Severity | Path:Line | Finding |\n|---|---|---|---|\n| 3f (agent A, also 3a agent A) | medium / low | plugin/bin/lib/verify/baseline.js:354 | `sub.startsWith('../')` on a `path.relative` result sits outside the scan's literal `startsWith('..')` regex. Out of the diff. The earlier whole-branch review judged this site a correct whole-segment check (`sub === '..' \\|\\| sub.startsWith('../')`), so no behavior defect. |\n| 3f (agent B) | medium | tests/path-containment-conformance.test.js:48 | `REL_DOT_DOT` does not flag the `startsWith('..' + path.sep)` form. Deliberate scope per the test header and ledger row 6. |\n| 3f (agent B) | low | tests/path-containment-conformance.test.js:101 | The planted go-red control bypasses `listJs` and the path-guard exclusion filter. |\n| 3f (agent A) | low | tests/bin-lib/path-guard/callers-characterization.test.js:276 | `linkedWorktreeOf(gitRepo())` leaks temp dirs. The shared helper does this across the suite. |\n| 3a (agent B) | low | tests/path-containment-conformance.test.js:51 | `scanRelDotDot` has no planted mis-parse self-test for the comment stripper. |\n| 3a (agent A) | low | .claude/skills/bin-source-scan-conformance/SKILL.md:16 | Describes the ban as `startsWith('..')` on a `path.relative` result while the scan flags any literal `startsWith('..')` (already ledger row 7, accepted). |\n\nThe one other single-agent finding, `plugin/bin/lib/hooks/sweep-shadow.js:115` (retyped `startsWith(rootWithSep)` containment copy), was read directly by the reviewing agent and confirmed; it is staged separately as `ledger-record-sweep-shadow-containment.md`.\n";
+const R17B_CATEGORY = "# Review — debate deviation (#2821)\n\n**Category:** procedure deviation\n**Severity:** medium\n**Reversibility:** high\n\n## What happened\n\nAt high effort, Cross-Lens Debate (`review/step3-debate-and-refutation.md`) should have sent each\nseverity-contradicting pair to two judges. The reviewer skipped debate instead. It confirmed each\nfinding by reading the source, took the lower severity, and auto-applied the fixes under\n`review-auto-apply-ceiling=medium`. The logged reason (\"the outcome cannot change routing\") was\nwrong for three pairs:\n\n| Pair | Severities | Higher would route | Lower routed |\n|---|---|---|---|\n| `wrap-up/verification-brief-parent-gate.md:256/258`: appended end-to-end variant has no summary slot | 3e high / 3g medium | STAGED | AUTO |\n| `demo/entry-paths.md:217`: duplicate-comment selection | 3a high / 3b medium | STAGED | AUTO |\n| `tests/try-it-contract-conformance.test.js:65`: `between()` slices silently | 3f critical / 3c medium | KEPT-PROMPT | AUTO |\n\nAll three fixes are in `3d958470c`. Each is covered by a test that fails against the old text, and\nthe full suite at `4d802e016` passed (0 fail). Lens 3f's own expected ceiling is medium, which\nthe critical rating exceeded.\n\n## Decision for the human\n\nAccept the applied fixes (recommended: they are small, tested, and visible in PR #3321's diff), or\nask for any of the three to be reverted and handled as a staged change instead.\n";
+const R17B_TABLE = "# Low-confidence review finding — #3311 (lens 3c, not reproduced)\n\n| Severity | Path:Line | Finding | Evidence |\n|---|---|---|---|\n| medium | tests/skill-size-single-source.test.js:94 | `scanText` throws an uncaught `TypeError` on an empty `for…of` destructuring binding | `forOf[1].match(/[A-Za-z_$][\\w$]*/g)` returns `null` for `for (const [] of …)`, so the `for (const name of null)` loop throws. Agent B reproduced it; agent A did not flag it. |\n\n**Controller note:** the shape (`for (const [] of x)`) is syntactically valid but has no realistic use. If it ever appears, the guard fails loud: a raw `TypeError` turns the test red, so nothing passes silently. The one-line fix is `(forOf[1].match(...) || [])`.\n\n**Recommendation:** Don't fix. This is the calibration filter's \"hypothetical edge case\", and it fails loud rather than silently.\n";
+
+function stagedClaim(name, text) {
+  const RUN = '2026-10-24T090000-record-1';
+  const [item] = consoleWorkItems({
+    consoleDir: `/x/${RUN}`, consoleJson: { items: [KEEP(name)] }, decisions: '', readStaged: () => text, runId: RUN,
+  });
+  return item;
+}
+
+test('R17b: a staged file with no Finding: line takes its claim from the digest text', () => {
+  for (const [name, text] of [['review-unconfirmed-1.md', R17B_TITLE], ['review-unconfirmed-2.md', R17B_CATEGORY], ['review-unconfirmed-3.md', R17B_TABLE]]) {
+    const item = stagedClaim(name, text);
+    assert.strictEqual(item.kind, 'finding', name);
+    assert.ok(!/^(Title:|\*\*|Ledger:|\|)/.test(item.claimText), item.claimText);
+    assert.strictEqual(item.claimText, digestTextOf(text).replace(/\s+/g, ' ').trim(), name);
+  }
+  assert.ok(stagedClaim('review-unconfirmed-1.md', R17B_TITLE).claimText.startsWith('Reproduction pairs at review-effort'));
+  assert.ok(stagedClaim('review-unconfirmed-2.md', R17B_CATEGORY).claimText.startsWith('At high effort, Cross-Lens Debate'));
+  assert.ok(stagedClaim('review-unconfirmed-3.md', R17B_TABLE).claimText.startsWith('medium — tests/skill-size-single-source.test.js:94'));
+});
+
+test('R17b: the Finding: line still wins, the joined text is the fallback, and the id follows the file name', () => {
+  const withFinding = stagedClaim('review-unconfirmed-4.md', `Title: x\nKind: y\n\nFinding: the guard reads a stale value\nTarget: plugin/x.js:3\n`);
+  assert.strictEqual(withFinding.claimText, 'the guard reads a stale value');
+  // digestTextOf yields nothing for a file of headings only: the joined text path is unchanged (here, empty -> claim-empty).
+  const headingsOnly = stagedClaim('review-unconfirmed-5.md', '# plugin/x.js:3\n# more\n');
+  assert.strictEqual(headingsOnly.kind, 'no-claim');
+  assert.strictEqual(headingsOnly.noClaimReason, 'claim-empty');
+  assert.strictEqual(stagedClaim('review-unconfirmed-1.md', R17B_TITLE).itemId, backfillItemId({ runId: '2026-10-24T090000-record-1', sourceKey: 'staged/review-unconfirmed-1.md', findingKey: '' }));
 });
 
 test('summarize counts kinds', () => {
