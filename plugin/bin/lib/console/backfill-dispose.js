@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { SHADOW_DUP_RE, SECTIONS, runIdOf } = require('./resolve');
-const { composeFindingProposal, fingerprintMap } = require('./finding-filing');
+const { composeFindingProposal, findingFingerprint, fingerprintMap } = require('./finding-filing');
 const { composeShadowDupProposal } = require('./shadow-dup-proposal');
 const { BACKFILL_OUTCOMES, BACKFILL_SOURCES } = require('./backfill-apply');
 const { materialityEntryLine, materialityFingerprint, isMaterialityDuplicate } = require('../health-core/materiality-digest');
@@ -250,8 +250,17 @@ const verdictOf = (verdicts, id) => {
   return Object.hasOwn(verdicts, id) ? verdicts[id] : undefined;
 };
 
+// The fingerprint composeFindingProposal files this finding under (same lens, path and claim), or null
+// when the item carries no claim to hash.
+function prefiledFingerprint(item) {
+  const f = item.finding;
+  if (!f || typeof item.claimText !== 'string' || !item.claimText.trim()) return null;
+  return findingFingerprint({ lens: f.lens, path: f.path, claim: item.claimText });
+}
+
 // One batch of the work list, in order. Walks `workList.runs`; a finding with no verdict yet is listed
-// under `awaitingVerdict` and takes no slot; stops after `limit` dispositions.
+// under `awaitingVerdict` and takes no slot — unless its filing fingerprint already has a record, which
+// settles it as a `reuse` with no verdict; stops after `limit` dispositions.
 //   existingIssues  `gh issue list --state all --json number,body` rows (the fingerprint map's source)
 //   digestComments  the open digest issue's comment objects, with their author association
 // Returns { dispositions, file, reuse, digest: { lines, duplicates }, entries, awaitingVerdict }:
@@ -273,7 +282,20 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
     for (const item of run.items) {
       if (out.dispositions.length >= limit) return out;
       const verdict = item.kind === 'finding' ? verdictOf(verdicts, item.itemId) : undefined;
-      if (item.kind === 'finding' && !verdict) { out.awaitingVerdict.push(item.itemId); continue; }
+      if (item.kind === 'finding' && !verdict) {
+        // A finding whose record already exists (filed by an earlier, interrupted run that never reached
+        // apply) settles as that record without a verdict: re-judging it could drop a finding that is
+        // already filed, orphaning the record. It takes a slot like any other disposition.
+        const fp = prefiledFingerprint(item);
+        const number = fp ? checkFingerprint(known, fp) : null;
+        if (number === null) { out.awaitingVerdict.push(item.itemId); continue; }
+        out.dispositions.push(result(item, 'file', 'tiebreak', { prefiled: true, proposal: { fingerprint: fp, title: null } }));
+        out.reuse.push({ itemId: item.itemId, number });
+        out.entries.push({
+          runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'filed', source: 'tiebreak', ref: `#${number}`,
+        });
+        continue;
+      }
 
       const d = disposeItem({
         item, verdict, runId: runIdOf(item.consoleDir), mainSha: workList.mainSha, ...(readStaged ? { readStaged } : {}),

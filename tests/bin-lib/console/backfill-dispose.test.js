@@ -344,6 +344,34 @@ test('planBatch lists a finding with no verdict as awaiting, and does not throw'
   assert.deepStrictEqual(out.entries.map((x) => x.itemId), ['bf:b']);
 });
 
+test('planBatch settles a no-verdict finding whose record already exists as a reuse, never awaiting (R10a)', () => {
+  const a = findingItem({ itemId: 'bf:a', itemHash: 'ha' });
+  const fp = findingFingerprint({ lens: '3a', path: a.finding.path, claim: a.claimText });
+  const out = plan({
+    workList: workList([a]),
+    verdicts: {},
+    existingIssues: [{ number: 4021, body: `Some record.\n<!-- work-fingerprint: ${fp} -->` }],
+  });
+  assert.deepStrictEqual(out.awaitingVerdict, []);
+  assert.deepStrictEqual(out.file, []);
+  assert.deepStrictEqual(out.reuse, [{ itemId: 'bf:a', number: 4021 }]);
+  assert.deepStrictEqual(out.entries, [{ runDir: '/x/pipelines/archive/run-0', itemId: 'bf:a', itemHash: 'ha', outcome: 'filed', source: 'tiebreak', ref: '#4021' }]);
+  assert.strictEqual(out.dispositions.length, 1, 'it takes a slot');
+});
+
+test('planBatch keeps a no-verdict finding awaiting when only an unrelated record exists (R10a, orthogonal)', () => {
+  const a = findingItem({ itemId: 'bf:a' });
+  const other = findingFingerprint({ lens: '3a', path: 'some/other/file.js', claim: a.claimText });
+  const out = plan({
+    workList: workList([a]),
+    verdicts: {},
+    existingIssues: [{ number: 9, body: `<!-- work-fingerprint: ${other} -->` }],
+  });
+  assert.deepStrictEqual(out.awaitingVerdict, ['bf:a']);
+  assert.deepStrictEqual(out.reuse, []);
+  assert.deepStrictEqual(out.entries, []);
+});
+
 test('planBatch accepts the verdicts as a Map too', () => {
   const out = plan({ workList: workList([findingItem({ itemId: 'bf:a' })]), verdicts: new Map([['bf:a', dropV]]) });
   assert.strictEqual(out.dispositions[0].action, 'drop');

@@ -35,10 +35,25 @@ const FACTS = [
   ['dry-run re-implemented', /`--dry-run`[^\n]{0,80}re-implemented/],
   ['main session only', /no `Agent` tool[^\n]{0,120}stops and reports/],
   ['batch limit', /--limit 24/],
-  ['stale-hash re-list once', /`stale-hash`[^\n]{0,160}re-list once/],
+  ['stale-hash re-list once', /`stale-hash` means re-list once, never force/],
   ['re-list before every batch', /before EVERY batch/],
   ['Labels: none is no label', /`Labels: none`[^\n]{0,80}no label/],
   ['digest comment cap', /under 60,000 characters/],
+  // R10: a prefiled finding settles without a verdict; verdicts persist across passes.
+  ['prefiled finding needs no verdict', /comes back as a `reuse` with no verdict needed, and never as `awaitingVerdict`/],
+  ['verdicts kept across passes', /kept across passes, keyed by item id/],
+  ['empty verdicts file written first', /`Write` `\{\}` to `\{VERDICTS\}`/],
+  // R11: the dedup read is sized from the repo; a count at the cap is truncated.
+  ['dedup read counted at the cap', /--limit 100000 --json number --jq length/],
+  ['count equal to the cap is truncated', /equal to 100000 is truncated, not complete/],
+  // R12: GitHub Issues only.
+  ['work-backend gate', /HELD — console backfill files through GitHub Issues; work-backend \{value\} is not supported yet/],
+  // Minors.
+  ['Type label on top of Labels', /On top of those, the Type row's expression/],
+  ['first stale-hash exempt from the failed set', /except the first `stale-hash` refusal of an item/],
+  ['no-defer-reason keeps the run PARTIAL', /reason `no-defer-reason`[^\n]{0,120}outcome stays `PARTIAL`/],
+  ['landed, not applied report line', /landed, not applied: \{itemId\}/],
+  ['fallback worktree torn down with git worktree remove', /`git worktree remove \{path\}`/],
 ];
 
 function missingFacts(collapsed) {
@@ -172,30 +187,85 @@ function scratch() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ct-backfill-prose-'));
 }
 
-test('batch fence: cuts the batch, skips the failed set, writes the cut work list', () => {
+test('filter fence: drops the failed set, counts the list and what is eligible, writes the filtered work list', () => {
   const dir = scratch();
   try {
-    const items = ['a', 'b', 'c'].map((id, n) => ({ itemId: `bf:${id}`, kind: n === 0 ? 'finding' : 'no-claim', finding: { path: 'x.js' }, claimText: 'claim', context: 'ctx', itemHash: `h${n}` }));
+    const items = ['a', 'b', 'c'].map((id, n) => ({ itemId: `bf:${id}`, kind: 'no-claim', itemHash: `h${n}` }));
     const wl = { mainSha: 's', runs: [{ runDir: 'r1', items: items.slice(0, 2) }, { runDir: 'r2', items: items.slice(2) }] };
     fs.writeFileSync(path.join(dir, 'w.json'), JSON.stringify(wl));
-    const fence = fenceWith('view.push');
+    const fence = fenceWith('eligible');
     const r = runFence(fence, { WORKLIST: path.join(dir, 'w.json'), BATCHLIST: path.join(dir, 'b.json'), 'failed-itemIds': 'bf:b' });
     assert.strictEqual(r.status, 0, r.stderr);
-    const out = JSON.parse(r.stdout);
-    assert.strictEqual(out.remaining, 3);
-    assert.deepStrictEqual(out.batch.map((i) => i.itemId), ['bf:a', 'bf:c']);
-    assert.strictEqual(out.batch[0].claimText, 'claim', 'a finding carries its claim');
-    assert.strictEqual(out.batch[1].context, undefined, 'a non-finding carries only id and kind');
+    assert.deepStrictEqual(JSON.parse(r.stdout), { remaining: 3, eligible: 2 });
     const cut = JSON.parse(fs.readFileSync(path.join(dir, 'b.json'), 'utf8'));
     assert.deepStrictEqual(cut.runs.map((x) => x.items.map((i) => i.itemHash)), [['h0'], ['h2']]);
     assert.strictEqual(cut.mainSha, 's');
-    // The limit: an n of 1 cuts the batch to one item, remaining still counts the whole list.
-    assert.ok(fence.includes(' 24 '), 'the fence passes the batch size 24');
-    const one = runFence(fence.replace(' 24 ', ' 1 '), { WORKLIST: path.join(dir, 'w.json'), BATCHLIST: path.join(dir, 'b1.json'), 'failed-itemIds': '' });
-    assert.strictEqual(JSON.parse(one.stdout).batch.length, 1);
-    // Everything failed: an empty batch with a non-empty remaining is the "stop, items remain" signal.
+    // Everything failed: eligible 0 with a non-empty remaining is the "stop, items remain" signal.
     const all = runFence(fence, { WORKLIST: path.join(dir, 'w.json'), BATCHLIST: path.join(dir, 'b2.json'), 'failed-itemIds': 'bf:a bf:b bf:c' });
-    assert.deepStrictEqual(JSON.parse(all.stdout), { remaining: 3, batch: [] });
+    assert.deepStrictEqual(JSON.parse(all.stdout), { remaining: 3, eligible: 0 });
+    // Nothing failed: the list passes through whole.
+    const none = runFence(fence, { WORKLIST: path.join(dir, 'w.json'), BATCHLIST: path.join(dir, 'b3.json'), 'failed-itemIds': '' });
+    assert.deepStrictEqual(JSON.parse(none.stdout), { remaining: 3, eligible: 3 });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('plan fence: prints the plan fields the procedure acts on, never the one-line JSON itself', () => {
+  const dir = scratch();
+  try {
+    const plan = {
+      dispositions: [{ itemId: 'bf:1' }, { itemId: 'bf:2' }],
+      file: [{ itemId: 'bf:1', fingerprint: 'fp', title: 'T', path: '/p/1.md' }],
+      reuse: [{ itemId: 'bf:2', number: 7 }],
+      digest: { lines: ['- a', '- b'], duplicates: ['bf:9'] },
+      entries: [{ itemId: 'bf:1' }],
+      awaitingVerdict: ['bf:3'],
+    };
+    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify(plan));
+    const r = runFence(fenceWith('digestLines'), { PLAN: path.join(dir, 'p.json') });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.deepStrictEqual(JSON.parse(r.stdout), {
+      dispositions: 2, file: plan.file, reuse: plan.reuse, digestLines: 2, digestDuplicates: ['bf:9'], awaitingVerdict: ['bf:3'],
+    });
+    assert.ok(r.stdout.split('\n').length > 1, 'pretty-printed, so it is readable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('awaiting fence: lists the awaiting findings with a file-safe name, capped at n', () => {
+  const dir = scratch();
+  try {
+    const mk = (id) => ({ itemId: id, kind: 'finding', finding: { lens: '3a', path: 'x.js', line: 1, reporterSeverity: 'high', kind: 'unconfirmed' }, claimText: `claim ${id}`, context: 'ctx' });
+    const wl = { runs: [{ runDir: 'r1', items: [mk('bf:a:1'), { itemId: 'bf:z', kind: 'no-claim' }] }, { runDir: 'r2', items: [mk('bf:b'), mk('bf:c')] }] };
+    fs.writeFileSync(path.join(dir, 'w.json'), JSON.stringify(wl));
+    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify({ awaitingVerdict: ['bf:a:1', 'bf:b', 'bf:c'] }));
+    const fence = fenceWith('want.has');
+    const vars = { BATCHLIST: path.join(dir, 'w.json'), PLAN: path.join(dir, 'p.json'), AWAITING: path.join(dir, 'aw.json') };
+    assert.strictEqual(runFence(fence, vars).status, 0);
+    const out = JSON.parse(fs.readFileSync(vars.AWAITING, 'utf8'));
+    assert.deepStrictEqual(out.map((i) => [i.itemId, i.name]), [['bf:a:1', 'a_1'], ['bf:b', 'b'], ['bf:c', 'c']]);
+    assert.strictEqual(out[0].claimText, 'claim bf:a:1');
+    assert.ok(fence.includes(' 24 '), 'the fence passes the cap 24');
+    runFence(fence.replace(' 24 ', ' 2 '), vars);
+    assert.strictEqual(JSON.parse(fs.readFileSync(vars.AWAITING, 'utf8')).length, 2);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('verdict-merge fence: adds the verdicts it finds, keeps earlier ones, names the missing', () => {
+  const dir = scratch();
+  try {
+    const tb = path.join(dir, 'tb');
+    fs.mkdirSync(tb);
+    fs.writeFileSync(path.join(tb, 'a-verdict.json'), JSON.stringify({ outcome: 'drop', severity: 'low' }));
+    fs.writeFileSync(path.join(tb, 'b-verdict.json'), '');
+    fs.writeFileSync(path.join(dir, 'aw.json'), JSON.stringify([{ itemId: 'bf:a', name: 'a' }, { itemId: 'bf:b', name: 'b' }, { itemId: 'bf:c', name: 'c' }]));
+    fs.writeFileSync(path.join(dir, 'v.json'), JSON.stringify({ 'bf:x': { outcome: 'digest' } }));
+    const r = runFence(fenceWith('no outcome'), { VERDICTS: path.join(dir, 'v.json'), TBDIR: tb, AWAITING: path.join(dir, 'aw.json') });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.deepStrictEqual(JSON.parse(r.stdout), { added: ['bf:a'], missing: ['bf:b', 'bf:c'] });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'v.json'), 'utf8')), { 'bf:x': { outcome: 'digest' }, 'bf:a': { outcome: 'drop', severity: 'low' } });
+    // A first pass with no verdicts file yet starts from {}.
+    fs.rmSync(path.join(dir, 'v.json'));
+    runFence(fenceWith('no outcome'), { VERDICTS: path.join(dir, 'v.json'), TBDIR: tb, AWAITING: path.join(dir, 'aw.json') });
+    assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(dir, 'v.json'), 'utf8'))), ['bf:a']);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -229,5 +299,9 @@ test('settle fence: fills refs, resolves a same-batch twin, leaves a ref-less it
     assert.deepStrictEqual(JSON.parse(r.stdout), { entries: 4, unsettled: ['bf:failed'] });
     const entries = JSON.parse(fs.readFileSync(path.join(dir, 'e.json'), 'utf8'));
     assert.deepStrictEqual(entries.map((x) => [x.itemId, x.ref]), [['bf:new', '#42'], ['bf:twin', '#42'], ['bf:old', '#7'], ['bf:dig', 'https://example.test/c/1']]);
+    // No refs file at all (a pass that filed nothing): only the plan's own refs settle, nothing throws.
+    const none = runFence(fenceWith('unsettled'), { PLAN: path.join(dir, 'p.json'), REFS: path.join(dir, 'absent.json'), ENTRIES: path.join(dir, 'e2.json') });
+    assert.strictEqual(none.status, 0, none.stderr);
+    assert.deepStrictEqual(JSON.parse(none.stdout), { entries: 1, unsettled: ['bf:new', 'bf:twin', 'bf:failed', 'bf:dig'] });
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
