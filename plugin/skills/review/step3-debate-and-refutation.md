@@ -90,7 +90,7 @@ This pass is the only place in the skill where an unbounded fan-out would meet t
 >    Recommendation: file | drop — {one-line reason}
 >
 >    confirmed means the finding still stands after your attempt to break it; refuted means you broke it; cant-tell means you could not decide.
->    Evidence is required for confirmed and refuted: cite the finding's own path and a line within 5 of {line} in the current file, and quote the whole cited source line verbatim — a token or fragment of the line is not a quote. cant-tell needs no Evidence line.
+>    Evidence is required for confirmed and refuted: cite {path} exactly as given (the full repo-relative path, never a bare filename or another file) and a line within 5 of {line} in the current file, and quote the whole cited source line verbatim — a token or fragment of the line is not a quote. cant-tell needs no Evidence line.
 >    Recommendation file means the finding is worth a fix or a work record; drop means it is not worth acting on.
 >    Produce your response first; the last non-empty line of your reply must then read exactly one of: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED, labeled `STATUS: {WORD}`.
 >
