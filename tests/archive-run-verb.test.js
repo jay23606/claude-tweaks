@@ -209,6 +209,15 @@ test('archive-run refuses when only a spec-N console holds residue', () => {
   assert.ok(fs.existsSync(path.join(runDir, 'config.yml')), 'run dir must not be moved');
 });
 
+test('archive-run refuses when there is no top-level console.json and only a spec-N console holds a keep-staged item', () => {
+  const { root, runDir } = runDirFixture('clean');
+  residueConsole(runDir, { dir: path.join(runDir, 'spec-12') });
+  assert.strictEqual(fs.existsSync(path.join(runDir, 'console.json')), false, 'fixture: no top-level console.json');
+  const result = runHook(['archive-run', '--run', runDir], { cwd: root });
+  assert.match(result.stdout, /archival refused — console-residue \(1 unresolved item\(s\)/);
+  assert.ok(fs.existsSync(path.join(runDir, 'config.yml')), 'run dir must not be moved');
+});
+
 test('archive-run refuses when a spec-N console.json is unreadable (fails closed)', () => {
   const { root, runDir } = runDirFixture('clean');
   fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({ resolved: true, items: [] }));

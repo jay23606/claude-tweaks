@@ -3136,6 +3136,15 @@ test('readConsoleState: an unreadable spec-N console fails closed to residue', (
 test('readConsoleState: an unresolved top-level console keeps precedence over residue', () => {
   assert.strictEqual(readConsoleState(residueRunDir({ resolved: false, items: [heldItem('pending')] })), 'unresolved');
 });
+test('readConsoleState: no top-level console.json but a spec-N console holding an unacknowledged keep-staged item reads residue', () => {
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-spec-only-'));
+  const specDir = path.join(runDir, 'spec-4');
+  fs.mkdirSync(path.join(specDir, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(specDir, 'staged', 'review-debate-deviation.md'), 'x');
+  fs.writeFileSync(path.join(specDir, 'console.json'), JSON.stringify({ resolved: true, items: [heldItem('keep-staged')] }));
+  assert.strictEqual(fs.existsSync(path.join(runDir, 'console.json')), false, 'fixture: no top-level console.json');
+  assert.strictEqual(readConsoleState(runDir), 'residue');
+});
 test('readConsoleState: no console anywhere still reads none', () => {
   assert.strictEqual(readConsoleState(fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-none-'))), 'none');
 });
