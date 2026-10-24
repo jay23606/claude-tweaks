@@ -310,5 +310,9 @@
   "plugin/bin/lib/qa-report": {
     "lastSweptMs": 1792638427826,
     "lastHash": "dffcc40f305b0063df43d32475d4de6710d4b6d9"
+  },
+  "plugin/bin/lib/verify": {
+    "lastSweptMs": 1792811147160,
+    "lastHash": "dd5385ad5db5e2c4a14a0bee773e0eb5277952af"
   }
 }
