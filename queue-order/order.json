@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-24T06:09:59.038Z",
+  "computedAt": "2026-10-24T06:10:55.740Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -146,11 +146,6 @@
       {
         "number": 3875,
         "updatedAt": "2026-10-24T05:39:42Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3859,
-        "updatedAt": "2026-10-23T22:06:54Z",
         "state": "OPEN"
       },
       {
