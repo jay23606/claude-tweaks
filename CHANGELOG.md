@@ -74,6 +74,39 @@ Three conventions follow from how this repo works, and all are visible below:
 * verify.js --stamp-suite: a failing chunk with preExisting… ([#4040](https://github.com/thn-inc/claude-tweaks/issues/4040)) ([0028844](https://github.com/thn-inc/claude-tweaks/commit/002884405ae04d59b10c9d96e9623e0abaafec91))
 * wrap-up-engine.js plan reads its git facts from the main… ([#3925](https://github.com/thn-inc/claude-tweaks/issues/3925)) ([104e97d](https://github.com/thn-inc/claude-tweaks/commit/104e97d31c24e9e8367e9763a797e2bc1dd70499))
 
+### Highlights
+* A failing chunk in a chunked `verify.js --stamp-suite` run no longer crashes or leaves the suite marked as verified.
+* No user-visible change.
+* No user-visible change.
+* A fix that adds an early guard now has to show that the checks after it are still tested.
+* No user-visible change.
+* Wrap-up's curation plan now judges the worktree's own diff, so the references and journeys rows no longer open or close on another branch's changes.
+* Review's effort derivation no longer fails in worktree-isolated sessions.
+* The browse skill documents the viewport command the Playwright CLI actually supports.
+* No user-visible change.
+* No user-visible change.
+* Reflect no longer files a record for a gap that is already fixed on the main branch.
+* Verification can now earn a passing stamp when a check regenerates a declared generated file, instead of forcing a second run.
+* No user-visible change.
+* No user-visible change.
+* No user-visible change beyond the generated CLAUDE.md citing a path that resolves for the consumer.
+* Shaping and review now check that a fail-closed rule written in skill prose says what happens on empty, unreadable and malformed input.
+* `issues/record.js` split into cohesive sub-modules for maintainability; no behavior change.
+* Subagent-driven builds now fix a deferred review finding that qualifies for an immediate fix instead of handing it to the console as a follow-up.
+* Wrap-up ledgers no longer reach main when a run's PR is merged before the run finishes.
+* None - internal conformance test only.
+* No user-facing change.
+* QA stories in the legacy format now set the browser viewport with the command the Playwright CLI actually supports.
+* No user-visible change — agent harness reliability fix.
+* `/tidy` no longer arms auto-merge on a record-linked PR whose acceptance labeling never landed.
+* No user-visible change.
+* Review lens agents no longer trip the worktree guard when they write a throwaway probe file.
+* Closed a gap in the worktree-isolated Bash guidance where a documented skill's own canonical one-liner collided with the harness's compound-command refusal.
+* No user-facing change.
+* Marker-comment trust checks written as jq in skill prose now work on the GitHub REST and MCP transports, not just the `gh` CLI.
+* Scheduled routines now default to Claude Sonnet 5.5 (claude-sonnet-5-5). Existing routines report Drifted in /claude-tweaks:routine status until you run /claude-tweaks:routine update on each.
+* A review run by a dispatched agent now names its single-reader fallback at every effort tier, and the review summary and PR verdict comment show a coverage caveat whenever a lens fell back to one reader.
+
 ## [6.151.1](https://github.com/thn-inc/claude-tweaks/compare/v6.151.0...v6.151.1) (2026-10-22)
 
 
