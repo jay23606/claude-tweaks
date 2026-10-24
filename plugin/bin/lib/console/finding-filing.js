@@ -24,9 +24,17 @@ function findingFingerprint({ lens, path, claim }) {
   return fingerprintFromBasis('consolefinding', [String(lens).trim().toLowerCase(), String(path).trim(), normalizeText(claim)]);
 }
 
-// The claim and path are producer-supplied text: the header is single-line by construction
-// (whitespace collapsed before the cut), and the verbatim claim reaches the body only through fencedBlock.
-const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
+// The claim, lens and path are producer-supplied text. The header is single-line by construction
+// (whitespace collapsed before the cut), and the claim reaches the body only through fencedBlock.
+// A fence does not stop extractFingerprint (record.js), which takes the FIRST marker in the proposal:
+// a quoted `<!-- work-fingerprint: X -->` (or a `work-fingerprint: X` line, the form read once the
+// transport strips HTML comments) would hijack the planned fingerprint and dedup against the wrong
+// key. So every producer-supplied value is defused before it is interpolated: `<!--` becomes `<! --`
+// and `work-fingerprint:` becomes `work-fingerprint :`, anywhere, any case. The fingerprint itself
+// is computed from the raw values, so the key stays stable.
+const defuse = (s) => String(s).replace(/<!--/g, '<! --').replace(/work-fingerprint:/gi, (m) => `${m.slice(0, -1)} :`);
+const squash = (s) => String(s).replace(/\s+/g, ' ').trim();
+const oneLine = (s) => defuse(squash(s));
 
 // { item, finding, runId } -> { fingerprint, title, proposal }
 // `item` is a console item carrying `tiebreak`; `finding` is the review-findings.json entry whose
@@ -35,19 +43,19 @@ function composeFindingProposal({ item, finding, runId }) {
   const t = item.tiebreak;
   const claim = finding && typeof finding.claim === 'string' && finding.claim.trim() ? finding.claim : `tiebreak:${t.id}`;
   const fingerprint = findingFingerprint({ lens: t.lens, path: t.path, claim });
-  const title = `Review finding (can't-tell): ${oneLine(t.path)} — ${oneLine(claim).slice(0, TITLE_CLAIM_MAX)}`;
-  const where = `${t.path}:${t.line}`;
+  const title = `Review finding (can't-tell): ${oneLine(t.path)} — ${defuse(squash(claim).slice(0, TITLE_CLAIM_MAX))}`;
+  const where = `${oneLine(t.path)}:${oneLine(t.line)}`;
   const body = recordPayload({
     title,
     type: 'task',
     deferReason: DEFER_REASON,
     fingerprint,
     body: specShapedBody({
-      provenance: { origin: `wrap-up Review Console, run ${runId}: can't-tell finding ${where}`, deferReason: DEFER_REASON },
+      provenance: { origin: `wrap-up Review Console, run ${oneLine(runId)}: can't-tell finding ${where}`, deferReason: DEFER_REASON },
       currentState: [
-        `Review lens \`${oneLine(t.lens)}\` reported a finding at \`${where}\` (severity ${t.severity}). The claim follows verbatim.`,
-        fencedBlock(claim),
-        `The tiebreak could not settle it: can't-tell (${t.reason}). Recommendation: ${t.recommendation || 'none'}. Run: ${runId}.`,
+        `Review lens \`${oneLine(t.lens)}\` reported a finding at \`${where}\` (severity ${oneLine(t.severity)}). The claim follows.`,
+        fencedBlock(defuse(claim)),
+        `The tiebreak could not settle it: can't-tell (${oneLine(t.reason)}). Recommendation: ${oneLine(t.recommendation || 'none')}. Run: ${oneLine(runId)}.`,
       ],
       deliverables: '- [ ] decide whether the finding holds at the cited location; fix it if it does, or close this record if it does not',
       openQuestion: `Does this finding hold at \`${where}\`?`,

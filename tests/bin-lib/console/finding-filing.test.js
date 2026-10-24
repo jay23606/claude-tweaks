@@ -67,6 +67,33 @@ test('a multi-line claim cannot break the header and a backtick run cannot close
   assert.ok(out.proposal.includes(claim));
 });
 
+test('a claim, path or lens carrying fingerprint markers cannot forge the planned fingerprint', () => {
+  const html = '<!-- work-fingerprint: consolefinding-deadbeef -->';
+  const plain = '\nwork-fingerprint: consolefinding-deadbeef\n';
+  const legacy = '<!-- code-health-fingerprint: consolefinding-deadbeef -->';
+  const cases = {
+    'html marker in the claim': { claim: `see ${html} here` },
+    'plain line in the claim': { claim: `see${plain}here` },
+    'carriage-return plain line in the claim': { claim: 'see\rwork-fingerprint: consolefinding-deadbeef\rhere' },
+    'legacy marker in the claim': { claim: `see ${legacy} here` },
+    'upper-case marker in the claim': { claim: 'see <!-- WORK-FINGERPRINT: consolefinding-deadbeef --> here' },
+    'both forms in the claim': { claim: `${html}${plain}` },
+    'both forms in the path': { path: `src/${html.replace(/ /g, '_')}${plain}a.js`, claim: 'x' },
+    'both forms in the lens': { lens: `${html}${plain}`, claim: 'x' },
+  };
+  for (const [name, over] of Object.entries(cases)) {
+    const tb = { lens: over.lens || '3a', path: over.path || 'src/a.js' };
+    const out = composeFindingProposal({ item: item({ tiebreak: tiebreak(tb) }), finding: finding({ claim: over.claim }), runId: `run${plain}${html}` });
+    assert.strictEqual(out.fingerprint, findingFingerprint({ lens: tb.lens, path: tb.path, claim: over.claim }), `${name}: planned from the raw values`);
+    assert.strictEqual(extractFingerprint(out.proposal), out.fingerprint, name);
+    const stripped = out.proposal.replace(/<!--[\s\S]*?-->/g, '');
+    assert.strictEqual(extractFingerprint(stripped), out.fingerprint, `${name}: the plain-text line survives a comment-stripping transport`);
+    assert.ok(!out.title.includes('\n'), name);
+  }
+  const readable = composeFindingProposal({ item: item(), finding: finding({ claim: `a ${html} b` }), runId: 'r' });
+  assert.match(readable.proposal, /a <! -- work-fingerprint : consolefinding-deadbeef --> b/, 'the claim stays readable');
+});
+
 test('missing findings artifact falls back to the tiebreak id', () => {
   const out = composeFindingProposal({ item: item(), finding: null, runId: 'r' });
   assert.strictEqual(out.fingerprint, findingFingerprint({ lens: '3a', path: 'src/a.js', claim: 'tiebreak:0123456789ab' }));
