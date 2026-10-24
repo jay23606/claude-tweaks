@@ -372,6 +372,32 @@ test('planBatch keeps a no-verdict finding awaiting when only an unrelated recor
   assert.deepStrictEqual(out.entries, []);
 });
 
+test('planBatch settles a no-verdict finding whose digest line a trusted comment carries as digested, whichever verdict digested it (N2)', () => {
+  const a = findingItem({ itemId: 'bf:a', itemHash: 'ha' });
+  // The line an earlier, interrupted run posted: a can't-tell digest and a confirmed-low one differ only in Defer-reason.
+  for (const verdict of [digestV, confirmed('low')]) {
+    const line = plan({ workList: workList([a]), verdicts: { 'bf:a': verdict } }).digest.lines[0];
+    assert.ok(line, 'the verdict digests');
+    const out = plan({ workList: workList([a]), verdicts: {}, digestComments: [{ body: line, authorAssociation: 'OWNER' }] });
+    assert.deepStrictEqual(out.awaitingVerdict, [], line);
+    assert.deepStrictEqual(out.digest.duplicates, ['bf:a']);
+    assert.deepStrictEqual(out.digest.lines, []);
+    assert.deepStrictEqual(out.file, []);
+    assert.strictEqual(out.dispositions.length, 1, 'it takes a slot');
+    assert.deepStrictEqual(out.entries, [{ runDir: '/x/pipelines/archive/run-0', itemId: 'bf:a', itemHash: 'ha', outcome: 'digested', source: 'tiebreak', ref: null }]);
+  }
+});
+
+test('planBatch keeps a no-verdict finding awaiting without a trusted matching digest line (N2, orthogonal)', () => {
+  const a = findingItem({ itemId: 'bf:a' });
+  const line = plan({ workList: workList([a]), verdicts: { 'bf:a': digestV } }).digest.lines[0];
+  const awaiting = (digestComments) => plan({ workList: workList([a]), verdicts: {}, digestComments }).awaitingVerdict;
+  assert.deepStrictEqual(awaiting([]), ['bf:a'], 'no comment');
+  assert.deepStrictEqual(awaiting([{ body: line, authorAssociation: 'NONE' }]), ['bf:a'], 'an untrusted comment never counts');
+  const elsewhere = plan({ workList: workList([findingItem({ itemId: 'bf:b', finding: { ...a.finding, line: 40, path: 'src/elsewhere.js' } })]), verdicts: { 'bf:b': digestV } }).digest.lines[0];
+  assert.deepStrictEqual(awaiting([{ body: elsewhere, authorAssociation: 'OWNER' }]), ['bf:a'], 'another finding\'s line');
+});
+
 test('planBatch accepts the verdicts as a Map too', () => {
   const out = plan({ workList: workList([findingItem({ itemId: 'bf:a' })]), verdicts: new Map([['bf:a', dropV]]) });
   assert.strictEqual(out.dispositions[0].action, 'drop');

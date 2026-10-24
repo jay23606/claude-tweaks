@@ -260,7 +260,8 @@ function prefiledFingerprint(item) {
 
 // One batch of the work list, in order. Walks `workList.runs`; a finding with no verdict yet is listed
 // under `awaitingVerdict` and takes no slot — unless its filing fingerprint already has a record, which
-// settles it as a `reuse` with no verdict; stops after `limit` dispositions.
+// settles it as a `reuse` with no verdict, and so does one whose digest line a trusted digest comment
+// already carries (settled `digested`, listed under `digest.duplicates`); stops after `limit` dispositions.
 //   existingIssues  `gh issue list --state all --json number,body` rows (the fingerprint map's source)
 //   digestComments  the open digest issue's comment objects, with their author association
 // Returns { dispositions, file, reuse, digest: { lines, duplicates }, entries, awaitingVerdict }:
@@ -288,12 +289,31 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
         // already filed, orphaning the record. It takes a slot like any other disposition.
         const fp = prefiledFingerprint(item);
         const number = fp ? checkFingerprint(known, fp) : null;
-        if (number === null) { out.awaitingVerdict.push(item.itemId); continue; }
-        out.dispositions.push(result(item, 'file', 'tiebreak', { prefiled: true, proposal: { fingerprint: fp, title: null } }));
-        out.reuse.push({ itemId: item.itemId, number });
-        out.entries.push({
-          runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'filed', source: 'tiebreak', ref: `#${number}`,
-        });
+        if (number !== null) {
+          out.dispositions.push(result(item, 'file', 'tiebreak', { prefiled: true, proposal: { fingerprint: fp, title: null } }));
+          out.reuse.push({ itemId: item.itemId, number });
+          out.entries.push({
+            runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'filed', source: 'tiebreak', ref: `#${number}`,
+          });
+          continue;
+        }
+        // Likewise a finding whose digest line a trusted comment already carries (digested by an interrupted
+        // run). Both digest outcomes (can't-tell, confirmed-low) build the line from the same area, claim and
+        // location, and materialityFingerprint omits deferReason, so the fingerprint does not depend on the verdict.
+        if (item.finding && typeof item.claimText === 'string' && item.claimText.trim()) {
+          const prefiledDigest = digestEntryOf({
+            item, finding: item.claimText, fileRefs: locationOf(item.finding), deferReason: DIGEST_REASONS.CANT_TELL, runId: runIdOf(item.consoleDir),
+          });
+          if (isMaterialityDuplicate(digestComments, prefiledDigest.entry)) {
+            out.dispositions.push(result(item, 'digest', 'tiebreak', { prefiled: true, digest: prefiledDigest }));
+            out.digest.duplicates.push(item.itemId);
+            out.entries.push({
+              runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'digested', source: 'tiebreak', ref: null,
+            });
+            continue;
+          }
+        }
+        out.awaitingVerdict.push(item.itemId);
         continue;
       }
 

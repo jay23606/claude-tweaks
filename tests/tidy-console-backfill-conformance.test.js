@@ -42,7 +42,9 @@ const FACTS = [
   // R10: a prefiled finding settles without a verdict; verdicts persist across passes.
   ['prefiled finding needs no verdict', /comes back as a `reuse` with no verdict needed, and never as `awaitingVerdict`/],
   ['verdicts kept across passes', /kept across passes, keyed by item id/],
-  ['empty verdicts file written first', /`Write` `\{\}` to `\{VERDICTS\}`/],
+  ['verdicts file initialised by the write-json fence', /initialise `\{VERDICTS\}` with the write-json fence/],
+  ['plan fence prints drop evidence', /`drops` lists each refuted finding with its evidence/],
+  ['run stamp for fresh tiebreak files', /Take a run stamp with one plain call/],
   // R11: the dedup read is sized from the repo; a count at the cap is truncated.
   ['dedup read counted at the cap', /--limit 100000 --json number --jq length/],
   ['count equal to the cap is truncated', /equal to 100000 is truncated, not complete/],
@@ -209,24 +211,52 @@ test('filter fence: drops the failed set, counts the list and what is eligible, 
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('plan fence: prints the plan fields the procedure acts on, never the one-line JSON itself', () => {
+test('plan fence: prints the fields the procedure acts on from the real CLI plan, drops and file paths included', () => {
+  const { run } = require('../plugin/bin/console-backfill');
   const dir = scratch();
   try {
-    const plan = {
-      dispositions: [{ itemId: 'bf:1' }, { itemId: 'bf:2' }],
-      file: [{ itemId: 'bf:1', fingerprint: 'fp', title: 'T', path: '/p/1.md' }],
-      reuse: [{ itemId: 'bf:2', number: 7 }],
-      digest: { lines: ['- a', '- b'], duplicates: ['bf:9'] },
-      entries: [{ itemId: 'bf:1' }],
-      awaitingVerdict: ['bf:3'],
+    const mk = (n, over) => ({
+      itemId: `bf:${n}`, itemHash: `h${n}`, kind: 'finding', section: 'Low-confidence findings', consoleDir: '/x/pipelines/2026-10-24T090000-spec-12', storedIndices: [0],
+      finding: { lens: '3a', path: `src/f${n}.js`, line: 9, reporterSeverity: 'medium', kind: 'unconfirmed' }, claimText: `claim number ${n}`, context: 'ctx', ...over,
+    });
+    const wl = { mainSha: 'abc', runs: [{ runDir: '/x/pipelines/archive/run-0', items: [mk(1), mk(2), mk(3)] }] };
+    const evidence = { path: 'src/f2.js', line: 9, quote: 'guard(x);' };
+    const verdicts = {
+      'bf:1': { outcome: 'console', severity: 'medium', evidence: null, reason: 'verdict:cant-tell', recommendation: 'file' },
+      'bf:2': { outcome: 'drop', severity: 'medium', evidence, reason: 'refuted by tiebreak', recommendation: null },
     };
-    fs.writeFileSync(path.join(dir, 'p.json'), JSON.stringify(plan));
+    fs.writeFileSync(path.join(dir, 'w.json'), JSON.stringify(wl));
+    fs.writeFileSync(path.join(dir, 'v.json'), JSON.stringify(verdicts));
+    let out = '';
+    const code = run(['dispose', '--work-list', path.join(dir, 'w.json'), '--verdicts', path.join(dir, 'v.json'), '--out-dir', path.join(dir, 'filings')], { stdout: (s) => { out += s; }, stderr: () => {} });
+    assert.strictEqual(code, 0);
+    fs.writeFileSync(path.join(dir, 'p.json'), out);
+    const plan = JSON.parse(out);
     const r = runFence(fenceWith('digestLines'), { PLAN: path.join(dir, 'p.json') });
     assert.strictEqual(r.status, 0, r.stderr);
-    assert.deepStrictEqual(JSON.parse(r.stdout), {
-      dispositions: 2, file: plan.file, reuse: plan.reuse, digestLines: 2, digestDuplicates: ['bf:9'], awaitingVerdict: ['bf:3'],
-    });
+    const printed = JSON.parse(r.stdout);
+    assert.strictEqual(printed.dispositions, 2);
+    assert.strictEqual(printed.file.length, 1);
+    assert.strictEqual(printed.file[0].path, plan.file[0].path, 'the fence reads the key the CLI emits');
+    assert.ok(fs.existsSync(printed.file[0].path), 'file[].path is the proposal file');
+    assert.deepStrictEqual(printed.drops, [{ itemId: 'bf:2', ref: 'src/f2.js:9 "guard(x);"' }]);
+    assert.deepStrictEqual(printed.awaitingVerdict, ['bf:3']);
+    assert.strictEqual(printed.digestLines, 0);
     assert.ok(r.stdout.split('\n').length > 1, 'pretty-printed, so it is readable');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('write-json fence: writes the given JSON over an existing file with no Write tool involved', () => {
+  const dir = scratch();
+  try {
+    const target = path.join(dir, 'v.json');
+    fs.writeFileSync(target, '{"stale":true}');
+    const fence = fenceWith('writeFileSync(process.argv[1],process.argv[2])');
+    assert.strictEqual(runFence(fence, { path: target, json: '{}' }).status, 0);
+    assert.strictEqual(fs.readFileSync(target, 'utf8'), '{}');
+    assert.strictEqual(runFence(fence, { path: target, json: '{"bf:a":"#7","bf:b":"https://example.test/c/1"}' }).status, 0);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(target, 'utf8')), { 'bf:a': '#7', 'bf:b': 'https://example.test/c/1' });
+    assert.ok(!/[`$]/.test(fence), 'no $ or backtick, so bash expands nothing in the double-quoted program');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

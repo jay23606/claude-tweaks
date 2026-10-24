@@ -15,8 +15,9 @@
 // `gh issue list --state all --json number,body` array, --digest-comments the digest
 // issue's comment objects, --limit the batch size (default 24). Each new filing is
 // written to <out-dir>/backfill-filing-{item id without `bf:`}.md (named by item, so batches
-// into one directory never collide); the printed result carries that path in place of
-// file[].text and of dispositions[].proposal.text — no proposal body is ever printed. apply reads planBatch's entries (a JSON array, or an object
+// into one directory never collide); the printed result carries that path as file[].path and
+// dispositions[].proposal.path, and neither has a `text` key — no proposal body is ever printed.
+// apply reads planBatch's entries (a JSON array, or an object
 // with `entries`) with each `ref` filled in, routes each entry to the console of its
 // run that lists its item, and rewrites that console.json (lib/console/backfill-apply.js)
 // — the only write this CLI makes besides --out and --out-dir. It re-checks at apply time
@@ -226,7 +227,8 @@ function runDispose(o, ctx) {
       const proposal = path.join(outDir, `backfill-filing-${f.itemId.replace(/^bf:/, '').replace(/[^A-Za-z0-9_-]/g, '_')}.md`);
       ctx.deps.writeFile(proposal, f.text);
       written.set(f.itemId, proposal);
-      file.push({ ...f, text: proposal });
+      const { text, ...rest } = f;
+      file.push({ ...rest, path: proposal });
     }
   } catch (err) {
     ctx.deps.stderr(`console-backfill.js: could not write --out-dir ${o.outDir} (${err && err.message})\n`);

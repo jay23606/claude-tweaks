@@ -391,7 +391,8 @@ test('dispose writes each new filing to out-dir, prints its path, and lists the 
   const planned = json(r);
   assert.strictEqual(planned.file.length, 1);
   const expectedPath = path.join(outDir, `backfill-filing-${item.itemId.replace(/^bf:/, '')}.md`);
-  assert.strictEqual(planned.file[0].text, expectedPath, 'named by the item, not by position');
+  assert.strictEqual(planned.file[0].path, expectedPath, 'named by the item, not by position');
+  assert.strictEqual(planned.file[0].text, undefined, 'the entry carries the path and no proposal body');
   const body = fs.readFileSync(expectedPath, 'utf8');
   assert.ok(body.includes('the missing split ignores ids that carry a slash'), 'the written file holds the proposal body');
   assert.deepStrictEqual(planned.awaitingVerdict, []);
@@ -428,7 +429,7 @@ test('dispose batches into one --out-dir never overwrite each other', () => {
     fs.writeFileSync(verdicts, JSON.stringify({ [id]: verdict }));
     const r = call(f, ['dispose', '--work-list', out, '--verdicts', verdicts, '--out-dir', outDir]);
     assert.strictEqual(r.code, 0, r.err);
-    return json(r).file.map((x) => x.text);
+    return json(r).file.map((x) => x.path);
   };
   const first = batch(a);
   const second = batch(b);
