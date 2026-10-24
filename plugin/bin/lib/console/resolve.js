@@ -658,17 +658,31 @@ function cell(value) {
   return String(value).replace(/\|/g, '\\|');
 }
 
-function renderRows({ items, cleanup, merge, intro }) {
+// The refuted drops a human should still see (#3949 AC4): severity high or critical, in log order.
+// Read-only — each is a final outcome with no console item. Lower severities stay auditable in
+// decisions.md; a drop line with no (or an unrecognised) severity parses to a null severity and is omitted.
+function droppedByTiebreak(decisions) {
+  return decisionLines(decisions)
+    .map(parseTiebreakLine)
+    .filter((t) => t && t.kind === 'dropped' && (t.severity === 'high' || t.severity === 'critical'))
+    .map((t) => ({ id: t.id, lens: t.lens, path: t.path, line: t.line, severity: t.severity, evidence: t.evidence }));
+}
+
+function renderRows({ items, cleanup, merge, intro, dropped = [] }) {
   const lines = ['### Wrap-Up Review Console (auto-resolved at unattended)', '', intro, '', '| # | Section | Item | Resolution | Reason |', '|---|---|---|---|---|'];
   items.forEach((it, i) => lines.push(`| ${i + 1} | ${cell(it.section)} | ${cell(it.id)} | AUTO-RESOLVED: ${cell(it.resolution)} | ${cell(it.reason)} |`));
   lines.push(`| ${items.length + 1} | Cleanup actions | cleanup-procedures.md items | AUTO-RESOLVED: ${cell(cleanup.resolution)} | ${cell(cleanup.reason)} |`);
   lines.push('', `Merge: **${merge.resolution}** — ${merge.reason}`);
+  if (dropped.length) {
+    lines.push('', '#### Dropped by tiebreak (read-only — no decision)', '', '| Path:Line | Lens | Severity | Evidence |', '|---|---|---|---|');
+    dropped.forEach((d) => lines.push(`| ${cell(`${d.path}:${d.line}`)} | ${cell(d.lens)} | ${cell(d.severity)} | ${cell(d.evidence ?? '—')} |`));
+  }
   return lines.join('\n');
 }
 
 function renderTable(result) {
   const autoCount = decisionLines(result.snapshot.decisions).filter((l) => /^- AUTO /.test(l)).length;
-  return renderRows({ items: result.items, cleanup: result.sections.cleanup, merge: result.merge, intro: `Auto-applied entries in decisions.md: ${autoCount} (already in commits — override = revert).` });
+  return renderRows({ items: result.items, cleanup: result.sections.cleanup, merge: result.merge, dropped: result.droppedByTiebreak, intro: `Auto-applied entries in decisions.md: ${autoCount} (already in commits — override = revert).` });
 }
 
 // The idempotent re-render: a console.json already carrying `resolved: true`
@@ -690,6 +704,7 @@ function renderStoredTable(consoleJson) {
     items,
     cleanup: SECTION_STANCES[SECTIONS.CLEANUP],
     merge: cj.merge || { resolution: 'unknown', reason: 'not recorded in console.json' },
+    dropped: Array.isArray(cj.droppedByTiebreak) ? cj.droppedByTiebreak : [],
     intro: `Already resolved at ${cj.at || 'an unrecorded time'} — re-rendered from console.json; nothing re-resolved.`,
   });
 }
@@ -701,7 +716,7 @@ function resolveAll({ runDir, policy, deps }) {
   const items = [...stagedItems(snapshot), ...engineItems(snapshot, stagedIds), ...coordinationItems(snapshot, stagedIds)];
   const sections = { cleanup: { ...SECTION_STANCES[SECTIONS.CLEANUP] } };
   const merge = mergeResolution(snapshot, deps);
-  const result = { ceiling: 'unattended', items, sections, merge, snapshot };
+  const result = { ceiling: 'unattended', items, sections, merge, droppedByTiebreak: droppedByTiebreak(snapshot.decisions), snapshot };
   result.table = renderTable(result);
   return result;
 }

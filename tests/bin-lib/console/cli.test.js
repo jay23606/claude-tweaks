@@ -81,6 +81,46 @@ test('a dismissed shadow-dup duplicate logs reversibility n/a (#3946)', async ()
   assert.match(decisions, /Console item wrap-up-memory-1\.md\.shadow-dup \(Dismissed duplicates\): dismissed — shadow-dup-duplicate .*Reversibility: n\/a\.$/m);
 });
 
+// A refuted-drop verdict line built through the real resolver and the sanctioned formatter, never typed by hand.
+function drop(over, severity) {
+  const { resolveTiebreak } = require(path.join(PLUGIN_ROOT, 'bin', 'lib', 'tiebreak'));
+  const { formatEntry } = require(path.join(PLUGIN_ROOT, 'bin', 'lib', 'log-decision', 'append'));
+  const tbNow = new Date(2026, 9, 24, 10, 0, 0);
+  const file = Array.from({ length: 300 }, () => 'quote text here').join('\n');
+  const finding = { lens: '3a', path: 'src/a.js', line: 9, claim: 'claim', reporterSeverity: severity, kind: 'unconfirmed', ...over };
+  const r = resolveTiebreak(finding, `Verdict: refuted\nEvidence: ${finding.path}:${finding.line} \`quote text here\`\nSeverity: ${severity}\nSTATUS: DONE`, { readFile: () => file, now: tbNow });
+  return { r, entry: formatEntry({ status: r.logStatus, now: tbNow, step: r.logStep, text: r.logText, reversibility: 'high' }) };
+}
+
+test('console.json records droppedByTiebreak and a re-render shows the block (#3949 AC4)', async () => {
+  const high = drop({}, 'high');
+  const low = drop({ path: 'src/b.js', claim: 'other' }, 'low');
+  const fx = mainCheckoutWithRun({ staged: THREE, decisions: `${high.entry}\n${low.entry}\n` });
+  const first = baseDeps(fx, []);
+  assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto'], first.d), 0);
+  const cj = JSON.parse(fs.readFileSync(path.join(fx.runDir, 'console.json'), 'utf8'));
+  assert.deepStrictEqual(cj.droppedByTiebreak, [{ id: high.r.id, lens: '3a', path: 'src/a.js', line: 9, severity: 'high', evidence: 'src/a.js:9 "quote text here"' }]);
+  assert.match(first.out(), /#### Dropped by tiebreak \(read-only — no decision\)/);
+  assert.match(first.out(), /\| src\/a\.js:9 \| 3a \| high \| src\/a\.js:9 "quote text here" \|/);
+  assert.ok(!first.out().includes('src/b.js'), 'a low drop never reaches the console');
+  const second = baseDeps(fx, []);
+  assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto'], second.d), 0);
+  assert.match(second.out(), /already records a resolved console/);
+  assert.match(second.out(), /#### Dropped by tiebreak \(read-only — no decision\)[\s\S]*\| src\/a\.js:9 \| 3a \| high \|/);
+  const none = mainCheckoutWithRun({ staged: THREE });
+  assert.strictEqual(await run(['--run', none.runDir, '--policy', 'console-auto'], baseDeps(none, []).d), 0);
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(none.runDir, 'console.json'), 'utf8')).droppedByTiebreak, [], 'always written');
+});
+
+test('a dropped item logs reversibility n/a (#3949)', async () => {
+  const v = drop({ reporterSeverity: 'low' }, 'low');
+  const staged = '- STAGED 09:59:00 — Debate: lens "3a" cross-lens disagreement on src/a.js:9 inconclusive (positions differ). Both verdicts staged. Stage path: staged/review-contested-1.md. Reversibility: high.';
+  const fx = mainCheckoutWithRun({ decisions: `${staged}\n${v.entry}\n`, staged: { 'review-contested-1.md': 'x' } });
+  assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto'], baseDeps(fx, []).d), 0);
+  const decisions = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+  assert.match(decisions, /Console item review-contested-1\.md \(Contested findings\): dropped — refuted by tiebreak \(staged\/review-contested-1\.md\)\. Reversibility: n\/a\.$/m);
+});
+
 // grant-veto-window-hours only reaches evaluateMaturation if the CLI resolves
 // it: 30h-old pending grant, matured under the 24h default, still inside a 72h
 // window. Same fixture, two policies, opposite merge halves.

@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 
 const MOD = path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'resolve');
-const { classifyStagedItem, resolveAll, findingItems, parseTiebreakLine, approveAllDefault, readSnapshot, SECTION_STANCES, SECTION_MAP, ENGINE_ROW_SECTIONS, CANONICAL_PREFIXES, nearestCanonicalPrefixes, STAGING_EXEMPTIONS, stagingExemption } = require(MOD);
+const { classifyStagedItem, resolveAll, findingItems, renderStoredTable, parseTiebreakLine, approveAllDefault, readSnapshot, SECTION_STANCES, SECTION_MAP, ENGINE_ROW_SECTIONS, CANONICAL_PREFIXES, nearestCanonicalPrefixes, STAGING_EXEMPTIONS, stagingExemption } = require(MOD);
 const ROOT = path.join(__dirname, '..', '..', '..');
 const { unresolvedItems } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
 const { resolveTiebreak } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'tiebreak'));
@@ -805,6 +805,63 @@ test('parseTiebreakLine reads all four resolver shapes and nothing else (#3949)'
   assert.deepStrictEqual([confirmed.kind, confirmed.id, confirmed.key, confirmed.severity], ['confirmed', tbVerdict(f).r.id, '3a|src/a.js:9', null]);
   assert.strictEqual(parseTiebreakLine(tbStaged(f)), null);
   assert.strictEqual(parseTiebreakLine('- AUTO 10:00:00 — Reproduction: lens "3a" finding src/a.js:9 elevated. Confirmed.'), null);
+});
+
+const DROPPED_HEADING = '#### Dropped by tiebreak (read-only — no decision)';
+const resolveWith = (decisions) => resolveAll({ runDir: fixture({ decisions: `${decisions}\n`, headers: [7] }), policy: 'console-auto', deps: deps() });
+
+test('AC4: a high and a critical refuted drop render in the read-only block with no decision row (#3949)', () => {
+  const hi = tbFinding({ path: 'src/hi.js', line: 4, claim: 'hi', reporterSeverity: 'high' });
+  const crit = tbFinding({ path: 'src/crit|x.js', line: 8, claim: 'crit', reporterSeverity: 'critical' });
+  const vh = tbVerdict(hi, { verdict: 'refuted', severity: 'high' });
+  const vc = tbVerdict(crit, { verdict: 'refuted', severity: 'critical' });
+  const result = resolveWith([tbStaged(hi), tbStaged(crit), vh.entry, vc.entry].join('\n'));
+  assert.deepStrictEqual(result.droppedByTiebreak, [
+    { id: vh.r.id, lens: '3a', path: 'src/hi.js', line: 4, severity: 'high', evidence: 'src/hi.js:4 "quote text here"' },
+    { id: vc.r.id, lens: '3a', path: 'src/crit|x.js', line: 8, severity: 'critical', evidence: 'src/crit|x.js:8 "quote text here"' },
+  ]);
+  assert.deepStrictEqual(result.items.filter((i) => /Low-confidence|Contested/.test(i.section)), [], 'no console item');
+  const block = result.table.split('\n').filter((l) => !l.includes('AUTO-RESOLVED') && /^\| src\//.test(l));
+  assert.ok(result.table.includes(`\n${DROPPED_HEADING}\n\n| Path:Line | Lens | Severity | Evidence |\n|---|---|---|---|\n`), result.table);
+  assert.deepStrictEqual(block, [
+    '| src/hi.js:4 | 3a | high | src/hi.js:4 "quote text here" |',
+    '| src/crit\\|x.js:8 | 3a | critical | src/crit\\|x.js:8 "quote text here" |',
+  ]);
+  assert.ok(result.table.indexOf('Merge: **') < result.table.indexOf(DROPPED_HEADING), 'the block follows the Merge line');
+  assert.strictEqual(result.table.split('\n').filter((l) => l.includes('AUTO-RESOLVED')).length, result.items.length + 1, 'no row of the block is stamped AUTO-RESOLVED');
+});
+
+test('AC4: low and medium refuted drops do not appear in the console at all (#3949)', () => {
+  const lines = [];
+  for (const severity of ['low', 'medium']) {
+    const f = tbFinding({ path: `src/${severity}.js`, claim: severity, reporterSeverity: severity });
+    lines.push(tbStaged(f), tbVerdict(f, { verdict: 'refuted', severity }).entry);
+  }
+  const result = resolveWith(lines.join('\n'));
+  assert.deepStrictEqual(result.droppedByTiebreak, []);
+  assert.ok(!result.table.includes('Dropped by tiebreak'));
+  assert.ok(!result.table.includes('src/low.js') && !result.table.includes('src/medium.js'));
+});
+
+test('a malformed drop line renders no block and does not throw (#3949)', () => {
+  const f = tbFinding({ reporterSeverity: 'high' });
+  const entry = tbVerdict(f, { verdict: 'refuted', severity: 'high' }).entry;
+  const noSeverity = entry.replace(/ Severity: high\./, '');
+  const badSeverity = entry.replace('Severity: high.', 'Severity: severe.');
+  assert.notStrictEqual(noSeverity, entry);
+  assert.notStrictEqual(badSeverity, entry);
+  for (const line of [noSeverity, badSeverity, '- AUTO 10:00:00 — Tiebreak tiebreak:0123456789ab: lens "3a" finding src/a.js:9 dropped: refuted by tiebreak. Evidence: oops']) {
+    const result = resolveWith(line);
+    assert.deepStrictEqual(result.droppedByTiebreak, [], line);
+    assert.ok(!result.table.includes('Dropped by tiebreak'), line);
+  }
+});
+
+test('renderStoredTable renders a stored droppedByTiebreak and nothing when absent or empty (#3949)', () => {
+  const stored = { items: [], merge: { resolution: 'merge', reason: 'r' }, droppedByTiebreak: [{ id: 'abc', lens: '3a', path: 'src/a.js', line: 9, severity: 'high', evidence: 'src/a.js:9 "q"' }] };
+  assert.ok(renderStoredTable(stored).includes(`${DROPPED_HEADING}\n\n| Path:Line | Lens | Severity | Evidence |\n|---|---|---|---|\n| src/a.js:9 | 3a | high | src/a.js:9 "q" |`));
+  assert.ok(!renderStoredTable({ ...stored, droppedByTiebreak: [] }).includes('Dropped by tiebreak'));
+  assert.ok(!renderStoredTable({ items: [], merge: stored.merge }).includes('Dropped by tiebreak'), 'a console.json from before this field');
 });
 
 test('readSnapshot reads review-findings.json through deps.readFile: absent, unparseable and non-array give [] (#3949)', () => {
