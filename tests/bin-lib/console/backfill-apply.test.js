@@ -209,6 +209,38 @@ test('refusals are named and write nothing', () => {
   assert.strictEqual(entryProblem(entry(item, 'filed', 'tiebreak', '#12')), null);
 });
 
+test('minor 3: an id both an old-shape and a new-shape group list is refused as ambiguous-item, never applied', () => {
+  const fx = fixture(tmpRun(), [KEEP(oldId(SINGLE)), KEEP(newId(SINGLE))], [SINGLE]);
+  const items = list(fx);
+  assert.strictEqual(items.length, 2, 'precondition: both groups list the line');
+  assert.strictEqual(items[0].itemId, items[1].itemId, 'precondition: under one id');
+  const r = apply(fx, [entry(items[0])]);
+  assert.strictEqual(r.json, null, 'no group is rewritten');
+  assert.deepStrictEqual(r.applied, []);
+  assert.deepStrictEqual(r.refused, [{ itemId: items[0].itemId, reason: 'ambiguous-item' }]);
+  // Orthogonal: one group alone applies.
+  const single = fixture(tmpRun(), [KEEP(newId(SINGLE))], [SINGLE]);
+  assert.deepStrictEqual(apply(single, [entry(list(single)[0])]).refused, []);
+});
+
+test('minor 4: a fully settled written console lists nothing', () => {
+  const fx = fixture(tmpRun(), [KEEP(newId(BUNDLED)), PENDING('zz-1.md'), KEEP(oldId(ALPHA))], [BUNDLED, ALPHA, BETA]);
+  const r = apply(fx, list(fx).map((i) => entry(i)));
+  assert.deepStrictEqual(r.refused, []);
+  assert.deepStrictEqual(consoleWorkItems({ ...fx, consoleJson: JSON.parse(JSON.stringify(r.json)) }), []);
+});
+
+test('minor 4: re-applying a settled split entry is a no-op', () => {
+  const fx = fixture(tmpRun(), [KEEP(newId(BUNDLED))], [BUNDLED]);
+  const [a] = list(fx);
+  const settledA = entry(a, 'filed', 'tiebreak', '#4002');
+  const first = apply(fx, [settledA]);
+  const second = apply({ ...fx, consoleJson: first.json }, [settledA]);
+  assert.strictEqual(second.json, null);
+  assert.deepStrictEqual(second.applied, []);
+  assert.deepStrictEqual(second.refused, [{ itemId: a.itemId, reason: 'already-settled' }]);
+});
+
 test('an existing acknowledgement is kept', () => {
   const earlier = '2026-10-21T00:00:00.000Z';
   const fx = fixture(tmpRun(), [PENDING('zz-1.md')], [], { residueAcknowledgedAt: earlier });

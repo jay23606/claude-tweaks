@@ -207,6 +207,27 @@ test('list --dry-run names only live runs holding unresolved items, capped at 10
   assert.ok(!r.out.includes('record-51'), 'a live run with no console is not named');
 });
 
+test('minor 6: the dry-run live check reads through the injected run-listing seam, so an unlistable live run is named', () => {
+  const f = fixture();
+  seedRun(f);
+  const idle = path.join(f.pipelines, '2026-10-21T090000-record-60');
+  fs.mkdirSync(idle, { recursive: true });
+  writeRunState(idle, { status: 'active' });
+  writeConsole(idle, [{ id: 'zz-9.md', section: 'Documentation updates', resolution: 'approve', reason: 'r' }]);
+  const clean = call(f, ['list', '--dry-run']);
+  assert.ok(!clean.out.includes('record-60'), 'precondition: a listable idle live run is not named');
+  const unlistable = {
+    readdirStrict: (p) => {
+      if (p === idle) { const e = new Error('EACCES: permission denied'); e.code = 'EACCES'; throw e; }
+      return fs.readdirSync(p);
+    },
+  };
+  const r = call(f, ['list', '--dry-run'], unlistable);
+  assert.strictEqual(r.code, 0, r.err);
+  assert.ok(r.out.split('\n').includes('live runs holding unresolved items (skipped): 1'), r.out);
+  assert.ok(r.out.includes('2026-10-21T090000-record-60 (active)'), r.out);
+});
+
 test('list without --dry-run prints the work list, or writes it to --out', () => {
   const f = fixture();
   seedRun(f);

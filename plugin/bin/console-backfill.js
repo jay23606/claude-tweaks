@@ -25,7 +25,7 @@
 // { applied: [itemId], refused: [{ itemId, reason }], acknowledged: [consoleDir], written: [console.json] };
 // each refusal is also one stderr line. --dry-run computes the same and writes nothing.
 // Refusal reasons: apply's own (malformed, bad-outcome, bad-source, missing-ref,
-// duplicate-entry, already-settled, unknown-item, stale-hash) plus run-not-anchored (the
+// duplicate-entry, already-settled, unknown-item, ambiguous-item, stale-hash) plus run-not-anchored (the
 // runDir is not {pipelines}/{run-id} or {pipelines}/archive/{run-id}), run-live,
 // run-not-closed, console-unreadable and write-failed.
 // Exit 0 done (refusals are per-entry results, not a failure); 2 malformed invocation or
@@ -114,12 +114,13 @@ function deterministicSplit(workList) {
 const LIVE_NAMED_MAX = 10;
 
 // Does any console of this live run hold an unresolved stored item? A run that cannot be listed or a
-// console that cannot be read counts as holding: it is named rather than passed over.
-function liveHoldsUnresolved(live) {
+// console that cannot be read counts as holding: it is named rather than passed over. `scanDeps` is
+// the same run-listing seam the work list uses (scanDepsOf).
+function liveHoldsUnresolved(live, scanDeps) {
   let paths;
-  try { paths = consolePathsOf(live.runDir); } catch { return true; }
+  try { paths = consolePathsOf(live.runDir, scanDeps); } catch { return true; }
   return paths.some((p) => {
-    const read = readConsole(p);
+    const read = readConsole(p, scanDeps);
     if (read.state === 'absent') return false;
     if (read.state === 'unreadable') return true;
     const items = Array.isArray(read.consoleJson.items) ? read.consoleJson.items : [];
@@ -127,7 +128,7 @@ function liveHoldsUnresolved(live) {
   });
 }
 
-function summaryLines(workList) {
+function summaryLines(workList, scanDeps) {
   const s = summarize(workList);
   const split = deterministicSplit(workList);
   const lines = [
@@ -138,7 +139,7 @@ function summaryLines(workList) {
     `consoles with items: ${s.consoles}`,
   ];
   // Most live runs hold nothing unresolved: name only those that do, capped.
-  const holding = workList.live.filter(liveHoldsUnresolved);
+  const holding = workList.live.filter((l) => liveHoldsUnresolved(l, scanDeps));
   if (holding.length) {
     lines.push(`live runs holding unresolved items (skipped): ${holding.length}`);
     for (const l of holding.slice(0, LIVE_NAMED_MAX)) lines.push(`  ${l.runDir} (${l.status})`);
@@ -154,7 +155,7 @@ const scanDepsOf = (ctx) => (ctx.deps.readdirStrict ? { readdirStrict: ctx.deps.
 
 function runList(o, ctx) {
   const workList = buildWorkList({ pipelinesRoot: ctx.pipelinesRoot, mainSha: o.mainSha || null, deps: scanDepsOf(ctx) });
-  if (o.dryRun) { ctx.deps.stdout(`${summaryLines(workList).join('\n')}\n`); return 0; }
+  if (o.dryRun) { ctx.deps.stdout(`${summaryLines(workList, scanDepsOf(ctx)).join('\n')}\n`); return 0; }
   const text = `${JSON.stringify(workList)}\n`;
   if (!o.out) { ctx.deps.stdout(text); return 0; }
   const outFile = path.resolve(ctx.cwd, o.out);

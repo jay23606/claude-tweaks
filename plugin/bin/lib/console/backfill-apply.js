@@ -75,6 +75,10 @@ function applyToConsole({ consoleDir, consoleJson, decisions, readStaged, runId,
   // rewritten group comes from it.
   const work = consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runId });
   const byId = new Map(work.map((w) => [w.itemId, w]));
+  // One id listed by two stored groups (an old-shape and a new-shape decision id both matching one
+  // line) names two different stored items: an entry for it is refused, never applied to both or either.
+  const listedTimes = new Map();
+  for (const w of work) listedTimes.set(w.itemId, (listedTimes.get(w.itemId) || 0) + 1);
   const counts = new Map();
   for (const e of entries) {
     if (e && nonEmpty(e.itemId)) counts.set(e.itemId, (counts.get(e.itemId) || 0) + 1);
@@ -89,6 +93,7 @@ function applyToConsole({ consoleDir, consoleJson, decisions, readStaged, runId,
       || (counts.get(e.itemId) > 1 ? 'duplicate-entry' : null)
       || (isSettled(e.itemId) ? 'already-settled' : null)
       || (byId.has(e.itemId) ? null : 'unknown-item')
+      || (listedTimes.get(e.itemId) > 1 ? 'ambiguous-item' : null)
       || (byId.get(e.itemId).itemHash === e.itemHash ? null : 'stale-hash');
     if (reason) {
       refused.push({ itemId: e && typeof e === 'object' ? e.itemId : undefined, reason });
