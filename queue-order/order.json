@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-24T15:43:15.709Z",
+  "computedAt": "2026-10-24T15:57:02.549Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -45,7 +45,7 @@
       },
       {
         "number": 4032,
-        "updatedAt": "2026-10-24T08:16:31Z",
+        "updatedAt": "2026-10-24T15:45:27Z",
         "state": "OPEN"
       },
       {
@@ -874,84 +874,6 @@
         "facets": {
           "origin": "capture",
           "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\n497 `hooks.js reconcile` calls in main sessions over 14 days averaged 63 s each — 8.7 h of blocking. #1543 previously addressed ~2-minute runs; the per-call cost has not been profiled since.\n\n## Deliverables\n\n1. Per-check and per-subprocess timing in reconcile's JSON output.\n2. Remove the measured hot spots: batch or parallelize `gh` calls (`gh-pool.js`), reuse cached results within a TTL (`cache.js`), skip checks whose inputs are unchanged, and move non-blocking checks to the background.\n3. Update `docs/reconcile-checks.md` with the timing contract.\n\n## Acceptance Criteria\n\n- [ ] p50 reconcile wall time is under 10 s on this repo over 20 calls.\n- [ ] Per-check timings appear in the JSON output.\n- [ ] Existing reconcile fixture tests show unchanged convergence results.\n\n## Release Note\n\nReconcile finishes in seconds instead of about a minute.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — reconcile timing\n- `docs/reconcile-checks.md` — timing contract\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-24T08:10:45Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4032,
-        "state": "OPEN",
-        "title": "Cut hooks.js reconcile from ~63 s per call",
-        "updatedAt": "2026-10-24T08:16:31Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
           "size": "medium",
           "ceremony": null,
           "solutionUnjustified": false,
