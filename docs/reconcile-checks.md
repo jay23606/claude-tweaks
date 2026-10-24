@@ -218,6 +218,14 @@ run skipped here escalates through the same structurally-stuck path as the main 
 `hooks.js archive-run` refuses on the same two conditions, after its own guards, and
 `review-coordination.js check-coverage` prints the same coverage result without refusing anything.
 
+**Console residue (#3949).** `readConsoleState` returns `residue` when a run's console resolved
+(or wrote no top-level `console.json`) but `console/residue.js`'s `readRunResidue` still reports an
+unacknowledged console holding `pending`/`keep-staged` items, or an unreadable one (fail closed).
+Every site that skips `console-unresolved` — `decideArchiveCore`, the `status: clean` by-number
+sweep, `hooks.js archive-run` — skips or refuses `console-residue` too, which a human clears with
+`console-residue.js --ack` (an unreadable `console.json` must be repaired or removed instead). It is
+deliberately not in `STRUCTURALLY_STUCK_REASONS`: an acknowledgement, not a re-run, converges it.
+
 **Residue pruning.** After every `archive` pass, `cache.js`'s `pruneResidueFailures` drops any
 `residueFailures` entry (reason-agnostic — `move-failed`, `structurally-stuck`, any future reason)
 whose tracked path no longer exists on disk: a path can never fail or succeed there again, so it
