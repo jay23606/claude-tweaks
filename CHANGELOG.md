@@ -71,6 +71,21 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows regression filer quotes a pre-existing failure… ([#3723](https://github.com/thn-inc/claude-tweaks/issues/3723)) ([bf79456](https://github.com/thn-inc/claude-tweaks/commit/bf79456c6a07c3389d656791dc787c39c75898ed))
 * worktree-always PreToolUse hook false-positives on… ([#3989](https://github.com/thn-inc/claude-tweaks/issues/3989)) ([7fc7655](https://github.com/thn-inc/claude-tweaks/commit/7fc7655ff6369facdf321b20bbdcd9ca6513ade0))
 
+### Highlights
+* Show why an SDD ruling row was held when its staged file could not be read: the Review Console now names it `sdd-ruling-unreadable` (no path, rejected path, missing file, or failed read) instead of folding it into `sdd-ruling-unclassified`.
+* Fix demo evidence screenshots getting stranded on an already-merged branch when wrap-up's
+* Builds run only the tests a change can affect, so most verify steps take seconds instead of about eight minutes; CI still runs the full suite before merge.
+* No user-visible change — the unattended Review Console's withhold checks now fail closed if their inputs are ever missing.
+* Keep `/tidy` and `/dispatch close-out` agreeing on when a PR's acceptance labeling has landed: one shared definition instead of two hand-kept copies.
+* Release runs no longer leave their run directory behind for the next release to reuse, and every staged review finding is filed or declined before the run closes.
+* Cleaning up a finished bundle run no longer hides staged proposals nobody approved when the run never showed its review console.
+* Added a per-run liveness record so claude-tweaks can tell a running session's run from an abandoned one, with no change to how runs behave yet.
+* Windows regression issues now quote the tests that newly fail and flag likely renames of tests that were already failing.
+* No user-visible change.
+* Internal hardening: the `worktree-always` write gate no longer mistakes a numeric comparison (`x.length > 0`) inside a heredoc-embedded script for a real shell redirect.
+* No user-visible change.
+* `delete-ledger` now says when a worktree holds only inherited ledgers, instead of reporting a bare "not found".
+
 ## [6.152.0](https://github.com/thn-inc/claude-tweaks/compare/v6.151.1...v6.152.0) (2026-10-24)
 
 
