@@ -17,6 +17,7 @@ const { findingFingerprint } = require('../../../plugin/bin/lib/console/finding-
 const { extractFingerprint } = require('../../../plugin/bin/lib/issues/record');
 const { fingerprintFromBasis } = require('../../../plugin/bin/lib/health-core/fingerprint');
 const { parseMaterialityFingerprints } = require('../../../plugin/bin/lib/health-core/materiality-digest');
+const { readText } = require('../../helpers/read-skill');
 
 const MAIN_SHA = '0123456789abcdef0123456789abcdef01234567';
 const CONSOLE_DIR = '/x/pipelines/2026-10-24T090000-spec-12';
@@ -301,7 +302,7 @@ test('areaFor maps paths', () => {
 // ---- R14: what a digest line says ----
 
 // Real staged files, copied verbatim from archived runs (fixtures/staged/).
-const fixture = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', 'staged', name), 'utf8');
+const fixture = (name) => readText(path.join(__dirname, 'fixtures', 'staged', name));
 const stagedDigest = (stagedName, staged, fixtureName) => dispose(
   stagedItem({ name: stagedName, ...staged }),
   undefined,

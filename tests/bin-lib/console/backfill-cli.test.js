@@ -15,6 +15,7 @@ const { run, USAGE } = require(path.join(ROOT, 'plugin', 'bin', 'console-backfil
 const { closeRunState } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'hooks', 'close-run-state'));
 const { writeRunState } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'hooks', 'context'));
 const { stripComments, stripperVerdict } = require('../../helpers/strip-comments');
+const { readText } = require('../../helpers/read-skill');
 
 const AT = Date.parse('2026-10-24T12:00:00.000Z');
 const SINGLE = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/lib/console/residue.js:40 not reproduced (single agent): the missing split ignores ids that carry a slash. Staged to Review Console as low-confidence. Reversibility: high.';
@@ -147,7 +148,7 @@ test('AC6.1: the CLI never spawns a process', () => {
     ...['backfill.js', 'backfill-apply.js', 'backfill-dispose.js'].map((n) => path.join(ROOT, 'plugin', 'bin', 'lib', 'console', n)),
   ];
   for (const file of files) {
-    const raw = fs.readFileSync(file, 'utf8');
+    const raw = readText(file);
     assert.strictEqual(stripperVerdict(raw), 'ok', `${file}: the comment stripper mis-parsed this file`);
     assert.deepStrictEqual(spawnHits(raw), [], `${file} spawns a process or calls fetch`);
   }

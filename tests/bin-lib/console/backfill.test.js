@@ -19,6 +19,7 @@ const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state
 const { writeRunState } = require('../../../plugin/bin/lib/hooks/context');
 const { scanUnresolvedConsoles } = require('../../../plugin/bin/lib/hooks/session-residue');
 const { runIdOf } = require('../../../plugin/bin/lib/console/resolve');
+const { readText } = require('../../helpers/read-skill');
 
 const MAIN_SHA = '0123456789abcdef0123456789abcdef01234567';
 
@@ -647,7 +648,7 @@ test('minor 10: removing a ledger-row ref never leaves a fragment inside a paren
 });
 
 test('staged-digest-text.js is a leaf: it requires nothing from the backfill modules', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'staged-digest-text.js'), 'utf8');
+  const source = readText(path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'staged-digest-text.js'));
   assert.deepStrictEqual(source.match(/require\([^)]*\)/g) || [], []);
 });
 
