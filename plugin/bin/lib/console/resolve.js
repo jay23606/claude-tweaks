@@ -10,6 +10,7 @@
 const path = require('path');
 const { evaluateMaturation } = require('../issues/grant-maturation');
 const { resolveRecords } = require('../wrap-up/pack');
+const { planFilings } = require('./finding-filing');
 
 // Section names exactly as the console renders them (console-template.md;
 // engine-render.js's SECTION_SPECS for the five curation sections).
@@ -709,14 +710,27 @@ function renderStoredTable(consoleJson) {
   });
 }
 
+// resolveAll is always unattended (console-auto): an agent that could not tell is not licensed to
+// drop, so every can't-tell item files — whatever the tiebreak recommended (#3949). Approve-all
+// (findingItems) keeps the recommendation-driven default for a present human.
+const UNATTENDED_FILED_REASON = 'unattended: can\'t-tell finding filed as a backlog record — an agent that could not tell is not licensed to drop';
+
+// A multi-spec per-spec run dir is {pipelines}/{parent-run-id}/spec-{N}: name the parent run too.
+function runIdOf(runDir) {
+  const base = path.basename(runDir);
+  return /^spec-\d+$/.test(base) ? `${path.basename(path.dirname(runDir))}/${base}` : base;
+}
+
 function resolveAll({ runDir, policy, deps }) {
   if (policy !== 'console-auto') throw new RangeError(`unsupported policy: ${policy} (expected console-auto)`);
   const snapshot = readSnapshot({ runDir, deps });
   const stagedIds = new Set(snapshot.staged.map((s) => s.name));
-  const items = [...stagedItems(snapshot), ...engineItems(snapshot, stagedIds), ...coordinationItems(snapshot, stagedIds)];
+  const items = [...stagedItems(snapshot), ...engineItems(snapshot, stagedIds), ...coordinationItems(snapshot, stagedIds)]
+    .map((it) => (it.tiebreak ? { ...it, resolution: 'filed', reason: UNATTENDED_FILED_REASON } : it));
   const sections = { cleanup: { ...SECTION_STANCES[SECTIONS.CLEANUP] } };
   const merge = mergeResolution(snapshot, deps);
-  const result = { ceiling: 'unattended', items, sections, merge, droppedByTiebreak: droppedByTiebreak(snapshot.decisions), snapshot };
+  const filings = planFilings({ items, findings: snapshot.findings, runId: runIdOf(runDir) });
+  const result = { ceiling: 'unattended', items, sections, merge, droppedByTiebreak: droppedByTiebreak(snapshot.decisions), filings, snapshot };
   result.table = renderTable(result);
   return result;
 }

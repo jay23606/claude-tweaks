@@ -121,6 +121,30 @@ test('a dropped item logs reversibility n/a (#3949)', async () => {
   assert.match(decisions, /Console item review-contested-1\.md \(Contested findings\): dropped — refuted by tiebreak \(staged\/review-contested-1\.md\)\. Reversibility: n\/a\.$/m);
 });
 
+test('console.json and --json carry filings as {item, fingerprint, title} with no proposal text (#3949 AC5)', async () => {
+  const { resolveTiebreak } = require(path.join(PLUGIN_ROOT, 'bin', 'lib', 'tiebreak'));
+  const { formatEntry } = require(path.join(PLUGIN_ROOT, 'bin', 'lib', 'log-decision', 'append'));
+  const tbNow = new Date(2026, 9, 24, 10, 0, 0);
+  const finding = { lens: '3a', path: 'src/a.js', line: 9, claim: 'claim one', reporterSeverity: 'medium', kind: 'unconfirmed' };
+  const r = resolveTiebreak(finding, 'Verdict: cant-tell\nSeverity: medium\nRecommendation: drop\nSTATUS: DONE', { readFile: () => '', now: tbNow });
+  const entry = formatEntry({ status: r.logStatus, now: tbNow, step: r.logStep, text: r.logText, reversibility: 'high' });
+  const fx = mainCheckoutWithRun({ decisions: `${entry}\n` });
+  const json = baseDeps(fx, []);
+  assert.strictEqual(await run(['--run', fx.runDir, '--policy', 'console-auto', '--json'], json.d), 0);
+  const cj = JSON.parse(fs.readFileSync(path.join(fx.runDir, 'console.json'), 'utf8'));
+  assert.strictEqual(cj.filings.length, 1);
+  assert.deepStrictEqual(Object.keys(cj.filings[0]).sort(), ['fingerprint', 'item', 'title']);
+  assert.strictEqual(cj.filings[0].item, `tiebreak:${r.id}`);
+  assert.match(cj.filings[0].fingerprint, /^consolefinding-[0-9a-f]{8}$/);
+  assert.deepStrictEqual(JSON.parse(json.out()).filings, cj.filings, '--json prints the same');
+  assert.ok(!json.out().includes('work-fingerprint'), 'no proposal text in --json');
+  assert.ok(!JSON.stringify(cj).includes('work-fingerprint'), 'no proposal text in console.json');
+  assert.deepStrictEqual(cj.items.map((i) => i.resolution), ['filed']);
+  const none = mainCheckoutWithRun({ staged: THREE });
+  assert.strictEqual(await run(['--run', none.runDir, '--policy', 'console-auto'], baseDeps(none, []).d), 0);
+  assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(none.runDir, 'console.json'), 'utf8')).filings, [], 'always written');
+});
+
 // grant-veto-window-hours only reaches evaluateMaturation if the CLI resolves
 // it: 30h-old pending grant, matured under the 24h default, still inside a 72h
 // window. Same fixture, two policies, opposite merge halves.

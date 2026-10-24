@@ -665,7 +665,7 @@ test('approve-all: a console verdict with Recommendation file resolves filed, dr
   assert.deepStrictEqual(items[0].tiebreak, { id: v1.r.id, key: '3a|src/a.js:9', lens: '3a', path: 'src/a.js', line: 9, severity: 'medium', recommendation: 'file', reason: 'verdict:cant-tell' });
   assert.strictEqual(items[1].tiebreak.recommendation, 'drop');
   const viaResolveAll = resolveAll({ runDir: fixture({ decisions: `${decisions}\n`, headers: [7] }), policy: 'console-auto', deps: deps() }).items;
-  assert.deepStrictEqual(viaResolveAll, items, 'resolveAll carries the same finding items for now');
+  assert.deepStrictEqual(viaResolveAll.map((i) => [i.id, i.resolution]), [[`tiebreak:${v1.r.id}`, 'filed'], [`tiebreak:${v2.r.id}`, 'filed']], 'resolveAll (always unattended) files both, the drop recommendation included');
 });
 
 test('a console verdict with Recommendation none resolves filed, never dropped (#3949)', () => {
@@ -791,6 +791,71 @@ test('AC1: every tiebreak outcome together leaves zero keep-staged and zero pend
     [`tiebreak:${consoleFile.v.r.id}`, 'filed'],
     [`tiebreak:${consoleDrop.v.r.id}`, 'dropped'],
   ]);
+});
+
+test('AC5: at unattended N can\'t-tell items including a drop recommendation plan exactly N filings', () => {
+  const mk = (n, recommendation) => {
+    const f = tbFinding({ path: `src/f${n}.js`, claim: `claim ${n}` });
+    return { f, v: tbVerdict(f, { recommendation }) };
+  };
+  const all = [mk(1, 'file'), mk(2, 'drop'), mk(3, null), mk(4, 'drop')];
+  const decisions = [...all.map(({ f }) => tbStaged(f)), ...all.map(({ v }) => v.entry)].join('\n');
+  const runDir = fixture({ decisions: `${decisions}\n`, headers: [7] });
+  fs.writeFileSync(path.join(runDir, 'review-findings.json'), JSON.stringify(all.map(({ f, v }) => ({ id: v.r.id, lens: f.lens, path: f.path, line: f.line, claim: f.claim, reporterSeverity: f.reporterSeverity, kind: f.kind }))));
+  const result = resolveAll({ runDir, policy: 'console-auto', deps: deps() });
+  const tb = result.items.filter((i) => i.tiebreak);
+  assert.strictEqual(tb.length, 4);
+  assert.deepStrictEqual(tb.map((i) => i.resolution), ['filed', 'filed', 'filed', 'filed']);
+  assert.ok(tb.every((i) => /an agent that could not tell is not licensed to drop/.test(i.reason)));
+  assert.strictEqual(result.filings.length, 4);
+  assert.deepStrictEqual(result.filings.map((p) => p.item), tb.map((i) => i.id));
+  assert.strictEqual(new Set(result.filings.map((p) => p.fingerprint)).size, 4);
+  assert.ok(result.filings.every((p) => p.proposal.includes('Labels: needs:definition') && /claim \d/.test(p.proposal)));
+  assert.ok(result.filings.some((p) => p.proposal.includes(path.basename(runDir))), 'the run id is in the body');
+});
+
+test('AC5: a run without review-findings.json still plans a filing per can\'t-tell item, keyed on the tiebreak id', () => {
+  const f = tbFinding();
+  const v = tbVerdict(f, { recommendation: 'drop' });
+  const result = resolveWith([tbStaged(f), v.entry].join('\n'));
+  assert.strictEqual(result.filings.length, 1);
+  assert.ok(result.filings[0].title.endsWith(`tiebreak:${v.r.id}`));
+});
+
+test('AC5: a multi-spec per-spec run dir names its parent run in the filing', () => {
+  const f = tbFinding();
+  const v = tbVerdict(f, { recommendation: 'file' });
+  const parent = fixture({});
+  const runDir = path.join(parent, 'spec-2');
+  fs.mkdirSync(path.join(runDir, 'staged'), { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'decisions.md'), `${v.entry}\n`);
+  const result = resolveAll({ runDir, policy: 'console-auto', deps: deps({ readGrants: () => ({}) }) });
+  assert.ok(result.filings[0].proposal.includes(`${path.basename(parent)}/spec-2`));
+});
+
+test('AC1 at unattended: every outcome fixture resolves with zero pending and zero keep-staged', () => {
+  const mk = (n, over, opts) => { const f = tbFinding({ path: `src/f${n}.js`, claim: `claim ${n}`, ...over }); return { f, v: tbVerdict(f, opts) }; };
+  const all = [
+    mk(1, {}, { verdict: 'confirmed' }),
+    mk(2, { reporterSeverity: 'low' }, { verdict: 'refuted', severity: 'low' }),
+    mk(3, { reporterSeverity: 'high' }, { verdict: 'refuted', severity: 'high' }),
+    mk(4, { reporterSeverity: 'low' }, { severity: 'low' }),
+    mk(5, {}, { recommendation: 'file' }),
+    mk(6, {}, { recommendation: 'drop' }),
+  ];
+  const decisions = [...all.map(({ f }) => tbStaged(f)), ...all.map(({ v }) => v.entry)].join('\n');
+  const result = resolveWith(decisions);
+  assert.deepStrictEqual(result.items.filter((i) => OPEN.includes(i.resolution)), []);
+  assert.deepStrictEqual(result.items.filter((i) => /Low-confidence|Contested/.test(i.section)).map((i) => i.resolution), ['filed', 'filed']);
+  assert.strictEqual(result.filings.length, 2, 'only the two can\'t-tell console items are filed; the refuted drop and the digest are not');
+});
+
+test('a staged file settled by a dropped verdict (no tiebreak field) stays dropped and plans no filing', () => {
+  const f = tbFinding({ reporterSeverity: 'low' });
+  const decisions = [tbDebate(f, 'review-contested-2.md'), tbVerdict(f, { verdict: 'refuted', severity: 'low' }).entry].join('\n');
+  const result = resolveAll({ runDir: fixture({ decisions: `${decisions}\n`, staged: { 'review-contested-2.md': 'x' }, headers: [7] }), policy: 'console-auto', deps: deps() });
+  assert.deepStrictEqual(result.items.filter((i) => i.section === 'Contested findings').map((i) => i.resolution), ['dropped']);
+  assert.deepStrictEqual(result.filings, []);
 });
 
 test('parseTiebreakLine reads all four resolver shapes and nothing else (#3949)', () => {
