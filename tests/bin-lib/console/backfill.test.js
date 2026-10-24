@@ -370,8 +370,10 @@ test('unreadable console.json emits no items', () => {
   const b = mkArchived(pipelines, '2026-10-02T000000-spec-12');
   fs.writeFileSync(path.join(a, 'console.json'), '{not json');
   fs.writeFileSync(path.join(b, 'console.json'), 'null');
+  const c = mkArchived(pipelines, '2026-10-03T000000-spec-18');
+  fs.mkdirSync(path.join(c, 'console.json')); // present but not a file: unreadable, never "no console"
   const wl = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA });
-  assert.deepStrictEqual(wl.unreadable.sort(), [path.join(a, 'console.json'), path.join(b, 'console.json')]);
+  assert.deepStrictEqual(wl.unreadable.sort(), [path.join(a, 'console.json'), path.join(b, 'console.json'), path.join(c, 'console.json')]);
   assert.strictEqual(wl.runs.reduce((n, r) => n + r.items.length, 0), 0);
 });
 

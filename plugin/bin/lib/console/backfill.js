@@ -15,6 +15,7 @@ const path = require('path');
 const { classifyStagedItem, SHADOW_DUP_RE, SECTIONS, runIdOf, parseTiebreakLine } = require('./resolve');
 const { UNRESOLVED_RESOLUTIONS } = require('./residue');
 const { readRunState, isStaleClaim, RUN_ID_RE } = require('../hooks/context');
+const { lstatType } = require('../path-guard');
 
 // Staged review files that carry one finding of their own.
 const STAGED_FINDING_RE = /^review-(unconfirmed|contested|debate)-/;
@@ -36,7 +37,11 @@ const defaultDeps = {
   readdir: (p) => {
     try { return fs.readdirSync(p); } catch { return []; }
   },
-  exists: fs.existsSync,
+  // Every path checked here is a file about to be read. Only `missing` is
+  // absent: a symlink is read through, and a directory, other node or
+  // unreadable leaf counts as present so the read throws and the console is
+  // named unreadable rather than read as having no such file.
+  exists: (p) => lstatType(p).type !== 'missing',
   isDir: (p) => {
     try { return fs.statSync(p).isDirectory(); } catch { return false; }
   },
