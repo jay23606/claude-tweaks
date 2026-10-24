@@ -14,8 +14,9 @@
 // object keyed by item id (resolve-tiebreak's verdicts), --existing the
 // `gh issue list --state all --json number,body` array, --digest-comments the digest
 // issue's comment objects, --limit the batch size (default 24). Each new filing is
-// written to <out-dir>/backfill-filing-{n}.md; the printed result carries that path in
-// place of file[].text. apply reads planBatch's entries (a JSON array, or an object
+// written to <out-dir>/backfill-filing-{item id without `bf:`}.md (named by item, so batches
+// into one directory never collide); the printed result carries that path in place of
+// file[].text and of dispositions[].proposal.text — no proposal body is ever printed. apply reads planBatch's entries (a JSON array, or an object
 // with `entries`) with each `ref` filled in, routes each entry to the console of its
 // run that lists its item, and rewrites that console.json (lib/console/backfill-apply.js)
 // — the only write this CLI makes besides --out and --out-dir. It re-checks at apply time
@@ -37,6 +38,7 @@ const { buildWorkList, consoleWorkItems, consolePathsOf, enumerateRuns, readCons
 const { applyToConsole, entryProblem } = require('./lib/console/backfill-apply');
 const { disposeItem, planBatch } = require('./lib/console/backfill-dispose');
 const { runIdOf } = require('./lib/console/resolve');
+const { UNRESOLVED_RESOLUTIONS } = require('./lib/console/residue');
 const { RUN_ID_RE } = require('./lib/hooks/context');
 const { mainCheckoutRoot } = require('./lib/hooks/worktree-detect');
 const { writeFileAtomic } = require('./lib/atomic-write');
@@ -108,6 +110,22 @@ function deterministicSplit(workList) {
   return split;
 }
 
+const LIVE_NAMED_MAX = 10;
+
+// Does any console of this live run hold an unresolved stored item? A run that cannot be listed or a
+// console that cannot be read counts as holding: it is named rather than passed over.
+function liveHoldsUnresolved(live) {
+  let paths;
+  try { paths = consolePathsOf(live.runDir); } catch { return true; }
+  return paths.some((p) => {
+    const read = readConsole(p);
+    if (read.state === 'absent') return false;
+    if (read.state === 'unreadable') return true;
+    const items = Array.isArray(read.consoleJson.items) ? read.consoleJson.items : [];
+    return items.some((i) => i && UNRESOLVED_RESOLUTIONS.has(i.resolution));
+  });
+}
+
 function summaryLines(workList) {
   const s = summarize(workList);
   const split = deterministicSplit(workList);
@@ -118,14 +136,23 @@ function summaryLines(workList) {
     `tiebreak dispatches: ${s.byKind.finding}; records filed at most: ${s.findingsMaxFiled + split.file}`,
     `consoles with items: ${s.consoles}`,
   ];
-  for (const l of workList.live) lines.push(`live (skipped): ${l.runDir} (${l.status})`);
+  // Most live runs hold nothing unresolved: name only those that do, capped.
+  const holding = workList.live.filter(liveHoldsUnresolved);
+  if (holding.length) {
+    lines.push(`live runs holding unresolved items (skipped): ${holding.length}`);
+    for (const l of holding.slice(0, LIVE_NAMED_MAX)) lines.push(`  ${l.runDir} (${l.status})`);
+    if (holding.length > LIVE_NAMED_MAX) lines.push(`  … and ${holding.length - LIVE_NAMED_MAX} more`);
+  }
   for (const p of workList.unreadable) lines.push(`unreadable (no items listed): ${p}`);
   for (const f of split.failed) lines.push(`could not dispose: ${f}`);
   return lines;
 }
 
+// The run-listing seam handed to lib/console/backfill.js (a test's way to make a run dir unlistable).
+const scanDepsOf = (ctx) => (ctx.deps.readdirStrict ? { readdirStrict: ctx.deps.readdirStrict } : {});
+
 function runList(o, ctx) {
-  const workList = buildWorkList({ pipelinesRoot: ctx.pipelinesRoot, mainSha: o.mainSha || null });
+  const workList = buildWorkList({ pipelinesRoot: ctx.pipelinesRoot, mainSha: o.mainSha || null, deps: scanDepsOf(ctx) });
   if (o.dryRun) { ctx.deps.stdout(`${summaryLines(workList).join('\n')}\n`); return 0; }
   const text = `${JSON.stringify(workList)}\n`;
   if (!o.out) { ctx.deps.stdout(text); return 0; }
@@ -191,26 +218,39 @@ function runDispose(o, ctx) {
   }
   const outDir = path.resolve(ctx.cwd, o.outDir);
   const file = [];
+  const written = new Map();
   try {
     if (plan.file.length) ctx.deps.mkdir(outDir);
-    plan.file.forEach((f, i) => {
-      const proposal = path.join(outDir, `backfill-filing-${i + 1}.md`);
+    for (const f of plan.file) {
+      // Named by the item, not by position, so a later batch into the same directory never overwrites this one.
+      const proposal = path.join(outDir, `backfill-filing-${f.itemId.replace(/^bf:/, '').replace(/[^A-Za-z0-9_-]/g, '_')}.md`);
       ctx.deps.writeFile(proposal, f.text);
+      written.set(f.itemId, proposal);
       file.push({ ...f, text: proposal });
-    });
+    }
   } catch (err) {
     ctx.deps.stderr(`console-backfill.js: could not write --out-dir ${o.outDir} (${err && err.message})\n`);
     return 3;
   }
-  ctx.deps.stdout(`${JSON.stringify({ ...plan, file })}\n`);
+  // No proposal body is printed: a batch of spec-shaped bodies can pass the Bash output limit and
+  // truncate the JSON the procedure parses. A disposition keeps its fingerprint and title, plus the path when written.
+  const dispositions = plan.dispositions.map((d) => {
+    if (!d.proposal) return d;
+    const { text, ...rest } = d.proposal;
+    return { ...d, proposal: written.has(d.itemId) ? { ...rest, path: written.get(d.itemId) } : rest };
+  });
+  ctx.deps.stdout(`${JSON.stringify({ ...plan, dispositions, file })}\n`);
   return 0;
 }
 
 // One run's consoles, read fresh and listed: { consoles: [{ path, read, work }], unreadable }.
-function readRunConsoles(runDir) {
+function readRunConsoles(runDir, scanDeps) {
   const consoles = [];
   let unreadable = false;
-  for (const consolePath of consolePathsOf(runDir)) {
+  let consolePaths;
+  // A run dir that vanished (or cannot be listed) mid-call reads as unreadable, never as having no items.
+  try { consolePaths = consolePathsOf(runDir, scanDeps); } catch { return { consoles, unreadable: true }; }
+  for (const consolePath of consolePaths) {
     const read = readConsole(consolePath);
     if (read.state === 'absent') continue;
     if (read.state === 'unreadable') { unreadable = true; continue; }
@@ -260,7 +300,7 @@ function runApply(o, ctx) {
         : !closedSet.has(runDir) ? 'run-not-closed' : null;
     if (reason) { for (const e of runEntries) refuse(e, reason, runDir); continue; }
 
-    const { consoles, unreadable } = readRunConsoles(runDir);
+    const { consoles, unreadable } = readRunConsoles(runDir, scanDepsOf(ctx));
     const perConsole = consoles.map(() => []);
     for (const e of runEntries) {
       const idx = routeEntry(consoles, e.itemId);

@@ -37,6 +37,8 @@ const defaultDeps = {
   readdir: (p) => {
     try { return fs.readdirSync(p); } catch { return []; }
   },
+  // The one listing that must not read a failure as "empty": a run dir's own entries.
+  readdirStrict: (p) => fs.readdirSync(p),
   // Every path checked here is a file about to be read. Only `missing` is
   // absent: a symlink is read through, and a directory, other node or
   // unreadable leaf counts as present so the read throws and the console is
@@ -305,10 +307,11 @@ function readIfPresent(d, file) {
   return d.exists(file) ? d.readFile(file) : null;
 }
 
-// A run's consoles: the run's own console.json, then each spec-*/console.json.
+// A run's consoles: the run's own console.json, then each spec-*/console.json. Throws when
+// the run dir cannot be listed (removed mid-call, unreadable): the caller names the run unreadable.
 function consolePathsOf(runDir, deps = {}) {
   const d = { ...defaultDeps, ...deps };
-  return [path.join(runDir, 'console.json'), ...d.readdir(runDir).filter((n) => /^spec-/.test(n)).sort().map((n) => path.join(runDir, n, 'console.json'))];
+  return [path.join(runDir, 'console.json'), ...d.readdirStrict(runDir).filter((n) => /^spec-/.test(n)).sort().map((n) => path.join(runDir, n, 'console.json'))];
 }
 
 // One console's inputs, read fresh: { state: 'absent' } when it has no console.json,
@@ -348,7 +351,9 @@ function buildWorkList({ pipelinesRoot, mainSha, deps = {} }) {
   const unreadable = [];
   for (const runDir of closed) {
     const items = [];
-    for (const consolePath of consolePathsOf(runDir, d)) {
+    let consolePaths;
+    try { consolePaths = consolePathsOf(runDir, d); } catch { unreadable.push(runDir); continue; }
+    for (const consolePath of consolePaths) {
       const read = readConsole(consolePath, d);
       if (read.state === 'absent') continue;
       if (read.state === 'unreadable') { unreadable.push(read.path); continue; }

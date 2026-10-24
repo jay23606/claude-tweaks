@@ -175,8 +175,36 @@ test('list --dry-run writes nothing and prints the four summary lines', () => {
   assert.ok(lines.includes('items: 3 — findings 1, no-claim 1, staged-kind 1'), r.out);
   assert.ok(lines.includes('deterministic: digest 2, dismiss 0, file 0'), r.out);
   assert.ok(lines.includes('tiebreak dispatches: 1; records filed at most: 1'), r.out);
-  assert.ok(r.out.includes('2026-10-21T100000-record-2'), 'the live run is named');
+  assert.ok(lines.includes('live runs holding unresolved items (skipped): 1'), r.out);
+  assert.ok(r.out.includes('2026-10-21T100000-record-2'), 'the live run holding items is named');
   assert.deepStrictEqual(snapshot(f.pipelines), before);
+});
+
+test('list --dry-run names only live runs holding unresolved items, capped at 10 with a remainder', () => {
+  const f = fixture();
+  seedRun(f);
+  const idle = path.join(f.pipelines, '2026-10-21T090000-record-50');
+  fs.mkdirSync(idle, { recursive: true });
+  writeRunState(idle, { status: 'active' });
+  writeConsole(idle, [{ id: 'zz-9.md', section: 'Documentation updates', resolution: 'approve', reason: 'r' }]);
+  const bare = path.join(f.pipelines, '2026-10-21T090001-record-51');
+  fs.mkdirSync(bare, { recursive: true });
+  writeRunState(bare, { status: 'active' });
+  for (let n = 0; n < 12; n++) {
+    const live = path.join(f.pipelines, `2026-10-22T1000${String(n).padStart(2, '0')}-record-${100 + n}`);
+    fs.mkdirSync(live, { recursive: true });
+    writeRunState(live, { status: 'active' });
+    writeConsole(live, [PENDING('zz-2.md')]);
+  }
+  const r = call(f, ['list', '--dry-run']);
+  assert.strictEqual(r.code, 0, r.err);
+  const lines = r.out.split('\n');
+  assert.ok(lines.includes('runs: 1 (live skipped: 14)'), r.out);
+  assert.ok(lines.includes('live runs holding unresolved items (skipped): 12'), r.out);
+  assert.strictEqual(lines.filter((l) => /^ {2}.*record-1\d\d \(active\)$/.test(l)).length, 10);
+  assert.ok(lines.includes('  … and 2 more'), r.out);
+  assert.ok(!r.out.includes('record-50'), 'a live run with nothing unresolved is not named');
+  assert.ok(!r.out.includes('record-51'), 'a live run with no console is not named');
 });
 
 test('list without --dry-run prints the work list, or writes it to --out', () => {
@@ -271,6 +299,65 @@ test('apply refuses an item no console of the run lists, as unknown-item', () =>
   assert.deepStrictEqual(json(r).refused, [{ itemId: 'bf:nope', reason: 'unknown-item' }]);
 });
 
+test('apply refuses a run that is neither closed nor live, as run-not-closed', () => {
+  const f = fixture();
+  const name = '2026-10-20T100000-record-1';
+  // A top-level copy whose archive twin is clean: the listing walks the twin, never this copy.
+  const top = closedRun(f.pipelines, name);
+  writeConsole(top, [PENDING('zz-1.md')]);
+  const twin = path.join(f.pipelines, 'archive', name);
+  fs.mkdirSync(twin, { recursive: true });
+  assert.strictEqual(closeRunState(twin, { explicit: true }).status, 'closed');
+  const gone = path.join(f.pipelines, '2026-10-20T120000-record-7');
+  const bytes = fs.readFileSync(path.join(top, 'console.json'));
+  const entry = (runDir, itemId) => ({ runDir, itemId, itemHash: 'h', outcome: 'digested', source: 'digest', ref: 'r' });
+  const r = call(f, ['apply', '--entries', writeEntries(f, [entry(top, 'bf:a'), entry(gone, 'bf:b')])]);
+  assert.strictEqual(r.code, 0);
+  assert.deepStrictEqual(json(r).refused, [{ itemId: 'bf:a', reason: 'run-not-closed' }, { itemId: 'bf:b', reason: 'run-not-closed' }]);
+  assert.ok(bytes.equals(fs.readFileSync(path.join(top, 'console.json'))));
+});
+
+test('apply refuses an entry as console-unreadable when its run has a console it cannot read', () => {
+  const f = fixture();
+  const dir = closedRun(f.pipelines, '2026-10-20T100000-record-1');
+  fs.writeFileSync(path.join(dir, 'console.json'), '{not json');
+  const bytes = fs.readFileSync(path.join(dir, 'console.json'));
+  const entries = writeEntries(f, [{ runDir: dir, itemId: 'bf:a', itemHash: 'h', outcome: 'digested', source: 'digest', ref: 'r' }]);
+  const r = call(f, ['apply', '--entries', entries]);
+  assert.strictEqual(r.code, 0);
+  assert.deepStrictEqual(json(r).refused, [{ itemId: 'bf:a', reason: 'console-unreadable' }]);
+  assert.match(r.err, /console-unreadable/);
+  assert.ok(bytes.equals(fs.readFileSync(path.join(dir, 'console.json'))));
+});
+
+test('a run dir that cannot be listed is unreadable: named by list, refused by apply', () => {
+  const f = fixture();
+  const dir = seedRun(f);
+  const vanished = { readdirStrict: (p) => { const e = new Error('ENOENT: no such file or directory'); e.code = 'ENOENT'; throw e; } };
+
+  const listed = json(call(f, ['list', '--main-sha', 'abc'], vanished));
+  assert.deepStrictEqual(listed.unreadable, [dir]);
+  assert.deepStrictEqual(listed.runs, []);
+
+  const bytes = fs.readFileSync(path.join(dir, 'console.json'));
+  const entries = writeEntries(f, [{ runDir: dir, itemId: 'bf:a', itemHash: 'h', outcome: 'digested', source: 'digest', ref: 'r' }]);
+  const r = call(f, ['apply', '--entries', entries], vanished);
+  assert.strictEqual(r.code, 0);
+  assert.deepStrictEqual(json(r).refused, [{ itemId: 'bf:a', reason: 'console-unreadable' }]);
+  assert.ok(bytes.equals(fs.readFileSync(path.join(dir, 'console.json'))));
+});
+
+test('apply accepts planBatch\'s result shape: an object with an `entries` array', () => {
+  const f = fixture();
+  seedRun(f);
+  const { out } = listToFile(f);
+  const entries = writeEntries(f, { entries: entriesFor(f, out), awaitingVerdict: [] });
+  const r = call(f, ['apply', '--entries', entries]);
+  assert.strictEqual(r.code, 0, r.err);
+  assert.strictEqual(json(r).applied.length, 2);
+  assert.deepStrictEqual(json(r).refused, []);
+});
+
 test('apply works on an archived run', () => {
   const f = fixture();
   const name = '2026-10-20T100000-record-1';
@@ -303,13 +390,52 @@ test('dispose writes each new filing to out-dir, prints its path, and lists the 
   assert.strictEqual(r.code, 0, r.err);
   const planned = json(r);
   assert.strictEqual(planned.file.length, 1);
-  assert.strictEqual(planned.file[0].text, path.join(outDir, 'backfill-filing-1.md'));
-  assert.ok(fs.readFileSync(planned.file[0].text, 'utf8').length > 0);
+  const expectedPath = path.join(outDir, `backfill-filing-${item.itemId.replace(/^bf:/, '')}.md`);
+  assert.strictEqual(planned.file[0].text, expectedPath, 'named by the item, not by position');
+  const body = fs.readFileSync(expectedPath, 'utf8');
+  assert.ok(body.includes('the missing split ignores ids that carry a slash'), 'the written file holds the proposal body');
   assert.deepStrictEqual(planned.awaitingVerdict, []);
   assert.strictEqual(planned.entries[0].itemId, item.itemId);
+  // No proposal body anywhere in stdout: a disposition keeps its fingerprint and title, plus the path.
+  // The title carries the claim by design; every other substantial body line must be absent.
+  const bodyOnly = body.split('\n').map((l) => l.trim()).filter((l) => l.length > 20 && !planned.file[0].title.includes(l));
+  assert.ok(bodyOnly.length >= 3, 'the proposal has body lines of its own to look for');
+  for (const l of bodyOnly) assert.ok(!r.out.includes(JSON.stringify(l).slice(1, -1)), `body line leaked into stdout: ${l}`);
+  assert.ok(!r.out.includes('## '), 'no markdown body in stdout');
+  assert.strictEqual(planned.dispositions[0].proposal.text, undefined);
+  assert.strictEqual(planned.dispositions[0].proposal.path, expectedPath);
+  assert.strictEqual(planned.dispositions[0].proposal.title, planned.file[0].title);
+  assert.strictEqual(planned.dispositions[0].proposal.fingerprint, planned.file[0].fingerprint);
 
   const limited = json(call(f, ['dispose', '--work-list', out, '--verdicts', verdicts, '--out-dir', outDir, '--limit', '0']));
   assert.strictEqual(limited.dispositions.length, 0);
+});
+
+test('dispose batches into one --out-dir never overwrite each other', () => {
+  const f = fixture();
+  const other = '- STAGED 10:02:00 — Reproduction: lens "3c" finding plugin/bin/lib/console/alpha.js:10 not reproduced (single agent): the alpha reader drops a trailing newline. Staged to Review Console as low-confidence.';
+  for (const [name, line] of [['2026-10-20T100000-record-1', SINGLE], ['2026-10-20T110000-record-2', other]]) {
+    const dir = closedRun(f.pipelines, name);
+    writeConsole(dir, [KEEP(decisionId(line))]);
+    writeDecisions(dir, [line]);
+  }
+  const { out, workList } = listToFile(f);
+  const [a, b] = workList.runs.flatMap((r) => r.items).map((i) => i.itemId);
+  const outDir = path.join(f.scratch, 'filings');
+  const verdict = { outcome: 'console', severity: 'medium', reason: 'cannot tell', recommendation: 'file' };
+  const batch = (id) => {
+    const verdicts = path.join(f.scratch, `verdicts-${id.slice(3)}.json`);
+    fs.writeFileSync(verdicts, JSON.stringify({ [id]: verdict }));
+    const r = call(f, ['dispose', '--work-list', out, '--verdicts', verdicts, '--out-dir', outDir]);
+    assert.strictEqual(r.code, 0, r.err);
+    return json(r).file.map((x) => x.text);
+  };
+  const first = batch(a);
+  const second = batch(b);
+  assert.strictEqual(first.length, 1);
+  assert.strictEqual(second.length, 1);
+  assert.notStrictEqual(first[0], second[0]);
+  assert.ok(fs.existsSync(first[0]) && fs.existsSync(second[0]), 'the first batch\'s file survives the second');
 });
 
 test('--help prints the usage and exits 0, reading nothing', () => {
