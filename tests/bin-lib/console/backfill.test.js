@@ -12,7 +12,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const {
-  STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, buildWorkList, summarize,
+  STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, consoleWorkItems, buildWorkList, summarize,
 } = require('../../../plugin/bin/lib/console/backfill');
 const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state');
 const { writeRunState } = require('../../../plugin/bin/lib/hooks/context');
@@ -375,6 +375,61 @@ test('unreadable console.json emits no items', () => {
   const wl = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA });
   assert.deepStrictEqual(wl.unreadable.sort(), [path.join(a, 'console.json'), path.join(b, 'console.json'), path.join(c, 'console.json')]);
   assert.strictEqual(wl.runs.reduce((n, r) => n + r.items.length, 0), 0);
+});
+
+// R14a: a no-claim item that stands for a located finding keeps the location, and its id does not move.
+// The ids below are what the derivation produced BEFORE the location was carried (generated from the
+// pre-change backfill.js), so any drift in the derivation fails here.
+const LOCATED = '- STAGED 01:25:25 — Reproduction: lens "3a" finding plugin/skills/_shared/materiality-floor.md:94 not reproduced. Staged to Review Console as low-confidence. Reversibility: high.';
+const MULTI = '- STAGED 00:58:05 — log-decision: Reproduction: lens "3f" findings plugin/bin/lib/worktree/remote-branch-collision.js:168 and plugin/skills/build/adopted-branch-collision.md:12 not reproduced. Staged to Review Console as low-confidence. Reversibility: high.';
+const MIXED_CLAIMS = '- STAGED 10:30:00 — Reproduction: lens "3c" findings plugin/bin/a.js:1 (single agent) / plugin/bin/b.js:2 the writer skips its atomic rename step. Staged to Review Console as low-confidence.';
+const PRE_CHANGE_IDS = {
+  LOCATED: ['bf:a4ce21a559e363d9'],
+  CLAIMLESS: ['bf:9d0d79ec050770bc'],
+  MULTI: ['bf:1888776b91792d71'],
+  MIXED_CLAIMS: ['bf:57def98ced86900e', 'bf:49e2cef2f2c00390'],
+  SINGLE: ['bf:5202c633dc182bf6'],
+};
+
+function itemsForLine(line) {
+  const RUN = '2026-10-24T090000-record-1';
+  return consoleWorkItems({
+    consoleDir: `/x/${RUN}`,
+    consoleJson: { items: [KEEP(newId(line))] },
+    decisions: `# D\n\n${line}\n`,
+    readStaged: () => null,
+    runId: RUN,
+  });
+}
+
+test('R14a: item ids are byte-identical to the pre-change derivation', () => {
+  const lines = { LOCATED, CLAIMLESS, MULTI, MIXED_CLAIMS, SINGLE };
+  for (const [name, line] of Object.entries(lines)) {
+    assert.deepStrictEqual(itemsForLine(line).map((i) => i.itemId), PRE_CHANGE_IDS[name], name);
+  }
+});
+
+test('R14a: a claim-empty no-claim item keeps the location its decision line names', () => {
+  const [one] = itemsForLine(LOCATED);
+  assert.strictEqual(one.kind, 'no-claim');
+  assert.strictEqual(one.noClaimReason, 'claim-empty');
+  assert.deepStrictEqual(one.finding, { lens: '3a', path: 'plugin/skills/_shared/materiality-floor.md', line: 94 });
+  assert.strictEqual(one.claimText, undefined, 'a no-claim item carries no claim');
+
+  const [multi] = itemsForLine(MULTI);
+  assert.deepStrictEqual(multi.locations.map((l) => [l.path, l.line]), [['plugin/bin/lib/worktree/remote-branch-collision.js', 168], ['plugin/skills/build/adopted-branch-collision.md', 12]]);
+  assert.deepStrictEqual(multi.finding, multi.locations[0]);
+
+  const [empty, claimed] = itemsForLine(MIXED_CLAIMS);
+  assert.deepStrictEqual([empty.kind, claimed.kind], ['no-claim', 'finding']);
+  assert.deepStrictEqual(empty.finding, { lens: '3c', path: 'plugin/bin/a.js', line: 1 }, 'the claim-empty member of a mixed line keeps its own location');
+});
+
+test('R14a: a line with no path stays locationless', () => {
+  const noPath = '- STAGED 10:00:00 — Reproduction: lens "3c" finding in the console template not reproduced (single agent): the merge row omits its reason column entirely. Staged to Review Console as low-confidence.';
+  const [item] = itemsForLine(noPath);
+  assert.strictEqual(item.noClaimReason, 'no-path');
+  assert.strictEqual(item.finding, undefined);
 });
 
 test('summarize counts kinds', () => {

@@ -298,6 +298,94 @@ test('areaFor maps paths', () => {
   assert.strictEqual(areaFor(stagedItem({ name: 'tidy-2.md', section: 'Queue writes' })), 'console');
 });
 
+// ---- R14: what a digest line says ----
+
+// Real staged files, copied verbatim from archived runs (fixtures/staged/).
+const fixture = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', 'staged', name), 'utf8');
+const stagedDigest = (stagedName, staged, fixtureName) => dispose(
+  stagedItem({ name: stagedName, ...staged }),
+  undefined,
+  () => fixture(fixtureName),
+).digest.entry;
+
+test('R14b: a table-shaped reflect file digests as its first insight, not the table header', () => {
+  const e = stagedDigest('reflect-1.md', { section: 'Pending review', reason: 'non-tangential-category:observation' }, 'reflect-table-3877.md');
+  assert.ok(e.finding.startsWith('reflect-1.md (non-tangential-category:observation): A prose guard that must fail closed shipped with fail-open edges'), e.finding);
+  assert.doesNotMatch(e.finding, /\| # \||Insight \| Causal/);
+  assert.ok(e.finding.length <= 200, 'cut at 200 characters');
+  assert.strictEqual(e.fileRefs, 'general');
+  assert.strictEqual(e.area, 'reflect');
+});
+
+test('R14b: an insights table digests as its first data row', () => {
+  const e97 = stagedDigest('wrap-up-reflect-insights.md', { section: 'Reflection insights' }, 'wrap-up-reflect-insights-3897.md');
+  assert.ok(e97.finding.startsWith('wrap-up-reflect-insights.md (Reflection insights): The plan never consulted `.claude/skills/hooks-js-verb-registration`'), e97.finding);
+  assert.doesNotMatch(e97.finding, /\| # \|/);
+  const e10 = stagedDigest('wrap-up-reflect-insights.md', { section: 'Reflection insights' }, 'wrap-up-reflect-insights-3810.md');
+  assert.ok(e10.finding.startsWith('wrap-up-reflect-insights.md (Reflection insights): Friction: the canonical `verify.js` invocation'), e10.finding);
+  assert.doesNotMatch(e10.finding, /Run: 2026|Mode: full/, 'the Run:/Mode: metadata line is skipped');
+});
+
+test('R14b: a Ledger:-led reflect file digests as the finding sentence under ## Finding', () => {
+  const e = stagedDigest('reflect-1.md', { section: 'Pending review', reason: 'non-tangential-category:convention' }, 'reflect-ledger-3876.md');
+  assert.ok(e.finding.startsWith('reflect-1.md (non-tangential-category:convention): `_shared/subagent-dispatch-core.md` line 39 states that'), e.finding);
+  assert.doesNotMatch(e.finding, /Ledger:/);
+  assert.match(e.fileRefs, /^plugin\/skills\/_shared\/subagent-dispatch-core\.md, /, 'the **Files:** value still names the files');
+});
+
+test('R14b: digest text rules on small shapes', () => {
+  const text = (body) => dispose(stagedItem({ name: 'tidy-3.md', section: 'Pending review' }), undefined, files({ 'tidy-3.md': body })).digest.entry.finding.replace(/^tidy-3\.md \(Pending review\): ?/, '');
+  assert.strictEqual(text('# T\n\n## Finding\n\nfirst line of the paragraph\ncontinues here.\n\nsecond paragraph.\n\n## Other\n\nno\n'), 'first line of the paragraph continues here.', 'the first paragraph under ## Finding');
+  assert.strictEqual(text('# T\nLedger: docs/x.md#4\nSource: me\n\nThe real sentence.\n'), 'The real sentence.', 'a Key: value header block is skipped');
+  assert.strictEqual(text('**Category:** convention\n\nSource: light\nFiles: a.js\nRun: r\nMode: full\n\nThe real sentence.\n'), 'The real sentence.');
+  assert.strictEqual(text('| # | Item | Why |\n|---|------|-----|\n| 1 | Do the thing | — |\n| 2 | Other | y |\n'), 'Do the thing', 'a data row keeps its non-numeric cells');
+  assert.strictEqual(text('| a | b |\n|:--|--:|\n| 12 | 3 | x | y |\n'), 'x — y', 'numeric cells are dropped');
+  assert.strictEqual(text('Note: a sentence that starts like a key.\n\nmore\n'), 'more', 'a file-leading Key: value line is header');
+  assert.strictEqual(text('---\n\nplain line\n'), 'plain line');
+});
+
+const noClaim = (over = {}) => noClaimItem({
+  noClaimReason: 'claim-empty',
+  finding: { lens: '3a', path: 'plugin/skills/_shared/materiality-floor.md', line: 94 },
+  context: '- STAGED 01:25:25 — Reproduction: lens "3a" finding plugin/skills/_shared/materiality-floor.md:94 not reproduced. Staged to Review Console as low-confidence. Reversibility: high.',
+  ...over,
+});
+
+test('R14a: a located no-claim item digests under its file\'s area with path:line', () => {
+  const d = dispose(noClaim());
+  assert.strictEqual(d.digest.entry.area, '_shared');
+  assert.strictEqual(d.digest.entry.fileRefs, 'plugin/skills/_shared/materiality-floor.md:94');
+  assert.strictEqual(d.digest.entry.deferReason, DIGEST_REASONS.NO_CLAIM);
+  const multi = dispose(noClaim({
+    locations: [{ lens: '3f', path: 'plugin/bin/lib/worktree/x.js', line: 168 }, { lens: '3f', path: 'plugin/skills/build/y.md', line: 12 }],
+    finding: { lens: '3f', path: 'plugin/bin/lib/worktree/x.js', line: 168 },
+  }));
+  assert.strictEqual(multi.digest.entry.area, 'worktree');
+  assert.strictEqual(multi.digest.entry.fileRefs, 'plugin/bin/lib/worktree/x.js:168, plugin/skills/build/y.md:12');
+  const bare = dispose(noClaimItem({ noClaimReason: 'no-path' }));
+  assert.strictEqual(bare.digest.entry.area, 'console');
+  assert.strictEqual(bare.digest.entry.fileRefs, 'general');
+});
+
+test('R14c: a decision-line no-claim digest text drops the log prefix and short step labels', () => {
+  const finding = (context) => dispose(noClaim({ context })).digest.entry.finding;
+  assert.ok(finding(noClaim().context).startsWith('No claim recoverable (claim-empty): lens "3a" finding plugin/skills/_shared/materiality-floor.md:94 not reproduced.'), finding(noClaim().context));
+  assert.ok(!/STAGED|01:25:25/.test(finding(noClaim().context)));
+  assert.ok(finding(noClaim().context).endsWith('not reproduced.'), 'the producer\'s closing boilerplate is dropped too');
+  assert.strictEqual(
+    finding('decision:STAGED 01:00:20 — Step 3: full mode (wrap-up): pattern obs#a1b2c3d4'),
+    'No claim recoverable (claim-empty): full mode (wrap-up): pattern obs',
+    'an old-shape console id loses its decision: prefix, its time and its hash',
+  );
+  assert.ok(finding('- STAGED 06:21:45 — log-decision: Reproduction: lens "3b" findings a.js:3 not reproduced').endsWith(': lens "3b" findings a.js:3 not reproduced'));
+  assert.ok(!/log-decision|Reproduction:/.test(finding('- STAGED 06:21:45 — log-decision: Reproduction: lens "3b" findings a.js:3 not reproduced')));
+  assert.ok(!/Step 3 reproduction/.test(finding('- STAGED 12:53:49 — Step 3 reproduction: Reproduction: lens 3f finding p.js not reproduced')));
+  const longLabel = '- STAGED 10:00:00 — A very long step label of more than forty characters: the rest of the line';
+  assert.ok(finding(longLabel).includes('A very long step label of more than forty characters: the rest'), 'a label of 40+ characters is kept');
+  assert.ok(!/STAGED/.test(finding(longLabel)));
+  assert.ok(finding('decision:- STAGED abc#1234').includes('decision:- STAGED abc#1234'), 'a context without a log prefix is untouched');
+});
+
 // ---- planBatch ----
 
 const workList = (...runs) => ({ mainSha: MAIN_SHA, runs: runs.map((items, i) => ({ runDir: `/x/pipelines/archive/run-${i}`, items })) });

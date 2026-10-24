@@ -137,11 +137,13 @@ function splitPoints(line) {
 
 // One legacy decisions.md line → its findings. A finding's claim is the text
 // between its location and the next split point (or the line's end).
-function splitDecisionLine(line) {
+// `located` is every location the line names ({ lens, path, line }), claim or not: a line whose
+// findings all lack a claim keeps its locations for the no-claim item that stands for it.
+function analyseLine(line) {
   const tokens = splitPoints(line);
   if (!tokens.length) {
     const m = PATH_SHAPED_RE.exec(line);
-    if (!m) return { findings: [], noClaim: 'no-path' };
+    if (!m) return { findings: [], noClaim: 'no-path', located: [] };
     tokens.push({ path: m[0], line: null, start: m.index, end: m.index + m[0].length });
   }
   const lensMatch = /lens\s+"?([A-Za-z0-9_-]+)/.exec(line);
@@ -150,8 +152,14 @@ function splitDecisionLine(line) {
     const cleaned = cleanSegment(line.slice(t.end, k + 1 < tokens.length ? tokens[k + 1].start : line.length));
     return { lens, path: t.path, line: t.line, claim: wordCount(cleaned) < 4 ? '' : cleaned, severity: severityOf(cleaned) };
   });
-  if (findings.every((f) => f.claim === '')) return { findings: [], noClaim: 'claim-empty' };
-  return { findings, noClaim: null };
+  const located = findings.map((f) => ({ lens: f.lens, path: f.path, line: f.line }));
+  if (findings.every((f) => f.claim === '')) return { findings: [], noClaim: 'claim-empty', located };
+  return { findings, noClaim: null, located };
+}
+
+function splitDecisionLine(line) {
+  const { findings, noClaim } = analyseLine(line);
+  return { findings, noClaim };
 }
 
 const reporterSeverity = (s) => (s && SEVERITIES.includes(s) ? s : 'medium');
@@ -178,16 +186,20 @@ function decisionLineMatches(line, groupId, readStaged) {
 // The items one source line yields: a finding item per finding, or one no-claim
 // item for a line with no path or no claim at all. A finding whose own claim is
 // empty, on a line whose other findings have one, is its own no-claim item.
+// A no-claim item from a located finding keeps the location (`finding: { lens, path, line }`, no
+// claim): the digest line names the file. The id derivation does not read it, so ids do not move.
 function lineItems(line, base, runId, section) {
-  const split = splitDecisionLine(line);
+  const split = analyseLine(line);
   if (split.noClaim) {
-    return [{ ...base, itemId: backfillItemId({ runId, sourceKey: line, findingKey: '' }), kind: 'no-claim', noClaimReason: split.noClaim, context: line, bundleLine: line }];
+    const located = split.located.length ? { finding: split.located[0], locations: split.located } : {};
+    return [{ ...base, itemId: backfillItemId({ runId, sourceKey: line, findingKey: '' }), kind: 'no-claim', noClaimReason: split.noClaim, ...located, context: line, bundleLine: line }];
   }
   return split.findings.map((f, k) => (f.claim === '' ? {
     ...base,
     itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f, k) }),
     kind: 'no-claim',
     noClaimReason: 'claim-empty',
+    finding: { lens: f.lens, path: f.path, line: f.line },
     context: line,
     bundleLine: line,
   } : {
@@ -209,15 +221,14 @@ function stagedFindingItem(name, text, base, itemId, section) {
   const lens = /Lens:\s*([\w-]+)/.exec(text) || /lens\s+"?([\w-]+)/.exec(text);
   const findingLine = /^[-*\s]*Finding:\**\s*(.+)$/m.exec(text);
   const claim = (findingLine ? findingLine[1] : text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ')).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
-  if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', context: text };
+  const where = { lens: lens ? lens[1] : 'unknown', path: loc ? loc[1] : shaped[0], line: loc ? Number(loc[2]) : null };
+  if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: where, context: text };
   return {
     ...base,
     itemId,
     kind: 'finding',
     finding: {
-      lens: lens ? lens[1] : 'unknown',
-      path: loc ? loc[1] : shaped[0],
-      line: loc ? Number(loc[2]) : null,
+      ...where,
       reporterSeverity: reporterSeverity(sev && sev[1].toLowerCase()),
       kind: /^review-unconfirmed-/.test(name) ? 'unconfirmed' : 'contested',
     },
@@ -272,7 +283,7 @@ function consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runI
       if (!v) { out.push({ ...single, itemId, kind: 'no-claim', noClaimReason: 'source-line-not-found', context: id }); continue; }
       const entry = findings.find((f) => f && f.id === tid);
       const claim = entry && typeof entry.claim === 'string' ? entry.claim.replace(/\s+/g, ' ').trim() : '';
-      if (!claim) { out.push({ ...single, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', context: v.l }); continue; }
+      if (!claim) { out.push({ ...single, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: { lens: v.t.lens, path: v.t.path, line: v.t.line }, context: v.l }); continue; }
       out.push({
         ...single,
         itemId,

@@ -57,21 +57,86 @@ function areaOfPath(p) {
   return area.toLowerCase();
 }
 
-// No path to read an area from: a reflect staged finding is `reflect`, everything else `console`.
+// An item that names a location (a finding, or a no-claim item standing for a located finding) takes
+// its area from that path. No path to read an area from: a reflect staged finding is `reflect`,
+// everything else `console`.
 function areaFor(item) {
-  if (item.kind === 'finding' && item.finding && item.finding.path) return areaOfPath(item.finding.path);
+  if (item.finding && item.finding.path) return areaOfPath(item.finding.path);
   const name = item.staged && item.staged.name;
   return typeof name === 'string' && name.startsWith('reflect-') ? 'reflect' : 'console';
 }
 
-// The staged file's first body line: not blank, not a heading, not a `**Header:** value` line.
-function firstBodyLine(text) {
-  for (const raw of String(text).split(/\r?\n/)) {
-    const line = raw.trim();
-    if (line === '' || line.startsWith('#') || /^\*\*[^*]+:\*\*/.test(line) || /^-{3,}$/.test(line)) continue;
-    return line;
+// ---- what a staged file says, for a digest line ----
+
+const KEY_VALUE_RE = /^[A-Za-z][A-Za-z0-9 _-]{0,30}:(\s|$)/;
+const METADATA_LINE_RE = /^(?:Ledger|Run|Mode|Source|Files):/i;
+const TABLE_SEPARATOR_RE = /^\|[\s:|-]*-[\s:|-]*$/;
+
+// A table data row as its non-numeric, non-empty cells joined by ` — ` (the row number and the
+// `—` placeholder cells carry nothing).
+function dataRowText(line) {
+  const cells = line.split('|').map((c) => c.trim()).filter((c) => c !== '' && !/^\d+$/.test(c) && !/^[—–-]$/.test(c));
+  return cells.join(' — ');
+}
+
+// The first thing worth reading in `lines`: skips headings, blank lines, the leading `Key: value`
+// header block (when `skipHeaderBlock`), `**Key:**` lines, metadata lines (Ledger/Run/Mode/Source/Files),
+// rules, and a markdown table's header and separator rows; a table data row reads as its cells; a
+// prose line reads as itself, or as its whole paragraph when `paragraph`.
+function firstContent(lines, { paragraph, skipHeaderBlock }) {
+  let inHeader = false;
+  let seenContent = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === '') { inHeader = false; continue; }
+    if (line.startsWith('#')) continue;
+    if (!seenContent) { seenContent = true; inHeader = skipHeaderBlock && KEY_VALUE_RE.test(line); }
+    if (inHeader || /^\*\*[^*]+:\*\*/.test(line) || METADATA_LINE_RE.test(line) || /^-{3,}$/.test(line)) continue;
+    if (line.startsWith('|')) {
+      if (TABLE_SEPARATOR_RE.test(line) || TABLE_SEPARATOR_RE.test((lines[i + 1] || '').trim())) continue;
+      const row = dataRowText(line);
+      if (row) return row;
+      continue;
+    }
+    if (!paragraph) return line;
+    const para = [];
+    for (let j = i; j < lines.length && lines[j].trim() !== ''; j++) para.push(lines[j].trim());
+    return para.join(' ');
   }
   return '';
+}
+
+// A staged file's digest text: the first paragraph under its `## Finding` heading when it has one,
+// else its first content line.
+function digestTextOf(text) {
+  const lines = String(text).split(/\r?\n/);
+  const start = lines.findIndex((l) => /^##\s+Finding\s*$/i.test(l.trim()));
+  if (start >= 0) {
+    const next = lines.findIndex((l, i) => i > start && /^##\s/.test(l));
+    const section = firstContent(lines.slice(start + 1, next < 0 ? lines.length : next), { paragraph: true, skipHeaderBlock: false });
+    if (section) return section;
+  }
+  return firstContent(lines, { paragraph: false, skipHeaderBlock: true });
+}
+
+// A decision line (`- STAGED HH:MM:SS — {step label}: {text}`) without its log prefix, and without up to
+// two short step labels (`log-decision: `, `Step 3 reproduction: `, `Reproduction: `): the prefix costs
+// the digest line's 200-character budget and says nothing about the finding. A label is a short run of
+// plain words ending `: `, so a sentence that merely contains a colon is never cut. Anything else is returned as is.
+// A `decision:` console id (the item's only trace when its source line is gone) is the same line cut to
+// 58 characters plus a `#hash`: it loses the hash too. The producer's closing boilerplate ("Staged to
+// Review Console as low-confidence. Reversibility: high.") goes as well; it is on every such line.
+function withoutLogPrefix(context) {
+  const prefix = /^(-\s+|decision:)(?:STAGED|AUTO)\s+\d{2}:\d{2}:\d{2}\s+—\s+/.exec(context);
+  if (!prefix) return context;
+  let rest = context.slice(prefix[0].length);
+  if (prefix[1] === 'decision:') rest = rest.replace(/#[0-9a-f]{8}(?:-\d+)?$/, '');
+  for (let n = 0; n < 2; n++) {
+    const label = /^([A-Za-z0-9][A-Za-z0-9 _-]*): /.exec(rest);
+    if (!label || label[1].length >= 40) break;
+    rest = rest.slice(label[0].length);
+  }
+  return rest.replace(/\s*Staged to Review Console as low-confidence\.?/g, '').replace(/\s*Reversibility: \w+\.?/g, '').trim();
 }
 
 function digestEntryOf({ item, finding, fileRefs, deferReason, runId }) {
@@ -138,12 +203,19 @@ function disposeFinding({ item, verdict, runId, mainSha }) {
   }
 }
 
+// A no-claim item that stands for a located finding names the location(s); otherwise `general`.
+function noClaimFileRefs(item) {
+  const where = Array.isArray(item.locations) && item.locations.length ? item.locations : [item.finding];
+  const refs = [...new Set(where.filter((f) => f && f.path).map(locationOf))];
+  return refs.length ? refs.join(', ') : 'general';
+}
+
 function disposeNoClaim({ item, runId }) {
   return result(item, 'digest', 'digest', {
     digest: digestEntryOf({
       item,
-      finding: `No claim recoverable (${item.noClaimReason}): ${item.context}`,
-      fileRefs: 'general',
+      finding: `No claim recoverable (${item.noClaimReason}): ${withoutLogPrefix(String(item.context))}`,
+      fileRefs: noClaimFileRefs(item),
       deferReason: DIGEST_REASONS.NO_CLAIM,
       runId,
     }),
@@ -207,7 +279,7 @@ function disposeStaged({ item, runId, readStaged }) {
 
   // Anything else: digested, with the file's name and why it had no mapping.
   const label = `${s.name === null || s.name === undefined ? 'unnamed engine row' : s.name} (${s.reason || s.section})`;
-  const first = typeof text === 'string' ? firstBodyLine(text) : '';
+  const first = typeof text === 'string' ? digestTextOf(text) : '';
   const files = typeof text === 'string' && typeof s.name === 'string' && s.name.startsWith('reflect-') ? /^\*\*Files:\*\*[ \t]*(.+)$/m.exec(text) : null;
   return result(item, 'digest', 'digest', {
     digest: digestEntryOf({
