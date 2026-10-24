@@ -27,7 +27,7 @@ files:
 - **Should feel:** unchanged from before. The earlier passes do the same work, and nothing is settled by the agent that reported it.
 - **Should understand:**
   - A low-tier finding no longer counts as confirmed because the reviewer re-read it.
-  - The Direct-verification override still exists. It writes a verdict line only when it confirms or drops a finding, and anything it can't settle goes on to Step 3.7.
+  - The reviewer no longer settles an `unconfirmed` finding by reading the source itself (a path retired in #3950). Every one goes on to Step 3.7 and gets an independent verdict.
 - **Red flags:**
   - an unconfirmed finding is routed to a fix, or to the console, before Step 3.7 has run
   - one finding ends up with two verdict lines

@@ -94,7 +94,7 @@ For each entry, once its agent has returned:
 
 The earlier STAGED line for the finding is not rewritten. Every verdict line supersedes it through `console/resolve.js`'s `#3772` matcher only when that line carries `lens "{lens}"` and `{path}:{line}` (the gap sweep's does, under lens `gap-sweep`) and the verdict is logged after it. A staged `review-unconfirmed-*`, `review-contested-*` or `review-debate-*` file that line names is superseded with it, taking the verdict's final outcome (`wrap-up/review-console-appendix.md`'s Resolution-to-step mapping). A STAGED line no verdict settles stays at the console, `keep-staged`.
 
-Any reviewer-read verdict — a Direct-verification override, or an inline fallback below — goes through the same resolver, with ` Mode: inline.` appended to the content of `T` (never to a shell argument) before step 3 logs it. An override's can't-tell outcome is not logged: that finding enters this step like any other (`step3-lens-dispatch.md`'s Direct-verification override paragraph).
+An inline fallback verdict (`## Dispatched reviewer`) goes through the same resolver, with ` Mode: inline.` appended to the content of `T` (never to a shell argument) before step 3 logs it.
 
 ## Standalone review
 
