@@ -648,7 +648,7 @@ const tbStaged = (f) => `- STAGED 09:59:00 — Reproduction: lens "${f.lens}" fi
 const tbCoincidence = (f, lineB) => `- STAGED 09:59:00 — Reproduction: lens "${f.lens}" findings ${f.path}:${f.line} / ${f.path}:${lineB} share a location but not substance; both staged unconfirmed. Reversibility: high.`;
 const tbDebate = (f, file) => `- STAGED 09:59:00 — Debate: lens "${f.lens}" cross-lens disagreement on ${f.path}:${f.line} inconclusive (positions differ). Both verdicts staged. Stage path: staged/${file}. Reversibility: high.`;
 const bareDeps = () => ({ readFile: (p) => fs.readFileSync(p, 'utf8'), readdir: (p) => { try { return fs.readdirSync(p); } catch { return []; } } });
-const findings = (decisions, staged = {}) => findingItems({ runDir: fixture({ decisions: `${decisions}\n`, staged }), deps: bareDeps() });
+const findings = (decisions, staged = {}) => findingItems({ runDir: fixture({ decisions: `${decisions}\n`, staged }), deps: bareDeps() }).items;
 const OPEN = ['pending', 'keep-staged'];
 
 test('approve-all: a console verdict with Recommendation file resolves filed, drop resolves dropped (#3949 AC2)', () => {

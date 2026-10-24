@@ -157,12 +157,45 @@ test('--only narrows the selection to the named items', () => {
 
 test('--only naming an item that is not a can\'t-tell finding is exit 2, nothing written', () => {
   const f = fixture();
-  seed(f, { n: 1 });
+  const { ids } = seed(f, { n: 1 });
   noRecords(f);
   const { deps, err } = fakeDeps(f.main);
   assert.equal(run(argvOf(f, ['--only', 'tiebreak:ffffffffffff']), deps), 2);
   assert.match(err.join(''), /tiebreak:ffffffffffff/);
+  assert.ok(err.join('').includes(`valid ids: tiebreak:${ids[0]}`), 'the refusal lists the ids --only accepts');
   assert.equal(fs.existsSync(f.outDir), false);
+});
+
+test('--list prints every Low-confidence/Contested row as JSON and writes nothing (#3949 I3)', () => {
+  const f = fixture();
+  const { ids, findings } = seed(f, { n: 2 });
+  const legacy = '- STAGED 10:00:01 — Single-read (low tier): lens "3b" finding src/legacy.js:4 not directly verified. Staged to Review Console as low-confidence. Reversibility: high.';
+  fs.appendFileSync(path.join(f.runDir, 'decisions.md'), `${legacy}\n`);
+  const writes = [];
+  const { deps, out } = fakeDeps(f.main, { writeFile: (p) => writes.push(p), mkdir: (p) => writes.push(p) });
+  assert.equal(run(['--run', f.runDir, '--list'], deps), 0);
+  const rows = JSON.parse(out.join(''));
+  assert.equal(rows.length, 3);
+  assert.deepEqual(rows.filter((r) => r.cantTell), ids.map((id, i) => ({
+    id: `tiebreak:${id}`, section: 'Low-confidence findings', recommendation: i === 1 ? 'drop' : 'file', severity: 'medium',
+    lens: '3a', path: findings[i].path, line: findings[i].line, resolution: i === 1 ? 'dropped' : 'filed', cantTell: true,
+  })));
+  const [legacyRow] = rows.filter((r) => !r.cantTell);
+  assert.match(legacyRow.id, /^decision:STAGED 10:00:01/);
+  assert.deepEqual({ ...legacyRow, id: undefined }, {
+    id: undefined, section: 'Low-confidence findings', recommendation: null, severity: null, lens: null, path: null, line: null, resolution: 'keep-staged', cantTell: false,
+  }, 'a legacy row lists with its keep-staged default and no verdict');
+  assert.deepEqual(writes, [], 'nothing is written');
+});
+
+test('--list with --existing, --out-dir or --only is exit 2', () => {
+  const f = fixture();
+  seed(f, { n: 1 });
+  noRecords(f);
+  for (const extra of [['--existing', f.existing], ['--out-dir', f.outDir], ['--only', 'x']]) {
+    const { deps } = fakeDeps(f.main);
+    assert.equal(run(['--run', f.runDir, '--list', ...extra], deps), 2, extra[0]);
+  }
 });
 
 test('a run with no can\'t-tell items writes nothing and prints empty lists', () => {
@@ -209,7 +242,7 @@ test('--help prints a USAGE that names every flag, exit 0', () => {
   const { deps, out } = fakeDeps(os.tmpdir());
   assert.equal(run(['--help'], deps), 0);
   assert.equal(out.join(''), USAGE);
-  for (const flag of ['--run', '--existing', '--out-dir', '--only']) assert.ok(USAGE.includes(flag), flag);
+  for (const flag of ['--run', '--existing', '--out-dir', '--only', '--list']) assert.ok(USAGE.includes(flag), flag);
 });
 
 test('exit 3 on a worktree-local run dir, nothing written', () => {

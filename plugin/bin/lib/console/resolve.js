@@ -644,13 +644,16 @@ function coordinationItems(snapshot, stagedIds) {
   return out;
 }
 
-// The Low-confidence / Contested items alone, from the run-dir files alone (no members, grants,
-// patch checks or engine state): staged review-* files, STAGED coordination lines, and
-// can't-tell verdicts, each at its Approve-all default. resolveAll carries the same items.
+// The Low-confidence / Contested items alone, from readRunFiles' run-dir files (no members,
+// grants or patch checks; engine-state.json is read but no engine item is built): staged
+// review-* files, STAGED coordination lines, and can't-tell verdicts, each at its Approve-all
+// default, plus the review-findings.json findings they were read with. resolveAll builds the same
+// items but overrides every can't-tell item to `filed` (the unattended rule).
 function findingItems({ runDir, deps }) {
   const snapshot = { ...readRunFiles({ runDir, deps }), patchChecks: {} };
   const stagedIds = new Set(snapshot.staged.map((s) => s.name));
-  return [...stagedItems(snapshot), ...coordinationItems(snapshot, stagedIds)].filter((i) => FINDING_SECTIONS.includes(i.section));
+  const items = [...stagedItems(snapshot), ...coordinationItems(snapshot, stagedIds)].filter((i) => FINDING_SECTIONS.includes(i.section));
+  return { items, findings: snapshot.findings };
 }
 
 // Every cell is escaped, ids included: a staged filename is producer-supplied
@@ -735,4 +738,4 @@ function resolveAll({ runDir, policy, deps }) {
   return result;
 }
 
-module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, findingItems, parseTiebreakLine, approveAllDefault, renderTable, renderStoredTable, drainOverlapHoldPrs };
+module.exports = { SECTIONS, SECTION_MAP, SHADOW_DUP_RE, SHADOW_DUP_OUTCOMES, CANONICAL_PREFIXES, STAGING_EXEMPTIONS, stagingExemption, nearestCanonicalPrefixes, SECTION_STANCES, ENGINE_ROW_SECTIONS, classifyStagedItem, readSnapshot, resolveAll, findingItems, runIdOf, parseTiebreakLine, approveAllDefault, renderTable, renderStoredTable, drainOverlapHoldPrs };
