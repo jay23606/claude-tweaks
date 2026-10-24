@@ -18,6 +18,7 @@ const { composeFindingProposal, fingerprintMap } = require('./finding-filing');
 const { composeShadowDupProposal } = require('./shadow-dup-proposal');
 const { BACKFILL_OUTCOMES, BACKFILL_SOURCES } = require('./backfill-apply');
 const { materialityEntryLine, materialityFingerprint, isMaterialityDuplicate } = require('../health-core/materiality-digest');
+const { fingerprintFromBasis } = require('../health-core/fingerprint');
 const { extractFingerprint, checkFingerprint, defuse } = require('../issues/record');
 
 const DIGEST_REASONS = Object.freeze({
@@ -51,7 +52,7 @@ const oneLine = (s) => defuse(squash(s));
 function areaOfPath(p) {
   const segs = String(p).replace(/\\/g, '/').replace(/^\.\//, '').split('/').filter(Boolean);
   let area = segs[0] || 'console';
-  if (segs[0] === 'plugin' && segs[1] === 'skills' && segs.length > 3) area = segs[2];
+  if (segs[0] === 'plugin' && segs[1] === 'skills') area = segs.length > 3 ? segs[2] : 'skills';
   else if (segs[0] === 'plugin' && segs[1] === 'bin') area = segs[2] === 'lib' && segs.length > 4 ? segs[3] : 'bin';
   return area.toLowerCase();
 }
@@ -126,7 +127,7 @@ function disposeFinding({ item, verdict, runId, mainSha }) {
     case 'drop': {
       const ev = verdict.evidence;
       if (!ev) throw new TypeError('a drop verdict carries no evidence');
-      return result(item, 'drop', 'tiebreak', { ref: squash(`${ev.path}:${ev.line} "${ev.quote}"`) });
+      return result(item, 'drop', 'tiebreak', { ref: squash(`${ev.path}:${ev.line ?? 'unknown'} "${ev.quote}"`) });
     }
     case 'console':
       return result(item, 'file', 'tiebreak', { proposal: findingProposal(item, verdict, runId, null) });
@@ -149,6 +150,35 @@ function disposeNoClaim({ item, runId }) {
   });
 }
 
+// A filing whose text carries no work-fingerprint marker of its own (a shadow-dup reconcile record, a
+// Queue-writes proposal without one) gets one minted from the item's content-derived id and appended
+// as record.js's recordPayload writes it, so a record filed before a crashed apply is found by the next
+// run's existing-records map instead of being filed a second time. A marker already in the text wins.
+function withFingerprint(item, text) {
+  const own = extractFingerprint(text);
+  if (own) return { fingerprint: own, text };
+  const fingerprint = fingerprintFromBasis('consolebackfill', [item.itemId]);
+  const gap = text.endsWith('\n') ? '\n' : '\n\n';
+  return { fingerprint, text: `${text}${gap}<!-- work-fingerprint: ${fingerprint} -->\nwork-fingerprint: ${fingerprint}\n` };
+}
+
+// A backfill filing never adds or removes an auto:* / bot:* label by itself (they are granted, not
+// filed): any in the staged text's `Labels:` header line come out, the other labels stay, and a
+// header line left with none is dropped. Only the header (up to the first blank line) is read.
+function stripGrantLabels(text) {
+  const blank = /\r?\n[ \t]*\r?\n/.exec(text);
+  const split = blank ? blank.index : text.length;
+  const head = text.slice(0, split).split('\n').map((line) => {
+    const m = /^Labels:(.*?)(\r?)$/i.exec(line);
+    if (!m) return line;
+    const labels = m[1].split(',').map((l) => l.trim()).filter(Boolean);
+    const kept = labels.filter((l) => !/^(?:auto|bot):/i.test(l));
+    if (kept.length === labels.length) return line;
+    return kept.length ? `Labels: ${kept.join(', ')}${m[2]}` : null;
+  }).filter((line) => line !== null);
+  return head.join('\n') + text.slice(split);
+}
+
 function disposeStaged({ item, runId, readStaged }) {
   const s = item.staged;
   const read = (name) => readStaged(item.consoleDir, name);
@@ -162,13 +192,16 @@ function disposeStaged({ item, runId, readStaged }) {
     text = read(s.name);
     const composed = composeShadowDupProposal({ name: s.name, text, anchorText: read(shadow[1]), runId });
     if (composed.ok) {
-      return result(item, 'file', 'staged-kind', { proposal: { fingerprint: null, title: composed.title, text: composed.proposal } });
+      const { fingerprint, text: proposal } = withFingerprint(item, composed.proposal);
+      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, title: composed.title, text: proposal } });
     }
   } else if (typeof s.name === 'string' && s.reason !== 'engine-row') {
     text = read(s.name);
     if (s.section === SECTIONS.QUEUE && !s.reason && typeof text === 'string' && text.startsWith('Title:')) {
-      const title = squash(/^Title:(.*)$/m.exec(text)[1]);
-      return result(item, 'file', 'staged-kind', { proposal: { fingerprint: extractFingerprint(text), title, text } });
+      const stripped = stripGrantLabels(text);
+      const title = squash(/^Title:(.*)$/m.exec(stripped)[1]);
+      const { fingerprint, text: proposal } = withFingerprint(item, stripped);
+      return result(item, 'file', 'staged-kind', { proposal: { fingerprint, title, text: proposal } });
     }
   }
 
@@ -188,7 +221,10 @@ function disposeStaged({ item, runId, readStaged }) {
 }
 
 // ENOENT reads as absent (null); any other failure throws — an unreadable file is not an absent one.
+// A name that is not a plain file name (`../x`, `a/b`, `..`) reads as absent too: the item then digests
+// as unmapped with its name in the line, instead of reading outside the staged directory or blocking the batch.
 const defaultReadStaged = (consoleDir, name) => {
+  if (typeof name !== 'string' || name === '' || name === '.' || name === '..' || name.includes('\\') || path.basename(name) !== name) return null;
   try { return fs.readFileSync(path.join(consoleDir, 'staged', name), 'utf8'); } catch (err) {
     if (err && err.code === 'ENOENT') return null;
     throw err;

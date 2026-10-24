@@ -5,6 +5,9 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const {
   DIGEST_REASONS, areaFor, disposeItem, planBatch,
@@ -12,6 +15,7 @@ const {
 const { BACKFILL_OUTCOMES, BACKFILL_SOURCES } = require('../../../plugin/bin/lib/console/backfill-apply');
 const { findingFingerprint } = require('../../../plugin/bin/lib/console/finding-filing');
 const { extractFingerprint } = require('../../../plugin/bin/lib/issues/record');
+const { fingerprintFromBasis } = require('../../../plugin/bin/lib/health-core/fingerprint');
 const { parseMaterialityFingerprints } = require('../../../plugin/bin/lib/health-core/materiality-digest');
 
 const MAIN_SHA = '0123456789abcdef0123456789abcdef01234567';
@@ -57,6 +61,9 @@ const confirmed = (severity = 'medium') => ({ outcome: 'confirmed', severity, ev
 const dropV = { outcome: 'drop', severity: 'medium', evidence: EVIDENCE, reason: 'refuted by tiebreak', recommendation: null };
 const consoleV = { outcome: 'console', severity: 'medium', evidence: null, reason: 'verdict:cant-tell', recommendation: 'drop' };
 const digestV = { outcome: 'digest', severity: 'low', evidence: null, reason: 'verdict:cant-tell', recommendation: null };
+
+// The fingerprint a fingerprint-less filing is minted (a crash between filing and apply re-runs into a dedup hit).
+const backfillFingerprint = (itemId) => fingerprintFromBasis('consolebackfill', [itemId]);
 
 const files = (map) => (_dir, name) => (Object.hasOwn(map, name) ? map[name] : null);
 const dispose = (item, verdict, readStaged) => disposeItem({
@@ -107,6 +114,11 @@ test('disposition: finding dropped by the tiebreak carries the evidence as its r
   assert.strictEqual(d.digest, undefined);
 });
 
+test('a drop whose evidence has no line cites it as unknown, never null', () => {
+  const d = dispose(findingItem(), { ...dropV, evidence: { ...EVIDENCE, line: null } });
+  assert.strictEqual(d.ref, 'plugin/skills/review/SKILL.md:unknown "guard(x); read(x);"');
+});
+
 test('disposition: finding the tiebreak left to the console files a can\'t-tell proposal', () => {
   const d = dispose(findingItem(), consoleV);
   assert.deepStrictEqual([d.action, d.outcome, d.source], ['file', 'filed', 'tiebreak']);
@@ -124,7 +136,7 @@ test('disposition: finding the tiebreak digested uses the can\'t-tell digest rea
   assert.ok(d.digest.line.includes('Defer-reason: tiebreak-cant-tell'), d.digest.line);
 });
 
-test('unknown reporter severity files a can\'t-tell', () => {
+test('a defaulted medium reporter severity files a can\'t-tell', () => {
   // Task 1 defaults an unknown reporter severity to medium; a console verdict then files.
   const d = dispose(findingItem({ finding: { ...findingItem().finding, reporterSeverity: 'medium' } }), { ...consoleV, severity: 'medium' });
   assert.strictEqual(d.action, 'file');
@@ -172,7 +184,8 @@ test('disposition: staged shadow-dup-divergent files the reconcile proposal quot
   assert.match(d.proposal.text, /COPY BODY/);
   assert.match(d.proposal.text, /ANCHOR BODY/);
   assert.ok(d.proposal.text.startsWith('Title: Reconcile staged copy x-1.md.shadow-dup\n'));
-  assert.strictEqual(d.proposal.fingerprint, null, 'the shadow-dup record carries no fingerprint of its own');
+  assert.strictEqual(d.proposal.fingerprint, backfillFingerprint(d.itemId), 'the shadow-dup record gets a fingerprint minted from the item id');
+  assert.strictEqual(extractFingerprint(d.proposal.text), d.proposal.fingerprint, 'and carries it as its work-fingerprint marker');
 });
 
 test('disposition: staged shadow-dup-collision files the reconcile proposal', () => {
@@ -187,9 +200,22 @@ test('disposition: a Queue writes item with no reason and a Title: header files 
   const text = 'Title: Do the thing\nType: task\nLabels: needs:definition\nDefer-reason: needs-human-decision\n\n## Current State\n\nx\n';
   const d = dispose(stagedItem({ name: 'leftover-3.md', section: 'Queue writes' }), undefined, files({ 'leftover-3.md': text }));
   assert.deepStrictEqual([d.action, d.outcome, d.source], ['file', 'filed', 'staged-kind']);
-  assert.strictEqual(d.proposal.text, text);
+  assert.ok(d.proposal.text.startsWith(text), 'the staged text is kept as written; only the marker is appended');
   assert.strictEqual(d.proposal.title, 'Do the thing');
-  assert.strictEqual(d.proposal.fingerprint, null);
+  assert.strictEqual(d.proposal.fingerprint, backfillFingerprint(d.itemId));
+  assert.strictEqual(extractFingerprint(d.proposal.text), d.proposal.fingerprint);
+  assert.strictEqual(d.proposal.text.slice(text.length).trim().split('\n').length, 2, 'the marker block is the only addition');
+});
+
+test('a Queue writes proposal never gains or loses an auto:* or bot:* label by being filed, and keeps its other labels', () => {
+  const text = 'Title: T\nType: task\nLabels: needs:definition, auto:merge, Bot:parked, size:low\nDefer-reason: needs-human-decision\n\nbody mentions Labels: auto:build in prose\n';
+  const d = dispose(stagedItem({ name: 'leftover-9.md', section: 'Queue writes' }), undefined, files({ 'leftover-9.md': text }));
+  const header = d.proposal.text.split('\n\n')[0];
+  assert.match(header, /^Labels: needs:definition, size:low$/m);
+  assert.doesNotMatch(header, /auto:|bot:/i);
+  assert.ok(d.proposal.text.includes('body mentions Labels: auto:build in prose'), 'the body is untouched');
+  const only = dispose(stagedItem({ name: 'leftover-9.md', section: 'Queue writes' }), undefined, files({ 'leftover-9.md': 'Title: T\nLabels: auto:merge\n\nb\n' }));
+  assert.doesNotMatch(only.proposal.text.split('\n\n')[0], /Labels:/, 'a header left with no label drops the line');
 });
 
 test('a Queue writes proposal carrying a work-fingerprint marker keeps it for dedup', () => {
@@ -261,6 +287,9 @@ test('areaFor maps paths', () => {
   assert.strictEqual(areaFor(f('plugin/skills/review/SKILL.md')), 'review');
   assert.strictEqual(areaFor(f('plugin/bin/lib/console/resolve.js')), 'console');
   assert.strictEqual(areaFor(f('plugin/bin/hooks.js')), 'bin');
+  assert.strictEqual(areaFor(f('plugin/bin/lib/x.js')), 'bin', 'a file directly under lib is not a module');
+  assert.strictEqual(areaFor(f('plugin/skills/README.md')), 'skills', 'a file directly under plugin/skills has no skill dir');
+  assert.strictEqual(areaFor(f('plugin/skills/_shared/auto-mode-contract.md')), '_shared');
   assert.strictEqual(areaFor(f('tests/bin-lib/console/x.test.js')), 'tests');
   assert.strictEqual(areaFor(f('docs/skill-authoring.md')), 'docs');
   assert.strictEqual(areaFor(f('./plugin/skills/tidy/digest-sweep.md')), 'tidy', 'a leading ./ is ignored');
@@ -383,6 +412,38 @@ test('planBatch reads staged files through the readStaged it is given', () => {
     readStaged: (dir, name) => { seen.push([dir, name]); return text; },
   });
   assert.deepStrictEqual(seen, [[CONSOLE_DIR, 'leftover-1.md']]);
-  assert.strictEqual(out.file[0].text, text);
-  assert.strictEqual(out.file[0].fingerprint, null);
+  assert.ok(out.file[0].text.startsWith(text));
+  assert.strictEqual(out.file[0].fingerprint, backfillFingerprint('bf:0000000000000003'));
+});
+
+test('planBatch dedups a fingerprint-less filing against a record carrying its minted marker', () => {
+  const shadow = stagedItem({ name: 'x-1.md.shadow-dup', section: 'Queue writes', outcome: 'shadow-dup-collision' }, { itemId: 'bf:00000000000000a1' });
+  const queue = stagedItem({ name: 'leftover-1.md', section: 'Queue writes' }, { itemId: 'bf:00000000000000a2' });
+  const rs = files({ 'x-1.md.shadow-dup': 'COPY\n', 'leftover-1.md': 'Title: Queue me\nType: task\n\nbody\n' });
+  const first = plan({ workList: workList([shadow, queue]), readStaged: rs });
+  assert.strictEqual(first.file.length, 2, 'no record yet: both are new');
+  const existing = first.file.map((f, i) => ({ number: 500 + i, body: `Filed earlier.\n\n${f.text.split('\n\n').slice(1).join('\n\n')}` }));
+  const again = plan({ workList: workList([shadow, queue]), existingIssues: existing, readStaged: rs });
+  assert.deepStrictEqual(again.file, [], 'a crash between filing and apply re-runs into a dedup hit, never a twin');
+  assert.deepStrictEqual(again.reuse, [{ itemId: 'bf:00000000000000a1', number: 500 }, { itemId: 'bf:00000000000000a2', number: 501 }]);
+  assert.deepStrictEqual(again.entries.map((e) => e.ref), ['#500', '#501']);
+});
+
+test('a staged name that climbs out of the staged directory is never read', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bf-dispose-'));
+  try {
+    fs.mkdirSync(path.join(root, 'staged'));
+    fs.writeFileSync(path.join(root, 'secret.md'), 'Title: from outside\nType: task\n\nbody\n');
+    for (const name of ['../secret.md', '..', 'a/../../secret.md']) {
+      const d = disposeItem({
+        item: stagedItem({ name, section: 'Queue writes' }, { consoleDir: root }), runId: RUN_ID, mainSha: MAIN_SHA,
+      });
+      assert.strictEqual(d.action, 'digest', `${name} routes to the digest as unmapped, unread`);
+      assert.strictEqual(d.digest.entry.deferReason, DIGEST_REASONS.UNMAPPED_KIND);
+      assert.ok(!d.digest.entry.finding.includes('from outside'), name);
+    }
+    fs.writeFileSync(path.join(root, 'staged', 'ok-1.md'), 'Title: inside\nType: task\n\nbody\n');
+    const inside = disposeItem({ item: stagedItem({ name: 'ok-1.md', section: 'Queue writes' }, { consoleDir: root }), runId: RUN_ID, mainSha: MAIN_SHA });
+    assert.strictEqual(inside.action, 'file', 'the default reader still reads a plain staged name');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

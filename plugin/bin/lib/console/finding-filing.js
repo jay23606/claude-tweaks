@@ -69,7 +69,7 @@ function composeFindingProposal({
       currentState: [
         ...claimLines,
         confirmed
-          ? `The tiebreak confirmed it on ${oneLine(verdict.mainSha)}: ${oneLine(verdict.evidence.path)}:${oneLine(verdict.evidence.line)} \`${oneLine(verdict.evidence.quote)}\`.`
+          ? `The tiebreak confirmed it on ${oneLine(verdict.mainSha)}: ${oneLine(verdict.evidence.path)}:${oneLine(verdict.evidence.line ?? 'unknown')} \`${oneLine(verdict.evidence.quote)}\`.`
           : `The tiebreak could not settle it: can't-tell (${oneLine(t.reason)}). Recommendation: ${oneLine(t.recommendation || 'none')}. Run: ${oneLine(runId)}.`,
       ],
       deliverables: confirmed

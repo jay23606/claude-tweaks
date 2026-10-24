@@ -6,7 +6,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', '..', '..');
 const {
   findingFingerprint, composeFindingProposal, planFilings, fingerprintMap,
-} =require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'finding-filing'));
+} = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'finding-filing'));
 const { extractFingerprint } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'issues', 'record'));
 
 const tiebreak = (over = {}) => ({
@@ -137,6 +137,12 @@ test('a confirmed verdict retitles the record, states the confirmation once, and
   assert.strictEqual(out.proposal.split('The tiebreak confirmed it on').length, 2, 'one confirmation line');
   assert.doesNotMatch(out.proposal, /could not settle it|can't-tell/, 'a confirmed record never claims the tiebreak was unsure');
   assert.match(out.proposal, /The guard runs after the read/, 'the claim is still quoted');
+});
+
+test('a confirmed verdict with no evidence line cites the line as unknown, never null', () => {
+  const out = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', verdict: { ...CONFIRMED, evidence: { ...CONFIRMED.evidence, line: null } } });
+  assert.ok(out.proposal.includes('src/a.js:unknown `const x = read(); guard(x);`.'), out.proposal);
+  assert.doesNotMatch(out.proposal, /:null/);
 });
 
 test('a confirmed verdict defuses a fingerprint marker spelled in the quote', () => {
