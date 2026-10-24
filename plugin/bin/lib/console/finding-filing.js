@@ -13,7 +13,7 @@
 
 const { fingerprintFromBasis, normalizeText } = require('../health-core/fingerprint');
 const {
-  specShapedBody, recordPayload, fencedBlock, LABELS,
+  specShapedBody, recordPayload, fencedBlock, defuse, LABELS,
 } = require('../issues/record');
 
 const DEFER_REASON = 'needs-human-decision';
@@ -26,13 +26,9 @@ function findingFingerprint({ lens, path, claim }) {
 
 // The claim, lens and path are producer-supplied text. The header is single-line by construction
 // (whitespace collapsed before the cut), and the claim reaches the body only through fencedBlock.
-// A fence does not stop extractFingerprint (record.js), which takes the FIRST marker in the proposal:
-// a quoted `<!-- work-fingerprint: X -->` (or a `work-fingerprint: X` line, the form read once the
-// transport strips HTML comments) would hijack the planned fingerprint and dedup against the wrong
-// key. So every producer-supplied value is defused before it is interpolated: `<!--` becomes `<! --`
-// and `work-fingerprint:` becomes `work-fingerprint :`, anywhere, any case. The fingerprint itself
-// is computed from the raw values, so the key stays stable.
-const defuse = (s) => String(s).replace(/<!--/g, '<! --').replace(/work-fingerprint:/gi, (m) => `${m.slice(0, -1)} :`);
+// A fence does not stop extractFingerprint, so every producer-supplied value is defused
+// (record.js's `defuse`) before it is interpolated; the fingerprint itself is computed from the raw
+// values, so the key stays stable.
 const squash = (s) => String(s).replace(/\s+/g, ' ').trim();
 const oneLine = (s) => defuse(squash(s));
 

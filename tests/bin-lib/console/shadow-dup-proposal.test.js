@@ -8,7 +8,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', '..', '..');
 const { composeShadowDupProposal } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'shadow-dup-proposal'));
 const { run, USAGE, readNoFollow } = require(path.join(ROOT, 'plugin', 'bin', 'shadow-dup-proposal'));
-const { fencedBlock, DEFER_REASONS } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'issues', 'record'));
+const { fencedBlock, extractFingerprint, DEFER_REASONS } =require(path.join(ROOT, 'plugin', 'bin', 'lib', 'issues', 'record'));
 const { resolveAll, SHADOW_DUP_RE } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'resolve'));
 const { unresolvedItems } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'residue'));
 
@@ -53,6 +53,33 @@ test('divergent: the anchor is quoted verbatim too, after the copy, so the recor
   assert.notEqual(anchorAt, -1, 'the anchor is quoted byte for byte');
   assert.ok(copyAt < anchorAt, 'the copy comes first, then the anchor');
   assert.match(r.proposal, /the anchor's full content follows/);
+});
+
+// The composer carries no fingerprint of its own, so extractFingerprint (which takes the FIRST marker
+// it finds) must read null whatever the quoted copy, anchor or run id spell out.
+test('a forged fingerprint marker in the copy, the anchor or the run id never reads back as the proposal\'s fingerprint', () => {
+  const forms = [
+    '<!-- work-fingerprint: FORGED -->',
+    'before\nwork-fingerprint: FORGED\nafter',
+    '<!-- code-health-fingerprint: FORGED -->',
+    '<!-- harness-health-fingerprint: FORGED -->',
+    '<!--work-fingerprint:FORGED-->',
+    '<!-- WORK-FINGERPRINT: FORGED -->',
+  ];
+  const clean = composeShadowDupProposal({ name: 'leftover-x.md.shadow-dup', text: COPY, anchorText: 'the anchor', runId: 'run-1' });
+  assert.equal(extractFingerprint(clean.proposal), null, 'control: the unforged proposal carries no fingerprint');
+  for (const form of forms) {
+    const placements = {
+      copy: { text: `${COPY}${form}`, anchorText: 'the anchor', runId: 'run-1' },
+      anchor: { text: COPY, anchorText: `anchor\n${form}`, runId: 'run-1' },
+      runId: { text: COPY, anchorText: 'the anchor', runId: `run ${form}` },
+    };
+    for (const [where, args] of Object.entries(placements)) {
+      const r = composeShadowDupProposal({ name: 'leftover-x.md.shadow-dup', ...args });
+      assert.equal(r.ok, true);
+      assert.equal(extractFingerprint(r.proposal), null, `${where}: ${JSON.stringify(form)} forged the proposal's fingerprint`);
+    }
+  }
 });
 
 test('collision: the proposal quotes no anchor, and keeps the missing-or-unreadable note (#3946 M3)', () => {

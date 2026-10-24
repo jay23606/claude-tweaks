@@ -8,13 +8,14 @@
 // this module builds it: a needs:definition task whose spec-shaped body quotes
 // the copy verbatim — and, for a divergent copy, its anchor too, so the record
 // stays readable after the run dir is archived (fencedBlock widens its fence past
-// any backtick run inside the text, so a quote can never be closed early). The
+// any backtick run inside the text, so a quote can never be closed early; a
+// fingerprint-marker spelling inside it is defused, the one change to "verbatim"). The
 // header shape is the one wrap-up/leftover-routing.md step 3 writes. A
 // byte-identical duplicate is refused, never composed — the console dismisses it.
 'use strict';
 
 const {
-  specShapedBody, recordPayload, fencedBlock, LABELS,
+  specShapedBody, recordPayload, fencedBlock, defuse, LABELS,
 } = require('../issues/record');
 const { classifyStagedItem, SHADOW_DUP_RE } = require('./resolve');
 
@@ -35,29 +36,34 @@ function composeShadowDupProposal({
   const { outcome } = classifyStagedItem(name, text, anchorText);
   if (outcome === 'shadow-dup-duplicate') return { ok: false, reason: 'shadow-dup-duplicate' };
 
-  const title = `Reconcile staged copy ${name}`;
+  // The copy, the anchor and the run id are producer-supplied text quoted ahead of recordPayload's
+  // trailing marker, and this record carries no fingerprint of its own — so each is defused
+  // (record.js) before it is interpolated, or a quoted marker would read back as its fingerprint.
+  const safeName = defuse(name);
+  const safeAnchor = defuse(anchor);
+  const title = `Reconcile staged copy ${safeName}`;
   const divergent = outcome === 'shadow-dup-divergent';
   const body = recordPayload({
     title,
     type: 'task',
     deferReason: DEFER_REASON,
     body: specShapedBody({
-      provenance: { origin: `wrap-up Review Console, run ${runId}: ${outcome} copy staged/${name}`, deferReason: DEFER_REASON },
+      provenance: { origin: `wrap-up Review Console, run ${defuse(runId)}: ${outcome} copy staged/${safeName}`, deferReason: DEFER_REASON },
       currentState: divergent
         ? [
-          `\`staged/${name}\` is a ${outcome} copy of its anchor \`staged/${anchor}\` — the two differ, and the copy's full content follows verbatim.`,
-          fencedBlock(text),
-          `\`staged/${anchor}\` stops resolving once the run dir is archived, so the anchor's full content follows verbatim too.`,
-          fencedBlock(anchorText),
+          `\`staged/${safeName}\` is a ${outcome} copy of its anchor \`staged/${safeAnchor}\` — the two differ, and the copy's full content follows verbatim.`,
+          fencedBlock(defuse(text)),
+          `\`staged/${safeAnchor}\` stops resolving once the run dir is archived, so the anchor's full content follows verbatim too.`,
+          fencedBlock(defuse(anchorText)),
         ]
         : [
-          `\`staged/${name}\` is a ${outcome} copy: its anchor \`staged/${anchor}\` was missing or unreadable, so nothing could be compared, and the copy's full content follows verbatim.`,
-          fencedBlock(text),
+          `\`staged/${safeName}\` is a ${outcome} copy: its anchor \`staged/${safeAnchor}\` was missing or unreadable, so nothing could be compared, and the copy's full content follows verbatim.`,
+          fencedBlock(defuse(text)),
         ],
       deliverables: '- [ ] compare with the anchor; apply the copy through its own kind\'s consumer, or close this record when the anchor covers it',
       openQuestion: divergent
-        ? `Does the copy carry a proposal that its anchor \`staged/${anchor}\` does not?`
-        : `The anchor \`staged/${anchor}\` was missing or unreadable, so is the copy's proposal still wanted?`,
+        ? `Does the copy carry a proposal that its anchor \`staged/${safeAnchor}\` does not?`
+        : `The anchor \`staged/${safeAnchor}\` was missing or unreadable, so is the copy's proposal still wanted?`,
       releaseNote: 'No user-visible change.',
       filedBy: 'wrap-up Review Console',
       footer: '_Filed by `wrap-up Review Console` via specShapedBody._',
