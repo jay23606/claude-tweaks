@@ -305,38 +305,55 @@ function readIfPresent(d, file) {
   return d.exists(file) ? d.readFile(file) : null;
 }
 
+// A run's consoles: the run's own console.json, then each spec-*/console.json.
+function consolePathsOf(runDir, deps = {}) {
+  const d = { ...defaultDeps, ...deps };
+  return [path.join(runDir, 'console.json'), ...d.readdir(runDir).filter((n) => /^spec-/.test(n)).sort().map((n) => path.join(runDir, n, 'console.json'))];
+}
+
+// One console's inputs, read fresh: { state: 'absent' } when it has no console.json,
+// { state: 'unreadable', path } naming the file that exists but could not be read or
+// parsed, else { state: 'ok', consoleDir, consoleJson, decisions, findings, readStaged,
+// runId } — the arguments consoleWorkItems and backfill-apply.js's applyToConsole take.
+function readConsole(consolePath, deps = {}) {
+  const d = { ...defaultDeps, ...deps };
+  const consoleDir = path.dirname(consolePath);
+  let consoleJson;
+  try {
+    const raw = readIfPresent(d, consolePath);
+    if (raw === null) return { state: 'absent' };
+    consoleJson = JSON.parse(raw);
+  } catch { return { state: 'unreadable', path: consolePath }; }
+  if (!consoleJson || typeof consoleJson !== 'object') return { state: 'unreadable', path: consolePath };
+  const decisionsPath = path.join(consoleDir, 'decisions.md');
+  let decisions;
+  try { decisions = readIfPresent(d, decisionsPath) || ''; } catch { return { state: 'unreadable', path: decisionsPath }; }
+  // The tiebreak artifact: absent reads as []; present but unreadable, unparseable
+  // or not an array makes the console unreadable rather than claimless.
+  const findingsPath = path.join(consoleDir, 'review-findings.json');
+  let findings;
+  try {
+    const raw = readIfPresent(d, findingsPath);
+    findings = raw === null ? [] : JSON.parse(raw);
+  } catch { findings = null; }
+  if (!Array.isArray(findings)) return { state: 'unreadable', path: findingsPath };
+  const readStaged = (name) => readIfPresent(d, path.join(consoleDir, 'staged', name));
+  return { state: 'ok', consoleDir, consoleJson, decisions, findings, readStaged, runId: runIdOf(consoleDir) };
+}
+
 function buildWorkList({ pipelinesRoot, mainSha, deps = {} }) {
   const d = { ...defaultDeps, ...deps };
   const { closed, live } = enumerateRuns(pipelinesRoot, d);
   const runs = [];
   const unreadable = [];
   for (const runDir of closed) {
-    const consolePaths = [path.join(runDir, 'console.json'), ...d.readdir(runDir).filter((n) => /^spec-/.test(n)).sort().map((n) => path.join(runDir, n, 'console.json'))];
     const items = [];
-    for (const consolePath of consolePaths) {
-      const consoleDir = path.dirname(consolePath);
-      let consoleJson;
-      let decisions;
+    for (const consolePath of consolePathsOf(runDir, d)) {
+      const read = readConsole(consolePath, d);
+      if (read.state === 'absent') continue;
+      if (read.state === 'unreadable') { unreadable.push(read.path); continue; }
       try {
-        const raw = readIfPresent(d, consolePath);
-        if (raw === null) continue;
-        consoleJson = JSON.parse(raw);
-      } catch { unreadable.push(consolePath); continue; }
-      if (!consoleJson || typeof consoleJson !== 'object') { unreadable.push(consolePath); continue; }
-      const decisionsPath = path.join(consoleDir, 'decisions.md');
-      try { decisions = readIfPresent(d, decisionsPath) || ''; } catch { unreadable.push(decisionsPath); continue; }
-      // The tiebreak artifact: absent reads as []; present but unreadable, unparseable
-      // or not an array makes the console unreadable rather than claimless.
-      const findingsPath = path.join(consoleDir, 'review-findings.json');
-      let findings;
-      try {
-        const raw = readIfPresent(d, findingsPath);
-        findings = raw === null ? [] : JSON.parse(raw);
-      } catch { findings = null; }
-      if (!Array.isArray(findings)) { unreadable.push(findingsPath); continue; }
-      const readStaged = (name) => readIfPresent(d, path.join(consoleDir, 'staged', name));
-      try {
-        items.push(...consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runId: runIdOf(consoleDir), findings }));
+        items.push(...consoleWorkItems(read));
       } catch { unreadable.push(consolePath); }
     }
     runs.push({ runDir, items });
@@ -358,5 +375,5 @@ function summarize(workList) {
 }
 
 module.exports = {
-  STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, consoleWorkItems, buildWorkList, summarize,
+  STAGED_FINDING_RE, enumerateRuns, splitDecisionLine, backfillItemId, itemHashOf, consoleWorkItems, consolePathsOf, readConsole, buildWorkList, summarize,
 };
