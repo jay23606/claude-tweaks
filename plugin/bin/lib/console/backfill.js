@@ -26,10 +26,13 @@ const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const FILEABLE_SEVERITIES = new Set(['critical', 'high', 'medium']);
 const LOCATION_RE = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/g;
 const PATH_SHAPED_RE = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/;
-// Reproduction-meta phrases: they describe how a finding was (not) reproduced,
-// never the finding itself. Multi-word phrases first, so a lone word cannot
-// split one.
-const META_PHRASES = [/present in only one\b[^)]*/gi, /partner agents?\b[^)]*/gi, /single agent/gi, /single[- ]read/gi, /no findings/gi, /\breproduc\w*/gi, /\bagents?\b/gi];
+// Reproduction meta describes how a finding was (not) reproduced, never the finding itself. It is
+// stripped a whole clause at a time — a parenthetical clause (split at `,` `;`) that opens with one of
+// these — never a single word inside a kept claim ("the agent field is reproduced from stdin" stays).
+const META_CLAUSE_RE = /^(?:present in only one\b|partner agents?\b|single agent\b|single[- ]read\b|no findings\b|(?:one|both) agents?\b|agent [A-Z]\b|probed by (?:the |an? )?agents?\b|not reproduced\b|reproduc\w*\s+(?:by|agents?|pairs?)\b)/i;
+// A producer note that is meta as a whole parenthetical: a ledger `reason-not-auto:` note and a
+// cross-lens pointer (`same substance as … resolved Don't fix`).
+const META_PAREN_RE = /^(?:reason-not-auto:|same substance as\b)/i;
 const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 // A decisions.md line's log prefix (`- STAGED 10:00:00 — `).
 const LOG_PREFIX_RE = /^-\s+(?:STAGED|AUTO)\s+\d{2}:\d{2}:\d{2}\s+—\s+/;
@@ -46,9 +49,10 @@ const LEDGER_REF_RE = /(?:\b[\w-]+\s+case\s*=\s*)?(?:\b(?:already|same\s+as)\s+)
 const TRAILING_LEDGER_RE = /(?:^|\s*—\s*|(?<=[.;,])\s+)(?:(?:same\s+as\s+)?ledger\s+(?:row|item)\s+\d+|same\s+observation\s+already\s+ledgered\s+as\s+row\s+\d+)(?:\s*\(observation\))?\s*\.?\s*$/i;
 // What a multi-location list leaves in front of a claim: separators, `and`, and bare line refs (`:335`, `-133`,
 // `/127`). A `/` is a separator only before whitespace or a ref (`/claude-tweaks:flow` keeps its slash). A bare ref
-// right after a separator is a continuation; one that opens the claim is stripped only when a separator, another
-// ref, `and` or the end follows it (`-1 is returned` is prose). Matched against trimmed text.
-const LEAD_FRAGMENT_RE = /^(?:\s+|(?<=[\s/,;:.)—])[:\-/]\d+(?:-\d+)?|[:\-/]\d+(?:-\d+)?(?=\s*(?:$|[/,;.)—(]|[:\-/]\d)|\s+and\s*(?:$|[/,:.\-]))|\/(?=\s|:\d|$)|[,;:.)—](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
+// right after a list separator (`/` `,` `;` `and`) or another ref is a continuation — never one after prose
+// punctuation (`not reproduced: -1 is returned` keeps its `-1`); one that opens the claim is stripped only when a
+// separator, another ref, `and` or the end follows it (`-1 is returned` is prose). Matched against trimmed text.
+const LEAD_FRAGMENT_RE = /^(?:\s+|(?<=(?:[/,;]|\band|[:\-/]\d+(?:-\d+)?)\s*)[:\-/]\d+(?:-\d+)?|[:\-/]\d+(?:-\d+)?(?=\s*(?:$|[/,;.)—(]|[:\-/]\d)|\s+and\s*(?:$|[/,:.\-]))|\/(?=\s|:\d|$)|[,;:.)—](?!\d)|and\b(?=\s*(?:[/,:.\-]|$)))+/;
 
 const defaultDeps = {
   readFile: (p) => fs.readFileSync(p, 'utf8'),
@@ -109,22 +113,50 @@ function enumerateRuns(pipelinesRoot, deps = {}) {
 // A word has a letter: a bare line ref (`:335`) left by a location list is not one.
 const wordCount = (text) => text.split(/\s+/).filter((w) => /[A-Za-z]/.test(w)).length;
 
-// A parenthetical loses its ledger-row references (dropped whole when nothing else is left), then
-// holding reproduction meta loses those phrases, and is dropped whole when fewer than 3 words
-// remain; one with neither is kept as written.
+// Does a ledger-row reference sit at a clause boundary of its parenthetical? Before it: the start or a
+// `,` `;` `:`. After it: the end, a `,` `;` `:`, or its own consumed `,`/`;` not followed by a
+// conjunction. Anywhere else (`see ledger row 3 and the cell`, `ledger row 3, but cell empty`) it is
+// part of a clause, and removing it would leave a fragment.
+function ledgerRefAtBoundary(match, offset, whole) {
+  const before = whole.slice(0, offset).trimEnd();
+  const after = whole.slice(offset + match.length);
+  const leftOk = before === '' || /[,;:]$/.test(before);
+  const rightOk = /[,;]\s*$/.test(match) ? !/^\s*(?:and|but|or|so|yet)\b/i.test(after) : /^\s*(?:$|[,;:])/.test(after);
+  return leftOk && rightOk;
+}
+
+// A parenthetical loses its ledger-row references (dropped whole when nothing else is left, or when a
+// reference sat inside a clause), then its reproduction-meta clauses, and is dropped whole when fewer
+// than 3 words remain; one with neither is kept as written. A whole-parenthetical producer note
+// (META_PAREN_RE) is dropped.
 function cleanParenthetical(inner) {
+  if (META_PAREN_RE.test(inner.trim())) return '';
   let text = inner;
   let ledger = false;
-  text = text.replace(LEDGER_REF_RE, () => { ledger = true; return ''; });
+  let fragment = false;
+  text = text.replace(LEDGER_REF_RE, (m, offset, whole) => {
+    ledger = true;
+    if (!ledgerRefAtBoundary(m, offset, whole)) fragment = true;
+    return '';
+  });
   if (ledger) {
+    if (fragment) return '';
     text = text.replace(/\s+/g, ' ').replace(/^[\s,;:]+|[\s,;]+$/g, '');
     if (wordCount(text) === 0 || /^(?:\b(?:and|or)\b|[\d#,;&\s])*$/i.test(text)) return '';
   }
+  // Clauses with their separators: a meta clause goes with the separator in front of it (or, for the
+  // first clause, the one after it).
+  const parts = text.split(/([,;])/);
+  const kept = [];
   let meta = false;
-  let stripped = text;
-  for (const re of META_PHRASES) stripped = stripped.replace(re, () => { meta = true; return ''; });
+  for (let i = 0; i < parts.length; i += 2) {
+    if (META_CLAUSE_RE.test(parts[i].trim())) { meta = true; continue; }
+    if (kept.length) kept.push(parts[i - 1]);
+    kept.push(kept.length ? parts[i] : parts[i].replace(/^\s+/, ''));
+  }
   if (!meta) return `(${text})`;
-  return wordCount(stripped) < 3 ? '' : `(${stripped.replace(/\s+/g, ' ').trim()})`;
+  const stripped = kept.join('').replace(/\s+/g, ' ').trim();
+  return wordCount(stripped) < 3 ? '' : `(${stripped})`;
 }
 
 // The whole segment is the claim: reproduction-meta parentheticals and the producer's
@@ -134,7 +166,8 @@ function cleanSegment(segment) {
   // A ref glued to the location token (`path:125` + `-133`, `path:122` + `/127`, `path` + `:17`) is that location's own tail.
   let text = segment.replace(/^[:\-/]\d+(?:-\d+)?/, '').replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
   for (const re of BOILERPLATE) text = text.replace(re, '');
-  text = text.replace(/\s+/g, ' ').trim().replace(TRAILING_LEDGER_RE, '').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').trim();
+  // A dropped parenthetical leaves ` .` behind: at the end it goes (so a lone parenthetical unwraps), mid-claim it closes up.
+  text = text.replace(/\s+/g, ' ').trim().replace(TRAILING_LEDGER_RE, '').replace(LEAD_FRAGMENT_RE, '').replace(/[\s,;]+$/, '').replace(/\s+\.$/, '').replace(/\s+\.(?=\s)/g, '.').trim();
   const whole = /^\(([^()]*)\)\s*\.?$/.exec(text);
   return whole ? whole[1].trim() : text;
 }
@@ -145,9 +178,12 @@ function severityOf(text) {
   return m ? m[1] : null;
 }
 
-// The location tokens that start a finding: never one inside a parenthetical,
-// and never a `:N-M` range after the first split point — that range is a
-// cross-reference continuing the previous finding's claim.
+// The location tokens that start a finding: never one inside a parenthetical.
+// A `:N-M` range after the first split point starts a finding only when a list
+// separator (`,` `;` `/` `)` `—` or `and`) sets it off; set in prose
+// (`overlaps tests/b.test.js:79-88`) it is a cross-reference continuing the
+// previous finding's claim.
+const RANGE_STARTS_FINDING_RE = /(?:[,;/)—]|\band)\s*$/;
 function splitPoints(line) {
   const depthAt = [];
   let depth = 0;
@@ -165,7 +201,7 @@ function splitPoints(line) {
     seen.set(m[0], occurrence + 1);
     if (depthAt[m.index] > 0) continue;
     const end = m.index + m[0].length;
-    if (points.length > 0 && /^-\d/.test(line.slice(end))) continue;
+    if (points.length > 0 && /^-\d/.test(line.slice(end)) && !RANGE_STARTS_FINDING_RE.test(line.slice(0, m.index))) continue;
     points.push({ path: m[1], line: Number(m[2]), occurrence, start: m.index, end });
   }
   return points;
@@ -295,10 +331,21 @@ function persistedSplitItem(item, single, runId, section) {
   return { ...itemOfFinding({ base: single, itemId: id, finding: first, claim, section, line: source }), noClaimReason: 'split-drift' };
 }
 
-function stagedFindingItem(name, text, base, itemId, section) {
+// The first location a text names: `{ path, line }` from a `path:line`, else `{ path, line: null }`
+// from a path-shaped token, else null.
+function firstLocation(text) {
   const loc = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/.exec(text);
-  const shaped = loc ? null : PATH_SHAPED_RE.exec(text);
-  if (!loc && !shaped) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'no-path', context: text };
+  if (loc) return { path: loc[1], line: Number(loc[2]) };
+  const shaped = PATH_SHAPED_RE.exec(text);
+  return shaped ? { path: shaped[0], line: null } : null;
+}
+
+// A staged finding file's claim and location come from the same place. A claim taken from the digest
+// text (a table row, a paragraph) takes that row's or paragraph's location when it names one. A
+// `Finding:` line keeps the file's first location, normally its `Location:`/`Target:` field (a path
+// the claim mentions is often the other copy, not the finding's own).
+function stagedFindingItem(name, text, base, itemId, section) {
+  if (!firstLocation(text)) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'no-path', context: text };
   const sev = /Severity:\s*(\w+)/.exec(text);
   const lens = /Lens:\s*([\w-]+)/.exec(text) || /lens\s+"?([\w-]+)/.exec(text);
   const findingLine = /^[-*\s]*Finding:\**\s*(.+)$/m.exec(text);
@@ -306,7 +353,8 @@ function stagedFindingItem(name, text, base, itemId, section) {
   // table header; the joined text only when that yields nothing.
   const joined = () => text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ');
   const claim = (findingLine ? findingLine[1] : digestTextOf(text) || joined()).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
-  const where = { lens: lens ? lens[1] : 'unknown', path: loc ? loc[1] : shaped[0], line: loc ? Number(loc[2]) : null };
+  const loc = (!findingLine && firstLocation(claim)) || firstLocation(text);
+  const where = { lens: lens ? lens[1] : 'unknown', path: loc.path, line: loc.line };
   if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: where, context: text };
   return {
     ...base,

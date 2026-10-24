@@ -547,7 +547,8 @@ const R17_PRE_CHANGE_IDS = [
   [R17_RANGE, ['bf:d33c6dd161b22818']],
   [R17_SLASH, ['bf:62e0c8aee171e4c9']],
   [R17_COLON, ['bf:fd0574e08ca84155']],
-  [R17_LIST, ['bf:5b19edfcb6933609', 'bf:d396a083d40135eb']],
+  // Minor 2 made `ledger-write.js:114-115` (set off by `), `) a finding of its own: one id added, the other two unmoved.
+  [R17_LIST, ['bf:5b19edfcb6933609', 'bf:d396a083d40135eb', 'bf:193d16d921e074e3']],
 ];
 
 test('R17: item ids are byte-identical to the pinned derivation', () => {
@@ -602,6 +603,49 @@ test('R17: a parenthetical left with only connectives and refs after the ledger 
   assert.strictEqual(splitDecisionLine(r3Line('the guard skips the pipe (ledger rows 3, 4 or 5) when the cell is empty')).findings[0].claim, 'the guard skips the pipe when the cell is empty');
 });
 
+// Final-wave claim-cleaning minors (1, 2, 9, 10). Verbatim real lines where they exist.
+const R_NOT_AUTO = '- STAGED 18:44:40 — Reproduction: lens "3a" finding docs/plans/2026-10-20-nested-dispatch-native-rewake-ledger.md:5 not reproduced (reason-not-auto: requires-judgment on divergence/merge-order rows; closest enum value for a merge-order call). Staged to Review Console as low-confidence. Reversibility: high.';
+const R_SAME_SUBSTANCE = '- STAGED 23:34:26 — log-decision: Reproduction: lens 3c finding plugin/bin/lib/verify/flaky.js:12 not reproduced (same substance as the confirmed 3a flaky.js:12 finding, resolved Don\'t fix). Staged to Review Console as low-confidence. Reversibility: high.';
+
+test('minor 1: reproduction meta is stripped a whole clause at a time, never a word inside a kept claim', () => {
+  const claim = (text) => splitDecisionLine(r3Line(text)).findings[0].claim;
+  assert.strictEqual(claim('the parser drops the field (the agent field is reproduced from stdin, verbatim)'), 'the parser drops the field (the agent field is reproduced from stdin, verbatim)');
+  assert.strictEqual(claim('the parser drops the field (agent B only, probed by the agent returning 0) silently'), 'the parser drops the field silently');
+  assert.strictEqual(claim('the parser drops the field (it never checks the type, probed by the agent returning 0) silently'), 'the parser drops the field (it never checks the type) silently');
+  // A producer note is meta as a whole: a line made only of one is claim-empty.
+  assert.deepStrictEqual(splitDecisionLine(R_NOT_AUTO), { findings: [], noClaim: 'claim-empty' });
+  assert.deepStrictEqual(splitDecisionLine(R_SAME_SUBSTANCE), { findings: [], noClaim: 'claim-empty' });
+  // A dropped parenthetical leaves no stray ` .` mid-claim.
+  assert.strictEqual(claim('the writer drops the cell (single agent). It never retries the write'), 'the writer drops the cell. It never retries the write');
+});
+
+test('minor 2: a range token set off by a list separator starts a finding; one in prose continues the claim', () => {
+  const line = '- STAGED 10:00:00 — Reproduction: lens "3f" findings tests/a.test.js:12 duplicates the loop setup, tests/b.test.js:79-88 never closes its temp handle. Staged to Review Console as low-confidence.';
+  assert.deepStrictEqual(splitDecisionLine(line).findings.map((f) => [f.path, f.line, f.claim]), [
+    ['tests/a.test.js', 12, 'duplicates the loop setup'], ['tests/b.test.js', 79, 'never closes its temp handle.'],
+  ]);
+  const prose = '- STAGED 10:00:00 — Reproduction: lens "3f" finding tests/a.test.js:12 duplicates the loop that already overlaps tests/b.test.js:79-88 entirely. Staged to Review Console as low-confidence.';
+  assert.strictEqual(splitDecisionLine(prose).findings.length, 1);
+  assert.deepStrictEqual(splitDecisionLine(R17_LIST).findings.map((f) => `${f.path}:${f.line}`), [
+    'tests/ledger-pipe-escape-rule-conformance.test.js:27', 'tests/bin-lib/wrap-up/pack.test.js:832', 'plugin/bin/lib/wrap-up/ledger-write.js:114',
+  ]);
+});
+
+test('minor 9: a bare number after prose punctuation is claim text, not a location fragment', () => {
+  assert.strictEqual(splitDecisionLine(r3Line('not reproduced: -1 is returned when the guard finds no match')).findings[0].claim, '-1 is returned when the guard finds no match');
+  assert.strictEqual(splitDecisionLine(r3Line('not reproduced. :3 is an index into the stale table')).findings[0].claim, ':3 is an index into the stale table');
+  // Refs after a list separator are still a location list's tail.
+  assert.ok(splitDecisionLine(R17_SLASH_COLON).findings[0].claim.startsWith('share a location but not substance'));
+});
+
+test('minor 10: removing a ledger-row ref never leaves a fragment inside a parenthetical', () => {
+  const claim = (text) => splitDecisionLine(r3Line(text)).findings[0].claim;
+  assert.strictEqual(claim('the guard skips the pipe (ledger row 3, but cell empty) when the cell is empty'), 'the guard skips the pipe when the cell is empty');
+  assert.strictEqual(claim('the guard skips the pipe (see ledger row 3 and the cell) when the cell is empty'), 'the guard skips the pipe when the cell is empty');
+  // At a clause boundary the rest of the parenthetical is kept, as before.
+  assert.strictEqual(claim('the guard skips the pipe (cells are never escaped; already ledger row 6, deferred) when empty'), 'the guard skips the pipe (cells are never escaped; deferred) when empty');
+});
+
 test('staged-digest-text.js is a leaf: it requires nothing from the backfill modules', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'plugin', 'bin', 'lib', 'console', 'staged-digest-text.js'), 'utf8');
   assert.deepStrictEqual(source.match(/require\([^)]*\)/g) || [], []);
@@ -646,6 +690,19 @@ test('R17b: the Finding: line still wins, the joined text is the fallback, and t
   assert.strictEqual(headingsOnly.kind, 'no-claim');
   assert.strictEqual(headingsOnly.noClaimReason, 'claim-empty');
   assert.strictEqual(stagedClaim('review-unconfirmed-1.md', R17B_TITLE).itemId, backfillItemId({ runId: '2026-10-24T090000-record-1', sourceKey: 'staged/review-unconfirmed-1.md', findingKey: '' }));
+});
+
+test('minor 12: a staged finding\'s claim and location come from the same table row', () => {
+  const table = '# Low-confidence review findings\n\n| Severity | Path | Finding |\n|---|---|---|\n| medium | plugin/skills/review/step3-routing.md | the vacuity bullet calls itself an exception to nothing |\n| low | tests/b.test.js:40 | the helper leaks a temp dir |\n';
+  const item = stagedClaim('review-unconfirmed-6.md', table);
+  assert.ok(item.claimText.includes('the vacuity bullet calls itself an exception'), item.claimText);
+  assert.deepStrictEqual([item.finding.path, item.finding.line], ['plugin/skills/review/step3-routing.md', null], 'row 1\'s location, never row 2\'s');
+  // A Finding: line keeps the file's Location: field, even when the claim names another file
+  // (verbatim, archive/2026-10-24T093559-record-3740/staged/review-unconfirmed-2.md).
+  const located = stagedClaim('review-unconfirmed-2.md', '# Low-confidence finding (single lens agent, not reproduced)\n\n- Lens: 3f Test Quality, reported by one of two reproduction agents\n- Severity: low\n- Location: tests/archive-run-verb.test.js (BUNDLE_GATE / BUNDLE_GROUP constants)\n- Finding: the bundle log-line literals are hand-copied here and again in tests/bin-lib/reconcile/archive-merged.test.js, and the copies here are not tied to the live settle-and-merge.md text.\n');
+  assert.deepStrictEqual([located.finding.path, located.finding.line], ['tests/archive-run-verb.test.js', null]);
+  const bare = stagedClaim('review-unconfirmed-8.md', 'Finding: the guard reads a stale value\nTarget: plugin/y.js:9\n');
+  assert.deepStrictEqual([bare.finding.path, bare.finding.line], ['plugin/y.js', 9]);
 });
 
 test('summarize counts kinds', () => {
