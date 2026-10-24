@@ -70,6 +70,7 @@ files:
 - Created during the build of #3947, the second step of the unconfirmed-findings tiebreak project. The first step, #3945, built the resolver, the findings artifact and the archive coverage check.
 - Related journeys:
   - `clear-an-archive-refusal-for-an-untiebroken-finding-3945.md`: the archive side.
+  - `settle-every-review-finding-at-the-console-3949.md`: what the Review Console then does with each can't-tell finding.
   - `keep-a-second-reader-in-a-dispatched-review-3078.md`: the dispatched-reviewer nesting this step reuses.
   - `drop-a-refuted-code-is-missing-claim-3329.md`: how a one-agent `unconfirmed` finding arises, and how a refuted absence claim is dropped before it reaches this step.
   - `trust-a-defect-several-review-lenses-flagged-3604.md`: the `medium`-tier pass that confirms some `unconfirmed` findings before this step.
