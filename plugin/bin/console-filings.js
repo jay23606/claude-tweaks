@@ -119,8 +119,8 @@ function run(argv, deps = realDeps) {
     return 3;
   }
 
-  const { items: rowsOf, findings } = findingItems({ runDir: target.dir, deps });
-  if (o.list) { deps.stdout(JSON.stringify(rowsOf.map(listRow)) + '\n'); return 0; }
+  const { items: findingRows, findings } = findingItems({ runDir: target.dir, deps });
+  if (o.list) { deps.stdout(JSON.stringify(findingRows.map(listRow)) + '\n'); return 0; }
 
   let rows;
   try { rows = JSON.parse(deps.readFile(path.resolve(deps.cwd(), o.existing))); } catch (err) {
@@ -128,7 +128,7 @@ function run(argv, deps = realDeps) {
   }
   if (!Array.isArray(rows)) return usageError(`--existing ${o.existing} must be a JSON array of { number, body }`);
 
-  let items = rowsOf.filter((i) => i.tiebreak);
+  let items = findingRows.filter((i) => i.tiebreak);
   if (only) {
     const unknown = only.filter((id) => !items.some((i) => i.id === id));
     if (unknown.length) {

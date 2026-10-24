@@ -445,7 +445,7 @@ function parseTiebreakLine(line) {
   const s = c ? null : TIEBREAK_STEP_RE.exec(line);
   if (!c && !s) return null;
   const [id, lens, file, lineNo] = c ? [c[4], c[1], c[2], c[3]] : [s[1], s[2], s[3], s[4]];
-  const kind = c ? 'confirmed' : s[5] === 'console' ? 'console' : s[5] === 'digested' ? 'digested' : 'dropped';
+  const kind = c ? 'confirmed' : s[5]; // TIEBREAK_STEP_RE admits only console | digested | dropped
   const tail = s ? line.slice(s.index + s[0].length) : '';
   const severity = [...tail.matchAll(TIEBREAK_SEVERITY_RE)].map((m) => m[1]).pop() || null;
   const rec = /Recommendation: (file|drop|none)\./.exec(tail);
