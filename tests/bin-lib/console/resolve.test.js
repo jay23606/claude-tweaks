@@ -740,6 +740,20 @@ test('tiebreak lines are read by shape, not by keyword (#3949)', () => {
   const items = findings(v.entry);
   assert.deepStrictEqual(items.map((i) => [i.id, i.section]), [[`tiebreak:${v.r.id}`, 'Low-confidence findings']], 'the debate in the path never makes it Contested or a second item');
   assert.strictEqual(parseTiebreakLine('- STAGED 10:00:00 — Step 3: lens "3a" finding src/a.js:9 mentions tiebreak:0123456789ab in passing, console: nope. Severity: high.'), null);
+  const quoted = '- STAGED 10:00:00 — Note: saw "Tiebreak tiebreak:0123456789ab: lens "3a" finding src/a.js:9 console: x. Severity: high. Recommendation: drop." in a pasted log. Reversibility: high.';
+  assert.strictEqual(parseTiebreakLine(quoted), null, 'a verdict step quoted inside another line is not a verdict');
+  const quotedConfirmed = '- AUTO 10:00:00 — Note: quoting Reproduction: lens "3a" finding src/a.js:9 confirmed by tiebreak:0123456789ab. Confirmed. Reversibility: high.';
+  assert.strictEqual(parseTiebreakLine(quotedConfirmed), null, 'a quoted confirmed sentence is not a verdict');
+  assert.ok(!findings(quoted).some((i) => i.id.startsWith('tiebreak:')), 'and it produces no tiebreak item');
+});
+
+test('a console verdict a linked staged file carries is never also its own item, even while the file is unsettled (#3949)', () => {
+  const f = tbFinding();
+  const other = tbFinding({ line: 20, claim: 'other' });
+  const v = tbVerdict(f, { recommendation: 'file' });
+  const decisions = [tbDebate(f, 'review-contested-1.md'), tbDebate(other, 'review-contested-1.md'), v.entry].join('\n');
+  const items = findings(decisions, { 'review-contested-1.md': 'x' });
+  assert.deepStrictEqual(items.map((i) => [i.id, i.section, i.resolution]), [['review-contested-1.md', 'Contested findings', 'keep-staged']], 'the verdict is carried by the open file, not filed on top of it');
 });
 
 test('a two-finding coincidence line needs both verdicts (#3949)', () => {

@@ -430,8 +430,11 @@ function mergeResolution(snapshot, deps) {
 //   AUTO   … Tiebreak tiebreak:{id}: lens "L" finding P:N digested: {reason}. Severity: {s}.
 //   AUTO   … Tiebreak tiebreak:{id}: lens "L" finding P:N dropped: refuted by tiebreak. Evidence: {e}. Severity: {s}.
 //   AUTO   … Reproduction: lens "L" finding P:N confirmed by tiebreak:{id}. Confirmed.
-const TIEBREAK_STEP_RE = /Tiebreak tiebreak:([0-9a-f]{12}): lens "([^"]*)" finding (\S+):([^\s:]+) (console|digested|dropped): /;
-const TIEBREAK_CONFIRMED_RE = /\blens "([^"]*)" finding (\S+):([^\s:]+) confirmed by tiebreak:([0-9a-f]{12})\. Confirmed\./;
+// Anchored on the verdict line's own shape, mirroring tiebreak.js's verdictLineRe, so a marker quoted
+// inside another line's text never parses as a verdict.
+const VERDICT_LINE_HEAD = '^- (?:AUTO|STAGED) \\d{2}:\\d{2}:\\d{2} — ';
+const TIEBREAK_STEP_RE = new RegExp(`${VERDICT_LINE_HEAD}Tiebreak tiebreak:([0-9a-f]{12}): lens "([^"]*)" finding (\\S+):([^\\s:]+) (console|digested|dropped): `);
+const TIEBREAK_CONFIRMED_RE = new RegExp(`${VERDICT_LINE_HEAD}Reproduction: lens "([^"]*)" finding (\\S+):([^\\s:]+) confirmed by tiebreak:([0-9a-f]{12})\\. Confirmed\\.`);
 const TIEBREAK_SEVERITY_RE = /Severity: (critical|high|medium|low|info)\./g;
 const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 
@@ -505,11 +508,18 @@ function tiebreakModel(snapshot) {
   for (const [name, refs] of naming) {
     const cls = classifyStagedItem(name);
     if (refused.has(name) || cls.outcome || cls.reason || !FINDING_SECTIONS.includes(cls.section)) continue;
+    // A console verdict a linked file carries is never its own item, settled file or not: an
+    // unsettled file stays keep-staged until all its keys settle, so the finding is not lost.
+    for (const r of refs) {
+      for (const k of r.keys) {
+        const v = settledByKey.get(k);
+        if (v && v.kind === 'console' && v.index > r.index) absorbed.add(v.id);
+      }
+    }
     if (!refs.every((r) => settledAfter(r.index, r.keys))) continue;
     const verdicts = refs.flatMap((r) => r.keys.map((k) => settledByKey.get(k)));
     const chosen = VERDICT_PRECEDENCE.map((kind) => verdicts.find((v) => v.kind === kind)).find(Boolean);
     settledFiles.set(name, chosen);
-    verdicts.filter((v) => v.kind === 'console').forEach((v) => absorbed.add(v.id));
   }
   return { lines, latestById, settledAfter, settledFiles, absorbed };
 }
