@@ -97,8 +97,9 @@ const itemFingerprint = (item) => fingerprintFromBasis('consolebackfill', [item.
 const ITEM_MARKER_PREFIX = 'consolebackfill-item';
 const itemMarkerOf = (item) => `<!-- ${ITEM_MARKER_PREFIX}: ${itemFingerprint(item)} -->`;
 
-// `marked`: the line also carries the item marker, after the provenance and before the materiality
-// marker (the entry's fields, and so its fingerprint, are unchanged).
+// `marked`: the line also carries the item marker, after the materiality marker, so `{provenance}`
+// stays the bare run id digest-sweep.md dates expiry from (the entry's fields, and so its
+// fingerprint, are unchanged).
 function digestEntryOf({ item, finding, fileRefs, deferReason, runId, marked = false }) {
   const entry = {
     area: oneLine(areaFor(item)),
@@ -107,7 +108,7 @@ function digestEntryOf({ item, finding, fileRefs, deferReason, runId, marked = f
     deferReason,
     provenance: oneLine(runId),
   };
-  const line = materialityEntryLine(marked ? { ...entry, provenance: `${entry.provenance} ${itemMarkerOf(item)}` } : entry);
+  const line = marked ? `${materialityEntryLine(entry)} ${itemMarkerOf(item)}` : materialityEntryLine(entry);
   return { entry, line, fingerprint: materialityFingerprint(entry) };
 }
 

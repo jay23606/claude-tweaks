@@ -33,6 +33,8 @@ fails toward filing an ordinary issue, never toward the digest.
 - [{area}] {one-line finding} — {file refs} — Defer-reason: {value} — {provenance} <!-- materiality-fingerprint: {fp} -->
 ```
 
+A line console backfill writes for a finding (`tidy/console-backfill.md`) carries one more marker after the materiality marker, `<!-- consolebackfill-item: {fp} -->`, so its next pass finds the line after a claim-heuristic change; `{provenance}` stays the bare run id.
+
 `{area}` is the subsystem the finding belongs to, written as a stable, low-cardinality, lowercase
 token: the skill name (`tidy`, `review`), the `bin/lib/` module (`issues`, `hooks`), or the
 top-level tree (`docs`, `tests`) the `{file refs}` sit under — never a sentence and never a

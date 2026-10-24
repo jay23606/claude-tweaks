@@ -562,6 +562,7 @@ test('I1: a finding digested under one claim is a digest duplicate, not a second
   const line = plan({ workList: workList([before]), verdicts: { [before.itemId]: digestV } }).digest.lines[0];
   assert.ok(line.includes(`<!-- consolebackfill-item: ${backfillFingerprint(before.itemId)} -->`), line);
   assert.deepStrictEqual(parseMaterialityFingerprints(line).length, 1, 'still one materiality marker on the line');
+  assert.match(line, / — [^ ]+ <!-- materiality-fingerprint: \S+ --> <!-- consolebackfill-item: \S+ -->$/, '{provenance} stays the bare run id; the item marker trails the materiality marker');
   const digestComments = [{ body: line, authorAssociation: 'OWNER', url: 'https://x/issues/1426#issuecomment-1' }];
   for (const verdicts of [{ [after.itemId]: digestV }, {}]) {
     const out = plan({ workList: workList([after]), verdicts, digestComments });
