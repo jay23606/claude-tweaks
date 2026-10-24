@@ -1230,9 +1230,19 @@ async function main(argv) {
     }
     // #3949: a resolved console can still hold an item no human has reviewed.
     if (consoleState === 'residue') {
+      // --ack skips an unparseable console, so an unreadable one's remedy is repairing the file.
       const { items, unreadable } = consoleResidue(runDir);
-      const what = items > 0 ? `${items} unresolved item(s) no human has reviewed` : `${unreadable.length} console.json file(s) could not be read`;
-      process.stdout.write(`claude-tweaks: archival refused — console-residue (${what}; review them, then run console-residue.js --ack --run "${runDir}")\n`);
+      const what = [];
+      const remedies = [];
+      if (items > 0) {
+        what.push(`${items} unresolved item(s) no human has reviewed`);
+        remedies.push(`review them, then run console-residue.js --ack --run "${runDir}"`);
+      }
+      if (unreadable.length > 0) {
+        what.push(`${unreadable.length} console.json file(s) could not be read`);
+        remedies.push(`repair or remove ${unreadable.join(', ')}, then re-run archive-run`);
+      }
+      process.stdout.write(`claude-tweaks: archival refused — console-residue (${what.join(' and ')}; ${remedies.join('; ')})\n`);
       return 0;
     }
     if (consoleState === 'none' && consoleReplacedByAutoMergeShortCircuit(runDir)) {

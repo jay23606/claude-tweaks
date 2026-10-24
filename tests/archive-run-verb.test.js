@@ -216,6 +216,21 @@ test('archive-run refuses when a spec-N console.json is unreadable (fails closed
   fs.writeFileSync(path.join(runDir, 'spec-12', 'console.json'), '{not json');
   const result = runHook(['archive-run', '--run', runDir], { cwd: root });
   assert.match(result.stdout, /archival refused — console-residue/);
+  // --ack skips an unparseable console, so it is no remedy here: name the file to repair.
+  assert.ok(result.stdout.includes(`repair or remove ${path.join(runDir, 'spec-12', 'console.json')}, then re-run archive-run`), result.stdout);
+  assert.doesNotMatch(result.stdout, /--ack/);
+  assert.ok(fs.existsSync(path.join(runDir, 'config.yml')), 'run dir must not be moved');
+});
+
+test('archive-run names both remedies when residue items and an unreadable console.json both block', () => {
+  const { root, runDir } = runDirFixture('clean');
+  residueConsole(runDir);
+  fs.mkdirSync(path.join(runDir, 'spec-12'));
+  fs.writeFileSync(path.join(runDir, 'spec-12', 'console.json'), '{not json');
+  const result = runHook(['archive-run', '--run', runDir], { cwd: root });
+  assert.match(result.stdout, /archival refused — console-residue \(1 unresolved item\(s\) no human has reviewed and 1 console\.json file\(s\) could not be read;/);
+  assert.match(result.stdout, /console-residue\.js --ack --run /);
+  assert.ok(result.stdout.includes(`repair or remove ${path.join(runDir, 'spec-12', 'console.json')}`), result.stdout);
   assert.ok(fs.existsSync(path.join(runDir, 'config.yml')), 'run dir must not be moved');
 });
 
