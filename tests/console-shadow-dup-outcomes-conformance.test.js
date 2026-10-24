@@ -606,7 +606,7 @@ test('control: the old warning wording or the old pending list fails assertRefus
   assert.throws(() => assertRefusalJourney(oldExit), { message: /still says the staging check leaves the exit code unchanged/ });
   const oldFile = doctor(J_3370, 'refused (unmapped-prefix)', 'refused (unmapped-prefix). The file is still written');
   assert.throws(() => assertRefusalJourney(oldFile), { message: /still says the unmapped file is still written/ });
-  const oldPending = doctor(J_3370, 'a non-tangential reflect category)', 'a non-tangential reflect category, a shadow-dup copy)');
+  const oldPending = doctor(J_3370, 'a non-tangential reflect category,', 'a non-tangential reflect category, a shadow-dup copy,');
   assert.throws(() => assertRefusalJourney(oldPending), { message: /still lists a shadow-dup copy/ });
 });
 
