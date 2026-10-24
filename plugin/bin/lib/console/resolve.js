@@ -7,6 +7,7 @@
 // executes it. The CLI (bin/console-resolve.js) owns every write.
 'use strict';
 
+const crypto = require('crypto');
 const path = require('path');
 const { evaluateMaturation } = require('../issues/grant-maturation');
 const { resolveRecords } = require('../wrap-up/pack');
@@ -614,6 +615,10 @@ function engineItems(snapshot, stagedIds) {
 // once reproduced (#3772). Case-sensitive so `not confirmed` never matches; a
 // keyless line is never superseded. A can't-tell `console` verdict supersedes
 // its STAGED line too, and re-enters as one `tiebreak:{id}` item (#3949).
+//
+// A coordination item's id is the readable lead plus a hash of the full line, so same-second lines
+// that share a lead-in stay distinct (#3816). Stored ids are opaque to every reader, so a console.json
+// written with the old 58-character id still reads and re-renders unchanged.
 function findingKey(line) {
   const lens = /\blens\s+"?([A-Za-z0-9_-]+)"?/i.exec(line);
   const loc = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/.exec(line);
@@ -630,6 +635,7 @@ function coordinationItems(snapshot, stagedIds) {
     if (/contested|debate/i.test(line)) return SECTIONS.CONTESTED;
     return null;
   };
+  const occurrences = new Map();
   for (const [i, line] of model.lines.entries()) {
     if (!/^- STAGED /.test(line) || parseTiebreakLine(line)) continue;
     if (model.settledAfter(i, lineKeys(line))) continue;
@@ -639,7 +645,11 @@ function coordinationItems(snapshot, stagedIds) {
     const named = STAGED_FILE_RE.exec(line);
     if (named && stagedIds.has(named[1])) continue;
     const section = lineSection(line);
-    if (section) out.push({ id: `decision:${line.slice(2, 60)}`, section, resolution: 'keep-staged', reason: SECTION_STANCES[section].reason });
+    if (!section) continue;
+    const seen = (occurrences.get(line) || 0) + 1;
+    occurrences.set(line, seen);
+    const hash = crypto.createHash('sha256').update(line).digest('hex').slice(0, 8);
+    out.push({ id: `decision:${line.slice(2, 60)}#${hash}${seen > 1 ? `-${seen}` : ''}`, section, resolution: 'keep-staged', reason: SECTION_STANCES[section].reason });
   }
   // A can't-tell verdict no settled staged file carries is its own item; it takes Contested when
   // an earlier line for the same finding was a debate, else Low-confidence.

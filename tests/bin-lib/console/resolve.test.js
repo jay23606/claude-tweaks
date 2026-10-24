@@ -1,6 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -600,11 +601,12 @@ const SUPERSEDED = [
   '',
 ].join('\n');
 const lowItems = (decisions) => resolveAll({ runDir: fixture({ decisions, headers: [7] }), policy: 'console-auto', deps: deps() }).items.filter((i) => i.section === 'Low-confidence findings');
+const decisionId = (line) => `decision:${line.slice(2, 60)}#${crypto.createHash('sha256').update(line).digest('hex').slice(0, 8)}`;
 
 test('AC1.1: a STAGED low-confidence line followed by a same-lens, same path:line AUTO elevation produces no Low-confidence item (#3772)', () => {
   const low = lowItems(SUPERSEDED);
   assert.strictEqual(low.length, 1, 'the two confirmed lines are superseded; pr-state.js:39 stays');
-  assert.strictEqual(low[0].id, `decision:${SUPERSEDED.split('\n')[5].slice(2, 60)}`, 'the survivor is the pr-state.js:39 line');
+  assert.strictEqual(low[0].id, decisionId(SUPERSEDED.split('\n')[5]), 'the survivor is the pr-state.js:39 line');
 });
 
 test('AC2.1: a STAGED low-confidence line with no later elevation still produces its keep-staged item (#3772)', () => {
@@ -613,6 +615,38 @@ test('AC2.1: a STAGED low-confidence line with no later elevation still produces
   assert.strictEqual(low.length, 1);
   assert.strictEqual(low[0].resolution, 'keep-staged');
   assert.strictEqual(low[0].reason, SECTION_STANCES['Low-confidence findings'].reason);
+});
+
+const SAME_PREFIX = SUPERSEDED.split('\n').filter((l) => l.startsWith('- STAGED ')).join('\n') + '\n';
+
+test('AC1.1: three STAGED lines sharing their first 58 characters yield three distinct item ids (#3816)', () => {
+  const lines = SAME_PREFIX.trim().split('\n');
+  assert.strictEqual(new Set(lines.map((l) => l.slice(2, 60))).size, 1, 'fixture: the three lines share their first 58 characters');
+  const ids = lowItems(SAME_PREFIX).map((i) => i.id);
+  assert.strictEqual(ids.length, 3);
+  assert.strictEqual(new Set(ids).size, 3);
+  assert.deepStrictEqual(ids, lines.map(decisionId), 'each id is the readable lead plus the hash of its own full line; no -n suffix');
+});
+
+test('a byte-identical repeated STAGED line gets a -2 suffix, the first keeps the bare hash (#3816)', () => {
+  const line = SUPERSEDED.split('\n')[5];
+  const ids = lowItems(`${line}\n${line}\n`).map((i) => i.id);
+  assert.deepStrictEqual(ids, [decisionId(line), `${decisionId(line)}-2`]);
+});
+
+test('coordination ids are deterministic across two resolutions of the same run (#3816)', () => {
+  const runDir = fixture({ decisions: SAME_PREFIX, headers: [7] });
+  const once = () => resolveAll({ runDir, policy: 'console-auto', deps: deps() }).items.map((i) => i.id);
+  assert.deepStrictEqual(once(), once());
+});
+
+test('AC2.1: a console.json written with the old 58-character id shape still reads and re-renders (#3816 expand-contract)', () => {
+  const oldId = `decision:${SUPERSEDED.split('\n')[1].slice(2, 60)}`;
+  assert.strictEqual(oldId, 'decision:STAGED 23:44:20 — spec #3412 — Step 3 reproduction: Reprod', 'the archived 2026-10-17T192303-spec-3412 shape');
+  const stored = { resolved: true, at: '2026-10-17T23:50:00Z', items: [0, 1, 2].map(() => ({ id: oldId, section: 'Low-confidence findings', resolution: 'keep-staged', reason: 'r' })), merge: { resolution: 'leave-open', reason: 'x' } };
+  assert.strictEqual(unresolvedItems(stored).length, 3);
+  const table = renderStoredTable(stored);
+  assert.strictEqual(table.split('\n').filter((l) => l.includes(oldId)).length, 3);
 });
 
 test('a tiebreak confirmed line supersedes the real-emitter STAGED line (AC2.1, AC9.1, #3945)', () => {
