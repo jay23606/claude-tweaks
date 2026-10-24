@@ -229,5 +229,8 @@
   },
   "doc:decisions/0023-windows-regression-guard-runs-post-merge-only": {
     "lastAuditedMs": 1792563342656
+  },
+  "doc:decisions/0024-skill-size-limits-guard-platform-limits-only": {
+    "lastAuditedMs": 1792822189981
   }
 }
