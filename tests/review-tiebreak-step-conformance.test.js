@@ -989,8 +989,10 @@ const FIX_WAVE = [
   [tiebreakSection('Dispatch'), /Skip it when this step dispatched no agent/, 'F4 the re-run is skipped when nothing was dispatched'],
   // F5: what #3772 supersedes, and how a console outcome surfaces.
   [tiebreakSection('Resolve and act'), /supersedes it through `console\/resolve\.js`'s `#3772` matcher only when that line carries `lens "\{lens\}"` and `\{path\}:\{line\}`/, 'F5a the supersession claim names the lens + path:line key'],
-  [tiebreakSection('Resolve and act'), /`staged\/review-contested-\{N\}\.md` is never superseded/, 'F5a the contested-file gap is stated'],
-  [tiebreakSection('Resolve and act'), /- `console`[^\n]*surfaces at the Review Console through its earlier STAGED line/, 'F5b a console outcome surfaces through the earlier STAGED line'],
+  // #3949 retired the contested-file gap and the surfaces-through-the-STAGED-line wording: verdicts now
+  // supersede the line and its linked staged file, and a console verdict is its own row.
+  [tiebreakSection('Resolve and act'), /A staged `review-unconfirmed-\*`, `review-contested-\*` or `review-debate-\*` file that line names is superseded with it/, 'F5a a linked staged file is superseded with its line'],
+  [tiebreakSection('Resolve and act'), /- `console`[^\n]*surfaces at the Review Console as a Low-confidence or Contested row carrying the logged line's `Severity:` and `Recommendation:`/, 'F5b a console outcome surfaces as a row carrying severity and recommendation'],
   // F6: the refutation template carries only the allowlist.
   [refutationTemplateOf, /Diff scope: /, 'F6 the refutation template input carries the diff scope'],
   // F7: step3-tiebreak.md points at the template's Tiebreak section; the template has the slots.

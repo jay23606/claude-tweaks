@@ -5,7 +5,7 @@ Referenced by `skills/wrap-up/review-console-interactive.md`'s "Present the cons
 ```markdown
 ### Wrap-Up Review Console
 
-The pipeline auto-resolved {N} decisions and staged {M} items for your review. Every section below — the named batch sections, plus Queue writes, Memory updates, Upstream feedback, and Reflection insights — resolves via the same terminal Approve all / Override / Stop choice. Approve all applies each section's own default (batch sections: apply, except Dismissed duplicates rows, which stay as they are; `Q#`/`M#`: their pre-checked `Apply` default; `U#`: filed when its staged draft carries a `**Causal:** systemic` tag, else its usual unchecked/declined default; `R#`: each row's recommended destination, D4/D5 rows informational) with no further prompts, except rows marked drills-individually (listed above the terminal options when present — see `review-console-interactive.md`'s Hard requirements). Override is what still drills `Q#`/`M#`/`U#`/`R#` individually — one or more chunked `multiSelect` calls, `_shared/batched-item-drill.md` for `Q#`/`M#`/`R#`, `_shared/upstream-feedback-batch.md` for `U#` (see `review-console-interactive.md`'s Hard requirements for why).
+The pipeline auto-resolved {N} decisions and staged {M} items for your review. Every section below — the named batch sections, plus Queue writes, Memory updates, Upstream feedback, and Reflection insights — resolves via the same terminal Approve all / Override / Stop choice. Approve all applies each section's own default (batch sections: apply, except Dismissed duplicates rows, which stay as they are; Low-confidence and Contested rows: each row's tiebreak recommendation, below; `Q#`/`M#`: their pre-checked `Apply` default; `U#`: filed when its staged draft carries a `**Causal:** systemic` tag, else its usual unchecked/declined default; `R#`: each row's recommended destination, D4/D5 rows informational) with no further prompts, except rows marked drills-individually (listed above the terminal options when present — see `review-console-interactive.md`'s Hard requirements). Override is what still drills `Q#`/`M#`/`U#`/`R#` individually — one or more chunked `multiSelect` calls, `_shared/batched-item-drill.md` for `Q#`/`M#`/`R#`, `_shared/upstream-feedback-batch.md` for `U#` (see `review-console-interactive.md`'s Hard requirements for why).
 
 > **Still pending from earlier** (#2736 — render only when `check-session-residue` reported something; omit entirely otherwise, no row/number of its own, purely informational)
 >
@@ -44,22 +44,32 @@ Renders only when non-empty; rows take the next numbers of the global sequence. 
 
 Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Omit the section entirely when empty.
 
-| # | Path:Line | Finding | Severity | Lens |
-|---|---|---|---|---|
-| 8 | src/auth.ts:42 | Possible null check missing | medium | error-handling |
-| 9 | src/api.ts:180 | Race condition on token refresh | high | security |
+| # | Item | Path:Line | Finding | Severity | Lens | Recommendation |
+|---|---|---|---|---|---|---|
+| 8 | tiebreak:3f2a9c1b7d04 | src/auth.ts:42 | Possible null check missing | medium | error-handling | file |
+| 9 | review-unconfirmed-2.md | src/api.ts:180 | Race condition on token refresh | high | security | drop |
 
-> These findings were surfaced by exactly one reviewer agent (or downgraded by a debate that converged negative). The signal is real but unreplicated; the user decides whether to apply, ignore, or escalate.
+> These findings were surfaced by exactly one reviewer agent (or downgraded by a debate that converged negative), and the tiebreak (`review/step3-tiebreak.md`) could not settle them. The signal is real but unreplicated; the user decides whether to file or drop each.
+
+`Item` is the console item id — the staged file, or `tiebreak:{id}` for a verdict no staged file carries — the value `review-console.md` step 7's `--only` takes. `Severity` and `Recommendation` are the tiebreak verdict's. **Approve all resolves each row to its recommendation:** `file`, or none, → `filed` (a backlog record, step 7); `drop` → `dropped` (nothing executes). A human choosing Approve all on a `drop` row is a human decision: `_shared/auto-mode-contract.md`'s `### Tiebreak-refuted drop (one-decision amendment)` governs autonomous resolution, which files every can't-tell item. A legacy row whose STAGED line carries no tiebreak verdict shows `—` and stays undecided (`keep-staged`) under Approve all — never resolved `dropped`.
 
 #### Contested findings (debate inconclusive)
 
 Render this section only when `decisions.md` contains STAGED entries from cross-lens debate with mixed/partial verdicts. Omit the section entirely when empty.
 
-| # | Path:Line | Lens A verdict | Lens B verdict |
-|---|---|---|---|
-| 10 | src/auth.ts:42 | agree (security) | partial (architecture) |
+| # | Item | Path:Line | Lens A verdict | Lens B verdict | Severity | Recommendation |
+|---|---|---|---|---|---|---|
+| 10 | review-contested-1.md | src/auth.ts:42 | agree (security) | partial (architecture) | high | file |
 
-> Two reviewer lenses disagreed on this region and one debate round did not converge. Both verdicts are staged at `staged/review-contested-{N}.md` with reasoning side-by-side. Pick one — or accept both as informational — from the action prompt below.
+> Two reviewer lenses disagreed on this region and one debate round did not converge. Both verdicts are staged at `staged/review-contested-{N}.md` with reasoning side-by-side. The columns and the Approve-all default are Low-confidence findings' above.
+
+#### Dropped by tiebreak (read-only — no decision)
+
+| Path:Line | Lens | Severity | Evidence |
+|---|---|---|---|
+| src/cache.ts:88 | performance | high | src/cache.ts:90 "if (!entry) return fetchFresh(key);" |
+
+Renders only when `decisions.md` holds a resolver `AUTO … dropped … Severity: high` (or `critical`) line; a missing or malformed line renders no block. Unnumbered — Approve all and Override never reach it; low and medium drops stay in `decisions.md` only. A refuted finding whose staged review file exists also shows that file's own row resolved `dropped` (the file's final outcome), while this block lists the finding.
 
 Generate the next five sections — Skill updates, Documentation updates, Journey updates, Configuration updates, and Reference repairs, in that order, matching `engine-render.js`'s `SECTION_SPECS` emission order — via `render --section console --start-at {n}` when the engine ran (`curation-engine.md` section 2, with `{n}` the next number in this console's global sequence).
 

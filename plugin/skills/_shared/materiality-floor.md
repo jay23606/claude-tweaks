@@ -47,6 +47,8 @@ no-run-dir routing is never unlogged.
 `{fp}` is the entry's dedup fingerprint (`materialityFingerprint` in
 `bin/lib/health-core/materiality-digest.js`), a stable hash of `{area}` + the finding text
 (whitespace/case-normalized) + the file refs (order-independent) — see "Dedup" below.
+The Review Console's can't-tell finding filings reuse the same `fingerprintFromBasis`, prefix
+`consolefinding` (`bin/lib/console/finding-filing.js`: lens, path, normalized claim, no line number).
 
 ### Dedup
 

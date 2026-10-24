@@ -43,22 +43,30 @@ Renders only when non-empty; aggregated across every spec in the run, `Spec`-tag
 
 Render this section only when `decisions.md` contains STAGED entries with the unconfirmed-finding rationale (single-source per-lens findings, or findings downgraded by cross-lens debate). Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
 
-| # | Spec | Path:Line | Finding | Severity | Lens |
-|---|---|---|---|---|---|
-| 8 | 157 | src/auth.ts:42 | Possible null check missing | medium | error-handling |
-| 9 | 157 | src/api.ts:180 | Race condition on token refresh | high | security |
+| # | Spec | Item | Path:Line | Finding | Severity | Lens | Recommendation |
+|---|---|---|---|---|---|---|---|
+| 8 | 157 | tiebreak:3f2a9c1b7d04 | src/auth.ts:42 | Possible null check missing | medium | error-handling | file |
+| 9 | 157 | review-unconfirmed-2.md | src/api.ts:180 | Race condition on token refresh | high | security | drop |
 
-> These findings were surfaced by exactly one reviewer agent (or downgraded by a debate that converged negative). The signal is real but unreplicated; the user decides whether to apply, ignore, or escalate.
+> These findings were surfaced by exactly one reviewer agent (or downgraded by a debate that converged negative), and the tiebreak could not settle them. The columns and the Approve-all default — each row's recommendation; a legacy no-verdict row stays undecided — are `wrap-up/console-template.md`'s Low-confidence findings section, per spec.
 
 #### Contested findings (debate inconclusive)
 
 Render this section only when `decisions.md` contains STAGED entries from cross-lens debate with mixed/partial verdicts. Aggregated across every spec in the run, `Spec`-tagged. Omit the section entirely when empty for every spec.
 
-| # | Spec | Path:Line | Lens A verdict | Lens B verdict |
-|---|---|---|---|---|
-| 10 | 159 | src/auth.ts:42 | agree (security) | partial (architecture) |
+| # | Spec | Item | Path:Line | Lens A verdict | Lens B verdict | Severity | Recommendation |
+|---|---|---|---|---|---|---|---|
+| 10 | 159 | review-contested-1.md | src/auth.ts:42 | agree (security) | partial (architecture) | high | file |
 
-> Two reviewer lenses disagreed on this region and one debate round did not converge. Both verdicts are staged at `spec-{N}/staged/review-contested-{M}.md` with reasoning side-by-side. Pick one — or accept both as informational — from the action prompt below.
+> Two reviewer lenses disagreed on this region and one debate round did not converge. Both verdicts are staged at `spec-{N}/staged/review-contested-{M}.md` with reasoning side-by-side. The columns and the Approve-all default are Low-confidence findings' above.
+
+#### Dropped by tiebreak (read-only — no decision)
+
+| Spec | Path:Line | Lens | Severity | Evidence |
+|---|---|---|---|---|
+| 157 | src/cache.ts:88 | performance | high | src/cache.ts:90 "if (!entry) return fetchFresh(key);" |
+
+`wrap-up/console-template.md`'s Dropped by tiebreak block, aggregated across every spec in the run and `Spec`-tagged — unnumbered, no decision.
 
 Generate the next five sections — Skill updates, Documentation updates, Journey updates, Configuration updates, and Reference repairs, in that order, matching `engine-render.js`'s `SECTION_SPECS` emission order — via the `--spec-state` engine call in "When to run the consolidated console" step 3 above. `renderConsoleSectionsMulti` emits a bare `#### {title}` heading per section plus one uniform `| # | Spec | Target | Change | Disposition |` table (integer `#`, the contributing spec's id, `finding.targetPath`, `finding.summary`, and `applied ({commit})` / `staged ({stagePath})`) — the same five columns for all five sections. The richer per-section shapes below illustrate what those rows mean; they are not a second render shape. On an engine run, insert `render`'s output verbatim into the response; do not hand-expand it into a different table shape.
 

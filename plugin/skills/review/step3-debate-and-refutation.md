@@ -43,7 +43,7 @@ After per-lens reproduction completes, scan for contradictions across lenses bef
    ```
    - Both `agree` → finding upgraded to `confirmed`. Write `AUTO {HH:MM:SS} — Debate: cross-lens disagreement on {path}:{line} converged positive after 1 round. Reversibility: high.`
    - Both `disagree` → finding downgraded to `unconfirmed`, for Step 3.7 (`step3-tiebreak.md`). Write `STAGED {HH:MM:SS} — Debate: lens "{lensA}" finding {path}:{line} — cross-lens disagreement converged negative after 1 round; unconfirmed. Reversibility: high.`
-   - Mixed / partial → finding becomes `contested`. Write `STAGED {HH:MM:SS} — Debate: cross-lens disagreement on {path}:{line} inconclusive ({verdicts}). Both verdicts staged. Reversibility: high.` Stage the side-by-side verdicts to `staged/review-contested-{N}.md`.
+   - Mixed / partial → finding becomes `contested`. Write `STAGED {HH:MM:SS} — Debate: lens "{lensA}" cross-lens disagreement on {path}:{line} inconclusive ({verdicts}). Both verdicts staged. Stage path: staged/review-contested-{N}.md. Reversibility: high.` Stage the side-by-side verdicts to that file. `{lensA}` is Finding A's lens, and Finding A is the contested entry's first position — the lens Step 3.7's verdict carries (`step3-tiebreak.md`'s Findings artifact), so the verdict supersedes this line and its file.
 
 5. **Skip debate** when no overlap is detected, or when only one lens covered a region. Avoid running debate on every `Path:Line` where any two lenses touched — that explodes the token budget for no value.
 
