@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { POLICY_KEYS, RENAMED_KEYS, auditPolicy, resolveValue, resolvePolicyKeys } = require('../plugin/bin/lib/policy-schema');
+const { readText } = require('./helpers/read-skill');
 
 function tmpRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'ct-policy-schema-'));
@@ -138,8 +139,9 @@ test('POLICY_KEYS entries are unique', () => {
   // both are set.
   // 73 -> 74, #3298 (merge-subject scope source): commit-scope — string, no default — the constant Conventional-Commits scope token
   // 74 -> 75, #3298: commit-scope-paths — list, default [] — comma-separated prefix=token pairs resolved against a merge's changed files
-  assert.strictEqual(POLICY_KEYS.length, 75);
-  assert.strictEqual(new Set(POLICY_KEYS.map((k) => k.key)).size, 75);
+  // 75 -> 76, #4041: release-tip-moves — integer, default 2 — caps how far origin/{branch} may move past /release Step 3's reviewed tip before Step 5 holds the release
+  assert.strictEqual(POLICY_KEYS.length, 76);
+  assert.strictEqual(new Set(POLICY_KEYS.map((k) => k.key)).size, 76);
 });
 
 test('dispatch-batch-size is registered alongside its deprecated alias', () => {
@@ -787,7 +789,7 @@ test('the policy.yml value is still discarded at resolve time (unchanged behavio
 });
 
 test('the source-excluded special case is keyed on the generic policySourceExcluded flag, not a hardcoded key name (#839)', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'plugin', 'bin', 'lib', 'policy-schema.js'), 'utf8');
+  const src = readText(path.join(__dirname, '..', 'plugin', 'bin', 'lib', 'policy-schema.js'));
   assert.ok(
     !/canonical === 'merge-authorization'/.test(src),
     'the resolver must not special-case merge-authorization by name — a second excluded lever needs zero code changes here, only registering policySourceExcluded on its POLICY_KEYS row',

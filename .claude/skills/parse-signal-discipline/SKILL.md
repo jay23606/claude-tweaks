@@ -239,8 +239,8 @@ When mechanizing a prose heuristic into a deterministic check:
    path closes the run first, so in the real flow the disk check never fired. Every test passed
    because each fixture hand-wrote a run state with `worktree` still set, a state `closeRunState`
    never writes. Whole-branch review caught it by running the real `closeRunState` and then
-   `runVerify`. `a7790fbed` made the close keep the prior path as `worktreeAtClose` and added a
-   test that builds the state through the real `closeRunState`. When a terminal transition clears
+   `runVerify`. `5c8e2a2e0` (#3023) made the close keep the prior path as `worktreeAtClose` and
+   added a test that builds the state through the real `closeRunState`. When a terminal transition clears
    a field your check reads, keep a copy at that transition, and produce the check's input in at
    least one test by calling the real writer, never by hand-writing its JSON.
 13. **A not-found answer means "absent" only when every input to the request resolved.** A
@@ -287,8 +287,9 @@ When mechanizing a prose heuristic into a deterministic check:
 15. **A transform in front of a scanner owes its own could-not-parse verdict.** A scan over
     transformed text reads whatever the transform wrongly removed as "nothing here", so a
     transform that mis-parses produces a clean scan. `tests/helpers/strip-comments.js`'s
-    `stripComments` blanks comments to spaces before the path-guard, windows-hide, git-status and
-    exit-code conformance scans count tokens. It models regex literals (#3585); its residual
+    `stripComments` blanks comments to spaces before the windows-hide, git-status, path-guard,
+    path-containment, porcelain-cwd-compare, staged-id producer, exit-code and wall-clock-budget
+    conformance scans count tokens. It models regex literals (#3585); its residual
     ambiguity is a regex right after `)` or `}`, which it reads as division. In
     `if (b) /"/.test(b); const c = "//"; fs.existsSync(c);` the quote inside the regex pairs with a
     later string, the `//` after it opens a line comment, and the guarded call counted as zero.
@@ -296,7 +297,9 @@ When mechanizing a prose heuristic into a deterministic check:
     compiles both the raw file and the stripped text under a CommonJS wrapper with `vm.Script`. A
     blanked comment never breaks syntax, but blanked code cuts a literal short. So "raw compiles,
     stripped does not" is `misparsed`, and a raw file that does not compile at all (an ESM file) is
-    `unparseable`, its own outcome and never `ok`. Each scan reports either one as an offender.
+    `unparseable`, its own outcome and never `ok`. Every scan except exit-code reports either one
+    as an offender. The exit-code scan never calls `stripperVerdict`; it reports a `require.main`
+    guard the stripper blanked, through its own `guardBlankedByStripper(raw, stripped)` detector.
     State what the oracle cannot see, as the helper's header does: a mis-parse whose stripped text
     still compiles passes unseen. Pin the planted mis-parse through every scan that calls the
     verdict, not only through the helper's own tests.
@@ -401,6 +404,45 @@ When mechanizing a prose heuristic into a deterministic check:
     rule and none of its edges (`GUARD_PINS` in
     `tests/tidy-arm-ready-pr-acceptance-guard.test.js`).
 
+21. **A shared reader that already folded "could not ask" into its answer shape hands that fold to
+    every wrapper, so a verdict built on tagged probes must distrust the readers under them.**
+    `plugin/bin/lib/run-liveness/` (#3973) tags every probe positive, negative or error so that an
+    unanswered question can only push the verdict toward `unknown`, and the whole-branch review
+    still found three readers beneath it that answered in the wrong shape: `readRunState` returns
+    `null` for an absent file and for a corrupt one alike, so a damaged `run-state.json` read as a
+    legacy run and the legacy route could say `dead`; `isPidAlive` returns `false` for `ESRCH` and
+    also for the `ERR_INVALID_ARG_TYPE` that `process.kill` throws on a pid above int32, so an
+    unprovable pid became the death witness `gone`; and a worktree-lock lookup returned "free"
+    when `git worktree list` had no entry for a directory the caller had already established
+    exists. The SDD reviews had caught four siblings of the same class earlier in that build
+    (`existsSync` reading `EACCES` as absent, a failed `git log` read as no commits, a `NaN` age
+    read as old, a null start-time probe read as pid reuse). Before wrapping a shared reader or
+    liveness primitive in a verdict whose negative branch is destructive, ask of each one whether
+    its falsy answer can also mean "could not ask". Read the file directly where only `ENOENT`
+    means absent (item 11), bound the domain a primitive can answer before treating its `false` as
+    evidence, and throw on a lookup miss the caller's own precondition says cannot happen. Pin
+    each with a fixture the pre-fix code fails (`tests/bin-lib/run-liveness/index.test.js`,
+    `probes.test.js`).
+
+22. **A check that reads its input from an optional context argument owes a fail-closed answer
+    when the row it gates is present and the context is not.** A pure decision function that
+    takes `ctx = {}` and wraps a check in `if (ctx.x present)` reads "the caller passed nothing" as
+    "nothing to check", so the row the check guards goes through. `plugin/bin/lib/reconcile/console-execute.js`'s
+    `decideConsoleExecute` had two such guards. #1802's merge-grant gate left `mergeGrantGap: null`,
+    which `_shared/console-execution.md` documents as "every member is granted", whenever
+    `prBody` or `memberGrants` was missing. #3880's ruling gate copied that shape, so an absent
+    `rulingTexts` map auto-ratified every ruling row while a map missing one id withheld it. Both
+    stayed open on purpose so pre-feature tests that omit `ctx` kept passing, and two tests pinned
+    the open path as "legacy call shape unchanged". The only production caller always supplied
+    both, so neither was live. A review lens flagged only the ruling guard, and #4048 closed both:
+    an absent context now withholds (`{ member: null, reason: 'grant-context-missing' }`, and
+    `sdd-ruling-unclassified` for each ruling row), while a console with neither row kind still
+    needs no `ctx`. Key the check on whether the gated row is present, never on whether its
+    context arrived. Invert any test that pins the open path rather than keeping it for
+    compatibility, and pin a partial context (one of two required keys) with its own assertion
+    (`tests/console-execute.test.js`). When you find one guard of this shape, read every sibling
+    guard in the same function, because a new guard is usually copied from the one beside it.
+
 ## When to use
 
 - Writing a new function that parses a plan, a record body, a ledger entry, or any other loose
@@ -413,6 +455,9 @@ When mechanizing a prose heuristic into a deterministic check:
 - Writing a check that reads the filesystem directly (`fs.readdirSync`/`readFileSync`/`existsSync`
   and the like) where catching every error the same way conflates "genuinely absent" (`ENOENT`)
   with "couldn't tell" (`EACCES`, `ENOTDIR`, and other non-ENOENT codes) (fix-shape item 11).
+- Building a verdict (live/dead, present/absent) over several probes or shared readers whose
+  negative branch gates something destructive, where a reader's falsy return may also mean "could
+  not ask" (fix-shape item 21).
 - Adding a validated field to a shared body composer such as `specShapedBody` that another module
   parses back, or that a batch producer fills from LLM output (fix-shape item 18).
 
