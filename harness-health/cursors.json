@@ -113,7 +113,7 @@
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792680736587
+    "lastAuditedMs": 1792824468006
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -209,7 +209,7 @@
   },
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792822143544
+    "lastAuditedMs": 1792824469877
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
