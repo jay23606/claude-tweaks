@@ -10,6 +10,7 @@ const TABLE_SEPARATOR_RE = /^\|[\s:|-]*-[\s:|-]*$/;
 // Where a patch proposal's diff (or a dream proposal's quoted evidence) begins: nothing from here on
 // is digest text. A bare `---` rule and a `- ` bullet are not diff lines.
 const DIFF_START_RE = /^(?:diff --git |@@(?: |$)|--- |\+\+\+ |index [0-9a-f]+\.\.|```diff)/;
+// A dream proposal's quoted session line (`- Session \`abc\` (…):`); the indented sub-bullets under it go with it.
 const SESSION_LINE_RE = /^-\s+Session\s+`/;
 
 // A table data row as its non-numeric, non-empty cells joined by ` — ` (the row number and the
@@ -26,13 +27,18 @@ function dataRowText(line) {
 function firstContent(lines, { paragraph, skipHeaderBlock }) {
   let inHeader = false;
   let seenContent = false;
+  let inSession = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (line === '') { inHeader = false; continue; }
+    // A quoted session line and the indented sub-bullets under it (its commands, its paths) are evidence, never text.
+    if (SESSION_LINE_RE.test(line)) { inSession = true; continue; }
+    if (inSession && /^\s/.test(lines[i])) continue;
+    inSession = false;
     if (line.startsWith('#')) continue;
     if (DIFF_START_RE.test(line)) return '';
     if (!seenContent) { seenContent = true; inHeader = skipHeaderBlock && KEY_VALUE_RE.test(line) && headerHasContentAfter(lines, i); }
-    if (inHeader || /^\*\*[^*]+:\*\*/.test(line) || METADATA_LINE_RE.test(line) || SESSION_LINE_RE.test(line) || /^-{3,}$/.test(line) || line.startsWith('```')) continue;
+    if (inHeader || /^\*\*[^*]+:\*\*/.test(line) || METADATA_LINE_RE.test(line) || /^-{3,}$/.test(line) || line.startsWith('```')) continue;
     if (line.startsWith('|')) {
       if (TABLE_SEPARATOR_RE.test(line) || TABLE_SEPARATOR_RE.test((lines[i + 1] || '').trim())) continue;
       const row = dataRowText(line);
@@ -73,23 +79,29 @@ function leadingHeader(lines) {
 
 // A staged file's digest text, never a diff line:
 //   1. a patch proposal's header block: its `Finding:` value, else `Target: {value}`;
-//   2. a dream proposal's `**Pattern:**` value;
-//   3. the first paragraph under a `## Finding` heading;
+//   2. the first paragraph under a `## Finding` heading;
+//   3. a dream proposal's `**Pattern:**` value;
 //   4. the first content line.
 function digestTextOf(text) {
   const lines = String(text).split(/\r?\n/);
   const header = leadingHeader(lines);
   if (header.finding) return header.finding;
   if (header.target) return `Target: ${header.target}`;
-  const pattern = lines.map((l) => /^\*\*Pattern:\*\*[ \t]*(.+)$/.exec(l.trim())).find(Boolean);
-  if (pattern && pattern[1].trim()) return pattern[1].trim();
   const start = lines.findIndex((l) => /^##\s+Finding\s*$/i.test(l));
   if (start >= 0) {
     const next = lines.findIndex((l, i) => i > start && /^##\s/.test(l));
     const section = firstContent(lines.slice(start + 1, next < 0 ? lines.length : next), { paragraph: true, skipHeaderBlock: false });
     if (section) return section;
   }
+  const pattern = lines.map((l) => /^\*\*Pattern:\*\*[ \t]*(.+)$/.exec(l.trim())).find(Boolean);
+  if (pattern && pattern[1].trim()) return pattern[1].trim();
   return firstContent(lines, { paragraph: false, skipHeaderBlock: true });
 }
 
-module.exports = { digestTextOf };
+// A patch proposal's `Target:` header value (the file it patches), or null.
+function targetOf(text) {
+  const target = leadingHeader(String(text).split(/\r?\n/)).target;
+  return target ? target : null;
+}
+
+module.exports = { digestTextOf, targetOf };

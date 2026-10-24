@@ -335,5 +335,10 @@ test('settle fence: fills refs, resolves a same-batch twin, leaves a ref-less it
     const none = runFence(fenceWith('unsettled'), { PLAN: path.join(dir, 'p.json'), REFS: path.join(dir, 'absent.json'), ENTRIES: path.join(dir, 'e2.json') });
     assert.strictEqual(none.status, 0, none.stderr);
     assert.deepStrictEqual(JSON.parse(none.stdout), { entries: 1, unsettled: ['bf:new', 'bf:twin', 'bf:failed', 'bf:dig'] });
+    // M1: a same-pass digest repeat takes the comment URL its twin's line was posted in.
+    fs.writeFileSync(path.join(dir, 'p3.json'), JSON.stringify({ ...plan, entries: [...plan.entries, e('bf:dig2', null)], digest: { lines: [], duplicates: ['bf:dig2'], sameAs: [{ itemId: 'bf:dig2', sameAs: 'bf:dig' }] } }));
+    const twin = runFence(fenceWith('unsettled'), { PLAN: path.join(dir, 'p3.json'), REFS: path.join(dir, 'r.json'), ENTRIES: path.join(dir, 'e3.json') });
+    assert.strictEqual(twin.status, 0, twin.stderr);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'e3.json'), 'utf8')).map((x) => [x.itemId, x.ref]).slice(-1), [['bf:dig2', 'https://example.test/c/1']]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

@@ -16,7 +16,7 @@ const path = require('path');
 const { SHADOW_DUP_RE, SECTIONS, runIdOf } = require('./resolve');
 const { composeFindingProposal, findingFingerprint, fingerprintMap } = require('./finding-filing');
 const { composeShadowDupProposal } = require('./shadow-dup-proposal');
-const { digestTextOf } = require('./staged-digest-text');
+const { digestTextOf, targetOf } = require('./staged-digest-text');
 const { BACKFILL_OUTCOMES, BACKFILL_SOURCES } = require('./backfill-apply');
 const { materialityEntryLine, materialityFingerprint, parseMaterialityFingerprints } = require('../health-core/materiality-digest');
 const { fingerprintFromBasis } = require('../health-core/fingerprint');
@@ -250,11 +250,14 @@ function disposeStaged({ item, runId, readStaged }) {
   const label = `${s.name === null || s.name === undefined ? 'unnamed engine row' : s.name} (${s.reason || s.section})`;
   const first = typeof text === 'string' ? digestTextOf(text) : '';
   const files = typeof text === 'string' && typeof s.name === 'string' && s.name.startsWith('reflect-') ? /^\*\*Files:\*\*[ \t]*(.+)$/m.exec(text) : null;
+  // The files the line names: a reflect file's **Files:** value, else a patch proposal's Target:, else `general`.
+  const target = typeof text === 'string' ? targetOf(text) : null;
+  const fileRefs = (files && squash(files[1])) || (target && squash(target)) || 'general';
   return result(item, 'digest', 'digest', {
     digest: digestEntryOf({
       item,
       finding: first ? `${label}: ${first}` : label,
-      fileRefs: files && squash(files[1]) ? squash(files[1]) : 'general',
+      fileRefs,
       deferReason: DIGEST_REASONS.UNMAPPED_KIND,
       runId,
     }),
@@ -336,6 +339,9 @@ function filedRecordOf(item, fp, known, markers) {
   return item.kind === 'finding' && markers.has(itemFingerprint(item)) ? markers.get(itemFingerprint(item)) : null;
 }
 
+// A held comment's URL — the `ref` of a digest duplicate — or null when it carries none (a local-files body).
+const commentRef = (comment) => (comment && typeof comment.url === 'string' && comment.url ? comment.url : null);
+
 // The trusted digest comment already holding this digest line — by its materiality fingerprint, or, for
 // a finding, by its item marker — or null. A string (a local-files body) is single-writer and trusted.
 function heldDigestComment(digestComments, digest, item) {
@@ -354,23 +360,25 @@ function heldDigestComment(digestComments, digest, item) {
 // already carries (settled `digested`, listed under `digest.duplicates`); stops after `limit` dispositions.
 //   existingIssues  `gh issue list --state all --json number,title,body` rows (the fingerprint map's source; the titles dedup a minted-fingerprint staged proposal)
 //   digestComments  the open digest issue's comment objects, with their author association
-// Returns { dispositions, file, reuse, digest: { lines, duplicates }, entries, awaitingVerdict }:
+// Returns { dispositions, file, reuse, digest: { lines, duplicates, sameAs }, entries, awaitingVerdict }:
 //   file     new records to create (a fingerprint-less proposal is always new)
 //   reuse    a filing that already has a record (`number`), or repeats an earlier item of this batch
 //            (`number: null`, `sameAs` that item)
-//   digest   the lines to post; `duplicates` are items whose line is already posted or repeats one
-//   entries  the settled list for backfill-apply; `ref` is pre-filled for drop/dismiss and for an
-//            existing record, `null` where the procedure fills it (a new filing, a digest comment).
+//   digest   the lines to post; `duplicates` are items whose line is already posted or repeats one;
+//            `sameAs` pairs each repeat with the earlier item of this batch whose line it repeats
+//   entries  the settled list for backfill-apply; `ref` is pre-filled for drop/dismiss, for an
+//            existing record and for an already-posted digest line (its comment's URL), `null` where
+//            the procedure fills it (a new filing, a new digest comment, a same-batch twin's).
 function planBatch({ workList, verdicts, existingIssues, digestComments, limit = DEFAULT_LIMIT, readStaged }) {
   const rows = Array.isArray(existingIssues) ? existingIssues : [];
   const known = fingerprintMap(rows);
   const markers = everyMarkerMap(rows);
   const titles = titleMap(rows);
   const out = {
-    dispositions: [], file: [], reuse: [], digest: { lines: [], duplicates: [] }, entries: [], awaitingVerdict: [],
+    dispositions: [], file: [], reuse: [], digest: { lines: [], duplicates: [], sameAs: [] }, entries: [], awaitingVerdict: [],
   };
   const batchFiled = new Map();
-  const batchDigested = new Set();
+  const batchDigested = new Map();
 
   for (const run of workList.runs) {
     for (const item of run.items) {
@@ -394,11 +402,12 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
         // run), by fingerprint or by item marker. The fingerprint does not depend on the verdict (findingDigest).
         if (item.finding && typeof item.claimText === 'string' && item.claimText.trim()) {
           const prefiledDigest = findingDigest(item, DIGEST_REASONS.CANT_TELL, runIdOf(item.consoleDir));
-          if (heldDigestComment(digestComments, prefiledDigest, item)) {
+          const held = heldDigestComment(digestComments, prefiledDigest, item);
+          if (held) {
             out.dispositions.push(result(item, 'digest', 'tiebreak', { prefiled: true, digest: prefiledDigest }));
             out.digest.duplicates.push(item.itemId);
             out.entries.push({
-              runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'digested', source: 'tiebreak', ref: null,
+              runDir: run.runDir, itemId: item.itemId, itemHash: item.itemHash, outcome: 'digested', source: 'tiebreak', ref: commentRef(held),
             });
             continue;
           }
@@ -431,10 +440,17 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
           out.file.push({ itemId: d.itemId, fingerprint: fp, title: d.proposal.title, text: d.proposal.text });
         }
       } else if (d.action === 'digest') {
-        if (batchDigested.has(d.digest.fingerprint) || heldDigestComment(digestComments, d.digest, item)) {
+        // A duplicate's ref is the comment holding its entry: an already-posted one's URL now; a same-pass
+        // twin's once that line is posted (`sameAs`, resolved by the procedure as a filing's is).
+        const held = batchDigested.has(d.digest.fingerprint) ? null : heldDigestComment(digestComments, d.digest, item);
+        if (batchDigested.has(d.digest.fingerprint)) {
           out.digest.duplicates.push(d.itemId);
+          out.digest.sameAs.push({ itemId: d.itemId, sameAs: batchDigested.get(d.digest.fingerprint) });
+        } else if (held) {
+          out.digest.duplicates.push(d.itemId);
+          ref = commentRef(held);
         } else {
-          batchDigested.add(d.digest.fingerprint);
+          batchDigested.set(d.digest.fingerprint, d.itemId);
           out.digest.lines.push(d.digest.line);
         }
       }

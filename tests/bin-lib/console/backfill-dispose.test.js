@@ -373,6 +373,21 @@ test('R14b3: a dream proposal digests as its Pattern, not its quoted session lin
     'dream-proposal-2.md': '# Dream pass — x\n\n## Quoted evidence\n\n- Session `abc` (2026-09-21T18:48:15.289Z):\n  - Command: `ls`\n',
   })).digest.entry.finding;
   assert.doesNotMatch(noPattern, /Session `/, 'a session line is never used as text');
+  // Minor 8: nor its indented sub-bullets (they carry commands and local paths).
+  assert.strictEqual(noPattern, 'dream-proposal-2.md (unmapped-prefix)');
+  // Minor 8: a ## Finding section wins over a **Pattern:** line.
+  const both = dispose(stagedItem({ name: 'dream-proposal-3.md', section: 'Pending review', reason: 'unmapped-prefix' }), undefined, files({
+    'dream-proposal-3.md': '# Dream pass — x\n\n**Pattern:** the pattern line\n\n## Finding\n\nThe finding paragraph.\n',
+  })).digest.entry.finding;
+  assert.strictEqual(both, 'dream-proposal-3.md (unmapped-prefix): The finding paragraph.');
+});
+
+test('minor 7: a patch proposal digests with its Target as the fileRefs, not general', () => {
+  const body = 'Target: docs/REGISTRY.md\nInvariant: the row says opt-in\nStaged-at: 2026-10-15\n\n```diff\ndiff --git a/docs/REGISTRY.md b/docs/REGISTRY.md\n';
+  const d = dispose(stagedItem({ name: 'skills-9.md', section: 'Skill updates' }), undefined, files({ 'skills-9.md': body }));
+  assert.strictEqual(d.digest.entry.fileRefs, 'docs/REGISTRY.md');
+  // Orthogonal: a file with no Target: header keeps `general`.
+  assert.strictEqual(dispose(stagedItem({ name: 'tidy-4.md', section: 'Pending review' }), undefined, files({ 'tidy-4.md': '# T\n\nplain line\n' })).digest.entry.fileRefs, 'general');
 });
 
 const noClaim = (over = {}) => noClaimItem({
@@ -601,10 +616,11 @@ test('planBatch dedups a digest entry already posted by a trusted author', () =>
   const item = noClaimItem({ itemId: 'bf:a' });
   const line = plan({ workList: workList([item]) }).digest.lines[0];
   assert.ok(line);
-  const owner = plan({ workList: workList([item]), digestComments: [{ body: line, authorAssociation: 'OWNER' }] });
+  const url = 'https://github.com/o/r/issues/1426#issuecomment-6383105671';
+  const owner = plan({ workList: workList([item]), digestComments: [{ body: line, authorAssociation: 'OWNER', url }] });
   assert.deepStrictEqual(owner.digest.duplicates, ['bf:a']);
   assert.deepStrictEqual(owner.digest.lines, []);
-  assert.deepStrictEqual(owner.entries, [{ runDir: '/x/pipelines/archive/run-0', itemId: 'bf:a', itemHash: 'h2', outcome: 'digested', source: 'digest', ref: null }], 'a duplicate still settles; the procedure fills the existing comment URL');
+  assert.deepStrictEqual(owner.entries, [{ runDir: '/x/pipelines/archive/run-0', itemId: 'bf:a', itemHash: 'h2', outcome: 'digested', source: 'digest', ref: url }], 'a duplicate settles with the URL of the comment holding its entry (M1)');
   const stranger = plan({ workList: workList([item]), digestComments: [{ body: line, authorAssociation: 'NONE' }] });
   assert.deepStrictEqual(stranger.digest.duplicates, []);
   assert.deepStrictEqual(stranger.digest.lines, [line]);
@@ -617,6 +633,20 @@ test('planBatch folds two identical digest entries in one batch into one line', 
   assert.strictEqual(out.digest.lines.length, 1);
   assert.deepStrictEqual(out.digest.duplicates, ['bf:b']);
   assert.strictEqual(out.entries.length, 2);
+  // M1: the twin's ref is the comment its line is posted in, resolved from `sameAs` as a filing's is.
+  assert.deepStrictEqual(out.digest.sameAs, [{ itemId: 'bf:b', sameAs: 'bf:a' }]);
+  assert.deepStrictEqual(out.entries.map((e) => e.ref), [null, null]);
+});
+
+test('M1: a finding\'s prefiled digest duplicate carries the holding comment\'s URL as its ref', () => {
+  const a = findingItem({ itemId: 'bf:a', itemHash: 'ha' });
+  const line = plan({ workList: workList([a]), verdicts: { 'bf:a': digestV } }).digest.lines[0];
+  const url = 'https://github.com/o/r/issues/1426#issuecomment-2';
+  const digestComments = [{ body: 'unrelated', authorAssociation: 'OWNER', url: 'https://github.com/o/r/issues/1426#issuecomment-1' }, { body: line, authorAssociation: 'MEMBER', url }];
+  for (const verdicts of [{}, { 'bf:a': digestV }]) {
+    const out = plan({ workList: workList([a]), verdicts, digestComments });
+    assert.deepStrictEqual(out.entries.map((e) => [e.itemId, e.outcome, e.ref]), [['bf:a', 'digested', url]], JSON.stringify(verdicts));
+  }
 });
 
 test('planBatch reads staged files through the readStaged it is given', () => {
