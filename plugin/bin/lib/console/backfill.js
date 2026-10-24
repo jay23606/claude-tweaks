@@ -24,7 +24,11 @@ const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const FILEABLE_SEVERITIES = new Set(['critical', 'high', 'medium']);
 const LOCATION_RE = /([A-Za-z0-9_./-]+\.[A-Za-z0-9]+):(\d+)/g;
 const PATH_SHAPED_RE = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/;
-const DROPPED_PARENTHETICAL_RE = /\b(agent|agents|reproduc\w*|single[- ]read|no findings)\b/i;
+// Reproduction-meta phrases: they describe how a finding was (not) reproduced,
+// never the finding itself. Multi-word phrases first, so a lone word cannot
+// split one.
+const META_PHRASES = [/present in only one\b[^)]*/gi, /partner agents?\b[^)]*/gi, /single agent/gi, /single[- ]read/gi, /no findings/gi, /\breproduc\w*/gi, /\bagents?\b/gi];
+const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
 const BOILERPLATE = [/not reproduced/g, /Staged to Review Console as low-confidence\./g, /Reversibility: \S+\./g, /Artifact: [^.]*\./g];
 
 const defaultDeps = {
@@ -77,28 +81,57 @@ function enumerateRuns(pipelinesRoot, deps = {}) {
   return { closed, live };
 }
 
-// Drop the parentheticals that only describe the reproduction, then the
-// producer's boilerplate; squash whitespace.
-function cleanSegment(segment) {
-  let text = segment.trim();
-  if (text.startsWith('(')) {
-    const close = text.indexOf(')');
-    if (close !== -1) text = text.slice(0, close + 1);
-  }
-  text = text.replace(/\(([^()]*)\)/g, (whole, inner) => (DROPPED_PARENTHETICAL_RE.test(inner) ? '' : whole));
-  for (const re of BOILERPLATE) text = text.replace(re, '');
-  return text.replace(/\s+/g, ' ').trim();
+const wordCount = (text) => text.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+
+// A parenthetical holding reproduction meta loses those phrases, and is dropped
+// whole when fewer than 3 words remain; one with no meta is kept as written.
+function cleanParenthetical(inner) {
+  let meta = false;
+  let stripped = inner;
+  for (const re of META_PHRASES) stripped = stripped.replace(re, () => { meta = true; return ''; });
+  if (!meta) return `(${inner})`;
+  return wordCount(stripped) < 3 ? '' : `(${stripped.replace(/\s+/g, ' ').trim()})`;
 }
 
+// The whole segment is the claim: reproduction-meta parentheticals and the
+// producer's boilerplate come out, whitespace squashes, leading punctuation goes.
+function cleanSegment(segment) {
+  let text = segment.replace(/\(([^()]*)\)/g, (whole, inner) => cleanParenthetical(inner));
+  for (const re of BOILERPLATE) text = text.replace(re, '');
+  return text.replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
+}
+
+// `low-confidence` describes the staging, never a severity.
 function severityOf(text) {
-  const m = /\b(critical|high|medium|low|info)\b/.exec(text);
+  const m = /\b(critical|high|medium|low|info)\b(?!-confidence)/.exec(text);
   return m ? m[1] : null;
 }
 
+// The location tokens that start a finding: never one inside a parenthetical,
+// and never a `:N-M` range after the first split point — that range is a
+// cross-reference continuing the previous finding's claim.
+function splitPoints(line) {
+  const depthAt = [];
+  let depth = 0;
+  for (let i = 0; i < line.length; i++) {
+    depthAt[i] = depth;
+    if (line[i] === '(') depth += 1;
+    else if (line[i] === ')' && depth > 0) depth -= 1;
+  }
+  const points = [];
+  for (const m of line.matchAll(LOCATION_RE)) {
+    if (depthAt[m.index] > 0) continue;
+    const end = m.index + m[0].length;
+    if (points.length > 0 && /^-\d/.test(line.slice(end))) continue;
+    points.push({ path: m[1], line: Number(m[2]), start: m.index, end });
+  }
+  return points;
+}
+
 // One legacy decisions.md line → its findings. A finding's claim is the text
-// between its location and the next one (or the line's end).
+// between its location and the next split point (or the line's end).
 function splitDecisionLine(line) {
-  const tokens = [...line.matchAll(LOCATION_RE)].map((m) => ({ path: m[1], line: Number(m[2]), start: m.index, end: m.index + m[0].length }));
+  const tokens = splitPoints(line);
   if (!tokens.length) {
     const m = PATH_SHAPED_RE.exec(line);
     if (!m) return { findings: [], noClaim: 'no-path' };
@@ -108,8 +141,7 @@ function splitDecisionLine(line) {
   const lens = lensMatch ? lensMatch[1] : 'unknown';
   const findings = tokens.map((t, k) => {
     const cleaned = cleanSegment(line.slice(t.end, k + 1 < tokens.length ? tokens[k + 1].start : line.length));
-    const words = cleaned.split(' ').filter((w) => /[A-Za-z0-9]/.test(w)).length;
-    return { lens, path: t.path, line: t.line, claim: words < 4 ? '' : cleaned, severity: severityOf(cleaned) };
+    return { lens, path: t.path, line: t.line, claim: wordCount(cleaned) < 4 ? '' : cleaned, severity: severityOf(cleaned) };
   });
   if (findings.every((f) => f.claim === '')) return { findings: [], noClaim: 'claim-empty' };
   return { findings, noClaim: null };
@@ -124,18 +156,34 @@ const findingKeyOf = (f, k) => `${f.lens}|${f.path}:${f.line}#${k}`;
 // matches without the suffix (resolve.js's coordinationItems).
 const normalizeDecisionId = (id) => id.replace(/(#[0-9a-f]{8})-\d+$/, '$1');
 
-function decisionLineMatches(line, groupId) {
-  const body = groupId.slice('decision:'.length);
-  return line.slice(2, 60) === body || `decision:${line.slice(2, 60)}#${sha256(line).slice(0, 8)}` === groupId;
+// The new shape's hash pins one exact line. The old 58-character shape can
+// match any line sharing that lead-in, so it skips the lines coordinationItems
+// never made an item of (resolve.js): tiebreak verdicts, and lines naming a
+// staged file that exists (that file is the item).
+function decisionLineMatches(line, groupId, readStaged) {
+  if (`decision:${line.slice(2, 60)}#${sha256(line).slice(0, 8)}` === groupId) return true;
+  if (line.slice(2, 60) !== groupId.slice('decision:'.length)) return false;
+  if (parseTiebreakLine(line)) return false;
+  const named = STAGED_FILE_RE.exec(line);
+  return !(named && readStaged(named[1]) !== null);
 }
 
-// The items one source line yields: a finding item per finding, or one no-claim item.
+// The items one source line yields: a finding item per finding, or one no-claim
+// item for a line with no path or no claim at all. A finding whose own claim is
+// empty, on a line whose other findings have one, is its own no-claim item.
 function lineItems(line, base, runId, section) {
   const split = splitDecisionLine(line);
   if (split.noClaim) {
     return [{ ...base, itemId: backfillItemId({ runId, sourceKey: line, findingKey: '' }), kind: 'no-claim', noClaimReason: split.noClaim, context: line, bundleLine: line }];
   }
-  return split.findings.map((f, k) => ({
+  return split.findings.map((f, k) => (f.claim === '' ? {
+    ...base,
+    itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f, k) }),
+    kind: 'no-claim',
+    noClaimReason: 'claim-empty',
+    context: line,
+    bundleLine: line,
+  } : {
     ...base,
     itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f, k) }),
     kind: 'finding',
@@ -153,7 +201,7 @@ function stagedFindingItem(name, text, base, itemId, section) {
   const sev = /Severity:\s*(\w+)/.exec(text);
   const lens = /Lens:\s*([\w-]+)/.exec(text) || /lens\s+"?([\w-]+)/.exec(text);
   const findingLine = /^[-*\s]*Finding:\**\s*(.+)$/m.exec(text);
-  const claim = (findingLine ? findingLine[1] : text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ')).replace(/\s+/g, ' ').trim();
+  const claim = (findingLine ? findingLine[1] : text.split('\n').filter((l) => !/^\s*#/.test(l)).join(' ')).replace(/\s+/g, ' ').replace(/^[\s:;,.)]+/, '').trim();
   if (!claim) return { ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', context: text };
   return {
     ...base,
@@ -199,15 +247,16 @@ function consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runI
       emitted.add(key);
       const indices = groups.get(key);
       const base = { itemHash: itemHashOf(indices.map((i) => stored[i])), section, consoleDir, storedIndices: indices };
-      const matched = stagedLines.filter((line) => decisionLineMatches(line, key));
+      const matched = stagedLines.filter((line) => decisionLineMatches(line, key, readStaged));
       if (!matched.length) {
         out.push({ ...base, itemId: backfillItemId({ runId, sourceKey: id, findingKey: '' }), kind: 'no-claim', noClaimReason: 'source-line-not-found', context: id });
         continue;
       }
       for (const line of matched) out.push(...lineItems(line, base, runId, section));
-    } else if (typeof id === 'string' && id.startsWith('bf:') && typeof item.backfillSource === 'string') {
-      const own = lineItems(item.backfillSource, single, runId, section).find((w) => w.itemId === id);
-      out.push(own || { ...single, itemId: id, kind: 'no-claim', noClaimReason: 'source-line-not-found', context: item.backfillSource });
+    } else if (typeof id === 'string' && id.startsWith('bf:')) {
+      const source = typeof item.backfillSource === 'string' ? item.backfillSource : null;
+      const own = source === null ? null : lineItems(source, single, runId, section).find((w) => w.itemId === id);
+      out.push(own || { ...single, itemId: id, kind: 'no-claim', noClaimReason: 'source-line-not-found', context: source || id });
     } else if (typeof id === 'string' && id.startsWith('tiebreak:')) {
       const tid = id.slice('tiebreak:'.length);
       const verdicts = decisionLinesAll.map((l) => ({ l, t: parseTiebreakLine(l) })).filter(({ t }) => t && t.id === tid);
@@ -271,11 +320,15 @@ function buildWorkList({ pipelinesRoot, mainSha, deps = {} }) {
       if (!consoleJson || typeof consoleJson !== 'object') { unreadable.push(consolePath); continue; }
       const decisionsPath = path.join(consoleDir, 'decisions.md');
       try { decisions = readIfPresent(d, decisionsPath) || ''; } catch { unreadable.push(decisionsPath); continue; }
-      let findings = [];
+      // The tiebreak artifact: absent reads as []; present but unreadable, unparseable
+      // or not an array makes the console unreadable rather than claimless.
+      const findingsPath = path.join(consoleDir, 'review-findings.json');
+      let findings;
       try {
-        const parsed = JSON.parse(readIfPresent(d, path.join(consoleDir, 'review-findings.json')) || '[]');
-        if (Array.isArray(parsed)) findings = parsed;
-      } catch { /* absent or unparseable tiebreak artifact reads as [] (resolve.js's readRunFiles) */ }
+        const raw = readIfPresent(d, findingsPath);
+        findings = raw === null ? [] : JSON.parse(raw);
+      } catch { findings = null; }
+      if (!Array.isArray(findings)) { unreadable.push(findingsPath); continue; }
       const readStaged = (name) => readIfPresent(d, path.join(consoleDir, 'staged', name));
       try {
         items.push(...consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runId: runIdOf(consoleDir), findings }));

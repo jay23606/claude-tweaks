@@ -3,7 +3,7 @@
 // included), how a legacy decisions.md line splits into one item per finding,
 // and the content-derived ids the apply step joins on.
 'use strict';
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -21,9 +21,13 @@ const { runIdOf } = require('../../../plugin/bin/lib/console/resolve');
 
 const MAIN_SHA = '0123456789abcdef0123456789abcdef01234567';
 
+const tmpDirs = [];
+after(() => { for (const dir of tmpDirs) fs.rmSync(dir, { recursive: true, force: true }); });
+
 // A git-initialised root, so wtDetect.mainCheckoutRoot resolves to the fixture.
 function fixtureRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-backfill-'));
+  tmpDirs.push(root);
   execFileSync('git', ['init', '-q', root]);
   const pipelines = path.join(root, '.claude-tweaks', 'pipelines');
   fs.mkdirSync(pipelines, { recursive: true });
@@ -67,11 +71,20 @@ const LOW = 'Low-confidence findings';
 const KEEP = (id, section = LOW) => ({ id, section, resolution: 'keep-staged', reason: 'unconfirmed finding — never auto-applied' });
 const PENDING = (id) => ({ id, section: 'Pending review', resolution: 'pending', reason: 'unmapped-prefix' });
 
-// Real lines (archive/2026-10-16T162759-record-3013, and the #3772 resolve.js line).
+// Real lines, verbatim from archived decisions.md files: BUNDLED from
+// archive/2026-10-16T162759-record-3013, COMPOSE_SUBJECT from
+// archive/2026-10-16T191151-record-3028, CLAIMLESS the #3772 resolve.js line,
+// and the four claim-recovery lines (ruling R5) from other archived runs.
 const BUNDLED = '- STAGED 19:29:13 — Step 3 reproduction: lens 3f findings not reproduced (single agent): classify.test.js:81 tests normalizeEntry directly (internal coupling); pr-check-gate-conformance.test.js:77 prose-regex extraction called brittle (note: deepEqual against FAILING_CONCLUSIONS fails loudly on an empty extraction). Staged to Review Console as low-confidence. Reversibility: high.';
 const CLAIMLESS = '- STAGED 14:54:55 — log-decision: Reproduction: lens "3c" finding plugin/bin/lib/console/resolve.js:134 not reproduced (present in only one of two reproduction agents). Staged to Review Console as low-confidence. Reversibility: high.';
+const COMPOSE_SUBJECT = '- STAGED 22:19:09 — 3: Reproduction: lens 3f findings tests/bin-lib/compose-subject.test.js:454 / tests/bin-lib/compose-subject.test.js:454 share a location but not substance per categorise-reproduction (both describe the realDeps.runner source-line pin); both staged as low-confidence. Direct-verification override not applied: same item as ledger item 4, already triaged leave by the whole-branch review (plan-mandated pin, fails loudly on revert). Reversibility: high.';
+const PREFLIGHT = '- STAGED 12:53:49 — Step 3 reproduction: Reproduction: lens 3f finding plugin/bin/preflight-records.js (loadFromRecordsJson) not reproduced — no test pins that the --records-json path skips deps.remoteUrl(). Staged to Review Console as low-confidence. Reversibility: high.';
+const EXTRACT = '- STAGED 23:43:03 — log-decision: Reproduction: lens 3b finding plugin/bin/lib/verify/extract.js:572 (a jest log concatenated with a pytest run reads accounted: summaryDialect ignores pytest FAILED/banner lines, probed by the agent returning 0) not reproduced. Staged to Review Console as low-confidence. Open choice: treat pytest markers as a third ambiguous dialect (null) vs accept — multi-runner logs are not a documented check shape. Reversibility: high.';
+const EXCLUSIONS = '- STAGED 21:02:21 — log-decision: Reproduction: lens "3c" finding plugin/bin/lib/dispatch/exclusions.js:15 (readExclusions silently degrades malformed JSON to [] with no logging) not reproduced (agent A: no findings). Staged to Review Console as low-confidence. Reversibility: high.';
+const PR_CHECK = '- STAGED 15:01:08 — log-decision: Reproduction: lens "3f" findings tests/pr-check-gate-conformance.test.js:106 (low, classifyRollup loop overlaps tests/bin-lib/pr-checks/classify.test.js:79-88) and plugin/skills/_shared/pr-check-gate.md:15 (info, new StatusContext sentence in the shared gate not pinned) not reproduced. Staged to Review Console as low-confidence. Reversibility: high.';
+// Synthetic lines.
 const SINGLE = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/lib/console/residue.js:40 not reproduced (single agent): the missing split ignores ids that carry a slash. Staged to Review Console as low-confidence. Reversibility: high.';
-const REPEATED_LOC = '- STAGED 11:02:03 — Reproduction: lens "3b" findings plugin/bin/compose-subject.js:454 the type lookup ignores a scoped type label / plugin/bin/compose-subject.js:454 the subject truncation drops the trailing record reference share a location. Staged to Review Console as low-confidence. Reversibility: high.';
+const MIXED = '- STAGED 10:30:00 — Reproduction: lens "3c" findings plugin/bin/a.js:1 (single agent) / plugin/bin/b.js:2 the writer skips its atomic rename step. Staged to Review Console as low-confidence.';
 
 test('AC2.1: an acknowledged console holding keep-staged items is walked', () => {
   const { pipelines } = fixtureRoot();
@@ -126,13 +139,66 @@ test('AC3.2: two lines sharing their first 58 characters yield distinct ids', ()
 
 test('AC3.2b: a repeated location in one line yields distinct ids', () => {
   const { pipelines } = fixtureRoot();
-  const run = mkArchived(pipelines, '2026-10-16T000000-spec-3');
-  mkDecisions(run, [REPEATED_LOC]);
-  mkConsole(run, [KEEP(newId(REPEATED_LOC))]);
+  const run = mkArchived(pipelines, '2026-10-16T191151-record-3028');
+  mkDecisions(run, [COMPOSE_SUBJECT]);
+  mkConsole(run, [KEEP(newId(COMPOSE_SUBJECT))]);
   const { items } = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA }).runs[0];
-  assert.strictEqual(items.length, 2);
-  assert.deepStrictEqual(items.map((i) => `${i.finding.path}:${i.finding.line}`), ['plugin/bin/compose-subject.js:454', 'plugin/bin/compose-subject.js:454']);
+  assert.deepStrictEqual(items.map((i) => [i.kind, i.noClaimReason]), [['no-claim', 'claim-empty'], ['finding', undefined]]);
+  assert.strictEqual(`${items[1].finding.path}:${items[1].finding.line}`, 'tests/bin-lib/compose-subject.test.js:454');
   assert.notStrictEqual(items[0].itemId, items[1].itemId);
+});
+
+test('a mixed line yields one finding item and one no-claim item, each with its own id', () => {
+  const { pipelines } = fixtureRoot();
+  const run = mkArchived(pipelines, '2026-10-16T000000-spec-3');
+  mkDecisions(run, [MIXED]);
+  mkConsole(run, [KEEP(newId(MIXED))]);
+  const { items } = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA }).runs[0];
+  assert.deepStrictEqual(items.map((i) => i.kind), ['no-claim', 'finding']);
+  assert.strictEqual(items[0].noClaimReason, 'claim-empty');
+  assert.strictEqual(items[0].itemId, backfillItemId({ runId: runIdOf(run), sourceKey: MIXED, findingKey: '3c|plugin/bin/a.js:1#0' }));
+  assert.strictEqual(items[1].claimText, 'the writer skips its atomic rename step.');
+  assert.ok(items.every((i) => i.kind !== 'finding' || i.claimText !== ''));
+  // Leading punctuation left by a dropped parenthetical is stripped.
+  assert.strictEqual(splitDecisionLine(SINGLE).findings[0].claim, 'the missing split ignores ids that carry a slash.');
+});
+
+test('R5a: text after an opening parenthetical is kept in the claim', () => {
+  const [f] = splitDecisionLine(PREFLIGHT).findings;
+  assert.strictEqual(f.path, 'plugin/bin/preflight-records.js');
+  assert.strictEqual(f.line, null);
+  assert.ok(f.claim.includes('no test pins that the --records-json path skips deps.remoteUrl()'), f.claim);
+});
+
+test('R5b: a parenthetical is dropped only when reproduction meta leaves fewer than 3 words', () => {
+  const [extract] = splitDecisionLine(EXTRACT).findings;
+  assert.ok(extract.claim.startsWith('(a jest log concatenated with a pytest run'), extract.claim);
+  assert.ok(!/\bagent\b/.test(extract.claim), extract.claim);
+  const [excl] = splitDecisionLine(EXCLUSIONS).findings;
+  assert.strictEqual(excl.claim, '(readExclusions silently degrades malformed JSON to [] with no logging) .');
+  assert.deepStrictEqual(splitDecisionLine(CLAIMLESS), { findings: [], noClaim: 'claim-empty' });
+});
+
+test('R5c: low-confidence is never severity low', () => {
+  const { findings } = splitDecisionLine(COMPOSE_SUBJECT);
+  assert.strictEqual(findings[1].severity, null);
+  const { pipelines } = fixtureRoot();
+  const run = mkArchived(pipelines, '2026-10-16T191151-record-3028');
+  mkDecisions(run, [COMPOSE_SUBJECT]);
+  mkConsole(run, [KEEP(newId(COMPOSE_SUBJECT))]);
+  assert.strictEqual(buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA }).runs[0].items[1].finding.reporterSeverity, 'medium');
+});
+
+test('R5d: a location inside a parenthetical or a continuing range is not a split point', () => {
+  const { findings } = splitDecisionLine(PR_CHECK);
+  assert.deepStrictEqual(findings.map((f) => [f.path, f.line, f.severity]), [
+    ['tests/pr-check-gate-conformance.test.js', 106, 'low'], ['plugin/skills/_shared/pr-check-gate.md', 15, 'info'],
+  ]);
+  assert.ok(findings[0].claim.includes('classify.test.js:79-88'), findings[0].claim);
+  const range = '- STAGED 10:00:00 — Reproduction: lens "3f" finding tests/a.test.js:12 duplicates the loop that already overlaps tests/b.test.js:79-88 entirely. Staged to Review Console as low-confidence.';
+  const split = splitDecisionLine(range).findings;
+  assert.strictEqual(split.length, 1);
+  assert.ok(split[0].claim.includes('tests/b.test.js:79-88'), split[0].claim);
 });
 
 test('AC4.1: a finding with no recoverable claim is a no-claim item', () => {
@@ -241,6 +307,39 @@ test('a bf: item persisted by an earlier apply re-splits to its own finding', ()
   assert.strictEqual(items[0].finding.path, 'pr-check-gate-conformance.test.js');
   assert.deepStrictEqual(items[0].storedIndices, [1]);
   assert.strictEqual(items[0].itemHash, itemHashOf([stored[1]]));
+});
+
+test('a bf: item with no backfillSource is a source-line-not-found no-claim item', () => {
+  const { pipelines } = fixtureRoot();
+  const run = mkArchived(pipelines, '2026-10-16T000000-spec-15');
+  mkConsole(run, [KEEP('bf:0123456789abcdef')]);
+  const { items } = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA }).runs[0];
+  assert.deepStrictEqual(items.map((i) => [i.itemId, i.kind, i.noClaimReason]), [['bf:0123456789abcdef', 'no-claim', 'source-line-not-found']]);
+});
+
+test('old-shape matching skips tiebreak verdict lines and lines naming a staged file that exists', () => {
+  const { pipelines } = fixtureRoot();
+  const run = mkArchived(pipelines, '2026-10-16T000000-spec-16');
+  const named = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/lib/console/alpha.js:10 not reproduced, see staged/review-unconfirmed-1.md for the alpha reader claim.';
+  const plain = '- STAGED 10:00:00 — Reproduction: lens "3c" finding plugin/bin/lib/console/alpha.js:10 not reproduced (single agent): the alpha reader drops a trailing newline.';
+  const verdict = '- STAGED 12:00:00 — Tiebreak tiebreak:abcdef012345: lens "3c" finding plugin/x.js:12 console: verdict:cant-tell. Severity: high. Recommendation: file.';
+  assert.strictEqual(named.slice(2, 60), plain.slice(2, 60), 'precondition: one old-shape id covers both lines');
+  mkDecisions(run, [named, plain, verdict]);
+  mkStaged(run, 'review-unconfirmed-1.md', 'Finding: the alpha reader drops a trailing newline\nTarget: plugin/bin/lib/console/alpha.js:10\n');
+  mkConsole(run, [KEEP(oldId(plain)), KEEP(oldId(verdict))]);
+  const { items } = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA }).runs[0];
+  assert.deepStrictEqual(items.map((i) => [i.kind, i.bundleLine || i.noClaimReason]), [['finding', plain], ['no-claim', 'source-line-not-found']]);
+});
+
+test('a review-findings.json that exists but cannot be parsed makes its console unreadable', () => {
+  const { pipelines } = fixtureRoot();
+  const run = mkArchived(pipelines, '2026-10-16T000000-spec-17');
+  mkDecisions(run, [SINGLE]);
+  mkConsole(run, [KEEP(newId(SINGLE))]);
+  fs.writeFileSync(path.join(run, 'review-findings.json'), '{bad');
+  const wl = buildWorkList({ pipelinesRoot: pipelines, mainSha: MAIN_SHA });
+  assert.deepStrictEqual(wl.unreadable, [path.join(run, 'review-findings.json')]);
+  assert.deepStrictEqual(wl.runs[0].items, []);
 });
 
 test('live runs are reported and skipped', () => {
