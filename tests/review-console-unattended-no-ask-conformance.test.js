@@ -73,6 +73,22 @@ test('AC7: the unattended branch runs console-filings.js', () => {
   assert.ok(!namesConsoleFilings(mutated), 'control: without the call the check goes red');
 });
 
+// A failed console-filings.js filing is not residue (console.json already says `filed`), so the prose
+// carries it into the `Needs a human` block's channels — the PushNotification and the final stop.
+const CARRY = 'carry a needs-human-action line naming `{item-run-dir}`, the items, and the paste-ready re-run';
+const CARRY_CHANNELS = 'wherever the CLI\'s `Needs a human` block is carried — the `PushNotification` and the run\'s final human-facing stop';
+const carriesFailedFiling = (text) => {
+  const body = section(text, SHORT_CIRCUIT).replace(/\s+/g, ' ');
+  return body.includes(CARRY) && body.includes(CARRY_CHANNELS);
+};
+
+test('AC7: a failed console-filings.js filing is carried into the Needs a human block', () => {
+  assert.ok(carriesFailedFiling(REVIEW_CONSOLE));
+  const mutated = REVIEW_CONSOLE.replace('carry a needs-human-action line', 'log a line');
+  assert.notStrictEqual(mutated, REVIEW_CONSOLE);
+  assert.ok(!carriesFailedFiling(mutated), 'control: without the carry line the check goes red');
+});
+
 test('AC7: console-resolve.js and console-filings.js source contain no AskUserQuestion', () => {
   for (const cli of ['console-resolve.js', 'console-filings.js']) {
     const src = read('plugin', 'bin', cli);

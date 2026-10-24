@@ -103,7 +103,8 @@ Render this block, unmodified, immediately before the final Resolve checkbox:
 - **Exception — an SDD ruling row** (`sdd-ruling-*`): ticked = ratify; unticked when Resolve
   console is ticked = **reverse** (a reversal record is filed), never a bare decline.
 - **Exception — a finding row** (`tick = file · untick = drop`): ticked = file it as a backlog
-  record; unticked when Resolve console is ticked = **drop** (nothing is filed).
+  record; unticked when Resolve console is ticked = **drop** (nothing is filed). A finding row
+  may arrive pre-ticked (its default is to file) — untick it to drop it.
 - Tick every item you approve, then tick **Resolve console** last to confirm — a half-ticked
   list is never read as an answer on its own.
 - **The PR itself needs no checkbox**: mark it ready and merge it = "merge"; close it =
@@ -131,7 +132,7 @@ session performs the ratify or reverse write-back per `wrap-up/review-console-ap
   included — read-modify-write per "Edit-idempotence" below.
 - **Unresolved, item set changed** (a resumed run whose `decisions.md`/`staged/` gained or lost
   rows since the last render): preserve ticks on items whose id survives; drop ticks whose item is
-  gone; new items arrive unticked; **un-tick Resolve** even if it was ticked, and append directly
+  gone; new items arrive unticked (a `filed`-default finding row, pre-ticked); **un-tick Resolve** even if it was ticked, and append directly
   below the Resolve row: `_(items changed since your Resolve tick — re-tick to confirm)_`.
   Approval always refers to the list as it is currently rendered — a Resolve tick made against a
   stale item set must never be read as approving items the human never saw.
@@ -201,7 +202,9 @@ fourth kind, `console`, and one addition that mechanism's other three kinds don'
 tick-preservation across the read-modify-write.
 
 1. **No existing `console.json` for this run** (first render): compose the full comment body
-   (all sections, all rows unticked, legend, Resolve checkbox unticked), post via
+   (all sections, all rows unticked — except a finding row whose default is `filed`, which
+   renders pre-ticked per "A Low-confidence or Contested row" above — legend, Resolve checkbox
+   unticked), post via
    `gh pr comment`, write `console.json` with the new comment id, every item's `stagedHash`, and
    — when this run's group had a merge-check verdict already computed this session (see
    `mergeCheckVerdict` above) — that field.
@@ -211,7 +214,7 @@ tick-preservation across the read-modify-write.
    the same kind), parse each `<!-- console-item: {id} -->` row's tick state by regex against the
    line immediately following the marker (`- \[x\]` vs `- \[ \]`), then recompose: matching ids
    keep their parsed tick, ids no longer in the current item set are dropped, new ids from the
-   current item set arrive unticked, `resolve`'s tick is preserved unless the item set changed
+   current item set arrive unticked (a `filed`-default finding row arrives pre-ticked), `resolve`'s tick is preserved unless the item set changed
    (see "Resolve checkbox" above). **Re-fetch immediately before writing** and re-merge if the
    body changed underneath since the first fetch — the residual fetch-to-write race window past
    that second fetch is accepted and documented, not eliminated; a human ticking a box in the

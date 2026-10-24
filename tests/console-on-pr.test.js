@@ -177,6 +177,13 @@ test('#3949: console-on-pr.md renders a finding row from --list with its label, 
   assert.strictEqual(resolved.items[0].findingItem, 'tiebreak:3f2a9c1b7d04', 'the flag the prose names is the one detection forwards');
 });
 
+test('#3949: the Post-or-update steps and the Legend name the pre-ticked finding-row exception', () => {
+  const onPr = flat(CONSOLE_ON_PR);
+  assert.ok(onPr.includes('all rows unticked — except a finding row whose default is `filed`, which renders pre-ticked per "A Low-confidence or Contested row" above'));
+  assert.ok(onPr.includes('a `filed`-default finding row arrives pre-ticked'));
+  assert.ok(onPr.includes('A finding row may arrive pre-ticked (its default is to file) — untick it to drop it.'));
+});
+
 test('#3949: console-execution.md routes a ticked finding row to step 7 and a failed filing to --filing-failed', () => {
   assert.ok(CONSOLE_EXECUTION.includes('**Except a finding row** (`findingItem` on its item'));
   assert.ok(CONSOLE_EXECUTION.includes('it files through `wrap-up/review-console.md` step 7\'s can\'t-tell clause'));
