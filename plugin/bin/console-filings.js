@@ -38,8 +38,8 @@ const fs = require('fs');
 const path = require('path');
 const { resolveTarget } = require('./lib/stage-item/write');
 const { findingItems, runIdOf } = require('./lib/console/resolve');
-const { planFilings } = require('./lib/console/finding-filing');
-const { extractFingerprint, checkFingerprint, recordFingerprint } = require('./lib/issues/record');
+const { planFilings, fingerprintMap } = require('./lib/console/finding-filing');
+const { checkFingerprint } = require('./lib/issues/record');
 
 const USAGE = 'usage: console-filings.js --run <run-dir> --existing <issues.json> --out-dir <dir> [--only <item,...>] [--help]\n'
   + '       console-filings.js --run <run-dir> --list\n'
@@ -73,18 +73,6 @@ const realDeps = {
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
 };
-
-// The fingerprint -> record number map from `gh issue list` rows. First record wins on a repeated
-// fingerprint; a row with no marker, no body, or no positive-integer number contributes nothing.
-function fingerprintMap(rows) {
-  const map = {};
-  for (const row of rows) {
-    if (!row || typeof row !== 'object') continue;
-    const fp = extractFingerprint(row.body);
-    if (fp && Number.isInteger(row.number) && row.number > 0 && checkFingerprint(map, fp) === null) recordFingerprint(map, fp, row.number);
-  }
-  return map;
-}
 
 // One --list row: the item's console fields plus its tiebreak verdict's, null when it has none.
 function listRow(i) {

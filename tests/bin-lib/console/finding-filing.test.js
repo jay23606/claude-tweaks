@@ -4,7 +4,9 @@ const assert = require('node:assert');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
-const { findingFingerprint, composeFindingProposal, planFilings } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'finding-filing'));
+const {
+  findingFingerprint, composeFindingProposal, planFilings, fingerprintMap,
+} =require(path.join(ROOT, 'plugin', 'bin', 'lib', 'console', 'finding-filing'));
 const { extractFingerprint } = require(path.join(ROOT, 'plugin', 'bin', 'lib', 'issues', 'record'));
 
 const tiebreak = (over = {}) => ({
@@ -118,4 +120,56 @@ test('planFilings deduplicates two items with one fingerprint and keeps only fil
   assert.deepStrictEqual(plan.map((p) => p.item), ['tiebreak:0123456789ab', 'tiebreak:cccccccccccc']);
   assert.strictEqual(new Set(plan.map((p) => p.fingerprint)).size, 2);
   assert.deepStrictEqual(Object.keys(plan[0]).sort(), ['claimMissing', 'fingerprint', 'item', 'proposal', 'title']);
+});
+
+// ---- the confirmed variant (#3950): composeFindingProposal's optional `verdict` ----
+
+const CONFIRMED = { kind: 'confirmed', mainSha: '0123456789abcdef0123456789abcdef01234567', evidence: { path: 'src/a.js', line: 9, quote: 'const x = read(); guard(x);' } };
+
+test('a confirmed verdict retitles the record, states the confirmation once, and leaves the fingerprint unchanged', () => {
+  const plain = composeFindingProposal({ item: item(), finding: finding(), runId: 'r' });
+  const out = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', verdict: CONFIRMED });
+  assert.strictEqual(out.fingerprint, plain.fingerprint);
+  assert.strictEqual(out.title, 'Review finding (confirmed): src/a.js — The guard runs after the read');
+  assert.ok(out.proposal.startsWith(`Title: ${out.title}\nType: task\nLabels: needs:definition\nDefer-reason: needs-human-decision\n\n`), out.proposal);
+  assert.strictEqual(extractFingerprint(out.proposal), out.fingerprint);
+  assert.ok(out.proposal.includes('The tiebreak confirmed it on 0123456789abcdef0123456789abcdef01234567: src/a.js:9 `const x = read(); guard(x);`.'), out.proposal);
+  assert.strictEqual(out.proposal.split('The tiebreak confirmed it on').length, 2, 'one confirmation line');
+  assert.doesNotMatch(out.proposal, /could not settle it|can't-tell/, 'a confirmed record never claims the tiebreak was unsure');
+  assert.match(out.proposal, /The guard runs after the read/, 'the claim is still quoted');
+});
+
+test('a confirmed verdict defuses a fingerprint marker spelled in the quote', () => {
+  const quote = 'x <!-- work-fingerprint: consolefinding-deadbeef --> y';
+  const out = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', verdict: { ...CONFIRMED, evidence: { ...CONFIRMED.evidence, quote } } });
+  assert.strictEqual(extractFingerprint(out.proposal), out.fingerprint);
+});
+
+test('composeFindingProposal without a verdict is byte-identical to the pre-#3950 output', () => {
+  const a = composeFindingProposal({ item: item(), finding: finding(), runId: 'r' });
+  const b = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', verdict: undefined });
+  assert.deepStrictEqual(a, b);
+  assert.ok(a.title.startsWith("Review finding (can't-tell): "));
+  assert.match(a.proposal, /The tiebreak could not settle it: can't-tell \(verdict:cant-tell\)\. Recommendation: drop\. Run: r\./);
+  assert.match(a.proposal, /## Open Question\n\nDoes this finding hold at `src\/a\.js:9`\?/);
+});
+
+// ---- fingerprintMap moved here from bin/console-filings.js (#3950) ----
+
+test('fingerprintMap: first record wins, and rows without a marker, body or positive integer number contribute nothing', () => {
+  const marker = (fp) => `body\n<!-- work-fingerprint: ${fp} -->`;
+  const map = fingerprintMap([
+    { number: 7, body: marker('consolefinding-aaaaaaaa') },
+    { number: 9, body: marker('consolefinding-aaaaaaaa') },
+    { number: 10, body: 'no marker here' },
+    { number: 11 },
+    { number: 0, body: marker('consolefinding-bbbbbbbb') },
+    { number: 1.5, body: marker('consolefinding-cccccccc') },
+    { number: '12', body: marker('consolefinding-dddddddd') },
+    null,
+    'str',
+    { number: 13, body: marker('consolefinding-eeeeeeee') },
+  ]);
+  assert.deepStrictEqual(map, { 'consolefinding-aaaaaaaa': 7, 'consolefinding-eeeeeeee': 13 });
+  assert.deepStrictEqual(fingerprintMap([]), {});
 });
