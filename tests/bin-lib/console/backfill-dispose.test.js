@@ -340,8 +340,39 @@ test('R14b: digest text rules on small shapes', () => {
   assert.strictEqual(text('**Category:** convention\n\nSource: light\nFiles: a.js\nRun: r\nMode: full\n\nThe real sentence.\n'), 'The real sentence.');
   assert.strictEqual(text('| # | Item | Why |\n|---|------|-----|\n| 1 | Do the thing | — |\n| 2 | Other | y |\n'), 'Do the thing', 'a data row keeps its non-numeric cells');
   assert.strictEqual(text('| a | b |\n|:--|--:|\n| 12 | 3 | x | y |\n'), 'x — y', 'numeric cells are dropped');
-  assert.strictEqual(text('Note: a sentence that starts like a key.\n\nmore\n'), 'more', 'a file-leading Key: value line is header');
+  assert.strictEqual(text('Note: a sentence that starts like a key.\n'), 'Note: a sentence that starts like a key.', 'a one-line file keeps its only sentence');
+  assert.strictEqual(text('Note: a sentence that starts like a key.'), 'Note: a sentence that starts like a key.', 'with or without the final newline');
+  assert.strictEqual(text('Note: a header line\n\nThe body.\n'), 'The body.', 'a Key: value block followed by a blank line and more content is still a header');
   assert.strictEqual(text('---\n\nplain line\n'), 'plain line');
+});
+
+test('R14b2: a patch proposal digests as its Finding line, else its Target, and never as a diff line', () => {
+  const docs = stagedDigest('docs-1.md', { section: 'Documentation updates' }, 'patch-docs-3520.md');
+  assert.ok(docs.finding.startsWith('docs-1.md (Documentation updates): low staleness — Success state still says only a direct file-sharing neighbour'), docs.finding);
+  assert.doesNotMatch(docs.finding, /diff --git|@@|```|Target:/);
+  // A real file whose header runs straight into the diff with no blank line between.
+  const journey = stagedDigest('journey-resolve-a-policy-key-env-layer.md', { section: 'Journey updates' }, 'patch-journey-2567.md');
+  assert.ok(journey.finding.includes('moderate staleness/origin-coverage — #2567 added the first environment-variable layer'), journey.finding);
+  assert.doesNotMatch(journey.finding, /diff --git|@@|--- a\//);
+
+  const text = (body, name = 'skills-9.md') => dispose(stagedItem({ name, section: 'Skill updates' }), undefined, files({ [name]: body })).digest.entry.finding.replace(new RegExp(`^${name.replace('.', '\\.')} \\(Skill updates\\)(: )?`), '');
+  assert.strictEqual(text('Target: docs/REGISTRY.md\nInvariant: the row says opt-in\nStaged-at: 2026-10-15\n\n```diff\ndiff --git a/docs/REGISTRY.md b/docs/REGISTRY.md\n'), 'Target: docs/REGISTRY.md', 'Target is the fallback when there is no Finding');
+  assert.strictEqual(text('Target: a.md\nFinding: the real finding\n\n@@ -1 +1 @@\n'), 'the real finding', 'Finding wins over Target');
+  for (const diffOnly of ['```diff\ndiff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-old\n+new\n```\n', '@@ -58,6 +58,7 @@\n-old\n+new\n', 'diff --git a/x b/x\nindex 1a2b..3c4d 100644\n', '--- a/x\n+++ b/x\n@@ -1 +1 @@\n']) {
+    assert.strictEqual(text(diffOnly), '', `no diff line becomes digest text: ${diffOnly.split('\n')[0]}`);
+  }
+  assert.strictEqual(text('An intro sentence.\n\n```diff\ndiff --git a/x b/x\n'), 'An intro sentence.', 'prose before the diff is still used');
+  assert.strictEqual(text('An intro sentence.\n\n```diff\n ## Finding\n+an added line\n```\n'), 'An intro sentence.', 'a ## Finding context line inside a diff body is not the section');
+});
+
+test('R14b3: a dream proposal digests as its Pattern, not its quoted session lines', () => {
+  const e = stagedDigest('dream-proposal-1.md', { section: 'Pending review', reason: 'unmapped-prefix' }, 'dream-proposal-2691.md');
+  assert.ok(e.finding.startsWith('dream-proposal-1.md (unmapped-prefix): `Bash` / `cd` — this session is isolated in the worktree'), e.finding);
+  assert.doesNotMatch(e.finding, /Session `/);
+  const noPattern = dispose(stagedItem({ name: 'dream-proposal-2.md', section: 'Pending review', reason: 'unmapped-prefix' }), undefined, files({
+    'dream-proposal-2.md': '# Dream pass — x\n\n## Quoted evidence\n\n- Session `abc` (2026-09-21T18:48:15.289Z):\n  - Command: `ls`\n',
+  })).digest.entry.finding;
+  assert.doesNotMatch(noPattern, /Session `/, 'a session line is never used as text');
 });
 
 const noClaim = (over = {}) => noClaimItem({
