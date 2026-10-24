@@ -3,8 +3,9 @@
 // console.json for it. Each entry settles one work item from backfill.js's
 // list: the stored item gets the outcome as its resolution plus a `settled`
 // audit record. A legacy `decision:` group is persisted split — one entry per
-// finding, the unsettled ones carrying their `backfillSource` line so the next
-// listing re-splits them to the same ids. Once nothing in the console is
+// finding, the unsettled ones carrying their `backfillSource` line and the
+// `backfillFinding` they were split into, so the next listing lists them as
+// they were. Once nothing in the console is
 // unresolved it is acknowledged; an existing acknowledgement is never touched.
 // Pure: no fs. The CLI (console-backfill.js) reads and writes the files.
 'use strict';
@@ -34,17 +35,33 @@ function settledFields({ itemId, outcome, source, ref }, at) {
   return { resolution: outcome, reason: `backfill: ${source} → ${outcome} (${ref})`, settled: { outcome, source, ref, at }, backfillId: itemId };
 }
 
+// The finding an unsettled split sibling was split into, persisted so the next
+// listing uses it as written instead of re-splitting the line: a change to the
+// split or claim heuristics between passes (a plugin upgrade) then cannot lose
+// it. `claimText` is '' for a claim-empty sibling. Null for a sibling with no
+// location (a no-path line), which re-splits from `backfillSource`.
+function persistedFinding(w) {
+  if (!w.finding) return null;
+  const { lens, path, line } = w.finding;
+  const locations = Array.isArray(w.locations) ? { locations: w.locations } : {};
+  return { lens, path, line, claimText: typeof w.claimText === 'string' ? w.claimText : '', ...locations };
+}
+
 // The entries that replace one touched group's stored items. A work item with
 // no `bundleLine` is non-split: it is its group's only item, settled in place
 // on the group's first stored item (its id and section kept). A split item is
-// written under its own `bf:` id, settled or carrying its source line.
+// written under its own `bf:` id, settled or carrying its source line and the
+// finding it was split into.
 function groupEntries(group, stored, settledBy, at) {
   const first = stored[group[0].storedIndices[0]];
   return group.map((w) => {
     const entry = settledBy.get(w.itemId);
     if (!w.bundleLine) return { ...first, ...settledFields(entry, at) };
     if (entry) return { id: w.itemId, section: w.section, ...settledFields(entry, at) };
-    return { id: w.itemId, section: w.section, resolution: first.resolution, reason: first.reason, backfillSource: w.bundleLine };
+    const finding = persistedFinding(w);
+    return {
+      id: w.itemId, section: w.section, resolution: first.resolution, reason: first.reason, backfillSource: w.bundleLine, ...(finding ? { backfillFinding: finding } : {}),
+    };
   });
 }
 

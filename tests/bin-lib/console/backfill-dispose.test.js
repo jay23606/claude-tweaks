@@ -517,6 +517,48 @@ test('planBatch keeps a no-verdict finding awaiting without a trusted matching d
   assert.deepStrictEqual(awaiting([{ body: elsewhere, authorAssociation: 'OWNER' }]), ['bf:a'], 'another finding\'s line');
 });
 
+// I1: a record or digest line landed before a crashed apply is found by the item's own marker when the
+// claim heuristics changed in between, so the claim-keyed fingerprint no longer matches.
+test('I1: a record filed under one claim is reused, not twinned, after the item\'s claim changes', () => {
+  const before = findingItem({ itemId: 'bf:00000000000000d1', itemHash: 'hd1', claimText: 'The guard runs after the read' });
+  const after = { ...before, claimText: 'the guard runs after the read (as a later cleaner leaves it)' };
+  const filed = plan({ workList: workList([before]), verdicts: { [before.itemId]: confirmed() } }).file[0];
+  assert.ok(filed.text.includes(`work-fingerprint: ${backfillFingerprint(before.itemId)}`), 'the filing carries its item marker');
+  assert.strictEqual(extractFingerprint(filed.text), filed.fingerprint, 'the claim fingerprint stays the marker extractFingerprint reads');
+  const existingIssues = [{ number: 4120, title: filed.title, body: filed.text.split('\n\n').slice(1).join('\n\n') }];
+  assert.notStrictEqual(findingFingerprint({ lens: '3a', path: after.finding.path, claim: after.claimText }), filed.fingerprint, 'precondition: the claim fingerprint moved');
+  for (const verdicts of [{ [after.itemId]: confirmed() }, {}]) {
+    const out = plan({ workList: workList([after]), verdicts, existingIssues });
+    assert.deepStrictEqual(out.file, [], JSON.stringify(verdicts));
+    assert.deepStrictEqual(out.reuse, [{ itemId: after.itemId, number: 4120 }]);
+    assert.deepStrictEqual(out.entries.map((e) => [e.outcome, e.ref]), [['filed', '#4120']]);
+  }
+  // Orthogonal: another item's marker never matches.
+  const other = { ...after, itemId: 'bf:00000000000000d2' };
+  const out = plan({ workList: workList([other]), verdicts: { [other.itemId]: confirmed() }, existingIssues });
+  assert.deepStrictEqual(out.reuse, []);
+  assert.deepStrictEqual(out.file.map((f) => f.itemId), [other.itemId]);
+});
+
+test('I1: a finding digested under one claim is a digest duplicate, not a second line, after the claim changes', () => {
+  const before = findingItem({ itemId: 'bf:00000000000000e1', itemHash: 'he1' });
+  const after = { ...before, claimText: 'The guard runs after the read, as a later cleaner leaves it' };
+  const line = plan({ workList: workList([before]), verdicts: { [before.itemId]: digestV } }).digest.lines[0];
+  assert.ok(line.includes(`<!-- consolebackfill-item: ${backfillFingerprint(before.itemId)} -->`), line);
+  assert.deepStrictEqual(parseMaterialityFingerprints(line).length, 1, 'still one materiality marker on the line');
+  const digestComments = [{ body: line, authorAssociation: 'OWNER', url: 'https://x/issues/1426#issuecomment-1' }];
+  for (const verdicts of [{ [after.itemId]: digestV }, {}]) {
+    const out = plan({ workList: workList([after]), verdicts, digestComments });
+    assert.deepStrictEqual(out.digest.lines, [], JSON.stringify(verdicts));
+    assert.deepStrictEqual(out.digest.duplicates, [after.itemId]);
+    assert.deepStrictEqual(out.awaitingVerdict, []);
+  }
+  // Orthogonal: another item, and an untrusted comment, never match.
+  const other = { ...after, itemId: 'bf:00000000000000e2' };
+  assert.deepStrictEqual(plan({ workList: workList([other]), verdicts: { [other.itemId]: digestV }, digestComments }).digest.duplicates, []);
+  assert.deepStrictEqual(plan({ workList: workList([after]), verdicts: {}, digestComments: [{ ...digestComments[0], authorAssociation: 'NONE' }] }).awaitingVerdict, [after.itemId]);
+});
+
 test('planBatch accepts the verdicts as a Map too', () => {
   const out = plan({ workList: workList([findingItem({ itemId: 'bf:a' })]), verdicts: new Map([['bf:a', dropV]]) });
   assert.strictEqual(out.dispositions[0].action, 'drop');

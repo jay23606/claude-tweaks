@@ -31,6 +31,8 @@ const PATH_SHAPED_RE = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/;
 // split one.
 const META_PHRASES = [/present in only one\b[^)]*/gi, /partner agents?\b[^)]*/gi, /single agent/gi, /single[- ]read/gi, /no findings/gi, /\breproduc\w*/gi, /\bagents?\b/gi];
 const STAGED_FILE_RE = /staged\/([A-Za-z0-9_-]+\.(?:md|patch))/;
+// A decisions.md line's log prefix (`- STAGED 10:00:00 — `).
+const LOG_PREFIX_RE = /^-\s+(?:STAGED|AUTO)\s+\d{2}:\d{2}:\d{2}\s+—\s+/;
 // The producer's own staging note, in any case and followed by any of `.` `:` `;` ` —` or nothing
 // (`Staged to Review Console as low-confidence`, `both staged as low-confidence`, mid-sentence lowercase).
 const STAGING_NOTE_RE = /(?:\bboth\s+)?\bstaged\s+(?:to\s+Review\s+Console\s+)?as\s+low-confidence\b(?:[.:;]|\s*—)?/gi;
@@ -155,33 +157,38 @@ function splitPoints(line) {
     else if (line[i] === ')' && depth > 0) depth -= 1;
   }
   const points = [];
+  // `occurrence` counts the earlier LOCATION_RE matches of the same path:line anywhere in the line
+  // (inside parentheticals too), so it does not depend on which tokens are split points.
+  const seen = new Map();
   for (const m of line.matchAll(LOCATION_RE)) {
+    const occurrence = seen.get(m[0]) || 0;
+    seen.set(m[0], occurrence + 1);
     if (depthAt[m.index] > 0) continue;
     const end = m.index + m[0].length;
     if (points.length > 0 && /^-\d/.test(line.slice(end))) continue;
-    points.push({ path: m[1], line: Number(m[2]), start: m.index, end });
+    points.push({ path: m[1], line: Number(m[2]), occurrence, start: m.index, end });
   }
   return points;
 }
 
 // One legacy decisions.md line → its findings. A finding's claim is the text
 // between its location and the next split point (or the line's end).
-// `located` is every location the line names ({ lens, path, line }), claim or not: a line whose
+// `located` is every location the line names ({ lens, path, line, occurrence }), claim or not: a line whose
 // findings all lack a claim keeps its locations for the no-claim item that stands for it.
 function analyseLine(line) {
   const tokens = splitPoints(line);
   if (!tokens.length) {
     const m = PATH_SHAPED_RE.exec(line);
     if (!m) return { findings: [], noClaim: 'no-path', located: [] };
-    tokens.push({ path: m[0], line: null, start: m.index, end: m.index + m[0].length });
+    tokens.push({ path: m[0], line: null, occurrence: 0, start: m.index, end: m.index + m[0].length });
   }
   const lensMatch = /lens\s+"?([A-Za-z0-9_-]+)/.exec(line);
   const lens = lensMatch ? lensMatch[1] : 'unknown';
   const findings = tokens.map((t, k) => {
     const cleaned = cleanSegment(line.slice(t.end, k + 1 < tokens.length ? tokens[k + 1].start : line.length));
-    return { lens, path: t.path, line: t.line, claim: wordCount(cleaned) < 4 ? '' : cleaned, severity: severityOf(cleaned) };
+    return { lens, path: t.path, line: t.line, occurrence: t.occurrence, claim: wordCount(cleaned) < 4 ? '' : cleaned, severity: severityOf(cleaned) };
   });
-  const located = findings.map((f) => ({ lens: f.lens, path: f.path, line: f.line }));
+  const located = findings.map((f) => ({ lens: f.lens, path: f.path, line: f.line, occurrence: f.occurrence }));
   if (findings.every((f) => f.claim === '')) return { findings: [], noClaim: 'claim-empty', located };
   return { findings, noClaim: null, located };
 }
@@ -193,7 +200,11 @@ function splitDecisionLine(line) {
 
 const reporterSeverity = (s) => (s && SEVERITIES.includes(s) ? s : 'medium');
 const findingKindOf = (section) => (section === SECTIONS.CONTESTED ? 'contested' : 'unconfirmed');
-const findingKeyOf = (f, k) => `${f.lens}|${f.path}:${f.line}#${k}`;
+// A split item's key names its location only — lens, path:line and which occurrence of that
+// path:line in the line — never the split-point index or whether a claim came out empty, so a
+// change to the claim heuristics never moves an id (`@`, never the retired index-keyed `#k`).
+const findingKeyOf = (f) => `${f.lens}|${f.path}:${f.line}@${f.occurrence}`;
+const locationOf = (f) => ({ lens: f.lens, path: f.path, line: f.line });
 
 // A new-shape coordination id (`…#{8 hex}`) may carry a `-{n}` repeat suffix
 // for a byte-identical repeated line; it names the same line, so it groups and
@@ -216,30 +227,72 @@ function decisionLineMatches(line, groupId, readStaged) {
 // item for a line with no path or no claim at all. A finding whose own claim is
 // empty, on a line whose other findings have one, is its own no-claim item.
 // A no-claim item from a located finding keeps the location (`finding: { lens, path, line }`, no
-// claim): the digest line names the file. The id derivation does not read it, so ids do not move.
+// claim): the digest line names the file. A line whose findings all lack a claim is one item keyed
+// by its first location, the key its first finding has when it does carry a claim; a line with no
+// path is keyed ''.
 function lineItems(line, base, runId, section) {
   const split = analyseLine(line);
   if (split.noClaim) {
-    const located = split.located.length ? { finding: split.located[0], locations: split.located } : {};
-    return [{ ...base, itemId: backfillItemId({ runId, sourceKey: line, findingKey: '' }), kind: 'no-claim', noClaimReason: split.noClaim, ...located, context: line, bundleLine: line }];
+    const located = split.located.length ? { finding: locationOf(split.located[0]), locations: split.located.map(locationOf) } : {};
+    const findingKey = split.located.length ? findingKeyOf(split.located[0]) : '';
+    return [{ ...base, itemId: backfillItemId({ runId, sourceKey: line, findingKey }), kind: 'no-claim', noClaimReason: split.noClaim, ...located, context: line, bundleLine: line }];
   }
-  return split.findings.map((f, k) => (f.claim === '' ? {
-    ...base,
-    itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f, k) }),
-    kind: 'no-claim',
-    noClaimReason: 'claim-empty',
-    finding: { lens: f.lens, path: f.path, line: f.line },
-    context: line,
-    bundleLine: line,
-  } : {
-    ...base,
-    itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f, k) }),
-    kind: 'finding',
-    finding: { lens: f.lens, path: f.path, line: f.line, reporterSeverity: reporterSeverity(f.severity), kind: findingKindOf(section) },
-    claimText: f.claim,
-    context: line,
-    bundleLine: line,
+  return split.findings.map((f) => itemOfFinding({
+    base, itemId: backfillItemId({ runId, sourceKey: line, findingKey: findingKeyOf(f) }), finding: f, claim: f.claim, section, line,
   }));
+}
+
+// One split finding as a work item: a finding item, or a claim-empty no-claim item keeping its location.
+// The severity is read from the claim (the cleaned segment it came from names the same one).
+function itemOfFinding({
+  base, itemId, finding, claim, section, line, locations,
+}) {
+  if (claim === '') {
+    return {
+      ...base, itemId, kind: 'no-claim', noClaimReason: 'claim-empty', finding: locationOf(finding), ...(locations ? { locations } : {}), context: line, bundleLine: line,
+    };
+  }
+  return {
+    ...base,
+    itemId,
+    kind: 'finding',
+    finding: { ...locationOf(finding), reporterSeverity: reporterSeverity(severityOf(claim)), kind: findingKindOf(section) },
+    claimText: claim,
+    context: line,
+    bundleLine: line,
+  };
+}
+
+// A stored `backfillFinding` ({ lens, path, line, claimText, locations? }) is the finding apply
+// persisted the sibling as; it is used as written, never re-derived from the line.
+function storedFinding(v) {
+  if (!v || typeof v !== 'object' || typeof v.lens !== 'string' || typeof v.path !== 'string' || typeof v.claimText !== 'string') return null;
+  if (!(v.line === null || Number.isInteger(v.line))) return null;
+  const locations = Array.isArray(v.locations) && v.locations.every((l) => l && typeof l.path === 'string') ? v.locations : null;
+  return { lens: v.lens, path: v.path, line: v.line, claimText: v.claimText, locations };
+}
+
+// A persisted split sibling (`bf:` id). With `backfillFinding` it is that finding. A legacy entry
+// with only `backfillSource` is re-split and matched by id; when the re-split misses (the split
+// heuristics changed since it was persisted) it is `split-drift`: a finding with a recorded line,
+// judged as the whole line at the line's first location, or a no-claim item when the line names
+// none. `source-line-not-found` is only for an entry with no line at all.
+function persistedSplitItem(item, single, runId, section) {
+  const id = item.id;
+  const source = typeof item.backfillSource === 'string' ? item.backfillSource : null;
+  const stored = storedFinding(item.backfillFinding);
+  if (stored) {
+    return itemOfFinding({
+      base: single, itemId: id, finding: stored, claim: stored.claimText, section, line: source || id, locations: stored.locations || undefined,
+    });
+  }
+  if (source === null) return { ...single, itemId: id, kind: 'no-claim', noClaimReason: 'source-line-not-found', context: id };
+  const own = lineItems(source, single, runId, section).find((w) => w.itemId === id);
+  if (own) return own;
+  const first = analyseLine(source).located[0];
+  const claim = cleanSegment(source.replace(LOG_PREFIX_RE, ''));
+  if (!first || wordCount(claim) === 0) return { ...single, itemId: id, kind: 'no-claim', noClaimReason: 'split-drift', context: source, bundleLine: source };
+  return { ...itemOfFinding({ base: single, itemId: id, finding: first, claim, section, line: source }), noClaimReason: 'split-drift' };
 }
 
 function stagedFindingItem(name, text, base, itemId, section) {
@@ -304,9 +357,7 @@ function consoleWorkItems({ consoleDir, consoleJson, decisions, readStaged, runI
       }
       for (const line of matched) out.push(...lineItems(line, base, runId, section));
     } else if (typeof id === 'string' && id.startsWith('bf:')) {
-      const source = typeof item.backfillSource === 'string' ? item.backfillSource : null;
-      const own = source === null ? null : lineItems(source, single, runId, section).find((w) => w.itemId === id);
-      out.push(own || { ...single, itemId: id, kind: 'no-claim', noClaimReason: 'source-line-not-found', context: source || id });
+      out.push(persistedSplitItem(item, single, runId, section));
     } else if (typeof id === 'string' && id.startsWith('tiebreak:')) {
       const tid = id.slice('tiebreak:'.length);
       const verdicts = decisionLinesAll.map((l) => ({ l, t: parseTiebreakLine(l) })).filter(({ t }) => t && t.id === tid);

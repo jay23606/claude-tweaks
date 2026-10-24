@@ -127,10 +127,49 @@ test('apply: rewriting one bundle member writes every sibling once', () => {
   const ids = r.json.items.map((i) => i.id);
   assert.deepStrictEqual(ids, ['docs:before', items[0].itemId, items[1].itemId, 'docs:after']);
   assert.strictEqual(new Set(ids).size, ids.length);
-  assert.deepStrictEqual(r.json.items[1], { id: items[0].itemId, section: LOW, resolution: 'keep-staged', reason: stored[1].reason, backfillSource: ALPHA });
+  assert.deepStrictEqual(r.json.items[1], {
+    id: items[0].itemId,
+    section: LOW,
+    resolution: 'keep-staged',
+    reason: stored[1].reason,
+    backfillSource: ALPHA,
+    backfillFinding: { lens: '3c', path: 'plugin/bin/lib/console/alpha.js', line: 10, claimText: items[0].claimText },
+  });
   assert.strictEqual(r.json.items[2].resolution, 'digested');
   assert.strictEqual(r.json.items[0], stored[0]);
   assert.strictEqual(r.json.items[3], stored[4]);
+});
+
+// I1: what a persisted sibling re-lists as never depends on re-deriving it from its line.
+const MIXED = '- STAGED 10:30:00 — Reproduction: lens "3c" findings plugin/bin/a.js:1 (single agent) / plugin/bin/b.js:2 the writer skips its atomic rename step. Staged to Review Console as low-confidence.';
+const listed = (w) => ({
+  itemId: w.itemId, kind: w.kind, noClaimReason: w.noClaimReason, finding: w.finding, claimText: w.claimText,
+});
+
+test('I1: a persisted split sibling carries its finding and re-lists identically after a heuristic change', () => {
+  const fx = fixture(tmpRun(), [KEEP(newId(BUNDLED))], [BUNDLED]);
+  const [a, b] = list(fx);
+  const first = apply(fx, [entry(a, 'filed', 'tiebreak', '#4002')]);
+  assert.deepStrictEqual(first.json.items[1].backfillFinding, { lens: '3f', path: 'pr-check-gate-conformance.test.js', line: 77, claimText: b.claimText });
+  // The split heuristics changed since: the persisted line now splits differently (simulated by a source
+  // line whose text no longer yields this id), yet the sibling lists as it was persisted.
+  const drifted = { ...first.json, items: first.json.items.map((s, i) => (i === 1 ? { ...s, backfillSource: BUNDLED.replace('pr-check-gate-conformance.test.js:77', 'pr-check-gate-conformance.test.js:78') } : s)) };
+  const [again] = list({ ...fx, consoleJson: drifted });
+  assert.deepStrictEqual(listed(again), listed(b));
+  // The claim the line now yields differs from the persisted one: the persisted one wins.
+  const planted = { ...first.json, items: first.json.items.map((s, i) => (i === 1 ? { ...s, backfillFinding: { ...s.backfillFinding, claimText: 'the claim as an earlier cleaner left it, high' } } : s)) };
+  const [kept] = list({ ...fx, consoleJson: planted });
+  assert.strictEqual(kept.itemId, b.itemId);
+  assert.strictEqual(kept.claimText, 'the claim as an earlier cleaner left it, high');
+  assert.strictEqual(kept.finding.reporterSeverity, 'high', 'the severity is read from the persisted claim');
+
+  // A claim-empty sibling persists with an empty claim and re-lists as no-claim at its location.
+  const mfx = fixture(tmpRun(), [KEEP(newId(MIXED))], [MIXED]);
+  const [empty, claimed] = list(mfx);
+  const settled = apply(mfx, [entry(claimed, 'filed', 'tiebreak', '#4003')]);
+  assert.deepStrictEqual(settled.json.items[0].backfillFinding, { lens: '3c', path: 'plugin/bin/a.js', line: 1, claimText: '' });
+  const [relisted] = list({ ...mfx, consoleJson: { ...settled.json, items: settled.json.items.map((s, i) => (i === 0 ? { ...s, backfillSource: 'a line that no longer exists' } : s)) } });
+  assert.deepStrictEqual(listed(relisted), listed(empty));
 });
 
 test('a group with no source line collapses to one entry that keeps its old id', () => {

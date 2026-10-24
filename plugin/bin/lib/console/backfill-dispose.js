@@ -18,9 +18,12 @@ const { composeFindingProposal, findingFingerprint, fingerprintMap } = require('
 const { composeShadowDupProposal } = require('./shadow-dup-proposal');
 const { digestTextOf } = require('./staged-digest-text');
 const { BACKFILL_OUTCOMES, BACKFILL_SOURCES } = require('./backfill-apply');
-const { materialityEntryLine, materialityFingerprint, isMaterialityDuplicate } = require('../health-core/materiality-digest');
+const { materialityEntryLine, materialityFingerprint, parseMaterialityFingerprints } = require('../health-core/materiality-digest');
 const { fingerprintFromBasis } = require('../health-core/fingerprint');
-const { extractFingerprint, checkFingerprint, defuse } = require('../issues/record');
+const {
+  extractFingerprint, checkFingerprint, defuse, FP_RE_WORK, FP_RE_WORK_PLAIN,
+} = require('../issues/record');
+const { isTrustedComment } = require('../issues/comment-trust');
 
 const DIGEST_REASONS = Object.freeze({
   NO_CLAIM: 'console-backfill-no-claim',
@@ -87,7 +90,16 @@ function withoutLogPrefix(context) {
   return rest.replace(/\s*Staged to Review Console as low-confidence\.?/g, '').replace(/\s*Reversibility: \w+\.?/g, '').trim();
 }
 
-function digestEntryOf({ item, finding, fileRefs, deferReason, runId }) {
+// The item's own stable identity: `consolebackfill-{hash}` of its id (the R8 fingerprint). A finding's
+// filing and digest line both carry it, so a record or line landed before a crashed apply is still found
+// when the claim heuristics changed in between (the claim-keyed fingerprints would then miss).
+const itemFingerprint = (item) => fingerprintFromBasis('consolebackfill', [item.itemId]);
+const ITEM_MARKER_PREFIX = 'consolebackfill-item';
+const itemMarkerOf = (item) => `<!-- ${ITEM_MARKER_PREFIX}: ${itemFingerprint(item)} -->`;
+
+// `marked`: the line also carries the item marker, after the provenance and before the materiality
+// marker (the entry's fields, and so its fingerprint, are unchanged).
+function digestEntryOf({ item, finding, fileRefs, deferReason, runId, marked = false }) {
   const entry = {
     area: oneLine(areaFor(item)),
     finding: oneLine(finding).slice(0, DIGEST_FINDING_MAX),
@@ -95,7 +107,8 @@ function digestEntryOf({ item, finding, fileRefs, deferReason, runId }) {
     deferReason,
     provenance: oneLine(runId),
   };
-  return { entry, line: materialityEntryLine(entry), fingerprint: materialityFingerprint(entry) };
+  const line = materialityEntryLine(marked ? { ...entry, provenance: `${entry.provenance} ${itemMarkerOf(item)}` } : entry);
+  return { entry, line, fingerprint: materialityFingerprint(entry) };
 }
 
 const locationOf = (f) => (f.line === null || f.line === undefined ? f.path : `${f.path}:${f.line}`);
@@ -124,13 +137,21 @@ function findingProposal(item, verdict, runId, confirmed) {
     runId,
     ...(confirmed ? { verdict: { kind: 'confirmed', evidence: verdict.evidence, mainSha: confirmed.mainSha } } : {}),
   });
-  return { fingerprint: composed.fingerprint, title: composed.title, text: composed.proposal };
+  // The record is filed under its claim fingerprint (the first marker, which extractFingerprint reads);
+  // the item's own marker follows it.
+  const fp = itemFingerprint(item);
+  const text = `${composed.proposal}${composed.proposal.endsWith('\n') ? '' : '\n'}<!-- work-fingerprint: ${fp} -->\nwork-fingerprint: ${fp}\n`;
+  return { fingerprint: composed.fingerprint, itemFingerprint: fp, title: composed.title, text };
 }
 
+// A finding's digest entry; both digest outcomes (can't-tell, confirmed-low) build it from the same
+// area, claim and location, and materialityFingerprint omits deferReason.
+const findingDigest = (item, deferReason, runId) => digestEntryOf({
+  item, finding: item.claimText, fileRefs: locationOf(item.finding), deferReason, runId, marked: true,
+});
+
 function disposeFinding({ item, verdict, runId, mainSha }) {
-  const digestFor = (deferReason) => result(item, 'digest', 'tiebreak', {
-    digest: digestEntryOf({ item, finding: item.claimText, fileRefs: locationOf(item.finding), deferReason, runId }),
-  });
+  const digestFor = (deferReason) => result(item, 'digest', 'tiebreak', { digest: findingDigest(item, deferReason, runId) });
   switch (verdict.outcome) {
     case 'confirmed': {
       const severity = KNOWN_SEVERITIES.has(verdict.severity) ? verdict.severity : 'medium';
@@ -177,7 +198,7 @@ function disposeNoClaim({ item, runId }) {
 function withFingerprint(item, text) {
   const own = extractFingerprint(text);
   if (own) return { fingerprint: own, text };
-  const fingerprint = fingerprintFromBasis('consolebackfill', [item.itemId]);
+  const fingerprint = itemFingerprint(item);
   const gap = text.endsWith('\n') ? '\n' : '\n\n';
   return { fingerprint, minted: true, text: `${text}${gap}<!-- work-fingerprint: ${fingerprint} -->\nwork-fingerprint: ${fingerprint}\n` };
 }
@@ -292,6 +313,41 @@ function prefiledFingerprint(item) {
   return findingFingerprint({ lens: f.lens, path: f.path, claim: item.claimText });
 }
 
+const WORK_MARKER_RES = [new RegExp(FP_RE_WORK.source, 'g'), new RegExp(FP_RE_WORK_PLAIN.source, 'gm')];
+
+// fingerprint -> record number over EVERY work-fingerprint marker in each row's body (fingerprintMap
+// reads only the first): a backfill finding filing carries its item marker after its claim marker.
+function everyMarkerMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || typeof row.body !== 'string' || !Number.isInteger(row.number) || row.number <= 0) continue;
+    for (const re of WORK_MARKER_RES) {
+      for (const m of row.body.matchAll(re)) if (!map.has(m[1])) map.set(m[1], row.number);
+    }
+  }
+  return map;
+}
+
+// The record a finding was filed as: by its claim fingerprint, else by its item marker (the claim
+// heuristics changed since it was filed). Null when neither has a record.
+function filedRecordOf(item, fp, known, markers) {
+  const byClaim = fp ? checkFingerprint(known, fp) : null;
+  if (byClaim !== null) return byClaim;
+  return item.kind === 'finding' && markers.has(itemFingerprint(item)) ? markers.get(itemFingerprint(item)) : null;
+}
+
+// The trusted digest comment already holding this digest line — by its materiality fingerprint, or, for
+// a finding, by its item marker — or null. A string (a local-files body) is single-writer and trusted.
+function heldDigestComment(digestComments, digest, item) {
+  const marker = item && item.kind === 'finding' ? itemMarkerOf(item) : null;
+  const holds = (text) => typeof text === 'string' && (parseMaterialityFingerprints(text).includes(digest.fingerprint) || (marker !== null && text.includes(marker)));
+  if (typeof digestComments === 'string') return holds(digestComments) ? { url: null } : null;
+  for (const c of Array.isArray(digestComments) ? digestComments : []) {
+    if (isTrustedComment(c) && holds(c.body)) return c;
+  }
+  return null;
+}
+
 // One batch of the work list, in order. Walks `workList.runs`; a finding with no verdict yet is listed
 // under `awaitingVerdict` and takes no slot — unless its filing fingerprint already has a record, which
 // settles it as a `reuse` with no verdict, and so does one whose digest line a trusted digest comment
@@ -308,6 +364,7 @@ function prefiledFingerprint(item) {
 function planBatch({ workList, verdicts, existingIssues, digestComments, limit = DEFAULT_LIMIT, readStaged }) {
   const rows = Array.isArray(existingIssues) ? existingIssues : [];
   const known = fingerprintMap(rows);
+  const markers = everyMarkerMap(rows);
   const titles = titleMap(rows);
   const out = {
     dispositions: [], file: [], reuse: [], digest: { lines: [], duplicates: [] }, entries: [], awaitingVerdict: [],
@@ -324,7 +381,7 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
         // apply) settles as that record without a verdict: re-judging it could drop a finding that is
         // already filed, orphaning the record. It takes a slot like any other disposition.
         const fp = prefiledFingerprint(item);
-        const number = fp ? checkFingerprint(known, fp) : null;
+        const number = filedRecordOf(item, fp, known, markers);
         if (number !== null) {
           out.dispositions.push(result(item, 'file', 'tiebreak', { prefiled: true, proposal: { fingerprint: fp, title: null } }));
           out.reuse.push({ itemId: item.itemId, number });
@@ -334,13 +391,10 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
           continue;
         }
         // Likewise a finding whose digest line a trusted comment already carries (digested by an interrupted
-        // run). Both digest outcomes (can't-tell, confirmed-low) build the line from the same area, claim and
-        // location, and materialityFingerprint omits deferReason, so the fingerprint does not depend on the verdict.
+        // run), by fingerprint or by item marker. The fingerprint does not depend on the verdict (findingDigest).
         if (item.finding && typeof item.claimText === 'string' && item.claimText.trim()) {
-          const prefiledDigest = digestEntryOf({
-            item, finding: item.claimText, fileRefs: locationOf(item.finding), deferReason: DIGEST_REASONS.CANT_TELL, runId: runIdOf(item.consoleDir),
-          });
-          if (isMaterialityDuplicate(digestComments, prefiledDigest.entry)) {
+          const prefiledDigest = findingDigest(item, DIGEST_REASONS.CANT_TELL, runIdOf(item.consoleDir));
+          if (heldDigestComment(digestComments, prefiledDigest, item)) {
             out.dispositions.push(result(item, 'digest', 'tiebreak', { prefiled: true, digest: prefiledDigest }));
             out.digest.duplicates.push(item.itemId);
             out.entries.push({
@@ -364,7 +418,7 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
         // A staged proposal whose fingerprint was minted here (its text carried no marker) cannot match a record
         // filed before the backfill existed, so it also dedups by exact title. Anything with a marker of its own,
         // and every finding filing, is fingerprint-only.
-        const number = fp ? checkFingerprint(known, fp) : null;
+        const number = filedRecordOf(item, fp, known, markers);
         const byTitle = number === null && d.source === 'staged-kind' && d.proposal.minted === true ? titles.get(normalizeTitle(d.proposal.title)) : undefined;
         const matched = number !== null ? number : (byTitle === undefined ? null : byTitle);
         if (matched !== null) {
@@ -377,7 +431,7 @@ function planBatch({ workList, verdicts, existingIssues, digestComments, limit =
           out.file.push({ itemId: d.itemId, fingerprint: fp, title: d.proposal.title, text: d.proposal.text });
         }
       } else if (d.action === 'digest') {
-        if (batchDigested.has(d.digest.fingerprint) || isMaterialityDuplicate(digestComments, d.digest.entry)) {
+        if (batchDigested.has(d.digest.fingerprint) || heldDigestComment(digestComments, d.digest, item)) {
           out.digest.duplicates.push(d.itemId);
         } else {
           batchDigested.add(d.digest.fingerprint);
