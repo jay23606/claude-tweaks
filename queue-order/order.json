@@ -1,8 +1,48 @@
 {
-  "computedAt": "2026-10-24T07:59:16.183Z",
+  "computedAt": "2026-10-24T08:18:45.074Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
+      {
+        "number": 4032,
+        "updatedAt": "2026-10-24T08:16:31Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4030,
+        "updatedAt": "2026-10-24T08:16:38Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4029,
+        "updatedAt": "2026-10-24T08:16:35Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4028,
+        "updatedAt": "2026-10-24T08:16:28Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4027,
+        "updatedAt": "2026-10-24T08:16:24Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4026,
+        "updatedAt": "2026-10-24T08:16:17Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4025,
+        "updatedAt": "2026-10-24T08:16:21Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4024,
+        "updatedAt": "2026-10-24T08:16:14Z",
+        "state": "OPEN"
+      },
       {
         "number": 3995,
         "updatedAt": "2026-10-24T05:40:13Z",
@@ -90,12 +130,12 @@
       },
       {
         "number": 3925,
-        "updatedAt": "2026-10-23T22:08:11Z",
+        "updatedAt": "2026-10-24T08:11:05Z",
         "state": "OPEN"
       },
       {
         "number": 3917,
-        "updatedAt": "2026-10-24T07:42:08Z",
+        "updatedAt": "2026-10-24T08:12:39Z",
         "state": "OPEN"
       },
       {
@@ -146,11 +186,6 @@
       {
         "number": 3813,
         "updatedAt": "2026-10-24T05:39:24Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 3792,
-        "updatedAt": "2026-10-24T06:55:49Z",
         "state": "OPEN"
       },
       {
@@ -215,7 +250,7 @@
       },
       {
         "number": 3723,
-        "updatedAt": "2026-10-23T22:04:08Z",
+        "updatedAt": "2026-10-24T08:16:58Z",
         "state": "OPEN"
       },
       {
@@ -246,6 +281,474 @@
     ]
   },
   "groups": [
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\n497 `hooks.js reconcile` calls in main sessions over 14 days averaged 63 s each — 8.7 h of blocking. #1543 previously addressed ~2-minute runs; the per-call cost has not been profiled since.\n\n## Deliverables\n\n1. Per-check and per-subprocess timing in reconcile's JSON output.\n2. Remove the measured hot spots: batch or parallelize `gh` calls (`gh-pool.js`), reuse cached results within a TTL (`cache.js`), skip checks whose inputs are unchanged, and move non-blocking checks to the background.\n3. Update `docs/reconcile-checks.md` with the timing contract.\n\n## Acceptance Criteria\n\n- [ ] p50 reconcile wall time is under 10 s on this repo over 20 calls.\n- [ ] Per-check timings appear in the JSON output.\n- [ ] Existing reconcile fixture tests show unchanged convergence results.\n\n## Release Note\n\nReconcile finishes in seconds instead of about a minute.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — reconcile timing\n- `docs/reconcile-checks.md` — timing contract\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:10:45Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4032,
+        "state": "OPEN",
+        "title": "Cut hooks.js reconcile from ~63 s per call",
+        "updatedAt": "2026-10-24T08:16:31Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\ntiming.json records minutes, tokens, procedureBytes and toolRoundTrips per phase, but not what the turns were spent on, the context size per turn, the model mix, or any budget. Median procedureBytes grew ~4× in six weeks without anything noticing, and this analysis needed ad hoc scripts over 10 GB of transcripts.\n\n## Deliverables\n\n1. `phase-timing.js` adds per-phase turn-class counts (productive edit/read/explore, procedure read, bookkeeping, orientation, verify, guard refusal), context-per-turn p50/p90, model mix, and subagent count.\n2. Per-ceremony-profile budgets in policy (round trips, procedureBytes, verify minutes), checked at wrap-up; a breach stages a finding for the Review Console.\n3. A `tools/` cross-run report giving weekly medians from the archive.\n\n## Acceptance Criteria\n\n- [ ] timing.json for a fixture run carries the class breakdown, matching a hand count of that fixture.\n- [ ] A budget-breach fixture produces a staged item.\n- [ ] The cross-run report reproduces this analysis's headline medians (79 min, 407 round trips) on the current archive.\n\n## Release Note\n\nEach run reports where its turns went, and the Review Console flags runs that blow their efficiency budget.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/phase-timing.js` — turn classes + context stats\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:09:37Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          }
+        ],
+        "number": 4029,
+        "state": "OPEN",
+        "title": "Track turn classes, context size and ceremony share per run, and flag budget regressions",
+        "updatedAt": "2026-10-24T08:16:35Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nIn 14 days, 4,990 Bash and 94 Write tool calls (~34 per pipeline) were refused by Claude Code's worktree-isolation guard: \"this command is too complex to verify that it stays inside the worktree\" and \"this command names git in a form too complex to verify\". Each refusal wastes a model turn at p50 276k context, plus a retry turn.\n\nObserved shapes include compound `cd … &&`, `eval \"$(…)\"` (#3190), heredoc input to `node-eval-file.js` (seen in #3968's build), and `P=…; node $P/...` prefixes. Related: #3822, #3819, #3190.\n\n## Deliverables\n\n1. A `tools/` script that classifies refusals from transcripts by command shape and, where traceable, by the skill fence the command came from.\n2. Rewrite each refusing fenced snippet under `plugin/skills/**` into a guard-accepted form (single plain command, absolute paths, scratchpad node script for multi-step work), per `_shared/scratch-worktree.md`.\n3. A conformance scan over fenced bash blocks in `plugin/skills/**` that rejects the known-refused shapes.\n4. A recorded premise probe: does a plugin PreToolUse `updatedInput` rewrite run before the harness isolation check? If yes, add rewrites for the residual model-composed shapes; if no, record the observed behavior.\n\n## Acceptance Criteria\n\n- [ ] Guard refusals per pipeline fall by at least 90% from the ~34 baseline over 10 runs.\n- [ ] The conformance scan fails on a fixture containing each banned shape and passes on the migrated corpus.\n- [ ] The probe outcome is written to `docs/` with the observed behavior.\n\n## Release Note\n\nPipeline agents stop tripping the worktree guard, removing thousands of wasted retry turns.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/scratch-worktree.md` — accepted-forms table\n- `plugin/bin/lib/hooks/pre-tool-use.js` — possible updatedInput rewrite\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:07:22Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          }
+        ],
+        "number": 4028,
+        "state": "OPEN",
+        "title": "Stop worktree-isolation refusals: emit only guard-accepted command forms (~5k refused calls in 14 days)",
+        "updatedAt": "2026-10-24T08:16:28Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nIn 14 days agents made 28.5k shell reads (`sed`/`grep -A30`/`cat`) of plugin skill files, 8.1k Reads, and 5.4k Skill loads — ~15% of tool calls and ~15% of context tokens. Most-loaded: `review/code-mode-steps.md` 398× (~35 KB each), `review/step3-lens-dispatch.md` 342×, `flow/materialize.md` 257×, `_shared/pr-early-run-lifecycle.md` 242×, `flow/manifesto.md`, `flow/claim-targets.md`.\n\nMedian procedureBytes per run rose from 79 KB (2026-09, first half, n=7) to 307 KB (2026-10, second half, n=110). Context per turn: p50 276k, p90 428k tokens. Opus latency per turn is 5.0 s under 100k context and 12.1 s above 300k. `compose-context.js` (#1988, #2019) exists, but agents still pull cited sections on demand, one turn each.\n\n## Deliverables\n\n1. Each dispatch call (build,test and review,polish,wrap-up) and each SDD / lens child gets a composed, condition-resolved procedure bundle (`compose-context.js`) inlined in its prompt, covering every `_shared` section the phase cites — each arrives once.\n2. Pure-mechanics steps (claim, materialize, PR-early lifecycle, manifesto) move behind CLIs alongside the bookkeeping record, so their prose leaves the bundle entirely.\n3. A per-agent context cap: when the accumulated context crosses a threshold (taken from the measured latency curve), the next phase starts in a fresh agent from a handoff file instead of growing one context.\n\n## Acceptance Criteria\n\n- [ ] Reads of plugin skill files (shell + Read) per pipeline fall by at least 80% over 10 runs.\n- [ ] Median procedureBytes per run is 120 KB or less.\n- [ ] Dispatch-agent context per turn p50 is 150k tokens or less.\n- [ ] The existing conformance suites and the pipeline smoke test pass with no added skips.\n\n## Release Note\n\nPipeline agents receive their instructions up front, cutting per-step latency and token cost.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/compose-context.js` — phase bundles\n- `plugin/skills/dispatch/task-prompt.md` — inline bundle\n- `plugin/skills/flow/SKILL.md` — drop on-demand section reads\n- `plugin/skills/_shared/subagent-output-contract.md` — bundle in child prompts\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:07:17Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4027,
+        "state": "OPEN",
+        "title": "Deliver each phase's procedure in the dispatch prompt instead of agents grepping skill files mid-run",
+        "updatedAt": "2026-10-24T08:16:24Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nEvery tool call is a model turn over a p50 276k-token context (p90 428k), costing ~4–12 s. Bookkeeping takes a large share of those turns: 11.4k `log-decision.js` calls in 14 days (~75 per pipeline) and ~23k run-dir CLI calls overall (8% of all tool calls, ~10% of context tokens).\n\nDeterministic CLIs already compute most decisions (`resolve-policy.js`, `flow-preflight.js`, `claim-targets.js`, `materialize.js`, `pr-checklist.js`); the model then re-narrates each one with a separate `log-decision.js` call. #3968's build agent made ~17 `log-decision.js` calls and 3 separate checklist pushes, plus individual record-worktree / record-pr / push / checklist calls at every phase exit.\n\n## Deliverables\n\n1. Every bin CLI that makes or applies a decision appends its own decisions.md entry (via `lib/log-decision/append`) when given `--run`; skills drop the matching `log-decision.js` instructions.\n2. `log-decision.js` accepts many entries in one call (an entries file), for model-judged decisions batched at phase end.\n3. A `phase-exit` CLI — commit check, explicit `git -C` push, PR checklist flip, record-pr / record-worktree, post-push merge-state check, and the decision entry — in one call with one JSON result, replacing the phase-exit prose at every call site.\n4. Skill prose migration with conformance tests per `docs/skill-authoring.md`; expand-contract for any consumer of the old call shapes.\n\n## Acceptance Criteria\n\n- [ ] `log-decision.js` invocations per pipeline fall from ~75 to 10 or fewer, measured over 10 runs.\n- [ ] Each phase exit is one tool call; the phase-exit CLI has a test for each sub-step's failure branch.\n- [ ] decisions.md parity: a fixture pipeline produces the same entries (ignoring timestamps) before and after.\n- [ ] Median tool round trips per pipeline (timing.json) fall by at least 25% across 10 runs (baseline 407).\n\n## Release Note\n\nPipelines spend far fewer turns on bookkeeping: tools log the decisions they make, and each phase exit is a single step.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/log-decision.js` — multi-entry input\n- `plugin/bin/pr-checklist.js` — called from phase-exit\n- `plugin/skills/_shared/git-discipline.md` — phase-exit cites the CLI\n- `plugin/skills/_shared/pr-checklist-refresh.md` — phase-exit cites the CLI\n- `plugin/skills/_shared/auto-decision-log.md` — self-logging CLIs\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:07:14Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4026,
+        "state": "OPEN",
+        "title": "Collapse per-step bookkeeping into self-logging CLIs and a single phase-exit call",
+        "updatedAt": "2026-10-24T08:16:17Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\n`.claude-tweaks/verify-scope.json` maps `plugin/skills/**`, `plugin/**`, `tests/**` and `tools/**` to `\"suites\": \"*\"`, so any skill-prose edit runs all 919 test files (~474 s on an idle machine). `tools/run-tests.js` holds one machine-wide suite slot (`CT_TEST_SUITE_SLOTS` default 1), so parallel dispatches queue behind each other.\n\nMeasured: verify.js / npm test consumed ~78 h of tool time in 14 days and ~25% of dispatch-agent wall time; full-length runs per pipeline p50 2, p90 6, max 17; 20 runs hit the 20-minute Bash timeout. #3968 (two markdown lines) paid a 476 s full run.\n\nCI (`.github/workflows/test.yml`) already runs the full `npm test` on every `pull_request`, and this repo merges under `merge-verification: merge-when-green` — the local full run duplicates the merge gate.\n\nA static import map is not enough: 35 test files sweep the skill corpus via readdir/glob, and 570 spawn or require `plugin/bin` code (child processes).\n\n## Deliverables\n\n1. A read tracer: a `--require` preload, propagated to child `node` processes via `NODE_OPTIONS`, that records every path read, required or readdir'd, attributed to the test file that caused it. One traced full-suite run emits a test-impact map (test file → read paths; directory reads stored as prefix dependencies), cached with the commit it was traced at.\n2. A verify-scope rule kind that consults the map: select only test files whose recorded reads intersect the changed files (a directory read matches any changed path beneath it), plus changed test files themselves. Generic mechanism — this repo is the first consumer.\n3. Fail closed: run the full suite when the map is missing, traced at a commit that is not an ancestor of HEAD or older than a staleness bound, or a changed path matches no traced read — `report.json` names the fallback reason.\n4. Move this repo's `plugin/**`, `tests/**`, `tools/**` rules from `\"*\"` to the impact map. Explicit `full` mode stays available; CI's full suite stays the merge gate.\n5. Map refresh off the hot path (post-merge on main or scheduled), never inside a build.\n\n## Acceptance Criteria\n\n- [ ] A diff touching only `plugin/skills/init/claude-md-template.md` and `CLAUDE.md` selects fewer than 50 test files and verify completes in under 60 s (report.json shows the selected count and duration).\n- [ ] A diff touching `plugin/bin/log-decision.js` selects every test that requires or spawns it (asserted against a hand-checked list).\n- [ ] A new file under `plugin/skills/` selects the corpus-sweeping tests (directory-read dependency).\n- [ ] Discrimination: removing one test's recorded read from a fixture map deselects that test; restoring it reselects it.\n- [ ] A missing or stale map runs the full suite and report.json names the fallback reason.\n- [ ] Median verify minutes per pipeline (timing.json) falls below 1 across the next 20 runs (baseline: 4.2 fast-lane, 5.8 standard).\n\n## Release Note\n\nBuilds run only the tests a change can affect, so most verify steps take seconds instead of about eight minutes; CI still runs the full suite before merge.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/verify.js` — consult the impact map in scoped selection\n- `plugin/bin/lib/verify/scope.js` — impact rule kind\n- `plugin/bin/lib/verify/changed-files.js` — changed paths into selection\n- `.claude-tweaks/verify-scope.json` — replace \"*\" rules\n- `tools/run-tests.js` — tracer preload + file subset\n- `plugin/skills/test/verification.md` — document impact selection\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T08:07:03Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4024,
+        "state": "OPEN",
+        "title": "Select local tests by traced file reads instead of running the full suite for every plugin/** change",
+        "updatedAt": "2026-10-24T08:16:14Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "Origin: reflect full from #3947\n\nDefer-reason: tangential\n\n## Current State\n\nA skill step that dispatches agents or calls CLIs is specified in prose, and nothing at spec, plan or authoring time asks what happens when each of those calls fails.\n\nIn #3947 (Step 3.7, `plugin/skills/review/step3-tiebreak.md`), the SDD final review needed 1 Critical and 6 Important fixes, and the later 4-lens review found 23 more findings. Most of them were the same kind of gap: what the reviewer does when a dispatch fails or returns non-DONE, when `write-findings` exits 2, when `resolve-tiebreak` crashes, or when `log-decision.js` fails. Each was added after the fact, across fix commits a2d09600d, a645f740b, cc098dd27 and 494bb6045.\n\n`docs/skill-authoring.md` and `plugin/skills/build/plan-authoring-checks.md` have no rule or check that asks for a failure path per external call.\n\n## Deliverables\n\n- `docs/skill-authoring.md` gains a rule: a step whose prose dispatches an agent or runs a CLI states, for each such call, its next move on failure (retry once / fallback rung / surface and stop) and the log line it writes.\n- `plugin/skills/build/plan-authoring-checks.md` gains a check: a plan task that adds or changes such a step carries a failure-path table (call → failure mode → next move → log line) before its prose is written.\n- A conformance test pins both texts.\n\n## Acceptance Criteria\n\n1. `docs/skill-authoring.md` contains the failure-path rule and names the three next-move kinds.\n2. `plan-authoring-checks.md` contains the failure-path table check and its trigger (a task touching a step that dispatches an agent or runs a CLI).\n3. A test asserts both, and it was shown to go red without each text.\n\n## Release Note\n\nSkill steps that dispatch agents or run tools now have to say up front what happens when each call fails, so those gaps are found while planning instead of in review.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/skill-authoring.md` — add the failure-path rule\n- `plugin/skills/build/plan-authoring-checks.md` — add the failure-path table check\n\n_Filed by `reflect` via specShapedBody._\n",
@@ -542,78 +1045,6 @@
     ],
     [
       {
-        "body": "Origin: wrap-up leftover routing from #3679 (run 2026-10-21T225455-record-3679)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`bin/wrap-up-engine.js` `plan` resolves `repoRoot` through `resolveRepoRoot(process.cwd())`, which follows `git rev-parse --git-common-dir` to the MAIN checkout, and passes that as `cwd` to `gatherFacts` (`bin/lib/wrap-up/facts.js`). Every git fact (`git diff --name-only {base}...HEAD`, `--diff-filter=RD --name-status`, the heading-rename scan) then runs against the main checkout's HEAD, not the linked worktree the run builds in. The filesystem facts (`docs/journeys/`, `CLAUDE.md`, `.claude/skills/`) read the main checkout's files for the same reason.\n\nObserved on run `2026-10-21T225455-record-3679` (PR #3918): the branch renamed and deleted nothing, yet the plan opened the `references` row with ten `R` candidates that were other runs' archived `work/*-spec.md` files, moved on `main` after the branch point. The `journeys` row printed `candidates: []` although the diff changed `docs/journeys/stage-a-patch-that-conflicts-with-an-earlier-one-3290.md` and that file's `files:` frontmatter overlaps the diff. The gate for every row is computed the same way, so `changedFiles`, `multiFileDiff` and `headingRenamed` are also main's.\n\n#3017 introduced `resolveRepoRoot` so a shell sitting in a subdirectory of the checkout still finds `docs/journeys/`; the telemetry path rightly anchors to the main checkout (`resolveTelemetryPath`). The facts call reused the same root, which is the wrong anchor for a linked worktree.\n\n## Deliverables\n\n- [ ] Run `gatherFacts` against the current checkout's top level (`git rev-parse --show-toplevel`), not the common-dir root; keep `resolveTelemetryPath` anchored to the main checkout\n\n- [ ] Keep #3017's subdirectory fix: a shell in `<checkout>/web` still resolves the checkout root, now the worktree's own\n\n- [ ] Add a test that runs `plan` from a linked worktree whose branch differs from the main checkout's HEAD and asserts `changedFiles`, `renamedDeleted` and `journeyFiles` come from the worktree\n\n## Acceptance Criteria\n\n- [ ] From a linked worktree, `plan`'s `references` candidates and `journeys` candidates reflect the worktree branch's own diff against `--base`\n\n- [ ] The test fails when `gatherFacts` is handed the common-dir root again\n\n- [ ] `npm test` passes with no new skips\n\n## Release Note\n\nWrap-up's curation plan now judges the worktree's own diff, so the references and journeys rows no longer open or close on another branch's changes.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/wrap-up-engine.js` — pass the checkout top level to gatherFacts\n- `plugin/bin/lib/wrap-up/facts.js` — no change expected; the cwd it receives is what moves\n- `tests/bin-lib/wrap-up/engine-cli.test.js` — linked-worktree fixture\n\n_Filed by `wrap-up` via specShapedBody._",
-        "createdAt": "2026-10-22T00:05:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3925,
-        "state": "OPEN",
-        "title": "wrap-up-engine.js plan reads its git facts from the main checkout when run from a linked worktree",
-        "updatedAt": "2026-10-23T22:08:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: wrap-up Skills row, run 2026-10-21T220207-record-3857 (records #3857, #3871, #3886): auto-applied then reverted at the merge-check agent-instruction floor\nDefer-reason: needs-human-decision\n\n## Current State\n\n`.claude/skills/windows-checkout-test-parity/SKILL.md` has no pitfall row for the failure #3886 fixed: a test hard-coding a POSIX `file:///Users/...` literal as the expected output of a `pathToFileURL(dir).href` link. On win32, `pathToFileURL` resolves a POSIX-style fixture path against the current drive, so production correctly prints `file:///D:/Users/...` and the literal fails on Windows only (`tests/statusline.test.js`'s two `renderProject` link tests).\n\nThe wrap-up Skills row judged this an additive, high-confidence row and applied it (commit 07cd8c277). It was reverted (5a5cc2de9) before the merge, because `/claude-tweaks:assess-agent-autonomy`'s `merge-check` treats any edit to an agent-instruction file (`.claude/skills/**`) as `needs-human` unless a refutation attempt comes up empty, and this row visibly changes how an agent writes a file-URL test. A human should review the wording.\n\n## Deliverables\n\nAdd one row to the anti-pattern table in `.claude/skills/windows-checkout-test-parity/SKILL.md`, after the \"Building a transcript `Read` fixture's `file_path`...\" row (the last row before `## Reference`): \"Hard-coding a POSIX `file:///Users/...` literal as the expected output of a `pathToFileURL(dir).href` link\" — why: `pathToFileURL` resolves against the current drive on win32 (#3886). Fix: derive the expected link from `pathToFileURL` itself (the test file's `linkedName(dir)`) instead of a `process.platform` branch holding two literals, and keep each test's own point as a separate literal check that does not depend on the derivation (`Code%20Workspaces`, a `/` before the BEL). Proposed row, verbatim:\n\n```\n| Hard-coding a POSIX `file:///Users/…` literal as the expected output of a `pathToFileURL(dir).href` link | On win32, `pathToFileURL` resolves a POSIX-style fixture path against the current drive, so production correctly prints `file:///D:/Users/…` and the literal fails on Windows only (`tests/statusline.test.js`'s two `renderProject` link tests, #3886). Derive the expected link from `pathToFileURL` itself (the file's `linkedName(dir)`) instead of a `process.platform` branch holding two literals, and keep each test's own point as a separate literal check that does not depend on the derivation (`Code%20Workspaces`, a `/` before the BEL) |\n```\n\n## Acceptance Criteria\n\n1. The row is present in the table and names #3886 and `pathToFileURL`.\n2. `npm test` stays green.\n\n## Release Note\n\nNo user-visible change.\n",
         "createdAt": "2026-10-21T22:51:07Z",
         "labels": [
@@ -663,7 +1094,7 @@
         "number": 3917,
         "state": "OPEN",
         "title": "Add pathToFileURL-expectation pitfall row to windows-checkout-test-parity skill",
-        "updatedAt": "2026-10-24T07:42:08Z",
+        "updatedAt": "2026-10-24T08:12:39Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
@@ -1535,90 +1966,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #2767, #3644, #3693\n\nOrigin: /claude-tweaks:specify batch on 2026-10-20 (shaping #3599, #3644, #3693, #3695, #3696, #3698, #3699)\n\nDefer-reason: tangential\n\n## Current State\n\n- `tools/windows-regression/file-issue.js:150` (`excerptFor`) quotes the block around the first log line that names the failing file (`normalized.findIndex(...)`), not the failures that were actually attributed as new. #3644 and #3693 both quoted \"archiveMerged: a main-loop decideArchive skip (no-pr)…\", which was already failing at base. The tests that were really new were #3543's AC5.1/AC5.3 (#3644) and three renamed tests (#3693).\n- `plugin/bin/lib/verify/baseline.js` (~line 411) classes a failing test as attributable when no test with the same suite path failed at base. A rename of a test that already fails (cf09383fe/#3297 renamed three) therefore reads as a new failure, and the workflow files a regression issue even though base and HEAD fail the same test count. #3693 was filed only because of this.\n- The cost: two records were filed for a harness limitation that was already understood, and the shaping session had to download run artifacts to find out what actually changed.\n\n## Deliverables\n\n1. `file-issue.js` quotes an excerpt for each test the report's baseline adjudication attributed as new (`baselineAdjudicated.attributable` / per-test identity), falling back to the first-match excerpt only when per-test attribution is unavailable, and says which case applies.\n2. When every attributable failure in a file is a test whose name does not exist at base, and the file's failing count at base equals the count at HEAD, the issue body says so (\"possible rename of an already-failing test\") instead of presenting it as a plain regression. Detecting renames inside baseline.js is out of scope.\n\n## Acceptance Criteria\n\n1. Given a fixture report whose attributable test is the file's second failing test, the composed issue body quotes that test's block and not the first failure in the file.\n2. Given a fixture where base and HEAD fail the same number of tests in a file and the only attributable names are absent at base, the body carries the possible-rename note.\n3. Both fixtures go red when the change is reverted. `npm test` passes.\n\n## Release Note\n\nWindows regression issues now quote the tests that newly fail and flag likely renames of tests that were already failing.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/windows-regression/file-issue.js` — per-attributed-test excerpts; possible-rename note\n- `plugin/bin/lib/verify/baseline.js` — read only — attribution source\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-20T12:45:20Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3723,
-        "state": "OPEN",
-        "title": "Windows regression filer quotes a pre-existing failure and counts renamed tests as new",
-        "updatedAt": "2026-10-23T22:04:08Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -3058,6 +3405,19 @@
     ]
   ],
   "excluded": [
+    {
+      "number": 4030,
+      "blockedBy": [
+        4027,
+        4026
+      ]
+    },
+    {
+      "number": 4025,
+      "blockedBy": [
+        4024
+      ]
+    },
     {
       "number": 3979,
       "blockedBy": [
