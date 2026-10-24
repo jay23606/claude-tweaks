@@ -103,6 +103,18 @@ finding never failed fix-now, so no gate reason describes it. Its routing comes 
 resolver's severity split, not from the three-axis floor above. Dedup and Digest URL and count
 surfacing apply unchanged.
 
+### Console backfill values
+
+`/claude-tweaks:tidy --console-backfill` (`tidy/console-backfill.md`) settles the unresolved items
+closed runs left in their Review Consoles, and digests three kinds with a value of its own:
+`console-backfill-no-claim` (a stored line with no recoverable claim),
+`console-backfill-unmapped-kind` (a staged file no filing shape fits), and
+`console-backfill-confirmed-low` (a tiebreak-confirmed finding at severity `low` or `info`). A
+can't-tell finding digests as `tiebreak-cant-tell`, above. All three are Entry-format values only,
+like the two before them. Deliberately **not** in `DEFER_REASONS`: none is a fix-now failure.
+Dedup and Digest URL and count surfacing apply unchanged; `bin/lib/console/backfill-dispose.js`
+owns the table.
+
 ### Digest URL and count surfacing
 
 Every routing skill's own summary output states the number of findings routed to the digest
