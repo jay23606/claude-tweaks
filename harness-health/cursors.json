@@ -57,11 +57,11 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792649273544
+    "lastAuditedMs": 1792822146336
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792703528629
+    "lastAuditedMs": 1792822144928
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792689995201
+    "lastAuditedMs": 1792822141955
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
@@ -173,7 +173,7 @@
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792623291354
+    "lastAuditedMs": 1792822140573
   },
   "skill:visual-review": {
     "lastAuditedSha": null,
@@ -209,14 +209,10 @@
   },
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792662232249
+    "lastAuditedMs": 1792822143544
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792671006678
-  },
-  "skill:review-console-section-addition": {
-    "lastAuditedSha": null,
-    "lastAuditedMs": 1792818869103
   }
 }
