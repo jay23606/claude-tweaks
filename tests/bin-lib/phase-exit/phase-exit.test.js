@@ -555,6 +555,14 @@ test('worktree guard — a closed run is never compared, so its worktreeAtClose 
   const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), makeDeps(main, wt).deps);
   assert.equal(env.push.state, 'pushed');
   assert.equal(eventsOf(runDir).filter((e) => e.type === 'wd-push-mismatch').length, 0);
+  // close-run nulls `worktree`, so the case above never reaches the comparison; a clean
+  // run that still names another worktree is what proves the closed guard itself.
+  const f2 = fixture(null);
+  fs.mkdirSync(f2.wt, { recursive: true });
+  fs.writeFileSync(path.join(f2.runDir, 'run-state.json'), JSON.stringify({ status: 'clean', worktree: other, pr: { number: 42, url: PR_URL } }));
+  const env2 = runPhaseExit(opts(f2.runDir, f2.wt, 'wrap-up'), makeDeps(f2.main, f2.wt).deps);
+  assert.equal(env2.push.state, 'pushed');
+  assert.equal(eventsOf(f2.runDir).filter((e) => e.type === 'wd-push-mismatch').length, 0);
 });
 
 // ---- push breadcrumb (events.jsonl) ----

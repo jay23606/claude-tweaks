@@ -218,7 +218,7 @@ Sub-steps, in this order (each a guard the replaced prose left to the reader —
 ### Task 10: Migrate the phase-exit and shared-contract prose
 
 **Files:**
-- Modify: `plugin/skills/_shared/git-discipline.md` (Phase-exit push section: the one call; Post-push merge-state check: `phase-exit.js` runs the read, the degrade SKIP is the CLI's, `logged: false` hand-log stays; the catch-up stays the agent's)
+- Modify: `plugin/skills/_shared/git-discipline.md` (Phase exit section: the one call; Post-push merge-state check: `phase-exit.js` runs the read, the degrade SKIP is the CLI's, `logged: false` hand-log stays; the catch-up stays the agent's)
 - Modify: `plugin/skills/_shared/pr-checklist-refresh.md` (Phase-checklist update: reached through `phase-exit.js` at a phase exit; exit 4/5 lines are now the CLI's; the pre-merge refresh keeps calling `pr-checklist.js` directly)
 - Modify: `plugin/skills/_shared/auto-decision-log.md` (Entry schema: the `--entries` batch form; "Regardless of worktree state" paragraph: CLIs given `--run` append their own entries through `lib/log-decision/append.js` — a skill never re-logs an entry a CLI already wrote, and hand-logs only on the CLI's `logged: false`/`logFailures`; the six "stay with the caller" classes from the end of Task 8, as one short list; batch the model-judged entries a phase accumulates into one `--entries` call at phase end — the file written with the Write tool to a `bin/session-tmp-resolve.js` path, never through the shell)
 - Modify: `plugin/skills/flow/manifesto.md` and `plugin/skills/flow/steps-and-gates.md` case 3 (drop the hand-logged "levers written to {path}" instruction — `set-config.js --set` writes it since Task 4)

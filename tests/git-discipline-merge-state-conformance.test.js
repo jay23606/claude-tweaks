@@ -7,7 +7,7 @@ const { readText } = require('./helpers/read-skill');
 const { STATES, PHASE_SECTIONS } = require('../plugin/bin/pr-merge-state');
 // #2986: the Post-push merge-state check is prose (the CLI it drives is covered by
 // tests/bin-lib/pr-merge-state/cli.test.js) — a conflicting run PR gets no pull_request CI
-// runs, so the phase-exit push section tells the run to read the merge state once per phase
+// runs, so the Phase exit section tells the run to read the merge state once per phase
 // and, in auto mode, catch the branch up. These pins catch the doc drifting out from under
 // its ACs.
 
