@@ -34,11 +34,29 @@ test('close-out step 2 says a string result stops the candidate, never read as n
   assert.match(STEP_2, /string result[\s\S]{0,120}stop[\s\S]{0,120}never read[\s\S]{0,40}not DIRTY/i);
 });
 
+// The text of one step-2 clause: from its opening marker up to the next clause's marker.
+function routingSpan(step2, from, to) {
+  const start = step2.indexOf(from);
+  assert.ok(start >= 0, `step 2 clause not found: ${from}`);
+  const end = step2.indexOf(to, start + from.length);
+  assert.ok(end > start, `step 2 clause end not found: ${to}`);
+  return step2.slice(start, end);
+}
+
+// STEP_2 with the update-file reference removed from one clause only.
+function dropRefIn(step2, from, to) {
+  const start = step2.indexOf(from);
+  const end = step2.indexOf(to, start + from.length);
+  return step2.slice(0, start) + step2.slice(start, end).replace(/close-out-update\.md/g, 'REMOVED') + step2.slice(end);
+}
+
 function assertUpdateRouting(step2, update, closeOut) {
   // AC1.1 — DIRTY/CONFLICTING and BEHIND route to the update offer, not only a stop
-  assert.match(step2, /DIRTY[\s\S]{0,300}close-out-update\.md/, 'AC1.1: DIRTY routes to close-out-update.md');
-  assert.match(step2, /CONFLICTING/, 'AC1.1: mergeable CONFLICTING is treated like DIRTY');
-  assert.match(step2, /BEHIND[\s\S]{0,300}close-out-update\.md/, 'AC1.1: BEHIND routes to close-out-update.md');
+  const dirtySpan = routingSpan(step2, '`mergeStateStatus: DIRTY`', '`mergeStateStatus: BEHIND`');
+  const behindSpan = routingSpan(step2, '`mergeStateStatus: BEHIND`', '`mergeStateStatus: BLOCKED`');
+  assert.ok(dirtySpan.includes('close-out-update.md'), 'AC1.1: the DIRTY paragraph itself routes to close-out-update.md');
+  assert.match(dirtySpan, /CONFLICTING/, 'AC1.1: mergeable CONFLICTING is treated like DIRTY');
+  assert.ok(behindSpan.includes('close-out-update.md'), 'AC1.1: the BEHIND clause itself routes to close-out-update.md');
   assert.ok(!step2.includes('rebase and re-verify'), 'AC1.1: the old rebase recommendation is gone from step 2');
   // AC1.2 — declining leaves the PR exactly as it was
   assert.match(update, /[Dd]eclin[\s\S]{0,200}exactly as it was/, 'AC1.2: declining leaves the PR exactly as it was');
@@ -48,6 +66,7 @@ function assertUpdateRouting(step2, update, closeOut) {
   assert.match(update, /headRefOid/, 'AC2.1: CI read is tied to the PR head SHA');
   assert.ok(update.includes('gh pr checks') && update.includes('--watch'), 'AC2.1: waits for the new HEAD\'s checks');
   assert.match(update, /step 1/i, 'AC2.1: re-runs close-out step 1 on the new HEAD');
+  assert.match(update, /sha[\s\S]{0,80}rev-parse HEAD/, 'AC2.1: stamp sha equals the new HEAD');
   // AC4.1 — no path rebases or force-pushes
   assert.match(update, /never a rebase/i, 'AC4.1: states never a rebase');
   assert.match(update, /force[- ]push/i, 'AC4.1: states never a force push');
@@ -57,6 +76,7 @@ function assertUpdateRouting(step2, update, closeOut) {
     assert.ok(!/^git\b.*\brebase\b/.test(s), `AC4.1: no git rebase command: ${s}`);
     assert.ok(!/^git\b.*\bpush\b.*(--force|\s-f\b)/.test(s), `AC4.1: no force push command: ${s}`);
     assert.ok(!/^gh pr update-branch\b.*--rebase/.test(s), `AC4.1: no update-branch --rebase: ${s}`);
+    assert.ok(!/^git\b.*\bpush\b.*\s\+\S/.test(s), `AC4.1: no +refspec force push: ${s}`);
   }
   // AC5.1 (close-out half) — the Anti-Patterns ban is rescoped to the headless sweep
   assert.ok(!closeOut.includes('Rebasing a `DIRTY` candidate to clear it automatically'), 'AC5.1: old anti-pattern row removed');
@@ -69,6 +89,18 @@ test('AC1.1/AC1.2/AC2.1/AC4.1/AC5.1: step 2 routes conflicting and behind PRs to
 
 test('go-red control: dropping the DIRTY routing from step 2 fails the same assertions', () => {
   const mutated = STEP_2.replace(/close-out-update\.md/g, 'REMOVED');
+  assert.throws(() => assertUpdateRouting(mutated, UPDATE, CLOSE_OUT));
+});
+
+test('go-red control: dropping only the DIRTY reference fails the routing assertions', () => {
+  const mutated = dropRefIn(STEP_2, '`mergeStateStatus: DIRTY`', '`mergeStateStatus: BEHIND`');
+  assert.notEqual(mutated, STEP_2, 'the mutation must change step 2');
+  assert.throws(() => assertUpdateRouting(mutated, UPDATE, CLOSE_OUT));
+});
+
+test('go-red control: dropping only the BEHIND reference fails the routing assertions', () => {
+  const mutated = dropRefIn(STEP_2, '`mergeStateStatus: BEHIND`', '`mergeStateStatus: BLOCKED`');
+  assert.notEqual(mutated, STEP_2, 'the mutation must change step 2');
   assert.throws(() => assertUpdateRouting(mutated, UPDATE, CLOSE_OUT));
 });
 

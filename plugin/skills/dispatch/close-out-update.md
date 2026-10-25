@@ -16,8 +16,10 @@ Values come from `gh pr view {number} --json headRefName,headRefOid,baseRefName`
    `DIRTY` then stops the candidate (`stopped: mergeStateStatus DIRTY — update declined`);
    `BEHIND` was never a stop, so a declined update continues to `close-out.md` step 3 unchanged.
 2. **Worktree.** `BEHIND` first runs `gh pr update-branch {number}` (a merge — never the rebase variant);
-   a failure stops the candidate (`stopped: update failed — push rejected`) with the PR untouched.
-   Then `git fetch origin {head}` and `git worktree add --detach .worktrees/close-out-{number} origin/{head}` —
+   a failure stops the candidate (`stopped: update failed — update-branch rejected`) with the PR untouched.
+   The call can return before GitHub's merge has landed, so read `gh pr view {number} --json headRefOid` and require a sha that differs from the pre-update one,
+   then `git fetch origin {head}` until `origin/{head}` equals it — one bounded re-read, else stop (`stopped: update failed — head moved`) with the PR as GitHub left it.
+   Then `git worktree add --detach .worktrees/close-out-{number} origin/{head}` —
    the git-fallback domain (`_shared/scratch-worktree.md` §2), detached because the run's own worktree may still hold `{head}` checked out,
    and never the main checkout. When the project has a lockfile, run its install command in `{wt}` (the mapping is
    `_shared/worktree-adopt-freshness.md` step 4).
@@ -34,10 +36,12 @@ Values come from `gh pr view {number} --json headRefName,headRefOid,baseRefName`
    the worktree stays. On `BEHIND` the update is already on GitHub — the PR stays unmerged and the report says so.
 5. **Push (`DIRTY` only).** `git -C {wt} push origin HEAD:{head}` — plain. A rejection is reported and stops the candidate
    (`stopped: update failed — push rejected`); it is never retried as a force-push.
-6. **Re-read CI on the new HEAD.** Confirm `gh pr view {number} --json headRefOid` equals the verified sha (a lagging read is re-read, not assumed).
+6. **Re-read CI on the new HEAD.** Confirm `gh pr view {number} --json headRefOid` equals the verified sha — one re-read if it lags; a sha that still differs stops the candidate
+   (`stopped: update failed — head moved`), since one sha is never verified and another merged.
    Wait with `gh pr checks {number} --watch` — the one place close-out waits, since the update itself created the pending state.
    Then re-run `close-out.md` step 1's read: only `passing` continues (otherwise `stopped: CI {status} after update`).
-   Re-run step 2's mergeability read once; a still-`DIRTY` PR stops.
+   Re-run step 2's mergeability read once: any status step 2 does not proceed on (`DIRTY`, `BEHIND` again because the base moved during the wait, `UNKNOWN`)
+   stops the candidate (`stopped: mergeStateStatus {status} after update`). There is no second offer in the same run; the human re-runs close-out.
 7. **Tear down.** From the main checkout's cwd, `git fetch origin {head}`, then `git -C {wt} merge-base --is-ancestor HEAD origin/{head}`;
    on exit 0, `git worktree remove .worktrees/close-out-{number}` (`ExitWorktree` does not operate on `.worktrees/`, `_shared/scratch-worktree.md` §6).
    Non-zero: list `git log origin/{head}..HEAD --oneline` and remove nothing. A failed step 4 is the only other case where the worktree stays.

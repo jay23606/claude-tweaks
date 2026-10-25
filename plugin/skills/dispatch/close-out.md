@@ -97,15 +97,17 @@ touching shared state runs one member at a time.
    the run's worktree still exists) defers to the reconciler on merged-PR evidence, the same
    outcome-independent convergence every other merge path in this skill already relies on
    (`settle-and-merge.md`'s worktree constraint) — this mode never runs `EnterWorktree` or
-   `git worktree remove` itself. On `armed`, none of Sections B/C/E run yet — same as every other
+   `git worktree remove` against the run's own worktree. The one exception is the short-lived
+   `.worktrees/close-out-{number}` that `close-out-update.md` creates for an update; its step 7
+   removes it. On `armed`, none of Sections B/C/E run yet — same as every other
    `armed` outcome in this skill, they wait for `merged` evidence.
 
 ## Reporting
 
 One line per candidate: `#{number} — {outcome}` where `{outcome}` is one of `merged`, `armed`,
 `stopped: CI {status}`, `stopped: mergeStateStatus DIRTY — update declined`,
-`stopped: update failed — {conflict not resolved | verification | push rejected}`,
-`stopped: CI {status} after update`,
+`stopped: update failed — {conflict not resolved | verification | push rejected | update-branch rejected | head moved}`,
+`stopped: CI {status} after update`, `stopped: mergeStateStatus {status} after update`,
 `stopped: acceptance labeling unverifiable — no run dir`, or `declined at confirmation gate`.
 The bare form's summary line names how many candidates were found, merged/armed, stopped, and declined. This mode is never headless-self-reporting like bare
 `/dispatch`'s own Preflight failures (`_shared/headless-self-report.md`) — its confirmation gate
