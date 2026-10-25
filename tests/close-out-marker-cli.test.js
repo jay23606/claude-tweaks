@@ -126,6 +126,19 @@ test('read: a CRLF pending marker reads pending with its id (AC1.1 end to end)',
   });
 });
 
+test('read and write: a bare comment array (the REST/MCP shape) is read like a {comments} payload', () => {
+  const bare = [comment('IC_1', markerBody(pendingFields))];
+  const readDeps = fakeDeps(bare);
+  assert.equal(run(['read', '--comments-file', 'c.json'], readDeps), 0);
+  const read = oneJsonLine(readDeps);
+  assert.equal(read.status, 'pending');
+  assert.equal(read.id, 'IC_1');
+  assert.deepEqual(read.conflictedFiles, ['a.js']);
+  const writeDeps = fakeDeps(bare);
+  assert.equal(run(WRITE_ARGV, writeDeps), 0);
+  assert.equal(oneJsonLine(writeDeps).accumulated, true);
+});
+
 test('read: reads the trusted comment, not an untrusted forgery listed first', () => {
   const forged = markerBody({ ...pendingFields, preUpdateHead: C });
   const deps = fakeDeps(P(comment('forged', forged, 'NONE'), comment('real', markerBody(pendingFields))));
@@ -252,14 +265,15 @@ test('write: no marker writes a fresh pending body from the flags', () => {
 });
 
 test('write: a pending marker accumulates (AC2.1 end to end)', () => {
-  const deps = fakeDeps(P(comment('IC_1', markerBody(pendingFields))));
+  // the update's paths (b.js, c.js) differ from the pending marker's (a.js), so a union and a replacement read differently
+  const deps = fakeDeps(P(comment('IC_1', markerBody(pendingFields))), { files: { 'paths.txt': 'b.js\nc.js\n' } });
   const argv = writeArgv('--update-method', 'gh pr update-branch');
   assert.equal(run(argv, deps), 0);
   const [, content] = deps.calls.writes[0];
   assert.deepEqual(parseMarker(content), {
     status: 'pending',
     updateMethod: ['merge', 'gh pr update-branch'],
-    conflictedFiles: ['a.js', 'b.js'],
+    conflictedFiles: ['a.js', 'b.js', 'c.js'],
     preUpdateHead: C,
     resolutionCommits: [B, 'pending'],
   });
@@ -360,6 +374,20 @@ test('write: a bare carriage return inside a path exits 1 (it would add a line t
   assert.equal(run(WRITE_ARGV, deps), 1);
   assert.match(err(deps), /line break/);
   assert.equal(deps.calls.writes.length, 0);
+});
+
+test('write: a path named none or unknown exits 1 (the marker would read it back as a sentinel) and writes nothing', () => {
+  for (const reserved of ['none', 'unknown']) {
+    const deps = fakeDeps(P(), { files: { 'paths.txt': `${reserved}\n` } });
+    assert.equal(run(WRITE_ARGV, deps), 1, reserved);
+    assert.match(err(deps), new RegExp(`path named ${reserved}`));
+    assert.equal(deps.calls.writes.length, 0);
+    assert.equal(out(deps), '');
+  }
+  // only the exact token is reserved: a longer name containing it is an ordinary path
+  const deps = fakeDeps(P(), { files: { 'paths.txt': 'none.js\nsrc/unknown\n' } });
+  assert.equal(run(WRITE_ARGV, deps), 0);
+  assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, ['none.js', 'src/unknown']);
 });
 
 test('write: --conflicted-files-file and --conflicted-files together, or neither, exit 2', () => {

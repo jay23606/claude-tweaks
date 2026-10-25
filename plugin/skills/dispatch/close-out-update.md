@@ -33,7 +33,7 @@ resolution-commit: {full sha | pending}[, …]
 While this reads `pending`, close-out has pushed an update to this PR whose head had not passed a full-suite verify and CI when it was written; a close-out run from any checkout re-verifies the head before the merge question.
 ```
 
-Its three verbs read the Find step's payload `{comments-path}` and write the body to `{body-path}` (both from that procedure's Find); each is one plain command — exit 1: the payload, the paths file or the marker cannot be used, 2: a malformed call, 3: `--out` or `--body-out` unwritable.
+Its three verbs read the Find step's payload `{comments-path}`; `write` and `resolve-pending` write the body to `{body-path}` (both paths from that procedure's Find), and `read` saves one only through `--body-out`; each is one plain command — exit 1: the payload, the paths file or the marker cannot be used, 2: a malformed call, 3: `--out` or `--body-out` unwritable.
 `{prior-body-path}` and `{paths-path}` resolve the way the Find step's paths do: add `PRIOR=close-out-update-prior-{n}.md PATHS=close-out-update-paths-{n}.txt` to its `session-tmp-resolve.js` call.
 
 ```bash

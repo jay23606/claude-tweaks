@@ -47,9 +47,10 @@
 // `--conflicted-files`, which takes only the literals `none` ([]) and `unknown`, is
 // required — both or neither is exit 2, and any other `--conflicted-files` value
 // is exit 2 naming the file flag. A paths file that is unreadable, holds no paths,
-// or holds a path with a comma (the marker's comma-joined format cannot carry it)
-// or a bare carriage return is exit 1 (payload), read through deps.readFile after
-// the comments file.
+// holds a path with a comma (the marker's comma-joined format cannot carry it), holds a
+// bare carriage return, or holds a path named exactly `none` or `unknown` (the marker reads
+// those back as its sentinels, losing the path) is exit 1 (payload), read through
+// deps.readFile after the comments file.
 //
 // Exit vocabulary is the Payload-1/Invocation-2 family of find-run-comment.js and
 // wrap-up-engine.js: 0 = answered; 1 = Payload failure, the --comments-file
@@ -187,6 +188,8 @@ function readPathsFile(file, deps) {
   const bad = files.find((f) => f.includes(','));
   if (bad !== undefined) return { error: `--conflicted-files-file ${file} holds a path with a comma, which the marker cannot carry: ${bad}` };
   if (files.some((f) => /\r/.test(f))) return { error: `--conflicted-files-file ${file} holds a path with a line break` };
+  const reserved = files.find((f) => f === 'none' || f === 'unknown');
+  if (reserved !== undefined) return { error: `--conflicted-files-file ${file} holds a path named ${reserved}, which the marker reads back as a sentinel, not a path` };
   return { files };
 }
 
