@@ -350,7 +350,7 @@ without a tool call ends the turn.
 
 Read {minted-run-dir}/context/merge.md once, whole, with one Read call, before your first step
 (if that bundle is absent, read `_shared/pr-first-merge.md` directly). That one read serves every
-later citation of it, including wrap-up's own instruction to read it: never re-read it or open its source files piecewise (sed, grep, cat).
+later citation of it, including wrap-up's own instruction to read it: never re-read it unless your context was compacted since, and never open its source files piecewise (sed, grep, cat).
 
 Ephemeral dev server liveness (only if `{minted-run-dir}/ephemeral-server.txt` exists): before
 the first browser-driving step, and again before any `trace stop`, verify the recorded pid

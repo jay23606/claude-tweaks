@@ -178,6 +178,10 @@ test('a top-level run gauges only with two or more steps before wrap-up: the one
   const item = stepFourItem();
   assert.match(item, /gauges only when two or more steps remain before `wrap-up`/);
   assert.match(item, /a single step resumes from that step onward/);
+  // Final review fix: the two-step rule is the top-level one; a dispatched call gauges with
+  // one step left, because its template's stop sentence holds a one-entry `test` to `test`.
+  assert.match(item, /A top-level run gauges only when two or more steps remain before `wrap-up`/);
+  assert.match(item, /A dispatched call gauges with any step left, even one: its continuation template's "Stop after the test gate" sentence holds a one-entry `test` list to exactly `test`/);
   const bullet = region(read(HANDOFF), '- **Never `wrap-up` from a top-level run.**', '\n', 'top-level wrap-up bullet');
   assert.match(bullet, /gauges only when two or more steps remain before `wrap-up`/);
   assert.match(bullet, /one step left before `wrap-up`[^.]*does not gauge/);

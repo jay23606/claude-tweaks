@@ -154,7 +154,7 @@ test('review/step3-lens-dispatch.md fenced blocks never cite _shared/ at all', (
 const FIRST_CALL_LINE = '`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase first-call`';
 const SECOND_CALL_LINE = '`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase second-call`';
 const READ_ONCE = 'Read {minted-run-dir}/context/merge.md once, whole, with one Read call, before your first step';
-const NO_PIECEWISE = 'never re-read it or open its source files piecewise (sed, grep, cat)';
+const NO_PIECEWISE = 'never re-read it unless your context was compacted since, and never open its source files piecewise (sed, grep, cat)';
 const flat = (s) => s.replace(/\s+/g, ' ');
 
 test('task-prompt.md composes each call\'s bundles with one --phase line, and no --step line remains', () => {

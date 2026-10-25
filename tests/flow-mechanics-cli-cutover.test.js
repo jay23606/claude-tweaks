@@ -58,6 +58,22 @@ test('flow Step 1 item 5 gates every record with materialize.js --check and read
   assert.doesNotMatch(build, /Materialize the record into a spec-shaped build file via `skills\/flow\/materialize\.md`:/);
 });
 
+// Final review fix: the read-in-place condition comes before the command it overrides, and
+// the Inputs row names the CLI rather than sending a reader into materialize.md.
+test('build Spec Step 1 puts the read-in-place condition before materialize.js; flow\'s Inputs row names materialize.js', () => {
+  const build = region(read(BUILD), '### Spec Step 1:', '### Spec Step 2:', 'build Spec Step 1');
+  const inPlace = build.indexOf('already materialized the file');
+  const command = build.indexOf('bin/materialize.js" {n} --run-dir "{run-dir}"');
+  assert.notEqual(inPlace, -1, 'the read-in-place condition is gone from Spec Step 1');
+  assert.notEqual(command, -1, 'the --run-dir materialize command is gone from Spec Step 1');
+  assert.ok(inPlace < command, 'the read-in-place condition must precede the materialize command');
+  assert.match(build.slice(inPlace, command), /read it in place\. Otherwise, materialize the record/);
+  const row = read(FLOW).split('\n').find((l) => l.startsWith('| `#N[,#M...]` |'));
+  assert.ok(row, 'flow Inputs table lost its record-reference row');
+  assert.match(row, /materialized into `\{run-dir\}\/work\/\{n\}-spec\.md` by `bin\/materialize\.js`/);
+  assert.doesNotMatch(row, /per `materialize\.md` in this skill's directory/);
+});
+
 test('flow Step 3 runs manifesto-write.js for auto cases 2/5 and reads manifesto.md only for gated modes, case 1/3, or a non-zero exit', () => {
   const r = region(read(FLOW), '### Step 3:', '### Step 4:', 'flow Step 3');
   assert.match(r, /bin\/manifesto-write\.js" --run "\$PIPELINE_RUN_DIR" --mode auto --mode-source [^\n]*--ceremony /);
