@@ -14,8 +14,9 @@
 // PR-less must not contain "failed" unless it is that degrade: this is why
 // the reopen-rejected line carries no reason. The one other line containing
 // "failed" is the spec's own rebind SKIP wording. It does read as a degrade,
-// and that is harmless only because the reopened PR is recorded before the
-// rebind's outcome matters, so that run is never PR-less.
+// and that is harmless only because the reopened PR is recorded right after
+// the rebind attempt, whatever its outcome, and before the push, so that run
+// is never PR-less.
 //
 // deps: { gh(args) -> stdout (throws on failure), git(args, {cwd}) -> stdout,
 //   sleep(ms), now(), appendDecision(line), recordPr({number, url}),
@@ -232,14 +233,19 @@ async function openPrEarly(opts, deps) {
       if (landed) created = { number: landed.number, url: landed.url };
       return true;
     } catch (e) {
-      reason = oneLine(`${reason}; recheck of open PRs for ${branch} could not list (${oneLine(errText(e))}), so whether a PR landed is unverifiable`);
+      // The marker goes first and each error is bounded on its own: a single
+      // bound over the whole string would cut the marker off a long error.
+      reason = `whether a PR landed is unverifiable: the recheck of open PRs for ${branch} could not list (${oneLine(errText(e))}); create error: ${reason}`;
       return false;
     }
   };
   if (!tryCreate()) {
     const firstTransient = TRANSIENT_RE.test(reason);
     if (firstTransient) await deps.sleep(RETRY_WAIT_MS);
-    if (lookForLanded() && !created && !tryCreate() && (firstTransient || ALREADY_EXISTS_RE.test(reason))) {
+    // A failed retry is explained by a landed earlier attempt when either
+    // error looks transient or the retry says the PR already exists.
+    if (lookForLanded() && !created && !tryCreate()
+      && (firstTransient || TRANSIENT_RE.test(reason) || ALREADY_EXISTS_RE.test(reason))) {
       lookForLanded();
     }
   }

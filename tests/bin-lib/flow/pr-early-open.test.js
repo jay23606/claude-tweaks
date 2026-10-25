@@ -302,6 +302,30 @@ test('a retry that times out after a transient first error re-lists and adopts a
   assert.equal(h.calls.filter(isCreate).length, 2);
 });
 
+test('a transient error on the retry alone also re-lists and adopts a PR that landed', async () => {
+  const h = harness({
+    lists: [[], [], [{ number: 42, url: URL42, state: 'OPEN' }]],
+    create: [new Error('GraphQL: something odd (createPullRequest)'), new Error('Post "https://api.github.com/graphql": context deadline exceeded')],
+  });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42 });
+  assert.equal(h.calls.filter(isCreate).length, 2);
+  assert.ok(!h.lines.some((l) => /FAILED/.test(l)));
+});
+
+test('the unverifiable marker survives a long create error in the FAILED line', async () => {
+  const longErr = `pull request create failed: GraphQL: ${'x'.repeat(320)} (createPullRequest)`;
+  const h = harness({ lists: [[], new Error(`HTTP 502: Bad Gateway ${'y'.repeat(300)}`)], create: [new Error(longErr)] });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.equal(res.outcome, 'create-failed');
+  assert.match(res.reason, /unverifiable/);
+  const failed = h.lines[h.lines.length - 1];
+  assert.match(failed, /gh pr create for \S+ FAILED \(.*unverifiable.*\); run proceeds local-only, no PR opened\./);
+  const dir = tmpDir('ct-pr-early-gate-');
+  fs.writeFileSync(path.join(dir, 'decisions.md'), `${h.lines.join('\n')}\n`);
+  assert.ok(hasLoggedPrDegrade(dir));
+});
+
 test('an "already exists" retry error after a non-transient first error also re-lists and adopts', async () => {
   const h = harness({
     lists: [[], [], [{ number: 42, url: URL42, state: 'OPEN' }]],
