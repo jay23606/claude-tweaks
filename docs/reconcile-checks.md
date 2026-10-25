@@ -240,7 +240,8 @@ run skipped here escalates through the same structurally-stuck path as the main 
 
 **Console residue (#3949).** `readConsoleState` returns `residue` when a run's console resolved
 (or wrote no top-level `console.json`) but `console/residue.js`'s `readRunResidue` still reports an
-unacknowledged console holding `pending`/`keep-staged` items, or an unreadable one (fail closed).
+unacknowledged console holding `pending`/`keep-staged` items (or a PR console item whose outcome is
+`filing-failed`/`reverse-failed`), or an unreadable one (fail closed).
 Every site that skips `console-unresolved` — `decideArchiveCore`, the `status: clean` by-number
 sweep, `hooks.js archive-run` — skips or refuses `console-residue` too, which a human clears with
 `console-residue.js --ack` (an unreadable `console.json` must be repaired or removed instead). It is

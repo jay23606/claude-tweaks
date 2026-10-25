@@ -168,6 +168,9 @@ record rather than silently trusting this note.
 }
 ```
 
+After execution each item also carries `"outcome"` (and `"note"` for a non-executed one) —
+`console-execution.md`'s Write order.
+
 `commentIds[0]` is the primary comment — the one carrying the Resolve checkbox and legend, and the
 one this file's find-by-marker lookup (`<!-- claude-tweaks-console: {run-id} -->` as its first
 line) always locates first. Any further entries are overflow comments (below), linked from the
