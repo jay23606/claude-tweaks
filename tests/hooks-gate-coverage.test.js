@@ -397,6 +397,23 @@ test('#4212: a bare-word escaped quote glued to > fabricates no target', () => {
   assert.deepStrictEqual(fileWriteTargets('echo a\\"b>c', '/r'), []);
 });
 
+test('AC2.1 #4212: an escaped blank before a redirect still resolves its target (no escaped-blank bypass)', () => {
+  const cases = [
+    ['echo foo\\ >x', 'x'],
+    ['echo foo\\ > x', 'x'],
+    ['echo foo\\ 2>x', 'x'],
+    ['echo foo\\\t>x', 'x'],
+    ['printf "%s" a\\ >>log.txt', 'log.txt'],
+  ];
+  for (const [command, name] of cases) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/r', name) }], command);
+  }
+});
+
+test('#4212: an escaped space in a copy destination resolves to the unescaped name', () => {
+  assert.deepStrictEqual(fileWriteTargets('cp a my\\ file.js', '/r'), [{ action: 'copy', file: path.resolve('/r', 'my file.js') }]);
+});
+
 // #3989: a heredoc body is data for the reading program, not shell — its `>`
 // is not a redirection. The opener line and whatever follows the closing
 // delimiter still are scanned.

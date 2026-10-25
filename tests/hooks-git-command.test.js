@@ -615,15 +615,17 @@ test('#4212: a bare-word escaped quote yields the unescaped character', () => {
   assert.deepStrictEqual(tokenize('echo a\\"b it\\\'s').tokens, ['echo', 'a"b', "it's"]);
 });
 
-test('#4212: an escaped space outside quotes joins the word, and the token stays unresolvable', () => {
-  assert.deepStrictEqual(tokenize('mkdir a\\ b').tokens, ['mkdir', 'a\\ b']);
-  assert.deepStrictEqual(mkdirTargets('mkdir a\\ b', '/r'), []);
+test('#4212: an escaped space outside quotes joins the word and yields the space, as bash does', () => {
+  assert.deepStrictEqual(tokenize('mkdir a\\ b').tokens, ['mkdir', 'a b']);
+  assert.deepStrictEqual(mkdirTargets('mkdir a\\ b', '/r'), [{ action: 'mkdir', file: path.resolve('/r', 'a b') }]);
+  assert.deepStrictEqual(mkdirTargets('mkdir -p /r/a\\ b/c', '/r'), [{ action: 'mkdir', file: path.resolve('/r/a b/c') }]);
 });
 
 test('AC2.1 #4212: non-quote escapes stay verbatim — Windows paths, a doubled backslash before a closing quote, a trailing backslash', () => {
   assert.strictEqual(tokenize('C:\\Windows\\System32\\powershell.exe -Command x').tokens[0], 'C:\\Windows\\System32\\powershell.exe');
   assert.deepStrictEqual(tokenize('git commit -m "a\\\\" b'), { tokens: ['git', 'commit', '-m', 'a\\\\', 'b'], singleQuoted: [false, false, false, false, false], doubleQuoted: [false, false, false, true, false] });
   assert.deepStrictEqual(tokenize('echo foo\\').tokens, ['echo', 'foo\\']);
+  assert.deepStrictEqual(tokenize('echo foo\\>x').tokens, ['echo', 'foo\\>x']);
 });
 
 test('AC2.1 #4212: a line continuation still resolves the next line\'s target', () => {

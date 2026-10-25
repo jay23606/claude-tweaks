@@ -96,11 +96,15 @@ function stripQuotes(s) {
 // backslash pairs with the next character, so `\"` never closes a span and
 // `\\` is one pair (in a bare word, a backslash before a newline — a line
 // continuation — or at the end of the string stays a lone `\`). An escaped
-// quote yields the unescaped character, as bash does; every OTHER backslash
-// pair stays verbatim, so a Windows path (`C:\Windows\...\powershell.exe`)
-// keeps its exact token value and isUnresolvable()'s backslash guard still
-// fires on a token that carried a non-quote escape. Single-quoted spans give
-// a backslash no meaning (as in bash) and are unchanged.
+// quote yields the unescaped character, as bash does; in a bare word an
+// escaped blank (space or tab) likewise yields the blank, because a word that
+// runs on through an escaped blank must not swallow a following redirect
+// operator (`echo foo\ >x` is the token `foo >x`, so the glued-redirect scan
+// still resolves `x`). Every OTHER backslash pair stays verbatim, so a
+// Windows path (`C:\Windows\...\powershell.exe`) keeps its exact token value
+// and isUnresolvable()'s backslash guard still fires on a token that carried
+// a non-quote escape. Single-quoted spans give a backslash no meaning (as in
+// bash) and are unchanged.
 function tokenize(seg) {
   const out = [];
   const singleQuoted = [];
@@ -111,7 +115,7 @@ function tokenize(seg) {
   while ((m = re.exec(seg)) !== null) {
     const val = m[1] !== undefined ? m[1].replace(/\\([\s\S])/g, (p, c) => (c === '"' ? c : p))
       : m[2] !== undefined ? m[2]
-        : m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" ? c : p));
+        : m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" || c === ' ' || c === '\t' ? c : p));
     const isSQ = m[2] !== undefined;
     const isDQ = m[1] !== undefined;
     if (out.length && m.index === prevEnd) {
@@ -140,10 +144,11 @@ const UNPROVABLE_FLAGS = ['--git-dir', '--work-tree'];
 // backslash pair verbatim, so a token still carrying a backslash (a non-quote
 // escape) or a double-quote (an unescaped `\"`) cannot be trusted as a literal
 // path — never claim an unprovable target. Also unresolvable: anything else
-// that looks like a FLAG (starts with "-", length > 1) — cd's own flags (-L, -P, -e, -@, --) are not path
-// arguments; without this, `cd -P /other-repo` would resolve "-P" itself as
-// a literal (almost certainly nonexistent) child directory of the current
-// cwd instead of recognizing the real target is unprovable from here.
+// that looks like a FLAG (starts with "-", length > 1) — cd's own flags
+// (-L, -P, -e, -@, --) are not path arguments; without this, `cd -P
+// /other-repo` would resolve "-P" itself as a literal (almost certainly
+// nonexistent) child directory of the current cwd instead of recognizing the
+// real target is unprovable from here.
 function isUnresolvable(raw) {
   return (
     raw === undefined ||

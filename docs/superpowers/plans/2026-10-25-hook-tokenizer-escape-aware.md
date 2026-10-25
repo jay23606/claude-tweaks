@@ -27,7 +27,7 @@
    - Group 3, a bare word: a backslash pairs with the next character unless that character is a newline. A space after a backslash therefore joins the word (`a\ b` is one token). A backslash before a newline (a line continuation), or at the end of the string, stays a lone `\`, as before. Keeping the newline excluded is load-bearing: pairing it would glue `mkdir -p \<newline>/abs` into one unresolvable token and lose a target the gate resolves today.
 2. **Token values.** An escaped quote yields the unescaped character, matching bash. Every other pair stays verbatim:
    - group 1: `m[1].replace(/\\([\s\S])/g, (p, c) => (c === '"' ? c : p))`
-   - group 3: `m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" ? c : p))`
+   - group 3: `m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" || c === ' ' || c === '\t' ? c : p))` (an escaped blank also yields the blank, so a word that runs on through it cannot swallow a following redirect: `echo foo\ >x` is the token `foo >x`)
    - group 2: unchanged.
    The replace must consume pairs left to right, as written. A naive `/\\"/g` misreads `a\\"b` (an escaped backslash, then a literal quote).
 3. The adjacent-span merge and the `singleQuoted`/`doubleQuoted` flags are unchanged.
