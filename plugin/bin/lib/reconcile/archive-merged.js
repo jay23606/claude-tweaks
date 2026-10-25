@@ -2399,8 +2399,11 @@ function archiveMerged({
           }
           const consoleState = readConsoleState(dir);
           if (consoleState === 'unresolved' || consoleState === 'residue') {
-            const reason = consoleState === 'residue' ? 'console-residue' : 'console-unresolved';
-            skipped.push(reason === 'console-residue' ? { runDir: dir, reason, hint: consoleResidueHint(dir) } : { runDir: dir, reason });
+            if (consoleState === 'residue') {
+              skipped.push({ runDir: dir, reason: 'console-residue', hint: consoleResidueHint(dir) });
+            } else {
+              skipped.push({ runDir: dir, reason: 'console-unresolved' });
+            }
             continue;
           }
           if (consoleState === 'none') {
