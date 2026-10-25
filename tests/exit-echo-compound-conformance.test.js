@@ -41,7 +41,7 @@ function relSkillPath(file) {
   return path.relative(SKILLS_DIR, file).split(path.sep).join('/');
 }
 
-// Returns [{ lineNumber, line }] for every line carrying a command, `;`, then an exit-status echo.
+// Returns [{ lineNumber, line }] for every line carrying a command, `;` or `&&`, then an exit-status echo.
 // A span that opens with `;` (a description such as (`; echo exit=$?`)) does not match.
 function findCompoundSites(text) {
   const lines = text.split('\n');
