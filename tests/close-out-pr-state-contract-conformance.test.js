@@ -9,8 +9,17 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
 
-const CLOSE_OUT = readText(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'close-out.md'));
-const UPDATE = readText(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'close-out-update.md'));
+function readSkillFile(...segments) {
+  return readText(path.join(__dirname, '..', 'plugin', 'skills', ...segments));
+}
+
+// Every go-red control mutates one clause, so that clause must occur exactly once in its source text.
+function assertOccursOnce(text, clause, message) {
+  assert.equal(text.split(clause).length, 2, message);
+}
+
+const CLOSE_OUT = readSkillFile('dispatch', 'close-out.md');
+const UPDATE = readSkillFile('dispatch', 'close-out-update.md');
 const STEP_2_START = CLOSE_OUT.indexOf('2. **Re-check mergeability');
 const STEP_2_END = CLOSE_OUT.indexOf('3. **Convert draft to ready');
 const STEP_2 = CLOSE_OUT.slice(STEP_2_START, STEP_2_END);
@@ -60,8 +69,11 @@ function stepSpan(update, n) {
   return update.slice(start, end < 0 ? undefined : end);
 }
 
-const at = (span, s) => span.indexOf(s);
-const before = (span, a, b) => at(span, a) >= 0 && at(span, b) >= 0 && at(span, a) < at(span, b);
+function before(span, a, b) {
+  const first = span.indexOf(a);
+  const second = span.indexOf(b);
+  return first >= 0 && second >= 0 && first < second;
+}
 
 // Each pin: [id, step, check(span)]. The go-red table below mutates exactly one pin's clause.
 const UPDATE_PINS = [
@@ -219,7 +231,7 @@ test('every close-out-update.md pin has exactly one go-red mutation', () => {
 
 for (const [id, from, to] of UPDATE_MUTATIONS) {
   test(`go-red control: mutating only the ${id} clause fails the update-path assertions`, () => {
-    assert.equal(UPDATE.split(from).length, 2, `the ${id} clause occurs exactly once`);
+    assertOccursOnce(UPDATE, from, `the ${id} clause occurs exactly once`);
     const mutated = UPDATE.replace(from, to);
     assert.notEqual(mutated, UPDATE, 'the mutation must change the text');
     assert.throws(() => assertUpdateSteps(mutated), new RegExp(`pin ${id} `));
@@ -236,7 +248,7 @@ const STEP_2_MUTATIONS = [
 
 for (const [label, from, to, message] of STEP_2_MUTATIONS) {
   test(`go-red control: close-out step 2 without "${label}" fails the routing assertions`, () => {
-    assert.equal(STEP_2.split(from).length, 2, `the ${label} clause occurs exactly once in step 2`);
+    assertOccursOnce(STEP_2, from, `the ${label} clause occurs exactly once in step 2`);
     const mutated = STEP_2.replace(from, to);
     assert.notEqual(mutated, STEP_2, 'the mutation must change step 2');
     assert.throws(() => assertUpdateRouting(mutated, UPDATE, CLOSE_OUT), message);
@@ -254,7 +266,7 @@ function assertMergeHeadCheck(closeOut) {
   assert.match(step5, /pass `\{verified-sha\}`\s+as Step 3's expected head/, 'step 5 passes the verified sha as the expected head');
 }
 
-const MERGE = readText(path.join(__dirname, '..', 'plugin', 'skills', '_shared', 'pr-first-merge.md'));
+const MERGE = readSkillFile('_shared', 'pr-first-merge.md');
 
 // pr-first-merge.md Step 3: the expected-head sentence sits right after its two opening fences.
 function assertExpectedHeadSentence(merge) {
@@ -273,23 +285,23 @@ test('AC2.1: close-out step 5 merges only the verified head, via Step 3\'s --mat
 
 test('go-red control: close-out step 5 without the head re-check fails', () => {
   const from = 'When `close-out-update.md` handed off a `{verified-sha}`, first re-read\n   `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than\n   that `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`\n   as Step 3\'s expected head, so its `--match-head-commit` merges only that head.\n   ';
-  assert.equal(CLOSE_OUT.split(from).length, 2, 'the head re-check occurs exactly once');
+  assertOccursOnce(CLOSE_OUT, from, 'the head re-check occurs exactly once');
   assert.throws(() => assertMergeHeadCheck(CLOSE_OUT.replace(from, '')), /re-reads the head/);
 });
 
 test('go-red control: close-out step 5 keyed on the update having run, not on a handed-off sha, fails', () => {
   const from = 'When `close-out-update.md` handed off a `{verified-sha}`, first';
-  assert.equal(CLOSE_OUT.split(from).length, 2, 'the trigger clause occurs exactly once');
+  assertOccursOnce(CLOSE_OUT, from, 'the trigger clause occurs exactly once');
   assert.throws(() => assertMergeHeadCheck(CLOSE_OUT.replace(from, 'When `close-out-update.md` ran, first')), /re-reads the head/);
 });
 
 test('go-red control: pr-first-merge Step 3 without the expected-head sentence fails', () => {
   const from = 'append `--match-head-commit {expected-head}` to every `gh pr merge` command in this step';
-  assert.equal(MERGE.split(from).length, 2, 'the sentence occurs exactly once');
+  assertOccursOnce(MERGE, from, 'the sentence occurs exactly once');
   assert.throws(() => assertExpectedHeadSentence(MERGE.replace(from, 'merge as usual')), /--match-head-commit/);
 });
 
-const CONFIRM = readText(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'close-out-confirmation.md'));
+const CONFIRM = readSkillFile('dispatch', 'close-out-confirmation.md');
 
 const CLAUSE_VALUES = ['{update-method}', '{conflicted-files}', '{resolution-commit}'];
 
@@ -315,7 +327,7 @@ function assertUpdateClause(text) {
 
 test('go-red control: an update clause claiming "this session" fails AC3.1', () => {
   const from = 'Updated from {base} by close-out via';
-  assert.equal(CONFIRM.split(from).length, 2, 'the clause wording occurs exactly once');
+  assertOccursOnce(CONFIRM, from, 'the clause wording occurs exactly once');
   assert.throws(() => assertUpdateClause(CONFIRM.replace(from, 'Updated from {base} this session via')), /resumed update too/);
 });
 
@@ -336,7 +348,7 @@ for (const v of CLAUSE_VALUES) {
   });
 }
 
-const SCAN = readText(path.join(__dirname, '..', 'plugin', 'skills', '_shared', 'github-pr-scan.md'));
+const SCAN = readSkillFile('_shared', 'github-pr-scan.md');
 
 function assertItem11(scan) {
   const start = scan.indexOf('11. **Stale pending-review PR**');
@@ -355,7 +367,7 @@ test('AC5.1: github-pr-scan item 11 stays flag-only and points at close-out\'s u
 
 test('go-red control: a capitalized rebase recommendation in github-pr-scan fails AC5.1', () => {
   const from = 'Update from the integration branch and re-verify';
-  assert.equal(SCAN.split(from).length, 2, 'the [pr-stale] recommendation occurs exactly once');
+  assertOccursOnce(SCAN, from, 'the [pr-stale] recommendation occurs exactly once');
   assert.throws(() => assertItem11(SCAN.replace(from, 'Rebase and re-verify')), /no longer says rebase/);
 });
 
@@ -373,6 +385,6 @@ test('the confirmation gate reads post-update CI and mergeability from close-out
 
 test('go-red control: the confirmation gate without the post-update source rule fails', () => {
   const from = 'After an update, `{status}` and `{mergeable-summary}` are `close-out-update.md`\nstep 6\'s re-reads (the latest read), never steps 1-2\'s pre-update values, which describe a head the\nupdate replaced. ';
-  assert.equal(CONFIRM.split(from).length, 2, 'the rule occurs exactly once');
+  assertOccursOnce(CONFIRM, from, 'the rule occurs exactly once');
   assert.throws(() => assertPostUpdateSourceValues(CONFIRM.replace(from, '')), /step 6/);
 });
