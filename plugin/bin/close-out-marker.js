@@ -19,8 +19,10 @@
 //           four fields are null), `pending`, `cleared` or `unreadable` (the
 //           fields then read 'unknown'). An unreadable marker is still exit 0:
 //           the status is data.
-//   write / resolve-pending: {written, accumulated, marker}. `written` is true,
-//           `marker` is the written body parsed back (parseMarker's shape), and
+//   write / resolve-pending: {written, accumulated, marker}. `written` is the
+//           path written (the --out value, as given, the sanctioned writers'
+//           echoed-path convention), `marker` is the written body parsed back
+//           (parseMarker's shape), and
 //           `accumulated` is true only when `write` folded the update into an
 //           existing pending marker (a fresh marker, or resolve-pending's in-place
 //           replacement, is false).
@@ -31,7 +33,9 @@
 // Every flag value is validated here, before the file is read: the module's
 // appendUpdate/resolvePendingCommit do not validate. `--conflicted-files` is
 // `none` ([]), `unknown`, or a comma list whose entries are trimmed; an empty
-// entry is a usage error. Path entries are otherwise passed through as-is: they
+// entry is a usage error, and so is any flag value containing a line break (a
+// newline in a path would add a line to the marker body). Path entries are
+// otherwise passed through as-is: they
 // are untrusted text (a conflicted path is attacker-nameable), so a caller quotes
 // them and never pastes one into a command unquoted.
 //
@@ -98,6 +102,7 @@ function parseArgs(argv) {
     if (!Object.hasOwn(flags, a)) return { error: `unknown argument: ${a}` };
     const v = argv[i + 1];
     if (v === undefined || v === '' || v.startsWith('--')) return { error: `${a} needs a value` };
+    if (/[\r\n]/.test(v)) return { error: `${a} value must not contain a line break` };
     if (Object.hasOwn(o, flags[a])) return { error: `${a} given more than once` };
     o[flags[a]] = v;
     i++;
@@ -215,7 +220,7 @@ function run(argv, deps = realDeps) {
   try { deps.writeFile(o.out, body); } catch (e) {
     return fail(3, `out-unwritable: ${o.out} (${errMsg(e)})`);
   }
-  deps.stdout(`${JSON.stringify({ written: true, accumulated, marker: parseMarker(body) })}\n`);
+  deps.stdout(`${JSON.stringify({ written: o.out, accumulated, marker: parseMarker(body) })}\n`);
   return 0;
 }
 

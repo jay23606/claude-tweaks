@@ -156,7 +156,7 @@ test('write: no marker writes a fresh pending body from the flags', () => {
     resolutionCommits: ['pending'],
   });
   const result = oneJsonLine(deps);
-  assert.equal(result.written, true);
+  assert.equal(result.written, 'marker.md');
   assert.equal(result.accumulated, false);
   assert.equal(result.marker.status, 'pending');
   assert.deepEqual(result.marker.conflictedFiles, ['a.js', 'b.js']);
@@ -279,6 +279,27 @@ test('write: invalid invocations exit 2 with usage and touch nothing', () => {
   }
 });
 
+test('a line break in any flag value exits 2 and writes nothing', () => {
+  const invocations = [
+    writeArgv('--conflicted-files', 'a.js\nb.js'),
+    writeArgv('--conflicted-files', 'a.js\r\nb.js'),
+    writeArgv('--conflicted-files', 'a.js\rb.js'),
+    writeArgv('--update-method', 'merge\n'),
+    writeArgv('--pre-update-head', `${C}\n`),
+    writeArgv('--resolution-commit', 'pending\n'),
+    writeArgv('--out', 'marker.md\nx'),
+    ['resolve-pending', '--comments-file', 'c.json', '--sha', `${C}\n`, '--out', 'm.md'],
+    ['read', '--comments-file', 'c.json\n'],
+  ];
+  for (const argv of invocations) {
+    const deps = fakeDeps(P());
+    assert.equal(run(argv, deps), 2, JSON.stringify(argv));
+    assert.match(err(deps), /line break/, JSON.stringify(argv));
+    assert.equal(deps.calls.readFile, 0, JSON.stringify(argv));
+    assert.equal(deps.calls.writes.length, 0, JSON.stringify(argv));
+  }
+});
+
 test('write: a trailing bare --out is a usage error, not a value', () => {
   const argv = WRITE_ARGV.slice(0, -2).concat(['--out']);
   const deps = fakeDeps(P());
@@ -310,7 +331,7 @@ test('resolve-pending: replaces the pending entry and writes the marker', () => 
   assert.deepEqual(parsed.updateMethod, ['merge']);
   assert.equal(parsed.preUpdateHead, A);
   const result = oneJsonLine(deps);
-  assert.equal(result.written, true);
+  assert.equal(result.written, 'marker.md');
   assert.equal(result.accumulated, false);
   assert.deepEqual(result.marker.resolutionCommits, [B, C]);
 });
