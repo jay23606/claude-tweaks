@@ -318,3 +318,22 @@ test('--values with a comma-joined list containing model-profiles still trips th
   assert.match(res.stderr, /no scalar form/);
   assert.strictEqual(res.stdout, '');
 });
+
+test('--values: an invalid --run value warns on stderr naming key, rejected value and default; stdout and exit unchanged', () => {
+  const { tmp, runDir } = makeFixtureRepo({ runConfig: 'run-config-invalid.yml' });
+  const res = runCli(['--values', '--run', runDir, 'trust-revert-window-days', 'autonomy'], tmp);
+  assert.strictEqual(res.status, 0);
+  assert.strictEqual(res.stdout, '14\nsupervised\n');
+  assert.strictEqual(
+    res.stderr,
+    'resolve-policy: warning: trust-revert-window-days has invalid value "banana" — using default "14"\n',
+  );
+});
+
+test('--values with only valid keys (run-config overlay + policy): stderr is empty', () => {
+  const { tmp, runDir } = makeFixtureRepo({ policy: 'policy-basic.yml', runConfig: 'run-config-override.yml' });
+  const res = runCli(['--values', '--run', runDir, 'dispatch-retry-ceiling', 'autonomy'], tmp);
+  assert.strictEqual(res.status, 0);
+  assert.strictEqual(res.stdout, '7\nunattended\n');
+  assert.strictEqual(res.stderr, '');
+});
