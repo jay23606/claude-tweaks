@@ -1,21 +1,26 @@
 {
-  "computedAt": "2026-10-25T19:41:14.127Z",
-  "runId": null,
+  "computedAt": "2026-10-25T21:48:47.016Z",
+  "runId": "2026-10-25T214748-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
+        "number": 4347,
+        "updatedAt": "2026-10-25T21:06:01Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4343,
+        "updatedAt": "2026-10-25T21:05:56Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4332,
-        "updatedAt": "2026-10-25T19:37:32Z",
+        "updatedAt": "2026-10-25T19:52:44Z",
         "state": "OPEN"
       },
       {
         "number": 4331,
-        "updatedAt": "2026-10-25T19:37:36Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4326,
-        "updatedAt": "2026-10-25T19:38:39Z",
+        "updatedAt": "2026-10-25T19:56:54Z",
         "state": "OPEN"
       },
       {
@@ -54,13 +59,8 @@
         "state": "OPEN"
       },
       {
-        "number": 4169,
-        "updatedAt": "2026-10-25T19:31:48Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4168,
-        "updatedAt": "2026-10-25T08:21:36Z",
+        "updatedAt": "2026-10-25T21:07:03Z",
         "state": "OPEN"
       },
       {
@@ -95,7 +95,7 @@
       },
       {
         "number": 4137,
-        "updatedAt": "2026-10-25T08:19:28Z",
+        "updatedAt": "2026-10-25T20:15:52Z",
         "state": "OPEN"
       },
       {
@@ -141,11 +141,6 @@
       {
         "number": 4027,
         "updatedAt": "2026-10-25T16:24:24Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4026,
-        "updatedAt": "2026-10-25T13:30:06Z",
         "state": "OPEN"
       },
       {
@@ -215,7 +210,7 @@
       },
       {
         "number": 3900,
-        "updatedAt": "2026-10-25T18:57:47Z",
+        "updatedAt": "2026-10-25T21:06:27Z",
         "state": "OPEN"
       },
       {
@@ -313,6 +308,162 @@
   "groups": [
     [
       {
+        "body": "Origin: speed analysis of the #4026 dispatch (run 2026-10-25T132807-record-4026)\n\nDefer-reason: tangential\n\n## Current State\n\nBuild's Common Step 5 and `/test` Step 1 run the full suite locally through `verify.js` (`plugin/skills/test/verification.md`). The runner writes the pass stamp that `verify.js --stamp-status` and `artifact-verdict.js`'s `deriveTestVerdict` read.\n\nConcurrent pipeline sessions on one machine compete for CPU. On 2026-10-25 the #4026 run (`2026-10-25T132807-record-4026`, PR #4277) spent 55 min on one local full run and 1h34 on a second, while #4027, #4140 and #4317 ran their own suites. An unloaded local run takes about 20 min.\n\nThe same suite (~17,900 tests) already runs on every PR push in `.github/workflows/test.yml` (ubuntu-latest, Node 20, 15-min timeout). On PR #4277 it took 3.5 min (run 40216510908, 17:26:55Z to 17:30:30Z). Every phase exit already pushes the run branch, and the merge gate (`merge-verification: merge-when-green`) already requires that check green. So today the local full run duplicates a check that is faster, contention-free, free for this public repo, and required anyway.\n\n## Deliverables\n\n- `.claude-tweaks/verify-scope.json` can declare a CI source for a suite (workflow file and job name). Without one, behavior is unchanged, so consumer projects are not affected.\n\n- With a CI source declared, `verify.js`'s full-suite run for that suite requires HEAD to be pushed and equal to the run PR's head. It waits for the declared job's run on that exact head SHA (bounded wait, polling, never backgrounded) and writes the pass stamp from the job's conclusion. The stamp records `source: ci` with the run id and URL.\n\n- A failed CI run fetches the failing test files from the job log and re-runs only those locally for baseline adjudication (the existing `baseline.js` path). A test that is red at the fork point or passes on isolated re-run is adjudicated exactly as a local failure would be.\n\n- Fallback to the local full run, with the reason named in `report.json`, when no CI run for the head SHA appears within the wait (a DIRTY PR gets no `pull_request` runs, the workflow did not trigger, Actions is down), when the run was cancelled, or when `gh` is unavailable.\n\n- `deriveTestVerdict` and `/test`'s Skip-if-recent read accept a `source: ci` stamp the same as a local one.\n\n- `verification.md` states what the CI pass does not cover: macOS and Node 22 (the local platform), and Windows (still post-merge via `windows-regression.yml`).\n\n## Acceptance Criteria\n\n- [ ] With the CI source declared and a green CI run on HEAD, Common Step 5 writes a full-scope pass stamp with `source: ci` and runs no local suite.\n\n- [ ] A red CI run whose only failures are red at the fork point is adjudicated a baseline pass, and only the failing files were re-run locally.\n\n- [ ] A red CI run with a real failure fails verification and names the failing tests from the CI log.\n\n- [ ] A head SHA with no CI run within the wait (simulated DIRTY PR) falls back to the local full run, and `report.json` names the fallback reason.\n\n- [ ] Without a declared CI source, `verify.js` output and stamps are byte-identical to today's.\n\n- [ ] Each new branch has a test that fails against the current `verify.js`. The gh calls go through the injectable runner seam, never the network.\n\n## Release Note\n\nProjects can point final test verification at their CI run, so a pipeline waits a few minutes for CI instead of running the whole suite on a busy local machine.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/verify.js` — CI-backed full-suite mode: wait for the declared check run on HEAD, stamp from its result\n- `plugin/bin/lib/verify/declaration.js` — accept a declared CI source (workflow, job) for a suite\n- `plugin/bin/lib/verify/stamp.js` — pass stamp records its source (local or ci, with run id and URL)\n- `plugin/bin/lib/verify/baseline.js` — adjudicate a CI failure against the base by re-running only the failing files\n- `plugin/bin/lib/dispatch/artifact-verdict.js` — deriveTestVerdict accepts a ci-sourced stamp\n- `plugin/skills/test/verification.md` — document the CI-backed mode, its fallbacks and what it does not cover\n- `plugin/skills/build/SKILL.md` — Common Step 5 uses the CI-backed mode when declared\n- `.claude-tweaks/verify-scope.json` — declare this repo's test.yml test job as the CI source\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T20:00:11Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMTcg",
+            "name": "risk:high",
+            "description": "Scoring: high blast radius — human review required",
+            "color": "D93F0B"
+          }
+        ],
+        "number": 4347,
+        "state": "OPEN",
+        "title": "Take the full-suite verification from the PR's CI run instead of a local run when the declaration names one",
+        "updatedAt": "2026-10-25T21:06:01Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "high",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: speed analysis of the #4026 dispatch (run 2026-10-25T132807-record-4026)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/SKILL.md` Common Step 5 (Final Verification) runs the full suite first. The build phase exit (`phase-exit.js`) then pushes and runs the Post-push merge-state check (`_shared/git-discipline.md`, \"### Post-push merge-state check\"). Only at that point does a DIRTY or BEHIND PR get its catch-up merge of the integration branch.\n\nThat merge changes the tree, so `/test` Step 1 (`plugin/skills/test/verification.md`, Skip-if-recent, Mismatch branch) re-runs verification. A catch-up merge is never a bookkeeping-only delta, so the suite runs a second time.\n\nObserved 2026-10-25 on #4026 (run `2026-10-25T132807-record-4026`, PR #4277): Common Step 5 passed at `d99fc7da2` at 18:20 after 55 min. The merge-state check found PR #4277 DIRTY at 18:21, because origin/main had moved during the 4-hour build. The catch-up merge resolved 3 conflicts (`d99fc7da2` -> `622a5adf8`) at 18:27. `/test` then re-ran the full suite at `622a5adf8` until 20:01 (1h34). One of the two full runs was avoidable.\n\n## Deliverables\n\n- Before Common Step 5 runs its suite, build fetches the integration branch. When the run branch is behind it, build applies the existing Catch-up (`auto`) procedure from `_shared/git-discipline.md` (merge, never rebase, with the same conflict-resolution and `merge --abort` rules), so the verified tree already contains the current base.\n\n- The pre-verification catch-up logs one `decisions.md` line naming the before and after SHAs, or a `SKIP` line when the branch is already current.\n\n- The Post-push merge-state check stays as is. The base can still move during verification, and that residual case keeps today's behavior.\n\n- The prose that describes the ordering (`build/SKILL.md` Common Step 5, `git-discipline.md`'s merge-state section) states the new order.\n\n## Acceptance Criteria\n\n- [ ] A run whose branch is behind the integration branch at Common Step 5 merges it in before the suite runs, and build's `VERIFICATION_SHA` equals the post-merge HEAD.\n\n- [ ] When the base did not move again during verification, `/test` Step 1 takes the Match branch and runs no suite.\n\n- [ ] A branch that is already current logs a `SKIP` and merges nothing.\n\n- [ ] A catch-up conflict that cannot be resolved confidently follows the existing `merge --abort` path, and verification still runs on the un-merged tree.\n\n- [ ] A conformance test pins that Common Step 5's prose places the catch-up before the verification run, and it fails against the current prose.\n\n## Release Note\n\nA pipeline run whose branch fell behind main during the build now merges main in before its final test run, so the full suite runs once instead of twice.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/SKILL.md` — Common Step 5 catches the branch up before running the suite\n- `plugin/skills/_shared/git-discipline.md` — Post-push merge-state check section states the new order\n- `plugin/skills/test/verification.md` — Skip-if-recent Match branch is the expected path after a pre-verify catch-up\n- `plugin/bin/pr-merge-state.js` — reused (or a fetch-and-behind probe) for the pre-verification read\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T19:52:43Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4343,
+        "state": "OPEN",
+        "title": "Catch the run branch up with the integration branch before build's final verification, not after it",
+        "updatedAt": "2026-10-25T21:05:56Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
         "body": "Origin: wrap-up from #4317\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`wrap-up-engine.js plan` computes its repo facts (changed files, renamed or deleted files, journey and docs gates) by calling `gatherFacts({ cwd: repoRoot, base })` with `repoRoot = resolveRepoRoot(process.cwd())`. `resolveRepoRoot` returns the parent of `git rev-parse --git-common-dir`, which for a linked worktree is the **main checkout**, so `git diff {base}...HEAD` runs against the main checkout's HEAD instead of the worktree branch the run is wrapping up. It is the right root for the telemetry path, which lives in the main checkout, but the wrong one for diff facts.\n\nObserved on the #4317 wrap-up (a dispatched worktree run): the worklist listed 12 renames of archived run specs from other records as the \"renamed or deleted\" candidates, and the Journeys row's `frontmatter-overlap` candidates were five journeys unrelated to the branch, while the journey the branch had actually edited was absent. The References row opened on those renames, and the Journeys row would have judged the wrong files, had the judge trusted the worklist.\n\nEvidence: `plan` output for run 2026-10-25T160944-record-4317 against `git diff --name-status -M {base} HEAD` in the worktree (11 files, no renames). Cost this session: the judge had to recompute scope by hand for four rows.\n\n## Deliverables\n\nThe diff facts (`changedFiles`, `renamedDeleted`, the rename and heading checks) are read from the current worktree (`git rev-parse --show-toplevel` of the process cwd), while the telemetry path keeps using the main checkout root.\n\nA test that builds a linked worktree whose branch differs from the main checkout's HEAD and asserts `plan` reports the worktree branch's changed files.\n\n## Acceptance Criteria\n\nRun from a linked worktree whose branch changed `docs/a.md`, `plan` lists `docs/a.md` in the changed files and does not list files changed only in the main checkout.\n\nRun from the main checkout, `plan` behaves as before.\n\n`npm test` passes with the new test.\n\n## Release Note\n\nWrap-up's curation worklist now scopes itself to the branch being wrapped up when run from a linked worktree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/wrap-up-engine.js` — modify\n- `plugin/bin/lib/wrap-up/facts.js` — modify\n\n_Filed by `wrap-up` via specShapedBody._\n",
         "createdAt": "2026-10-25T18:39:33Z",
         "labels": [
@@ -362,7 +513,7 @@
         "number": 4332,
         "state": "OPEN",
         "title": "wrap-up-engine plan diffs the main checkout instead of the worktree branch",
-        "updatedAt": "2026-10-25T19:37:32Z",
+        "updatedAt": "2026-10-25T19:52:44Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -372,156 +523,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect light from #4317\n\nDefer-reason: tangential\n\n## Current State\n\nClose-out's update marker (`plugin/skills/dispatch/close-out-update.md`, Update marker section, shipped by #4317) is read and written by an agent following prose. Three of the six findings the #4317 review confirmed were deterministic parse and validation defects in that prose: a second line edited to CRLF read as \"no marker\" (fail-open), a `pre-update-head` taken from a comment body and pasted into `git rev-list` unchecked, and a clear decided from a single head read. Each was fixed in prose and pinned by a regex over the prose, which proves the sentence exists but not that an agent applies it.\n\nEvidence: review lens 3b/3c reproduction pairs on #4317 (`close-out-update.md` lines 40, 46, 78 before the fix wave). Cost this session: one review fix wave plus a 19-minute re-verify.\n\n## Deliverables\n\nA small module under `plugin/bin/lib/` that parses a `close-out-update` marker body into `{status, updateMethod, conflictedFiles, preUpdateHead, resolutionCommits}` (trimming trailing whitespace, treating an unrecognised status line as unreadable, accepting only a 40-hex sha), serialises one, and appends an update to an existing pending marker.\n\n`close-out-update.md` calls that module for the Read, the pending write body and the accumulation, instead of describing each rule in prose.\n\nUnit tests for the module covering CRLF, an unrecognised second line, a non-hex `pre-update-head`, and accumulation order; the prose pins that restate those rules are dropped or reduced to the call site.\n\n## Acceptance Criteria\n\nFeeding the module a marker body whose second line ends in `\\r` returns status `pending`; an unrecognised second line returns `unreadable`; a non-40-hex `pre-update-head` returns `unknown`.\n\nAppending an update to a pending marker returns entries oldest first, the union of conflicted files, and the replaced `pre-update-head`.\n\n`npm test` passes with the new unit tests and the reduced prose pins.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/dispatch/close-out-update.md` — modify\n- `tests/close-out-pr-state-contract-conformance.test.js` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-25T18:39:29Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4331,
-        "state": "OPEN",
-        "title": "Move close-out's update-marker parsing and validation out of prose into a tested module",
-        "updatedAt": "2026-10-25T19:37:36Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up of #4314 (staged flaky-allowlist proposals from the build verify run)\n\nDefer-reason: tangential\n\n## Current State\n\nThe full suite failed twice in the same /build run (record #4314, run 2026-10-25T160939-record-4314) while four sibling sessions ran full suites at once (machine load average about 47): `tests/bin-lib/staged-patch/cli.test.js` (\"a --patch that does not apply at its position nor alone exits 2\") and `tests/bin-lib/staged-patch/stack-check.test.js` each failed after about 340 s with a git subprocess returning `status: null` (killed) inside their own `gitRepo` fixture setup, never at the assertion under test.\n\nBoth files passed 65/65 in 28 s when re-run in isolation, and the canonical re-run later passed 17756/17758 with 0 failures. The branch did not touch `plugin/bin/lib/staged-patch/` or its tests. The cost was a full 13-minute suite re-run.\n\n`.claude-tweaks/verify-scope.json` already declares `retry.tests` (`node --test {file}`) and `flaky.maxRetries: 1`, with four files in `flaky.files`; the two files above are not listed, so the runner did not retry them.\n\n## Deliverables\n\nAdd `tests/bin-lib/staged-patch/cli.test.js` and `tests/bin-lib/staged-patch/stack-check.test.js` to `flaky.files` in `.claude-tweaks/verify-scope.json`.\n\n## Acceptance Criteria\n\n`.claude-tweaks/verify-scope.json` lists both files in `flaky.files` and still parses as JSON.\n\n`node --test tests/verify-scope-declaration.test.js` and `node --test tests/bin-lib/verify` pass.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `.claude-tweaks/verify-scope.json` — modify\n\n_Filed by `wrap-up` via specShapedBody._",
-        "createdAt": "2026-10-25T18:08:36Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4326,
-        "state": "OPEN",
-        "title": "Add the two staged-patch git-fixture suites to verify-scope.json flaky.files",
-        "updatedAt": "2026-10-25T19:38:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -673,156 +674,6 @@
           "origin": null,
           "risk": "low",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: build split from #3946 (Deliverable 3 split clause)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nReflect stages `convention` and `observation` findings to `staged/reflect-{n}.md` (`plugin/skills/reflect/SKILL.md` Step 3). `classifyStagedItem` (`plugin/bin/lib/console/resolve.js`) reroutes any such file whose `**Category:**` is not `tangential` to Pending review with reason `non-tangential-category:{category}` (#2473), where nothing processes it, so every one stays `pending` and blocks archive (149 reflect items in the 2026-10-22 residue count).\n\n#3946 was to route `observation`/`convention` items to the Skill-updates section. Its build found the Skill-updates consumer cannot apply them: `review-console.md` \"On approval\" step 2 applies Skills-curation proposals (`staged/wrap-up-skill-{N}.md` carrying an Update Mode patch, `skill-curation.md` 7.6), while a reflect file carries only `## Finding` and an optional `## Suggested resolution`, naming no target skill and no destination. No \"On approval\" step is mechanized (`console-resolve.js` computes resolutions, never executes them), and step 10 (Reflection insights), the nearest precedent, is prose. Per #3946 Deliverable 3's split clause, this record carries that consumer and the reroute behind it.\n\n## Deliverables\n\n- [ ] A destination line in reflect's `observation`/`convention` stage-file format (one of: edit a named skill or CLAUDE.md now, create a backlog record with a `Defer-reason:`, or record a decline), written by `plugin/skills/reflect/SKILL.md` Step 3.\n- [ ] An applier CLI under `plugin/bin/` that carries a `reflect-{n}.md` file to its destination through injectable deps: the record write (gh and MCP transports, after `refused-proposals.md`'s Defer-reason check) and the decline write (`recordDecline`); an edit destination stays a prose step the console session performs.\n- [ ] A new or extended \"On approval\" step in `plugin/skills/wrap-up/review-console.md` plus its `review-console-appendix.md` Resolution-to-step mapping row, and the console-template, interactive and multi-spec render sites (walk `.claude/skills/review-console-section-addition`'s registration table).\n- [ ] `classifyStagedItem`: reflect `observation`/`convention` files route to Skill updates (stance `approve`) instead of Pending review; other non-tangential categories keep today's reroute.\n- [ ] A rule for legacy reflect files that carry no destination line (the existing residue), consumed by #3950's backlog settle.\n\n## Acceptance Criteria\n\n1. A reflect staged file with `**Category:** observation` and one with `**Category:** convention` no longer classify to Pending review / `pending`; they resolve through the Skill-updates stance (`approve`); a `**Category:** tangential` file still classifies as Queue writes, and a file with no `**Category:**` line classifies exactly as before.\n2. In a console-auto fixture holding one reflect observation and one reflect convention (each with a destination line), the consumer applies each to its destination and the run ends with zero `pending` items; the test asserts the applied effect (the record write or the decline write through the injected deps), not only the absence of `pending`.\n3. A legacy reflect file with no destination line reaches a final outcome under the stated rule, with a test.\n4. `npm test` passes.\n\n## Release Note\n\nReflect observations and conventions now resolve at the Review Console instead of waiting for a human in Pending review.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/console/resolve.js` — route observation/convention reflect files to Skill updates\n- `plugin/skills/reflect/SKILL.md` — destination line in the stage-file format\n- `plugin/skills/wrap-up/review-console.md` — On-approval consumer step for reflect files\n- `plugin/skills/wrap-up/review-console-appendix.md` — Resolution-to-step mapping row\n- `tests/bin-lib/console/resolve.test.js` — classification tests\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3946/staged/build-followup-1.md`; filed at that run's close-out.\n",
-        "createdAt": "2026-10-24T17:00:01Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 4168,
-        "state": "OPEN",
-        "title": "Apply reflect observation and convention findings at the Review Console instead of leaving them in Pending review",
-        "updatedAt": "2026-10-25T08:21:36Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (run 2026-10-24T121146-spec-4048, reflect light, Friction)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nUnder `/claude-tweaks:flow`, review repeats work build just did on an unchanged tree:\n\n- Review Step 5 re-runs `/claude-tweaks:simplify` on the exact source scope that build Common Step 3 already simplified, with no source change between them.\n- Lens 3i re-flags every registry-matched doc as \"not updated\" even when build Common Step 6.5 already assessed each one and logged \"no stale text\".\n\nRun 2026-10-24T121146-spec-4048 (#4048) skipped both with a logged rationale, which meant departing from the written procedure (decisions.md `SKIP 14:31:59 — Steps 5-6.66`; `AUTO 14:25:28 — Common Step 6.5: docs sync … no doc update needed`).\n\n## Deliverables\n\n- Review Step 5 no-ops (with a logged SKIP line) when the in-scope source files are unchanged since build's simplify commit and no review fix has landed since.\n- Lens 3i reads build Common Step 6.5's logged per-doc assessment and does not re-flag a doc build already marked as checked with no stale text.\n\n## Acceptance Criteria\n\n- `plugin/skills/review/code-mode-steps.md` Step 5 states the unchanged-since-simplify skip condition and its log line.\n- `plugin/skills/review/step3-doc-freshness-lens.md` states how lens 3i consumes build's Step 6.5 assessment.\n- A conformance test pins both conditions.\n\n## Release Note\n\n/review no longer repeats the simplify pass and doc-freshness flags that /build already completed on the same tree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/code-mode-steps.md` — Step 5 skip condition\n- `plugin/skills/review/step3-doc-freshness-lens.md` — consume build Step 6.5 assessment\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-24T12:40:33Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4137,
-        "state": "OPEN",
-        "title": "Let /review skip re-simplifying and re-flagging docs that /build already handled on an unchanged tree",
-        "updatedAt": "2026-10-25T08:19:28Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -2695,84 +2546,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\nOrigin: ledger resolve gate (whole-branch review of #3329, ledger item 1)\n**Related:** #3876, #3295, #3737, #3740, #3754, #3758, #3812, #3898, #3950, #3963, #3965\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md` routes a lens agent's findings table through `categorise-reproduction`. A lens agent that replies `STATUS: BLOCKED` or `STATUS: NEEDS_CONTEXT` returns a stated reason instead of findings rows, and only two narrow cases have a rule:\n\n- An absence claim (the reason asserts code is absent) gets #3329's ground-truth check (`step3-lens-dispatch.md:101`).\n- A reproduction-pair partner that dies on a session/usage limit is retried once, then the survivor is treated as a single read (`step3-lens-dispatch.md:96`), as is a hung single-read agent (`:52`).\n\nEvery other `BLOCKED`/`NEEDS_CONTEXT` reason (missing context, unreadable bundle, an unfulfillable instruction) has no routing rule. The status line's format check at `:152` validates the word's position, but nothing says what to do with the reason it carries.\n\nTwo existing rules already answer most of this, so they can be composed rather than invented:\n\n- `_shared/subagent-output-contract.md`'s status table (line 76): `NEEDS_CONTEXT` → \"Provide what was missing; re-dispatch\"; `BLOCKED` → \"Diagnose … Never force-retry with no changes.\"\n- The partner-died rule (`:96`) defines the uncovered-lens outcome: the surviving partner's (or the reviewer's own) single read, findings `unconfirmed` unless elevated by the Direct-verification override, a `STAGED … single-read coverage` line in `decisions.md`, and a one-line coverage caveat carried into the Step 7 summary and the PR verdict comment.\n\n## Deliverables\n\n- [ ] Add one routing rule to the Reproduction dispatch section, beside the partner-died rule, for a lens agent replying `BLOCKED` or `NEEDS_CONTEXT` with a non-absence reason. **Re-prompt that agent once** (`SendMessage`) with what the reason names as missing, when the dispatcher can supply it (a path, a bundle section, a clarified instruction). If the dispatcher cannot supply it, or the re-prompt still ends `BLOCKED`/`NEEDS_CONTEXT`, **treat the lens as single-read coverage exactly as the partner-died rule does**: survivor's or reviewer's own read, findings `unconfirmed`, a `STAGED` coverage line, and the Step 7 / PR-verdict coverage caveat\n- [ ] Extend the partner-died rule's `STAGED` line so its reason slot covers the new cause (for example `{session limit twice | unavailable | timed out | blocked: {reason} | needs-context: {reason}}`), and include the agent's stated reason, truncated, in the coverage caveat\n- [ ] An absence-claim reason still goes through the existing ground-truth check first; the new rule applies only to what that check doesn't cover\n- [ ] Pin the rule in a conformance test with a go-red control, beside `tests/review-absence-claim-ground-truth-conformance.test.js`\n\n## Acceptance Criteria\n\n- `step3-lens-dispatch.md` names the re-prompt-once step for a non-absence `BLOCKED`/`NEEDS_CONTEXT` reply and routes a still-blocked lens to the same single-read coverage outcome the partner-died rule uses\n- The `STAGED` coverage line's reason slot includes `blocked`/`needs-context` causes, and the Step 7 / PR-verdict caveat names the affected lens and its reason\n- A conformance test asserts both, and reverting the new sentence turns it red\n- `step3-lens-dispatch.md` stays under `RAIL_BYTES` (`tests/review-tiebreak-step-conformance.test.js:518`)\n- `npm test` passes\n\n## Release Note\n\nReview no longer drops a lens agent's BLOCKED or NEEDS_CONTEXT reason silently. It asks once more, then reports the lens as single-read coverage.\n\n## Technical Approach\n\nThe open question (re-prompt, stage, or both; how an uncovered lens is reported) resolves by composition. The contract's status table already prescribes \"supply the missing context and re-dispatch\" for `NEEDS_CONTEXT` and \"change something before retrying\" for `BLOCKED`, so the re-prompt is that rule applied once. The partner-died rule already prescribes how a lens with fewer reads than planned is carried into `decisions.md`, Step 7, and the PR verdict, so a still-blocked lens joins that path. Staging the reason as its own Review Console item was rejected: the coverage line is already `STAGED` and carries the reason, and a second item would split one outcome across two rows.\n\nA dispatched reviewer (`/dispatch`'s second Task call) waits under the core file's keep-alive rule and cannot always nudge with `SendMessage`. Where the hung-agent rule (`:52`) already says a dispatched reviewer skips the nudge, mirror that: skip the re-prompt and go straight to single-read coverage.\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — new routing rule beside the partner-died rule; extended STAGED reason slot\n- `tests/review-absence-claim-ground-truth-conformance.test.js` — sibling suite to extend or mirror\n- `tests/review-tiebreak-step-conformance.test.js` — the `RAIL_BYTES` size check on `step3-lens-dispatch.md`\n- `plugin/bin/lib/skill-audit/budgets.js` — `RAIL_BYTES` (52,500) source; read-only\n\n## Gotchas\n\n- Headroom is tight: `step3-lens-dispatch.md` is 50,756 bytes on `origin/main` against a 52,500-byte rail (1,744 bytes free). Measure with `wc -c` before and after; if the rule doesn't fit, extend the partner-died paragraph's existing sentences rather than adding a new paragraph, or move an existing section to a sub-file per the repo's pointer-stub split convention.\n- `dispatch/task-prompt.md` item 7 tells a review-lens unit's downgrade to \"log … the single-read coverage line … from `review/step3-lens-dispatch.md`'s partner-died paragraph\". If that paragraph's wording changes, check item 7's citation still resolves.\n- The reproduction pair compares two agents; a `BLOCKED` reply from one partner while the other returns findings is the common shape. The survivor's findings then follow the existing \"present in only one agent's output → `unconfirmed`\" rule, not a new one.\n\n## Original request\n\nRoute a lens agent's BLOCKED or NEEDS_CONTEXT reason in review's Step 3 dispatch\n\nOrigin: ledger resolve gate (whole-branch review of #3329, ledger item 1)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md` routes a lens agent's `findings` table through `categorise-reproduction`, but a lens agent that replies `STATUS: BLOCKED` or `STATUS: NEEDS_CONTEXT` returns a stated reason, not a findings row, so the reason never reaches the pair comparison. The file has a rule for one such case only, a reproduction-pair partner that dies to a session/usage limit (retry once, then treat the survivor as a single read), and a bounded-wait rule for a hung single-read agent.\n\n#3329 added a ground-truth check for the narrow case where a `BLOCKED`/`NEEDS_CONTEXT` reason asserts that code is absent. Every other `BLOCKED`/`NEEDS_CONTEXT` reason (missing context, unreadable bundle, an unfulfillable instruction) still has no routing rule: the dispatcher has no stated way to decide between re-dispatching the agent, staging the reason for the Review Console, or treating the lens as uncovered in the review summary. The gap predates #3329 and was surfaced by its whole-branch review.\n\n## Deliverables\n\n- [ ] Add a routing rule to `step3-lens-dispatch.md`'s Reproduction dispatch section for a lens agent that replies `BLOCKED` or `NEEDS_CONTEXT` with a reason that is not an absence claim: what the dispatcher does with the reason (re-prompt once with the missing context, stage it, or both), and how a lens left uncovered is carried into the review summary and PR verdict comment.\n\n- [ ] Log each outcome to `decisions.md` with a status word from `_shared/auto-decision-log.md`'s vocabulary, so a `STAGED` entry names the artifact it stages.\n\n- [ ] Pin the new rule in a conformance test with a go-red control, beside `tests/review-absence-claim-ground-truth-conformance.test.js`.\n\n- [ ] Check `wc -c` headroom on `step3-lens-dispatch.md` against its size ceiling before adding text.\n\n## Open Question\n\nWhat should the dispatcher do with a lens agent's non-absence `BLOCKED`/`NEEDS_CONTEXT` reason: re-prompt once with the missing context, stage the reason for the Review Console, or both? And how is a lens that stays uncovered carried into Step 7's summary and the PR verdict comment? Resolve this before the deliverables above are built; the answer sets which of them apply.\n\n## Release Note\n\nReview no longer drops a lens agent's BLOCKED or NEEDS_CONTEXT reason silently; the dispatcher routes it and reports any lens left uncovered.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — add the BLOCKED/NEEDS_CONTEXT routing rule\n- `tests/review-absence-claim-ground-truth-conformance.test.js` — sibling suite to extend or mirror for the new pin\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-20T22:27:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3835,
-        "state": "OPEN",
-        "title": "Route a lens agent's BLOCKED or NEEDS_CONTEXT reason in review's Step 3 dispatch",
-        "updatedAt": "2026-10-24T05:39:39Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #2767, #3702, #3703, #3742, #3751, #3776, #3953, #3983, #3993, #3995\n\n## Current State\n\nThe post-merge Windows check on commit c31b0e07c (merged PR #3919) reported `tests/reconcile.test.js` newly failing. The failing test is \"archiveRunDir: the git mv of work/ is committed, not left staged (no uncommitted rename after archival)\" (line 485), with:\n\n```\n+ '.claude-tweaks/pipelines/archive/2026-08-14T120000-spec-999/work/999-spec.md'\n- '.claude-tweaks\\\\pipelines\\\\archive\\\\2026-08-14T120000-spec-999\\\\work\\\\999-spec.md'\n```\n\nRoot cause, read from current `main` (d02483933): the assertion at line 501 compares `git ls-files -- {archivedWorkRel}` output, which git always prints with `/` separators, against `path.join(archivedWorkRel, '999-spec.md')`, which is `\\`-separated on Windows. The production code (`archiveRunDir` in `plugin/bin/lib/reconcile/archive-merged.js`) behaves correctly: the archived file is committed at the right path. Only the test's expected value is platform-joined. This is the path-separator class #2767 tracks, not a CRLF read. Line 501 is the only `ls-files`-vs-`path.join` comparison in the file.\n\n`plugin/bin/lib/shared-primitives.js` exports `toPosix(p)`, the house helper for converting a platform path to git's `/` form.\n\n## Deliverables\n\n1. `tests/reconcile.test.js`: build line 501's expected value in git's separator form, `toPosix(path.join(archivedWorkRel, '999-spec.md'))` using `shared-primitives`' `toPosix`, so the comparison holds on every platform.\n\n## Acceptance Criteria\n\n1. The `archiveRunDir: the git mv of work/ is committed…` test's `ls-files` assertion compares against a `/`-separated expected path on every platform.\n2. Under a `path.sep` simulation where the expected value is built with `path.win32.join` (or the assertion is exercised with `toPosix(p, '\\\\')` on a backslash-joined input), the assertion still matches git's output. This is demonstrated in the PR or by a small unit check.\n3. `node --test tests/reconcile.test.js` is green on Linux/macOS.\n4. The next post-merge Windows check (`.github/workflows/windows-regression.yml`) no longer lists this test file.\n\n## Release Note\n\nFix a Windows-only failure in the reconcile archival test caused by path separators.\n\n## Technical Approach\n\nImport `toPosix` from `../plugin/bin/lib/shared-primitives` and wrap the expected path. The `git status --porcelain -- {archivedWorkRel} {oldWorkRel}` assertion two lines above passes platform paths as pathspecs, which Git for Windows accepts, and compares against `''`, so it needs no change. No production code changes.\n\n### Key Files\n\n- `tests/reconcile.test.js` — line 501's expected path converted with `toPosix`\n- `plugin/bin/lib/shared-primitives.js` — `toPosix` reused (read-only)\n\n## Gotchas\n\n- Do not change the expectation to a hardcoded `/`-joined string literal built from `runId`. Converting the already-computed relative path keeps the test tied to the same `archiveDir` derivation as the code under test.\n- CI runs on ubuntu only, so only the post-merge `windows-regression.yml` run proves this on Windows.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after c31b0e07c\n\nThe post-merge Windows check failed on commit c31b0e07c5cfe9944b44b3197850e621d41ddc12 (compared against 63180ed6f).\n\n**Merged PR:** #3919 (https://github.com/thn-inc/claude-tweaks/pull/3919)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/39834625407\n\n### Newly failing test files\n- `tests/reconcile.test.js`\n\n### Failure excerpts\n\n#### `tests/reconcile.test.js`\n\n```\nnot ok 12801 - archiveRunDir: the git mv of work/ is committed, not left staged (no uncommitted rename after archival)\n  ---\n  duration_ms: 739.536\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\reconcile.test.js:485:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    + actual - expected\n    \n    + '.claude-tweaks/pipelines/archive/2026-08-14T120000-spec-999/work/999-spec.md'\n    - '.claude-tweaks\\\\pipelines\\\\archive\\\\2026-08-14T120000-spec-999\\\\work\\\\999-spec.md'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._\n",
         "createdAt": "2026-10-22T19:11:46Z",
         "labels": [
@@ -3001,6 +2774,82 @@
         "state": "OPEN",
         "title": "Settle the dispatch-prompt \"one plain command per call\" mandate against the section 7 refusal table",
         "updatedAt": "2026-10-24T05:39:32Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": "fast-lane",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      },
+      {
+        "body": "Surface: infra\n\nOrigin: ledger resolve gate (whole-branch review of #3329, ledger item 1)\n**Related:** #3876, #3295, #3737, #3740, #3754, #3758, #3812, #3898, #3950, #3963, #3965\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md` routes a lens agent's findings table through `categorise-reproduction`. A lens agent that replies `STATUS: BLOCKED` or `STATUS: NEEDS_CONTEXT` returns a stated reason instead of findings rows, and only two narrow cases have a rule:\n\n- An absence claim (the reason asserts code is absent) gets #3329's ground-truth check (`step3-lens-dispatch.md:101`).\n- A reproduction-pair partner that dies on a session/usage limit is retried once, then the survivor is treated as a single read (`step3-lens-dispatch.md:96`), as is a hung single-read agent (`:52`).\n\nEvery other `BLOCKED`/`NEEDS_CONTEXT` reason (missing context, unreadable bundle, an unfulfillable instruction) has no routing rule. The status line's format check at `:152` validates the word's position, but nothing says what to do with the reason it carries.\n\nTwo existing rules already answer most of this, so they can be composed rather than invented:\n\n- `_shared/subagent-output-contract.md`'s status table (line 76): `NEEDS_CONTEXT` → \"Provide what was missing; re-dispatch\"; `BLOCKED` → \"Diagnose … Never force-retry with no changes.\"\n- The partner-died rule (`:96`) defines the uncovered-lens outcome: the surviving partner's (or the reviewer's own) single read, findings `unconfirmed` unless elevated by the Direct-verification override, a `STAGED … single-read coverage` line in `decisions.md`, and a one-line coverage caveat carried into the Step 7 summary and the PR verdict comment.\n\n## Deliverables\n\n- [ ] Add one routing rule to the Reproduction dispatch section, beside the partner-died rule, for a lens agent replying `BLOCKED` or `NEEDS_CONTEXT` with a non-absence reason. **Re-prompt that agent once** (`SendMessage`) with what the reason names as missing, when the dispatcher can supply it (a path, a bundle section, a clarified instruction). If the dispatcher cannot supply it, or the re-prompt still ends `BLOCKED`/`NEEDS_CONTEXT`, **treat the lens as single-read coverage exactly as the partner-died rule does**: survivor's or reviewer's own read, findings `unconfirmed`, a `STAGED` coverage line, and the Step 7 / PR-verdict coverage caveat\n- [ ] Extend the partner-died rule's `STAGED` line so its reason slot covers the new cause (for example `{session limit twice | unavailable | timed out | blocked: {reason} | needs-context: {reason}}`), and include the agent's stated reason, truncated, in the coverage caveat\n- [ ] An absence-claim reason still goes through the existing ground-truth check first; the new rule applies only to what that check doesn't cover\n- [ ] Pin the rule in a conformance test with a go-red control, beside `tests/review-absence-claim-ground-truth-conformance.test.js`\n\n## Acceptance Criteria\n\n- `step3-lens-dispatch.md` names the re-prompt-once step for a non-absence `BLOCKED`/`NEEDS_CONTEXT` reply and routes a still-blocked lens to the same single-read coverage outcome the partner-died rule uses\n- The `STAGED` coverage line's reason slot includes `blocked`/`needs-context` causes, and the Step 7 / PR-verdict caveat names the affected lens and its reason\n- A conformance test asserts both, and reverting the new sentence turns it red\n- `step3-lens-dispatch.md` stays under `RAIL_BYTES` (`tests/review-tiebreak-step-conformance.test.js:518`)\n- `npm test` passes\n\n## Release Note\n\nReview no longer drops a lens agent's BLOCKED or NEEDS_CONTEXT reason silently. It asks once more, then reports the lens as single-read coverage.\n\n## Technical Approach\n\nThe open question (re-prompt, stage, or both; how an uncovered lens is reported) resolves by composition. The contract's status table already prescribes \"supply the missing context and re-dispatch\" for `NEEDS_CONTEXT` and \"change something before retrying\" for `BLOCKED`, so the re-prompt is that rule applied once. The partner-died rule already prescribes how a lens with fewer reads than planned is carried into `decisions.md`, Step 7, and the PR verdict, so a still-blocked lens joins that path. Staging the reason as its own Review Console item was rejected: the coverage line is already `STAGED` and carries the reason, and a second item would split one outcome across two rows.\n\nA dispatched reviewer (`/dispatch`'s second Task call) waits under the core file's keep-alive rule and cannot always nudge with `SendMessage`. Where the hung-agent rule (`:52`) already says a dispatched reviewer skips the nudge, mirror that: skip the re-prompt and go straight to single-read coverage.\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — new routing rule beside the partner-died rule; extended STAGED reason slot\n- `tests/review-absence-claim-ground-truth-conformance.test.js` — sibling suite to extend or mirror\n- `tests/review-tiebreak-step-conformance.test.js` — the `RAIL_BYTES` size check on `step3-lens-dispatch.md`\n- `plugin/bin/lib/skill-audit/budgets.js` — `RAIL_BYTES` (52,500) source; read-only\n\n## Gotchas\n\n- Headroom is tight: `step3-lens-dispatch.md` is 50,756 bytes on `origin/main` against a 52,500-byte rail (1,744 bytes free). Measure with `wc -c` before and after; if the rule doesn't fit, extend the partner-died paragraph's existing sentences rather than adding a new paragraph, or move an existing section to a sub-file per the repo's pointer-stub split convention.\n- `dispatch/task-prompt.md` item 7 tells a review-lens unit's downgrade to \"log … the single-read coverage line … from `review/step3-lens-dispatch.md`'s partner-died paragraph\". If that paragraph's wording changes, check item 7's citation still resolves.\n- The reproduction pair compares two agents; a `BLOCKED` reply from one partner while the other returns findings is the common shape. The survivor's findings then follow the existing \"present in only one agent's output → `unconfirmed`\" rule, not a new one.\n\n## Original request\n\nRoute a lens agent's BLOCKED or NEEDS_CONTEXT reason in review's Step 3 dispatch\n\nOrigin: ledger resolve gate (whole-branch review of #3329, ledger item 1)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/skills/review/step3-lens-dispatch.md` routes a lens agent's `findings` table through `categorise-reproduction`, but a lens agent that replies `STATUS: BLOCKED` or `STATUS: NEEDS_CONTEXT` returns a stated reason, not a findings row, so the reason never reaches the pair comparison. The file has a rule for one such case only, a reproduction-pair partner that dies to a session/usage limit (retry once, then treat the survivor as a single read), and a bounded-wait rule for a hung single-read agent.\n\n#3329 added a ground-truth check for the narrow case where a `BLOCKED`/`NEEDS_CONTEXT` reason asserts that code is absent. Every other `BLOCKED`/`NEEDS_CONTEXT` reason (missing context, unreadable bundle, an unfulfillable instruction) still has no routing rule: the dispatcher has no stated way to decide between re-dispatching the agent, staging the reason for the Review Console, or treating the lens as uncovered in the review summary. The gap predates #3329 and was surfaced by its whole-branch review.\n\n## Deliverables\n\n- [ ] Add a routing rule to `step3-lens-dispatch.md`'s Reproduction dispatch section for a lens agent that replies `BLOCKED` or `NEEDS_CONTEXT` with a reason that is not an absence claim: what the dispatcher does with the reason (re-prompt once with the missing context, stage it, or both), and how a lens left uncovered is carried into the review summary and PR verdict comment.\n\n- [ ] Log each outcome to `decisions.md` with a status word from `_shared/auto-decision-log.md`'s vocabulary, so a `STAGED` entry names the artifact it stages.\n\n- [ ] Pin the new rule in a conformance test with a go-red control, beside `tests/review-absence-claim-ground-truth-conformance.test.js`.\n\n- [ ] Check `wc -c` headroom on `step3-lens-dispatch.md` against its size ceiling before adding text.\n\n## Open Question\n\nWhat should the dispatcher do with a lens agent's non-absence `BLOCKED`/`NEEDS_CONTEXT` reason: re-prompt once with the missing context, stage the reason for the Review Console, or both? And how is a lens that stays uncovered carried into Step 7's summary and the PR verdict comment? Resolve this before the deliverables above are built; the answer sets which of them apply.\n\n## Release Note\n\nReview no longer drops a lens agent's BLOCKED or NEEDS_CONTEXT reason silently; the dispatcher routes it and reports any lens left uncovered.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — add the BLOCKED/NEEDS_CONTEXT routing rule\n- `tests/review-absence-claim-ground-truth-conformance.test.js` — sibling suite to extend or mirror for the new pin\n\n_Filed by `ledger resolve gate` via specShapedBody._",
+        "createdAt": "2026-10-20T22:27:11Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszED4w",
+            "name": "ceremony:fast-lane",
+            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 3835,
+        "state": "OPEN",
+        "title": "Route a lens agent's BLOCKED or NEEDS_CONTEXT reason in review's Step 3 dispatch",
+        "updatedAt": "2026-10-24T05:39:39Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -3516,8 +3365,7 @@
     {
       "number": 4030,
       "blockedBy": [
-        4027,
-        4026
+        4027
       ]
     }
   ],
@@ -3532,6 +3380,7 @@
     {
       "records": [
         3822,
+        3835,
         3931
       ]
     },
