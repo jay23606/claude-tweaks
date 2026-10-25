@@ -114,17 +114,41 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
 
 const CONFIRM = readText(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'close-out-confirmation.md'));
 
-test('AC3.1: the confirmation question names that an update ran, the conflicted files, and the resolution commit', () => {
-  const question = CONFIRM.split('\n').find((l) => l.includes('`question`:'));
+const CLAUSE_VALUES = ['{update-method}', '{conflicted-files}', '{resolution-commit}'];
+
+// Asserts against the {update-clause} definition paragraph ALONE (to the next blank line):
+// the "Source values live" paragraph below it names the same variables and must not satisfy these.
+function assertUpdateClause(text) {
+  const question = text.split('\n').find((l) => l.includes('`question`:'));
   assert.ok(question, 'question line found');
   assert.ok(question.includes('{update-clause}'), 'question carries {update-clause}');
-  const def = CONFIRM.slice(CONFIRM.indexOf('{update-clause}', CONFIRM.indexOf(question) + question.length));
-  for (const v of ['{update-method}', '{conflicted-files}', '{resolution-commit}']) {
+  const from = text.indexOf('{update-clause}', text.indexOf(question) + question.length);
+  assert.ok(from >= 0, '{update-clause} definition found after the question');
+  const end = text.indexOf('\n\n', from);
+  const def = text.slice(from, end < 0 ? undefined : end);
+  for (const v of CLAUSE_VALUES) {
     assert.ok(def.includes(v), `{update-clause} definition names ${v}`);
   }
   assert.match(def, /close-out-update\.md/, 'values come from close-out-update.md, never re-derived');
   assert.match(def, /empty|omitted/i, 'no update → the clause is empty');
+}
+
+test('AC3.1: the confirmation question names that an update ran, the conflicted files, and the resolution commit', () => {
+  assertUpdateClause(CONFIRM);
 });
+
+for (const v of CLAUSE_VALUES) {
+  test(`go-red control: dropping ${v} from the {update-clause} paragraph alone fails AC3.1`, () => {
+    const q = CONFIRM.indexOf('`question`:');
+    const from = CONFIRM.indexOf('{update-clause}', CONFIRM.indexOf('\n', q));
+    const end = CONFIRM.indexOf('\n\n', from);
+    const para = CONFIRM.slice(from, end);
+    assert.ok(para.includes(v), `the clause paragraph names ${v} to begin with`);
+    const mutated = CONFIRM.slice(0, from) + para.split(v).join('{dropped}') + CONFIRM.slice(end);
+    assert.notEqual(mutated, CONFIRM, 'the mutation must change the text');
+    assert.throws(() => assertUpdateClause(mutated), new RegExp(`names ${v.replace(/[{}]/g, '\\$&')}`));
+  });
+}
 
 const SCAN = readText(path.join(__dirname, '..', 'plugin', 'skills', '_shared', 'github-pr-scan.md'));
 

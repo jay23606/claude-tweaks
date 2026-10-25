@@ -41,8 +41,10 @@ its own evidence, exactly as `resume-confirmation.md` states for its own gate.
 
 **Source values live, never from a stale scan.** PR number/URL, CI status, and mergeability come
 from `close-out.md`'s own steps 1-2, already re-read fresh for this candidate — never re-fetched a
-third time here. `{update-method}`, `{conflicted-files}`, and `{resolution-commit}` come from
-`close-out-update.md`'s own hand-off (its step 8), never re-derived here. `{approver-or-unknown}`: `gh pr view {number} --json reviews --jq '[.reviews[] |
+third time here. `{update-method}`, `{conflicted-files}`, `{resolution-commit}`, and `{base}` come
+from `close-out-update.md`'s hand-off (its step 8) and values line (`gh pr view … baseRefName`),
+never re-derived here.
+`{approver-or-unknown}`: `gh pr view {number} --json reviews --jq '[.reviews[] |
 select(.state == "APPROVED")] | last | .author.login'` (or the MCP equivalent when `gh` is
 absent), `unknown` when no approved review is found. This gate does not itself enforce that an
 approval exists — that is the repository's own branch-protection configuration, not this skill's
