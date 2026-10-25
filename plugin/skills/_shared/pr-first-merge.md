@@ -305,6 +305,8 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/compose-subject.js" {issue-list} --tag {tag} --k
 gh pr merge {pr-number} --repo {owner}/{repo} --auto --squash -t {title-arg} --body-file "{subject-dir}/body.md"
 ```
 
+When the caller supplies an expected head sha (today only `dispatch/close-out.md` after an update), append `--match-head-commit {expected-head}` to every `gh pr merge` command in this step, so neither the armed nor the immediate merge can land a head the caller did not verify; callers that supply none are unchanged.
+
 `{tag}` is `auto-merge` for the dispatch/headless path (`dispatch/settle-and-merge.md`'s Auto-merge
 gate), `fast-lane` for the interactive single-record short-circuit triggered by a live `auto:merge`
 label, or `manifesto-authorized` for the same short-circuit triggered instead by the

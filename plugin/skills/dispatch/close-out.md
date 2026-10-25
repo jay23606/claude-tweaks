@@ -9,9 +9,8 @@ infrastructure blip), converts a still-draft PR to ready, flags a PR that quietl
 to conflicting while it sat parked (and offers to update it, `close-out-update.md`), or performs
 the merge (and any project deploy step) once approval is confirmed.
 `_shared/github-pr-scan.md`'s `repo-wide` scope item 11 (`[pr-stale]`)
-already detects the conflicting case on a schedule; this mode is the close-out action item 11's
-own text names but never performs itself — "flag-only… a human, or #2364's own close-out process,
-acts on it."
+already detects the conflicting case on a schedule; this mode is the close-out process item 11's
+own text names as acting on what it flags, an action item 11 itself, being flag-only, never performs.
 
 **Trigger.** `/claude-tweaks:dispatch close-out [#N[,#M,...]]`:
 
@@ -50,6 +49,8 @@ touching shared state runs one member at a time.
    call) / `'pr-not-found'` (GitHub confirmed the queried number names no PR), or `null` for a
    missing number. Any string result (or `null`) stops this candidate — report
    it, and never read it as "not DIRTY".
+   An existing `.worktrees/close-out-{number}` for this candidate is a prior run's failed update: it
+   routes to `close-out-update.md`'s resume (its step 2) regardless of `mergeStateStatus`.
    `mergeStateStatus: DIRTY` or `mergeable: CONFLICTING`: this is item 11's own finding surfacing
    again at close-out time — read `close-out-update.md` in this skill's directory and follow it (an
    offer, then a re-verified merge of the base branch into the PR). `mergeStateStatus: BEHIND`:
@@ -78,7 +79,11 @@ touching shared state runs one member at a time.
 4. **Confirmation gate.** Read `close-out-confirmation.md` in this skill's directory and follow it
    (AC4). Declining stops here — the PR stays `pending-review` exactly as it was, and nothing below
    runs for this candidate.
-5. **On confirmation — merge.** Run `_shared/pr-first-merge.md`'s Step 3 (Attempt auto-merge)
+5. **On confirmation — merge.** When `close-out-update.md` ran, first re-read
+   `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than
+   its hand-off's `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`
+   as Step 3's expected head, so its `--match-head-commit` merges only that head.
+   Run `_shared/pr-first-merge.md`'s Step 3 (Attempt auto-merge)
    directly against this PR — the second call site reaching Step 3 from outside a build or dispatch
    pipeline (the first is `actions-github-issues.md`'s `## Arm ready PR`), reusing that file's full
    degrade chain (`--auto` arm → immediate merge where auto-merge isn't enabled → ready-and-comment

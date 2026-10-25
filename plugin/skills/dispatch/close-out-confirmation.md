@@ -41,7 +41,9 @@ its own evidence, exactly as `resume-confirmation.md` states for its own gate.
 
 **Source values live, never from a stale scan.** PR number/URL, CI status, and mergeability come
 from `close-out.md`'s own steps 1-2, already re-read fresh for this candidate — never re-fetched a
-third time here. `{update-method}`, `{conflicted-files}`, `{resolution-commit}`, and `{base}` come
+third time here. After an update, `{status}` and `{mergeable-summary}` are `close-out-update.md`
+step 6's re-reads (the latest read), never steps 1-2's pre-update values, which describe a head the
+update replaced. `{update-method}`, `{conflicted-files}`, `{resolution-commit}`, and `{base}` come
 from `close-out-update.md`'s hand-off (its step 8) and values line (`gh pr view … baseRefName`),
 never re-derived here.
 `{approver-or-unknown}`: `gh pr view {number} --json reviews --jq '[.reviews[] |
