@@ -16,7 +16,7 @@ files:
 
 **Entry point:** `/claude-tweaks:dispatch close-out #{n}` (or the bare form), reaching a candidate whose `mergeStateStatus` is `DIRTY`/`BEHIND` or whose `mergeable` is `CONFLICTING`. A `[pr-stale]` line from `/claude-tweaks:tidy`'s repo-wide scan, which item 11 only flags, is the usual tip-off.
 
-**Success state:** the PR is updated by a merge of `origin/{base}`, never by a rebase or force-push. The full suite passes on the new HEAD through `verify.js`, CI is green on that HEAD, and the confirmation question names the update before anything merges. That merge is pinned to the verified head. If the maintainer declines instead, the PR is left exactly as it was.
+**Success state:** the PR is updated by a merge of `origin/{base}`, never by a rebase or force-push. The full suite passes on the new HEAD through `verify.js`, CI is green on that HEAD, and the confirmation question names the update before anything merges. That merge is pinned to the verified head. If the maintainer declines the update offer, the PR is left exactly as it was. Declining the merge question after an update leaves the PR `pending-review` with the update still pushed.
 
 ## Steps
 
@@ -39,9 +39,14 @@ files:
 - **Action:**
   - Close-out pins `origin/{head}` to the PR's head sha and creates a detached `{main-checkout}/.worktrees/close-out-{number}`.
   - On `DIRTY` it merges `origin/{base}` and resolves conflicts, asking the maintainer when a resolution isn't clear-cut. On `BEHIND` it runs `gh pr update-branch` (never the rebase variant).
-  - It runs the full suite through `verify.js` and pushes with a plain push.
+  - It runs the full suite through `verify.js`, then pushes any commits the PR lacks with a plain push.
 - **Should feel:** careful: the suite runs before anything is pushed on `DIRTY`, and a conflict that keeps both texts but drops one side's intent gets caught by the suite, not by luck.
-- **Should understand:** a failed verification pushes nothing. It keeps the worktree and prints `/claude-tweaks:dispatch close-out #{record}`, and re-running that resumes the verification instead of starting over. On `BEHIND` the update is already on GitHub, so that resume is what clears it. A later merge on CI alone does not.
+- **Should understand:**
+  - A failed verification pushes nothing. It keeps the worktree and prints `/claude-tweaks:dispatch close-out #{record}`, and re-running that resumes the verification instead of starting over. On `BEHIND` the update is already on GitHub, so that resume is what clears it. A later merge on CI alone does not.
+  - On `BEHIND` close-out has nothing of its own to push. The push runs only for a `DIRTY` resolution or a fix made on a resume.
+  - A conflict close-out cannot resolve is aborted with nothing pushed: `stopped: update failed — conflict not resolved`. A rejected `gh pr update-branch` stops with `stopped: update failed — update-branch rejected` and removes its worktree, since nothing landed.
+  - A resume does not pick up a worktree left mid-merge or holding uncommitted tracked changes. It stops with `stopped: update failed — conflict not resolved` and keeps the worktree, for the maintainer to finish the merge in it or remove it. A worktree whose history has diverged from the PR head stops with `stopped: update failed — head moved`.
+  - Any other command that fails stops the candidate with `stopped: update failed — command failed`.
 - **Red flags:** a `git rebase` or a `--force` push; verification run from the main checkout instead of the update worktree; a worktree under `.claude/worktrees/`; a leftover `.worktrees/close-out-*` after a stop that should have torn it down.
 
 ### 4. CI is re-read on the new HEAD
