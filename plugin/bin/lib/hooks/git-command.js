@@ -75,9 +75,13 @@ function stripQuotes(s) {
 }
 
 // Replaces each backslash pair whose escaped character is in `unescapable` with
-// that character; every other pair stays verbatim.
+// that character, and a backslash-newline pair (a line continuation, which bash
+// deletes before it splits words) with nothing; every other pair stays verbatim.
 function unescapeBackslashPairs(text, unescapable) {
-  return text.replace(/\\([\s\S])/g, (pair, c) => (unescapable.includes(c) ? c : pair));
+  return text.replace(/\\([\s\S])/g, (pair, c) => {
+    if (c === '\n') return '';
+    return unescapable.includes(c) ? c : pair;
+  });
 }
 
 // Tokenizer that keeps quoted spans (with spaces) as one token. Also merges a
@@ -100,9 +104,11 @@ function unescapeBackslashPairs(text, unescapable) {
 //
 // Escape-aware (#4212): inside a double-quoted span and in a bare word, a
 // backslash pairs with the next character, so `\"` never closes a span and
-// `\\` is one pair (in a bare word, a backslash before a newline — a line
-// continuation — or at the end of the string stays a lone `\`). An escaped
-// double quote yields the `"`, as bash does (isUnresolvable() rejects any token
+// `\\` is one pair (a backslash at the very end of the string stays a lone `\`).
+// A backslash-newline pair is a line continuation: bash deletes it before it
+// splits words, so it vanishes from the value and `/ma\<newline>in/x` is the
+// token `/main/x`; a bare word that is nothing but continuations yields no token.
+// An escaped double quote yields the `"`, as bash does (isUnresolvable() rejects any token
 // holding one); in a bare word an escaped blank (space or tab) likewise yields
 // the blank, because a word that runs on through an escaped blank must not
 // swallow a following redirect operator (`echo foo\ >x` is the token `foo >x`,
@@ -117,7 +123,7 @@ function tokenize(seg) {
   const out = [];
   const singleQuoted = [];
   const doubleQuoted = [];
-  const re = /"((?:[^"\\]|\\[\s\S])*)"|'([^']*)'|((?:\\[^\n]?|[^\s\\])+)/g;
+  const re = /"((?:[^"\\]|\\[\s\S])*)"|'([^']*)'|((?:\\[\s\S]?|[^\s\\])+)/g;
   let m;
   let prevEnd = -1;
   while ((m = re.exec(seg)) !== null) {
@@ -130,6 +136,9 @@ function tokenize(seg) {
       val = m[2];
     } else {
       val = unescapeBackslashPairs(m[3], '" \t');
+      // Only line continuations: no word here. A bare match runs to the next blank,
+      // so no later match is adjacent to it and `prevEnd` needs no update.
+      if (val === '') continue;
     }
     if (out.length && m.index === prevEnd) {
       out[out.length - 1] += val;

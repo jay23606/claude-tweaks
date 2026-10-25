@@ -638,6 +638,21 @@ test('#4212: an escaped space in a cd argument resolves to the unescaped directo
   assert.deepStrictEqual(gitTargets('cd /r/a\\ b && git commit -m x', '/repo'), [{ action: 'commit', dir: path.resolve('/r/a b') }]);
 });
 
+test('#4212: a line continuation inside a word is deleted, as bash does before it splits words', () => {
+  assert.deepStrictEqual(tokenize('echo x >/ma\\\nin/x').tokens, ['echo', 'x', '>/main/x']);
+  assert.deepStrictEqual(fileWriteTargets('echo x >/ma\\\nin/x', '/r'), [{ action: 'write', file: path.resolve('/main/x') }]);
+  assert.deepStrictEqual(tokenize('echo "a\\\nb"').tokens, ['echo', 'ab']);
+});
+
+test('#4212: a bare word that is only a line continuation yields no token', () => {
+  assert.deepStrictEqual(tokenize('a \\\n b').tokens, ['a', 'b']);
+  assert.deepStrictEqual(tokenize('mkdir -p x \\\n').tokens, ['mkdir', '-p', 'x']);
+});
+
+test('#4212: an escaped backslash before a newline is not a line continuation', () => {
+  assert.deepStrictEqual(tokenize('echo \\\\\nfoo').tokens, ['echo', '\\\\', 'foo']);
+});
+
 test('AC2.1 #4212: a line continuation still resolves the next line\'s target', () => {
   assert.deepStrictEqual(mkdirTargets('mkdir -p \\\n/abs/dir', '/r'), [{ action: 'mkdir', file: path.resolve('/abs/dir') }]);
 });
