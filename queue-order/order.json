@@ -1,11 +1,16 @@
 {
-  "computedAt": "2026-10-25T13:53:49.136Z",
+  "computedAt": "2026-10-25T14:57:59.907Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
+        "number": 4294,
+        "updatedAt": "2026-10-25T14:46:32Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4273,
-        "updatedAt": "2026-10-25T13:38:13Z",
+        "updatedAt": "2026-10-25T13:56:09Z",
         "state": "OPEN"
       },
       {
@@ -15,12 +20,7 @@
       },
       {
         "number": 4220,
-        "updatedAt": "2026-10-25T08:19:56Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4212,
-        "updatedAt": "2026-10-25T08:38:58Z",
+        "updatedAt": "2026-10-25T14:44:43Z",
         "state": "OPEN"
       },
       {
@@ -29,18 +29,8 @@
         "state": "OPEN"
       },
       {
-        "number": 4190,
-        "updatedAt": "2026-10-25T10:46:56Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4186,
         "updatedAt": "2026-10-25T11:50:17Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4178,
-        "updatedAt": "2026-10-25T13:21:11Z",
         "state": "OPEN"
       },
       {
@@ -74,26 +64,6 @@
         "state": "OPEN"
       },
       {
-        "number": 4161,
-        "updatedAt": "2026-10-25T09:13:14Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4157,
-        "updatedAt": "2026-10-25T10:50:59Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4156,
-        "updatedAt": "2026-10-25T11:24:19Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4155,
-        "updatedAt": "2026-10-25T11:59:25Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4154,
         "updatedAt": "2026-10-25T06:55:40Z",
         "state": "OPEN"
@@ -105,12 +75,12 @@
       },
       {
         "number": 4152,
-        "updatedAt": "2026-10-25T12:27:00Z",
+        "updatedAt": "2026-10-25T14:15:11Z",
         "state": "OPEN"
       },
       {
         "number": 4151,
-        "updatedAt": "2026-10-25T08:19:52Z",
+        "updatedAt": "2026-10-25T14:46:55Z",
         "state": "OPEN"
       },
       {
@@ -140,7 +110,7 @@
       },
       {
         "number": 4138,
-        "updatedAt": "2026-10-25T08:19:31Z",
+        "updatedAt": "2026-10-25T14:16:25Z",
         "state": "OPEN"
       },
       {
@@ -150,7 +120,7 @@
       },
       {
         "number": 4136,
-        "updatedAt": "2026-10-25T08:19:24Z",
+        "updatedAt": "2026-10-25T14:20:46Z",
         "state": "OPEN"
       },
       {
@@ -368,8 +338,8 @@
   "groups": [
     [
       {
-        "body": "Origin: dispatch close-out of #4028 (PR #4205), 2026-10-25 — user asked whether close-out never rebasing is feedback for claude-tweaks\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/dispatch/close-out.md` step 2 stops a candidate whose `mergeStateStatus` is `DIRTY` (\"rebase and re-verify first\") and its Anti-Patterns table forbids rebasing because it \"changes PR content without the author present\". That reasoning is inherited from `_shared/github-pr-scan.md` item 11, a scheduled sweep that really does run with nobody present. Close-out is human-present by construction: `close-out-confirmation.md` gates every merge on an `AskUserQuestion`, with no autonomy carve-out, and `close-out.md`'s own Reporting section says never to schedule it headless. So the premise behind the ban is false in this mode.\n\nClose-out also has no branch for `BEHIND` with no conflicts (no `gh pr update-branch` path).\n\nObserved 2026-10-25 closing out #4028 (PR #4205): close-out stopped on `DIRTY`, and the user had to ask for the update by hand. The session then merged `origin/main` into the branch. Three conflicts resolved cleanly as text, yet one test failed afterwards: `tests/pr-run-comments.test.js` AC1.1, #4065's pin that no fixed `/tmp/{kind}-comment` path remains. Only the full suite caught it; it was fixed in `80e469dcc` before the merge. The real hazard is a resolution that silently drops one side's intent, not the act of updating.\n\n## Deliverables\n\n1. `close-out.md` step 2: on `DIRTY`/`CONFLICTING`, offer an \"update from {integration-branch}\" option instead of a hard stop. The update merges `origin/{integration-branch}` into the PR branch (never a rebase or force-push), resolves conflicts, runs the full suite through `verify.js`, pushes, and re-reads CI fresh before the confirmation gate.\n2. On `BEHIND` with no conflicts, offer the same update via `gh pr update-branch`, followed by the same CI re-read.\n3. `close-out-confirmation.md`: when an update ran, the question says so and names the conflicted files and the resolution commit, so the human reviews what changed before confirming the merge.\n4. Reword the Anti-Patterns row so the ban applies to the headless item-11 sweep and to updating without a passing full suite, not to a human-present close-out. `_shared/github-pr-scan.md` item 11 stays flag-only.\n\n## Acceptance Criteria\n\n- A `DIRTY` candidate is offered an update option rather than only a stop; declining leaves the PR exactly as before.\n- A PR updated by close-out is never merged without a passing full-suite `verify.js` stamp matching the new HEAD and a green CI read on that HEAD.\n- The confirmation question names that an update ran, the conflicted files, and the resolution commit.\n- No path rebases or force-pushes the PR branch.\n- `github-pr-scan.md` item 11 remains flag-only, and the close-out conformance tests are updated to pin the new branch.\n\n## Release Note\n\nClosing out a parked PR that has fallen behind or conflicts with main can now update it in place, re-verified, instead of stopping.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/dispatch/close-out.md` — modify\n- `plugin/skills/dispatch/close-out-confirmation.md` — modify\n- `plugin/skills/_shared/github-pr-scan.md` — modify\n- `tests/close-out-pr-state-contract-conformance.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-25T13:29:37Z",
+        "body": "**Related:** #4212, #4210, #4247\n\nOrigin: dispatch close-out of PR #4223 (record #4212), 2026-10-25\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nAfter #4210 (PR #4235, merge `b4a2f59db`), `plugin/bin/lib/hooks/git-command.js`'s `tokenize` returns a per-character `spanKinds` mask and keeps backslashes in token values as typed; `isUnresolvable` then rejects any token still carrying a backslash. Measured on main (2026-10-25) against #4212's test expectations, three classes resolve **no** target where bash writes to a concrete path. All three are fail-open: none fabricates a target.\n\n1. **Escaped blank in a path word:** `mkdir a\\ b`, `mkdir -p /r/a\\ b/c`, `cp a my\\ file.js`, `cd /r/a\\ b && git commit -m x` return `[]`; bash targets `/r/a b`, `/r/a b/c`, `/r/my file.js`, `/r/a b`.\n2. **Backslash-newline line continuation** inside or before a word: `echo x >/ma\\<newline>in/x` and `mkdir -p \\<newline>/abs/dir` return `[]`; bash targets `/main/x` and `/abs/dir`.\n3. **A `$` / `${…}` / backtick word, then an escaped blank, then `>`:** `echo $M\\ >x`, `echo ${M}\\ >x`, ``echo `d`\\ >x``, `echo $M\\ bar>x` return `[]`; bash redirects to `x`. `echo $M>x` staying `[]` is the documented gap and must not change.\n\nPR #4223 (record #4212, branch `worktree-dispatch-record-4212`, tip `9a6fc75a9`) implemented all three by unescaping values in the old regex tokenizer. It was closed unmerged: it predates the span mask, conflicts with it in all four touched files, and lacks #4210's quoted-span and `(ls)>out` resolution. #4212's own acceptance criteria already pass on main.\n\n## Deliverables\n\n- `tokenize` yields the unescaped value for an escaped blank in a bare word and for an escaped double quote, and deletes a backslash-newline pair before word splitting, while keeping `spanKinds[i].length === tokens[i].length` (the mask must shrink with the value) and keeping every other backslash pair verbatim (Windows paths, `\\'`).\n- The glued-redirect scan resolves the operand after an escaped blank that follows a `$`/backtick prefix (`$M\\ >x`), without accepting `$M>x`.\n- `isUnresolvable` stops rejecting a token whose only backslashes were unescaped by the tokenizer.\n- `docs/journeys/write-a-glued-redirect-from-the-main-checkout-4015.md` and the redirect paragraph in `plugin/skills/_shared/policy-schema-coverage.md` describe the new behavior.\n\n## Acceptance Criteria\n\n- Every case listed in Current State resolves the bash target named there, pinned in `tests/hooks-gate-coverage.test.js` / `tests/hooks-git-command.test.js`, each going red when the change is reverted.\n- #4212's carried-over expectations hold on the new code: `echo \"a\\\" b>c \"` → none, `echo foo>x` → `x`, `echo foo\\\\>x` → `x`, `echo foo\\>x` → none, `cd \\'/wt\\' && git commit` → none, `echo x > \\'/abs/f\\'` → none, `echo $M>x` → none, and `echo a\\\"b>c` → `c` (bash's actual target; #4212 had pinned it as a known miss).\n- #4210's cases still resolve (`echo \"hi\">x` → `x`, `(ls)>out` → `out`), and the existing `fileWriteTargets` / `gitTargets` / `mkdirTargets` suites pass unchanged.\n- Full `npm test` passes.\n\n## Release Note\n\nThe worktree-always gate now sees writes to a path with an escaped space, a path split by a line continuation, and a redirect after a `$VAR\\ ` word, which it previously let through.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n- `tests/hooks-git-command.test.js` — modify\n- `docs/journeys/write-a-glued-redirect-from-the-main-checkout-4015.md` — modify\n- `plugin/skills/_shared/policy-schema-coverage.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T13:56:27Z",
         "labels": [
           {
             "id": "LA_kwDORUwzVM8AAAACruyqXw",
@@ -390,10 +360,10 @@
             "color": "ededed"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
           },
           {
             "id": "LA_kwDORUwzVM8AAAACrzEqFA",
@@ -414,86 +384,14 @@
             "color": "FBCA04"
           }
         ],
-        "number": 4273,
+        "number": 4294,
         "state": "OPEN",
-        "title": "dispatch close-out: offer an update-from-main path for a DIRTY or BEHIND PR instead of a flag-only stop",
-        "updatedAt": "2026-10-25T13:38:13Z",
+        "title": "Resolve escaped-blank, line-continuation and `$word\\ >` redirect targets on the span-mask tokenizer",
+        "updatedAt": "2026-10-25T14:46:32Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #4028\n\nDefer-reason: tangential\n\n## Current State\n\nbin/lib/review-context/build.js caps each file at 64 KB (`PER_FILE_CAP_BYTES`) but nothing bounds the bundle as a whole. On #4028's review (129 scoped files) `context.md` came to 3,153,954 bytes, 692,614 of them the diff. `review/step3-lens-dispatch.md` hands every lens agent that path, and no agent window holds about 780k tokens, so the 14 lens prompts had to tell the agents to skip the bundle and read `git diff` per path instead. `--files-from` narrows the file list but not the budget.\n\n## Deliverables\n\n- [ ] `buildContext` takes a total-size budget and, over it, replaces the largest sections with the existing one-line stub until the bundle fits; `oversizeSections` names every stubbed path.\n\n- [ ] `step3-lens-dispatch.md` says what a lens agent reads when the bundle came back over budget (per-path `git diff {base}...{branch} -- {path}`), so a dispatcher need not improvise it in each prompt.\n\n- [ ] A test builds a bundle from a fixture whose files sum above the budget.\n\n## Acceptance Criteria\n\n- [ ] For a diff whose files sum above the budget, the printed `bytes` is at or under the budget and `oversizeSections` lists every stubbed path.\n\n- [ ] The new test fails when the budget logic is removed.\n\n## Release Note\n\nReview lens agents get a context bundle they can read on large diffs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/review-context/build.js` — add a total-size budget; stub the largest sections first\n- `plugin/skills/review/step3-lens-dispatch.md` — name the per-path git diff fallback when the bundle is over budget\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-25T07:02:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4220,
-        "state": "OPEN",
-        "title": "Bound the total size of the /review shared context bundle",
-        "updatedAt": "2026-10-25T08:19:56Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -980,78 +878,6 @@
     ],
     [
       {
-        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-3.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/release/SKILL.md:59` refuses a terminal or `createdBy: release-standalone` run directory with a ~600-char `node -e` that `require`s `bin/lib/hooks/run-integrity.js#NON_TERMINAL` by path and hard-codes the `createdBy` literal. That is a second adoption decider outside `hooks.js resolve-run-dir`, whose step 2 still skips only `interrupted` (`plugin/bin/lib/hooks/run-dir-resolve.js:93`), so no other `--spec-slug` caller gets the #3898 guard. The probe exits 1 both for \"not refused\" and for any crash (unreadable or corrupt `run-state.json`, failed require) under `2>/dev/null`, so a guard crash silently adopts a prior release directory, which is exactly the #3898 bug. Observed in the v6.153.0 release run: an installed build predating #3898 adopted `2026-10-21T194624-release-standalone`.\n\n## Deliverables\n\n1. Move the terminal-status and `createdBy` refusal into `resolve-run-dir`'s step 2 (`run-dir-resolve.js`), so every caller gets it.\n2. Treat an unreadable or unparseable `run-state.json` as \"refuse adoption\", never \"adopt\".\n3. Replace the `node -e` in `release/SKILL.md` Step 0 with the CLI call alone.\n4. Tests for refuse-terminal, refuse-release-standalone, refuse-on-corrupt-state.\n\n## Acceptance Criteria\n\n- `resolve-run-dir --spec-slug release` never returns a terminal or `release-standalone` directory, and never returns one whose `run-state.json` cannot be parsed.\n- `release/SKILL.md` contains no inline `node -e` adoption probe.\n- `tests/release-run-dir-lifecycle-conformance.test.js` is updated to the new contract.\n- `npm test` passes.\n\n## Release Note\n\nA release run can no longer adopt a previous release's run directory when that directory's state file is unreadable.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/run-dir-resolve.js` — adoption refusal in step 2\n- `plugin/skills/release/SKILL.md` — drop the inline guard\n- `tests/release-run-dir-lifecycle-conformance.test.js` — contract update\n\n_Filed by `release` via specShapedBody._",
-        "createdAt": "2026-10-24T16:25:17Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4151,
-        "state": "OPEN",
-        "title": "release Step 0 run-dir adoption guard is an inline node -e in prose and adopts when it crashes",
-        "updatedAt": "2026-10-25T08:19:52Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "**Related:** #1426\n\nOrigin: /claude-tweaks:specify #3997,#1426,#2724 (2026-10-24) — #1426 reached shaping mode unguarded\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:specify`'s explicit-reference shaping entries (`plugin/skills/specify/SKILL.md` Resolve-the-input case 1, the comma-list/range batch branch, and case 5's direct-shaping branch) have no guard for a `digest`-labeled issue. The only pre-shaping guard is the parent-record guard (`SKILL.md:79`), which checks `parent-issue` and a `## Leaves` heading only.\n\nCanon says a digest issue is never shaped: `plugin/skills/_shared/materiality-floor.md:128-133` (\"a digest issue is never shaped, scored, promoted, or closed as a record\"). Bare drain already honors this, excluding `digest` from its eligible set (`plugin/skills/specify/next-mode.md:148`, and the `EXCLUDE` set at `:191`).\n\nObserved on 2026-10-24: `/claude-tweaks:specify #3997,#1426,#2724` resolved #1426 (the live `digest` container) into the batch with nothing stopping it. The agent left it unshaped only because it recalled the materiality-floor canon. Shaping it would have stamped `ready`/scoring on the container and rewritten its body, exposing it to `/dispatch` and `/flow`.\n\n## Deliverables\n\n- [ ] Extend the pre-shaping guard in `plugin/skills/specify/SKILL.md` case 1 so a target carrying the `digest` label (GitHub driver) hard-stops before shaping, with no prompt, and never enters the `needs:definition` redirect. The stop message names the container and cites `_shared/materiality-floor.md`. Scope it to the same entries the parent-record guard covers: single record, comma-list/range batch, and case 5 by reference.\n\n- [ ] Batch semantics: in a comma-list/range batch, a `digest` element is refused per element and the other records still shape, unlike the all-or-nothing resolution-failure stop. Name this in the batch paragraph and add a `refused — digest container` outcome to `shaping-mode-readback.md`'s Actions Performed outcome list, which today says there is no skipped outcome.\n\n- [ ] Strip any mis-shape residue (`ready`, `risk:*`, `size:*`, `ceremony:*`, `solution:unjustified`) from a digest target in one edit, reported in the output: the same carve-out the parent-record guard already has.\n\n## Acceptance Criteria\n\n- [ ] `SKILL.md` case 1 names a `digest` refusal that runs before the `needs:definition` redirect and covers the batch/range and case-5 entries.\n\n- [ ] `shaping-mode-readback.md`'s Actions Performed outcome list includes the digest-refusal outcome, and its no-skipped-outcome sentence is reconciled with it.\n\n- [ ] A conformance test under `tests/` pins that `specify/SKILL.md`'s digest refusal and `next-mode.md`'s `EXCLUDE` set both name `digest`, so the explicit and drain entries cannot drift apart again. The test fails when the `SKILL.md` refusal text is removed.\n\n- [ ] `npm test` is green.\n\n## Release Note\n\n`/claude-tweaks:specify` now refuses to shape the digest container issue when it is passed by number, instead of treating it like an ordinary record.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/specify/SKILL.md` — digest refusal beside the parent-record guard (case 1, batch, case 5)\n- `plugin/skills/specify/shaping-mode-readback.md` — digest-refusal outcome in Actions Performed\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-24T15:30:28Z",
         "labels": [
@@ -1274,78 +1100,6 @@
     ],
     [
       {
-        "body": "Origin: reflect hindsight from #3898\n\nDefer-reason: tangential\n\n## Current State\n\nObserved in the 2026-10-24 release session: the 10-21 and 10-23 standalone sweep runs stayed unarchived until a hand-run `close-run`/`archive-run` (landed via PR #4075), and `2026-10-24T104015-backlog-standalone` was listed with status unknown at session start. #3898 found the same leak in `/claude-tweaks:release`: a standalone run dir carries no owning session, so session end never marks it `interrupted`, and an early exit that skips the skill's close-out leaves it `active` for the next resolution to adopt. Release now closes out on every exit (refs #3898); the other `resolve-run-dir --standalone {name} --create` callers were not audited.\n\n## Deliverables\n\nEnumerate every skill that mints a standalone run dir (`resolve-run-dir --standalone {name} --create`, `_shared/run-dir-resolution.md` step 4).\n\nFor each, confirm every exit after the mint runs `close-run` on a created directory (and archival where the skill archives), or add it, mirroring release Step 8's \"Every exit runs the close-out\" paragraph.\n\n## Acceptance Criteria\n\nEvery standalone-minting skill states close-out on every exit after its mint, and a conformance test enumerates the minters and pins that statement for each.\n\n`npm test` passes.\n\n## Release Note\n\nStandalone skill runs (sweep, backlog, tidy and others) close their run directory on every exit, not only on success.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/run-dir-resolution.md` — reference for the standalone mint callers\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-24T14:37:19Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4138,
-        "state": "OPEN",
-        "title": "Close standalone run dirs on every exit, not only on success — beyond release",
-        "updatedAt": "2026-10-25T08:19:31Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Origin: ledger resolve gate (run 2026-10-24T121146-spec-4048, reflect light, Friction)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nUnder `/claude-tweaks:flow`, review repeats work build just did on an unchanged tree:\n\n- Review Step 5 re-runs `/claude-tweaks:simplify` on the exact source scope that build Common Step 3 already simplified, with no source change between them.\n- Lens 3i re-flags every registry-matched doc as \"not updated\" even when build Common Step 6.5 already assessed each one and logged \"no stale text\".\n\nRun 2026-10-24T121146-spec-4048 (#4048) skipped both with a logged rationale, which meant departing from the written procedure (decisions.md `SKIP 14:31:59 — Steps 5-6.66`; `AUTO 14:25:28 — Common Step 6.5: docs sync … no doc update needed`).\n\n## Deliverables\n\n- Review Step 5 no-ops (with a logged SKIP line) when the in-scope source files are unchanged since build's simplify commit and no review fix has landed since.\n- Lens 3i reads build Common Step 6.5's logged per-doc assessment and does not re-flag a doc build already marked as checked with no stale text.\n\n## Acceptance Criteria\n\n- `plugin/skills/review/code-mode-steps.md` Step 5 states the unchanged-since-simplify skip condition and its log line.\n- `plugin/skills/review/step3-doc-freshness-lens.md` states how lens 3i consumes build's Step 6.5 assessment.\n- A conformance test pins both conditions.\n\n## Release Note\n\n/review no longer repeats the simplify pass and doc-freshness flags that /build already completed on the same tree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/code-mode-steps.md` — Step 5 skip condition\n- `plugin/skills/review/step3-doc-freshness-lens.md` — consume build Step 6.5 assessment\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-24T12:40:33Z",
         "labels": [
@@ -1393,78 +1147,6 @@
         "facets": {
           "origin": null,
           "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3949, #4048\n\nOrigin: ledger resolve gate (run 2026-10-24T121146-spec-4048, reflect light, Near-misses)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nWhen the Review Console filed run 2026-10-22T062405-record-3880's can't-tell finding `staged/review-unconfirmed-3.md` as #4048, the record lost the finding's claim:\n\n- the quoted \"claim\" was only the `Finding:` location string (`plugin/bin/lib/reconcile/console-execute.js (the \\`ctx.rulingTexts\\` guard in decideConsoleExecute; low, lens 3c and lens 3f, one agent each)`)\n- the line was `:unknown`\n- the stated severity (medium) disagreed with the location line's own \"low\"\n- the title was cut mid-word (\"…guard in deci\")\n\nThe actual claim (\"decideConsoleExecute skips the sdd-ruling gate when ctx.rulingTexts is absent\") and its apply/reverse dispositions lived only in the archived staged file's `Title:` line and body, so `/claude-tweaks:specify #4048` had to dig the archive out before the record could be understood. #3949 (file can't-tell findings at unattended) reworks the same filing path and may absorb this.\n\n## Deliverables\n\n- The can't-tell filer uses the staged file's `Title:` line as the record title (no mid-word truncation; truncate on a word boundary with an ellipsis if a length cap applies).\n- The record's `## Current State` carries the staged finding body (claim, evidence, dispositions), not the `Finding:` location string.\n- Severity and line come from the staged file's own fields, not a default, and are omitted rather than `:unknown` when absent.\n\n## Acceptance Criteria\n\n- A test feeds the filer a fixture shaped like the archived `review-unconfirmed-3.md` and asserts the composed title equals its `Title:` line and the body contains the claim sentence.\n- No composed body contains `:unknown` as a line reference.\n\n## Release Note\n\nBacklog records filed from can't-tell review findings now carry the finding's claim and title instead of only its location.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
-        "createdAt": "2026-10-24T12:40:29Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4136,
-        "state": "OPEN",
-        "title": "Carry the staged finding title and body when the Review Console files a can't-tell finding",
-        "updatedAt": "2026-10-25T08:19:24Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
           "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
