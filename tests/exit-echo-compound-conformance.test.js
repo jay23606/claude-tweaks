@@ -7,10 +7,13 @@ const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
 
 // #4190: a skill-prose instruction that chains an exit-status echo onto a command in one Bash
-// call (`cmd > out 2>&1; echo "exit=$?"`) is refused outright in a worktree-isolated session
-// (`_shared/scratch-worktree.md` §7). The bounded-execution instruction must be plain separate
-// calls instead. This live-corpus scan (not a frozen fixture) fails the moment a skill
-// reintroduces the compound, so the regression is caught at the commit that adds it.
+// call (`cmd > out 2>&1; echo "exit=$?"`) is not safe in a worktree-isolated session, which
+// refuses some chained shapes outright (`_shared/scratch-worktree.md` §7, e.g. a `gh` call with a
+// piped `--jq`). The bounded-execution `cmd` is whatever the checked doc or claim names, so its
+// shape is not known in advance. That is why skill prose must use plain separate calls, and why
+// this sweep flags every `;`/`&&`-chained exit-status echo, not only the refused shapes. This
+// live-corpus scan (not a frozen fixture) fails the moment a skill reintroduces the compound, so
+// the regression is caught at the commit that adds it.
 
 const SKILLS_DIR = path.join(__dirname, '..', 'plugin', 'skills');
 
@@ -121,8 +124,8 @@ test('no plugin/skills/**/*.md line chains an exit-status echo onto a command ou
   assert.deepStrictEqual(
     failures,
     [],
-    'a `cmd; echo "exit=$?"` compound in skill prose is refused in a worktree-isolated session. ' +
-      'Write it as three plain Bash calls (mktemp, cmd > "{tmp}" 2>&1, tail -20 "{tmp}") — see ' +
+    'a `cmd; echo "exit=$?"` compound in skill prose can be refused in a worktree-isolated session ' +
+      'depending on the command shape. Write it as three plain Bash calls (mktemp, cmd > "{tmp}" 2>&1, tail -20 "{tmp}") — see ' +
       '_shared/scratch-worktree.md §7. Offenders: ' +
       failures.join(', '),
   );
