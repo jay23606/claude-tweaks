@@ -4,13 +4,14 @@ files:
   - plugin/bin/lib/flow/pr-checklist.js
   - plugin/bin/lib/flow/pr-body.js
   - plugin/skills/_shared/pr-checklist-refresh.md
+  - plugin/bin/lib/phase-exit/phase-exit.js
 ---
 
 # Flip a PR Checklist Row at a Phase Exit
 
 **Persona:** the orchestrating agent of a `pr-first` `/claude-tweaks:flow` run, standing at the exit of its build phase with the branch already pushed. It has done the same six-step read/repair/flip/verify/write dance at every earlier exit and, in #3059's run, hand-wrote a scratch script to stop recomposing it. Later in the journey a **maintainer** opens the draft PR to see which phases have actually run.
 **Goal:** mark this phase done on the run's PR, or drop a skipped phase's row, with one command that cannot write the wrong body to the wrong PR.
-**Entry point:** `_shared/pr-checklist-refresh.md`'s Phase-checklist update, reached from any phase's own exit (`build`, `test`, `review`, `polish`, `wrap-up`) after its phase-exit push, with `run-state.json` carrying `pr`.
+**Entry point:** `_shared/pr-checklist-refresh.md`'s Phase-checklist update, reached from any phase's own exit (`build`, `test`, `review`, `polish`, `wrap-up`) with `run-state.json` carrying `pr`. Since #4026, `bin/phase-exit.js` runs this CLI in-process after its push and carries the result as `checklist` in its envelope, forwarding `--fixes`, `--remove` and `--summary-file` (`docs/journeys/exit-a-phase-in-one-call-4026.md`). The direct call in step 1 is still how the pre-merge refresh re-flips a row.
 **Success state:** the PR body shows `- [x] {phase}` for this phase (or no row at all for a skipped one), every other byte unchanged, and the agent moved on after one call whose JSON line said `written` or `no-op`.
 
 ## Steps
@@ -45,4 +46,5 @@ files:
 
 ## Origin
 - Created during `/claude-tweaks:build` of record #3263 (2026-10-19): `plugin/bin/pr-checklist.js` replaces the hand-composed six-step Phase-checklist update on the `gh`-present path; the MCP path stays documented in `_shared/pr-checklist-refresh.md`.
+- Updated during `/claude-tweaks:build` of record #4026 (2026-10-25): `bin/phase-exit.js` now runs this flip as one sub-step of the single phase-exit call.
 - Related: `docs/journeys/read-an-accurate-spec-summary-after-a-premise-reversal-3050.md` (the Spec-summary refresh this CLI now runs in the same call)
