@@ -69,6 +69,16 @@ Three conventions follow from how this repo works, and all are visible below:
 * resolve-policy --values: warn on stderr when a requested… ([#4141](https://github.com/thn-inc/claude-tweaks/issues/4141)) ([3d473da](https://github.com/thn-inc/claude-tweaks/commit/3d473da61d88c3beff3f988292a71bcf80475685))
 * Surface can't-tell tiebreak findings on the fast-lane… ([#4171](https://github.com/thn-inc/claude-tweaks/issues/4171)) ([f105fae](https://github.com/thn-inc/claude-tweaks/commit/f105fae1c74dd8e93723e5e8745d3be340dc83cd))
 
+### Highlights
+* Backlog records filed from can't-tell review findings now carry the finding's claim and title instead of only its location.
+* An invalid value in `.claude-tweaks/policy.yml` or a run config now produces a warning when a skill reads it, instead of silently falling back to the default.
+* Closing out a parked PR that has fallen behind or conflicts with main can now update it in place, re-verified, instead of stopping.
+* No user-visible change.
+* Can't-tell review findings are no longer lost when a run merges through the fast-lane auto-merge path.
+* A review finding whose filing failed on a PR-rendered console now blocks archival until someone handles it.
+* No user-visible change: the release skill's pre-merge tip check now runs as tested code instead of step-by-step instructions.
+* A release can no longer record a reviewed tip that differs from the tree its test gate ran on.
+
 ## [6.154.1](https://github.com/thn-inc/claude-tweaks/compare/v6.154.0...v6.154.1) (2026-10-25)
 
 
