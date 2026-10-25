@@ -57,11 +57,11 @@
   },
   "skill:gh-api-module-pattern": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792925691697
+    "lastAuditedMs": 1792926340135
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792923656073
+    "lastAuditedMs": 1792927029781
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -113,7 +113,7 @@
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792923651797
+    "lastAuditedMs": 1792926350769
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -149,7 +149,7 @@
   },
   "skill:fact-validated-narration": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792409996235
+    "lastAuditedMs": 1792926345907
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
@@ -181,7 +181,7 @@
   },
   "skill:merge-shape-landed-proof": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792862247815
+    "lastAuditedMs": 1792926353159
   },
   "skill:test": {
     "lastAuditedSha": null,
@@ -213,7 +213,7 @@
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792920946589
+    "lastAuditedMs": 1792926348428
   },
   "skill:verify-scope-rule-kind": {
     "lastAuditedSha": null,
