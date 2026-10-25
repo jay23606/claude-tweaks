@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792954573534
+    "lastAuditedMs": 1792965039286
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
@@ -209,7 +209,7 @@
   },
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792958970624
+    "lastAuditedMs": 1792965046267
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
