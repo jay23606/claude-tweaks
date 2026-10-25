@@ -268,12 +268,14 @@ function assertMergeHeadCheck(closeOut) {
 
 const MERGE = readSkillFile('_shared', 'pr-first-merge.md');
 
-// pr-first-merge.md Step 3: the expected-head sentence sits right after its two opening fences.
+// pr-first-merge.md Step 3: the expected-head sentence sits after the `--squash` sentence, before the
+// fence-execution rule — kept out of the opening window #2015's pin reads.
 function assertExpectedHeadSentence(merge) {
   const start = merge.indexOf('## Step 3: Attempt auto-merge');
-  const tag = merge.indexOf('`{tag}` is `auto-merge`', start);
-  assert.ok(start >= 0 && tag > start, 'Step 3 and its tag paragraph found');
-  const head = merge.slice(start, tag);
+  const squash = merge.indexOf('`--squash` keeps one conventional commit per PR.', start);
+  const fences = merge.indexOf('Run each fence as its own Bash call', squash);
+  assert.ok(start >= 0 && squash > start && fences > squash, 'Step 3, its squash sentence and its fence rule found');
+  const head = merge.slice(squash, fences);
   assert.match(head, /expected head sha[^\n]*append `--match-head-commit \{expected-head\}` to every `gh pr merge` command in this step[^\n]*callers that supply none are unchanged/,
     'Step 3 appends --match-head-commit for a caller-supplied expected head');
 }
