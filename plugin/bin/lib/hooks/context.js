@@ -797,7 +797,9 @@ function isTrustedOwnedRun(ownedRun) {
 // The run-state patch that stamps this process as the run's owner — empty when
 // the pid is unknown, so a stamp site never writes a garbled `ownerPid`. Shared
 // by every site that mints or re-stamps ownership (record-worktree, the ad-hoc
-// mints, the resume re-stamp in session-start.js).
+// mints, the resume re-stamp in session-start.js). #4153: `owner.pid` (#3973,
+// `ownerBlock` below) stamps the same process; `ownerPid`'s removal condition is in
+// docs/hooks.md's owner-block paragraph.
 function ownerPidPatch(env) {
   const pid = claudePid(env);
   return pid === null ? {} : { ownerPid: pid };
@@ -806,6 +808,8 @@ function ownerPidPatch(env) {
 // #3973: the run-state `owner` block — who owns this run and when it last proved it
 // was alive. `pidStartedAt` guards against pid reuse and is null whenever the pid is
 // unknown (the start time is then never probed). Pure but for the injected deps.
+// Its `pid` supersedes the top-level `ownerPid` (#3845, `ownerPidPatch` above), kept
+// only for `isNestedSession` (#4153).
 function ownerBlock({ sessionId, env = process.env, now = Date.now(), deps = {} } = {}) {
   const { pid, pidSource } = (deps.resolveOwnerPid || processProbe.resolveOwnerPid)(env);
   return {
