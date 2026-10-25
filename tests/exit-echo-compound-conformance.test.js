@@ -125,7 +125,8 @@ test('no plugin/skills/**/*.md line chains an exit-status echo onto a command ou
     failures,
     [],
     'a `cmd; echo "exit=$?"` compound in skill prose can be refused in a worktree-isolated session ' +
-      'depending on the command shape. Write it as three plain Bash calls (mktemp, cmd > "{tmp}" 2>&1, tail -20 "{tmp}") — see ' +
+      'depending on the command shape. Write it as three plain Bash calls ' +
+      '(mktemp, cmd > "{tmp}" 2>&1, tail -20 "{tmp}") — see ' +
       '_shared/scratch-worktree.md §7. Offenders: ' +
       failures.join(', '),
   );
