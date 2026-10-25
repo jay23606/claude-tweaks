@@ -76,7 +76,7 @@ test('context-handoff.md states the fail-open rule: over: false, exit 2, or non-
 
 test('context-handoff.md: a dispatched call reports OUTCOME: handoff and NEXT_STEPS: with STATUS: DONE, after the phase-exit push', () => {
   const t = read(HANDOFF);
-  const d = region(t, '## Dispatched call', '\n## ', 'dispatched branch');
+  const d = region(t, '\n## Dispatched call', '\n## ', 'dispatched branch');
   assert.match(d, /`dispatched: true`/);
   assert.match(d, /`OUTCOME: handoff`/);
   assert.match(d, /`NEXT_STEPS: \{comma-joined remaining steps\}`/);
@@ -122,6 +122,50 @@ test("steps-and-gates.md's Partial step lists: a handed-off run renders the part
   assert.match(r, /handed[- ]off/i);
   assert.match(r, /\{PIPELINE_RUN_DIR\}\/handoff\.json/);
   assert.match(r, /`context-handoff\.md`/);
+});
+
+// Fix round 1: the exclusions, the top-level wrap-up rule, the wait bound.
+test('flow Step 4 gauges only single-spec, non-interactive runs, after build\'s automatic stories, and keeps wrap-up off a top-level --next-steps', () => {
+  const r = stepFourItem();
+  assert.match(r, /single-spec runs outside `interactive` only/);
+  assert.match(r, /after `build`'s automatic `stories`/);
+  assert.match(r, /leaves `wrap-up` out of `--next-steps`/);
+  assert.match(r, /`wrap-up` is the only step left/);
+});
+
+test('context-handoff.md states the single-spec-only limit and the interactive exclusion explicitly', () => {
+  const c = region(read(HANDOFF), '## The check', '## Reading the result', 'the check');
+  assert.match(c, /\*\*A single-spec run\.\*\* Multi-spec handoff is not supported/);
+  assert.match(c, /\*\*Not under `interactive`\.\*\*/);
+});
+
+test('context-handoff.md: an empty dispatched read lands on the top-level branch', () => {
+  const r = region(read(HANDOFF), '## Reading the result', '\n## Dispatched call', 'reading the result');
+  assert.match(r, /prints nothing[^\n]*Top-level run branch/);
+});
+
+test('context-handoff.md: a top-level run never hands off wrap-up, and runs wrap-up and Step 5 itself after relaying', () => {
+  const n = region(read(HANDOFF), '## Top-level run', '\n```', 'top-level branch');
+  assert.ok(n.includes('A top-level run never hands off `wrap-up`: its `--next-steps` stops before `wrap-up`, and with `wrap-up` the only step left it does not gauge.'));
+  assert.ok(n.includes("After relaying the child's Steps Complete note, this agent runs `wrap-up` and Step 5 itself."));
+  assert.ok(n.includes("A child's own handoff never carries `wrap-up` either."));
+  assert.doesNotMatch(n, /as this run's result, and stop\. The child's own Step 5/);
+});
+
+test('context-handoff.md: the 20-minute wait bound binds only a subagent parent; a top-level session waits unbounded', () => {
+  const n = region(read(HANDOFF), '## Top-level run', '\n```', 'top-level branch');
+  assert.match(n, /only when this agent is itself a subagent/);
+  assert.match(n, /A top-level session waits for the child's task-notification with no bound/);
+  assert.match(n, /`_shared\/dispatch-waiting\.md`/);
+  assert.match(n, /confirm the child has stopped before anyone runs `resume`/);
+  assert.doesNotMatch(n, /Every hop finishes at least one step/);
+  assert.match(n, /auto-inserts `test`/);
+  assert.match(n, /starts well under the cap/);
+});
+
+test("steps-and-gates.md's Steps Complete note has a handed-off variant of its wrap-up-absent sentence", () => {
+  const r = region(read(STEPS_AND_GATES), '**A handed-off run produces this same branch too', '**Auto-insert `test`:**', 'handed-off paragraph');
+  assert.match(r, /This run is not finished — its remaining steps \{next-steps\} were handed to a fresh agent/);
 });
 
 test('flow/SKILL.md stays under RAIL_BYTES with the cap-check item', () => {

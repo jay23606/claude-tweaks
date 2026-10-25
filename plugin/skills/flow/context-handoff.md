@@ -6,9 +6,10 @@ Loaded by `/claude-tweaks:flow` Step 4's context cap check only when `bin/contex
 
 The gauge runs only where a fresh agent can take over cleanly:
 
-- **A single-spec run.** Never a multi-spec run: `--next-steps` names one spec's remaining steps, but the handoff's `resume` command re-targets every record in the run dir, so a resumed sequential run would skip the later specs' earlier steps. A `MULTISPEC_PARALLEL_WAVE=1` wave member runs `/build` and `/test` directly and never reaches this step.
+- **A single-spec run.** Multi-spec handoff is not supported, so the gauge never runs in a multi-spec run: `--next-steps` names one spec's remaining steps, but the handoff's `resume` command re-targets every record in the run dir, so a resumed sequential run would skip the later specs' earlier steps. A `MULTISPEC_PARALLEL_WAVE=1` wave member runs `/build` and `/test` directly and never reaches this step.
 - **Not under `interactive`.** That mode exists for in-flow questions, and a fresh `Agent` cannot ask the user any. `auto`, `confirm` and `hybrid` all run as `auto` past the Manifesto, and their `resume` line carries ` auto`.
-- **At a boundary with a step left.** After a step's gate passes, with at least one step still to run. `build` with its automatic `stories`, and `polish` with its re-verify, are each one unit: never gauge between them.
+- **At a boundary with a step left.** After a step's gate passes, with at least one step still to run. `build` with its automatic `stories`, and `polish` with its re-verify, are each one unit: gauge after `build`'s automatic `stories` and after the re-verify, never between them.
+- **Never `wrap-up` from a top-level run.** A run not bound `dispatched: true` leaves `wrap-up` out of `--next-steps`, and with `wrap-up` the only step left it does not gauge (see Top-level run below). A dispatched call's `--next-steps` is every remaining step.
 
 One call, its own Bash call, with the run dir spelled out as a literal absolute path:
 
@@ -28,7 +29,7 @@ A gauge failure never stops the run. Only `over: true` with `handoff` set hands 
 
 `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "{run}" --status AUTO --step "Step 4 context cap" --text "context {contextTokens} tokens over cap {cap}; steps {next-steps} handed to a fresh agent from handoff.json" --reversibility n/a`
 
-Then take the branch that matches the run. Read `dispatched` with `SKILL.md` Step 1 rung 2's fail-open one-liner, which prints `dispatched` or nothing.
+Then take the branch that matches the run, by the same `dispatched` read Step 4 used to build `--next-steps`: `SKILL.md` Step 1 rung 2's fail-open one-liner. It prints `dispatched` (take the Dispatched call branch) or nothing; when it prints nothing, take the Top-level run branch.
 
 ## Dispatched call
 
@@ -43,13 +44,14 @@ A `/claude-tweaks:dispatch` Task call (`run-state.json` `dispatched: true`) stop
 
 A run not bound `dispatched: true` (a human-typed `/flow`, a Routine, or an earlier handoff's child) hands the remaining steps to one fresh `Agent` and relays its report. Use a fresh agent, never `fork`: a fork inherits this context, which is the thing being shed.
 
-1. **Render** `steps-and-gates.md`'s handed-off note.
-2. **Resolve** the substitutions. `{run}` is the literal run dir. `{worktree}` is what `git rev-parse --show-toplevel` prints, run as its own call. `{plugin-root}` is this session's `$CLAUDE_PLUGIN_ROOT` as a literal path. The model comes from `node "{plugin-root}/bin/resolve-profile.js" capable` (the profile dispatch's first call uses), passed as `model` on the `Agent` call.
-3. **Dispatch** one `Agent` with the template below inlined verbatim and the substitutions filled in. This is a dispatch site under `_shared/subagent-output-contract.md`.
-4. **Wait** for the child within this turn, using the same bounded foreground waits the template's async-wait rule gives the child (the rule binds this agent too). Never end the turn with the child outstanding. A child still silent at the bound may still be writing, so never redo its steps in this session: report it as blocked and give `{run}/handoff.json`'s `resume` line, on its own line, for a person to run.
-5. **Relay** the child's final report, unchanged, as this run's result, and stop. The child's own Step 5 runs the gate, the surveys and the summary.
+A top-level run never hands off `wrap-up`: its `--next-steps` stops before `wrap-up`, and with `wrap-up` the only step left it does not gauge. A subagent cannot call `AskUserQuestion`, so a child running `wrap-up` would strand the Review Console and Step 5's ledger gate, which `auto` never silences. A child's own handoff never carries `wrap-up` either. This agent renders no note of its own at the handoff; the child's Steps Complete note says what ran.
 
-The child may cross the cap and hand off in turn. Every hop finishes at least one step first, so the chain ends.
+1. **Resolve** the substitutions. `{run}` is the literal run dir. `{worktree}` is what `git rev-parse --show-toplevel` prints, run as its own call. `{plugin-root}` is this session's `$CLAUDE_PLUGIN_ROOT` as a literal path. The model comes from `node "{plugin-root}/bin/resolve-profile.js" capable` (the profile dispatch's first call uses), passed as `model` on the `Agent` call.
+2. **Dispatch** one `Agent` with the template below inlined verbatim and the substitutions filled in. This is a dispatch site under `_shared/subagent-output-contract.md`.
+3. **Wait** for the child. The template's 20-minute bound (`sleep 20` at most 60 times) applies only when this agent is itself a subagent, such as an earlier handoff's child, whose own prompt already carries that rule: wait within the turn under it and never end the turn with the child outstanding. A top-level session waits for the child's task-notification with no bound, as the parallel-wave orchestrator does (`_shared/dispatch-waiting.md`): a child phase often runs past 20 minutes. Never redo the child's steps in this session, since a child that has not reported may still be writing. Any blocked report (a subagent's bound expired, the `Agent` call failed) must tell the reader to confirm the child has stopped before anyone runs `resume`, then give `{run}/handoff.json`'s `resume` line on its own line.
+4. **Relay** the child's final report, unchanged. If it is a failure card, or its status is not `DONE`/`DONE_WITH_CONCERNS`, stop there: a gate failed (Step 4 item 3). After relaying the child's Steps Complete note, this agent runs `wrap-up` and Step 5 itself. It does so when `wrap-up` is in its step list, continuing its own Step 4 loop at that step with `$PIPELINE_RUN_DIR` unchanged. With no `wrap-up` in the list, the relayed note is this run's close.
+
+The child may cross the cap and hand off in turn. That does not end because each hop finishes a step (a resume at `review` auto-inserts `test` first, `steps-and-gates.md`'s Auto-insert rule). The chain ends because a fresh agent starts well under the cap and so finishes several steps before it nears the cap again.
 
 ```
 Task scope: continue a /claude-tweaks:flow run in a fresh context. The previous agent
@@ -111,7 +113,7 @@ required, since that exemption covers only pending launches. Forward this marker
 rest of this item, to any nested dispatch that itself dispatches.
 
 OUTPUT FORMAT (required) -- reply with your /claude-tweaks:flow run's final rendered output
-(its Pipeline Summary, its Steps Complete note, or its failure card), unchanged, then one line:
+(its Steps Complete note, or its failure card), unchanged, then one line:
 HANDOFF: {run}/handoff.json
 
 Status line (required): on its own trailing line, after everything above -- the reply's last
