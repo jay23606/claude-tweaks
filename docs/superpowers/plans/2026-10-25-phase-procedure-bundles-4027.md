@@ -46,7 +46,7 @@
 **Interfaces:**
 - Produces: `PHASES` — a frozen object `{ [phase]: { bundles: [{ step, sources: [pluginRelativePath...], load: 'always' | 'on-demand' }] } }` with exactly these entries:
   - `first-call`: `[{ step: 'claims', sources: ['skills/_shared/issue-claims.md'], load: 'on-demand' }]`
-  - `second-call`: `[{ step: 'claims', sources: ['skills/_shared/issue-claims.md'], load: 'always' }, { step: 'merge', sources: ['skills/_shared/pr-first-merge.md', 'skills/_shared/pr-checklist-refresh.md'], load: 'always' }]`
+  - `second-call`: `[{ step: 'claims', sources: ['skills/_shared/issue-claims.md'], load: 'on-demand' }, { step: 'merge', sources: ['skills/_shared/pr-first-merge.md', 'skills/_shared/pr-checklist-refresh.md'], load: 'always' }]`
   - `review-lens`: `[{ step: 'review-dispatch', sources: ['skills/_shared/subagent-dispatch-core.md', 'skills/_shared/run-dir-resolution.md'], load: 'always' }]`
 - Produces: `phaseBundles(phase: string, pluginRoot: string) -> [{ step, load, sources: [{ label, file }] }] | null` (null for an unknown phase; `file` is absolute under `pluginRoot`).
 - Produces: `composePhase({ runDir, phase, pluginRoot, repoRoot }, deps) -> { phase, bundles: [{ step, load, path, bytes, sources, unresolved }] }` — composes every bundle with the existing `composeContext`, reading **all** sources of all bundles before writing any (a failing source leaves no bundle written).
@@ -75,11 +75,11 @@
 - [ ] **Step 1: Pin grep** — `git grep -n -F 'compose both before either dispatch' -- tests plugin`, `git grep -n -F -- '--step claims' -- tests plugin`, `git grep -n -F -- '--step review-dispatch' -- tests plugin`, `git grep -n -F 'Cite the run' -- tests plugin`; list every hit in the task report.
 - [ ] **Step 2: Write failing assertions** in `tests/dispatch-prompt-bundle-citations.test.js`:
   - `task-prompt.md` contains the literal line `` `node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase first-call` `` and `` `node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase second-call` ``, and no longer contains `--step claims` or `--step merge`.
-  - The second-call template text instructs: `Read {minted-run-dir}/context/claims.md and {minted-run-dir}/context/merge.md once each, whole, with one Read call per file, before your first step` (exact phrase pinned), plus the clause `never re-read them or open their source files piecewise (sed, grep, cat)`.
+  - The second-call template text instructs: `Read {minted-run-dir}/context/merge.md once, whole, with one Read call, before your first step` (exact phrase pinned), plus the clause `never re-read it or open its source files piecewise (sed, grep, cat)`; `claims.md` stays an on-demand citation with its fallback in both templates.
   - `step3-lens-dispatch.md` composes with `--phase review-lens`.
   - `subagent-output-contract.md`'s bullet names `bin/lib/compose-context/phases.js` as the one home of which bundles a phase gets, and states that a bundle registered `load: 'always'` is read once, whole, before the child's first step.
 - [ ] **Step 3: Run — expect FAIL.**
-- [ ] **Step 4: Edit the prose.** Context pack item 5 lists `claims` as on-demand for the first call (cited with its fallback, as today) and both bundles as read-once-up-front for the second call. The read-once instruction belongs only in the second-call template (dispatcher-voice rule: it is addressed to the dispatched agent and inlined there). Keep every existing `{minted-run-dir}/context/claims.md` / `merge.md` citation unchanged — the bundle step names are unchanged by design. Update each pinned test the Step 1 grep found.
+- [ ] **Step 4: Edit the prose.** Context pack item 5 lists `claims` as on-demand in both calls (cited with its fallback, as today) and `merge` as read-once-up-front for the second call. The read-once instruction belongs only in the second-call template (dispatcher-voice rule: it is addressed to the dispatched agent and inlined there). Keep every existing `{minted-run-dir}/context/claims.md` / `merge.md` citation unchanged — the bundle step names are unchanged by design. Update each pinned test the Step 1 grep found.
 - [ ] **Step 5: Run** `node --test tests/dispatch-prompt-bundle-citations.test.js` plus each pinned test file — expect PASS; `wc -c` each edited file stays under 52,500.
 - [ ] **Step 6: Commit** — `Compose dispatch and lens bundles by phase — each always-needed bundle is read once, whole`.
 
