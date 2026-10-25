@@ -30,7 +30,7 @@
 // `## /review` (the line step3-tiebreak.md's step 3 told the caller to log) and
 // adds `logged` to the JSON: false, with one stderr line, when the append threw,
 // which never changes the exit code. Without --run the output is unchanged.
-// Exit 0 ok; 2 malformed invocation or unreadable/invalid input (check-coverage:
+// Exit 0 ok; 2 malformed invocation (a blank resolve-tiebreak --run included) or unreadable/invalid input (check-coverage:
 // also a run dir that does not exist); 3 run dir unanchored (write-findings,
 // check-coverage, resolve-tiebreak --run), or missing (write-findings,
 // resolve-tiebreak --run).
@@ -188,7 +188,9 @@ function run(argv, overrides = {}) {
     const positional = [];
     for (let i = 0; i < rest.length; i++) {
       if (rest[i] === '--root' || rest[i] === '--run') {
-        if (i + 1 >= rest.length) {
+        // A blank --run (an unset $PIPELINE_RUN_DIR) is a missing one, never a run dir
+        // resolved against cwd -- resolve-policy.js's rule (#1138).
+        if (i + 1 >= rest.length || (rest[i] === '--run' && rest[i + 1].trim() === '')) {
           deps.stderr(`review-coordination.js: ${rest[i]} needs a directory\n` + USAGE);
           return 2;
         }

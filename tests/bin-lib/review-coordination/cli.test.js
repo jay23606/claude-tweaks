@@ -448,6 +448,22 @@ test('resolve-tiebreak --run refuses an unanchored or missing run dir with exit 
   assert.match(err.join(''), /^review-coordination\.js: --run needs a directory\nusage: /);
 });
 
+// An unset $PIPELINE_RUN_DIR expands to `--run ""`: a usage error, never a run dir resolved
+// against cwd (from the main checkout root that would anchor and write decisions.md there) —
+// resolve-policy.js's blank---run rule (#1138).
+test('resolve-tiebreak --run with an empty or whitespace value exits 2 and writes nothing, even from the main checkout root', (t) => {
+  const d = tmpDir(t);
+  const { root, f, replies } = tiebreakInputs(d);
+  const { main } = anchoredRunDir(t);
+  for (const blank of ['', '   ', '\t']) {
+    const { deps, out, err } = tbDeps(main);
+    assert.strictEqual(run(['resolve-tiebreak', f, replies.confirmed, '--root', root, '--run', blank], deps), 2, JSON.stringify(blank));
+    assert.strictEqual(out.join(''), '', JSON.stringify(blank));
+    assert.match(err.join(''), /^review-coordination\.js: --run needs a directory\nusage: /, JSON.stringify(blank));
+  }
+  assert.ok(!fs.existsSync(path.join(main, 'decisions.md')));
+});
+
 test('resolve-tiebreak --run: a failed append prints logged: false and one stderr line, exit 0', (t) => {
   const d = tmpDir(t);
   const { root, finding, f, replies, readFile } = tiebreakInputs(d);
