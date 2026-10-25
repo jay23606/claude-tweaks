@@ -90,11 +90,12 @@ function run(argv, deps = {}) {
   try { repoRoot = d.mainRoot(cwd) || cwd; } catch { repoRoot = cwd; }
   let result;
   try {
-    result = o.phase !== null
-      ? d.composePhase({ runDir, phase: o.phase, pluginRoot: PLUGIN_ROOT, repoRoot }, d)
-      : d.composeContext({
-        runDir, step: o.step, sources: o.sources.map((label) => ({ label, file: path.resolve(cwd, label) })), repoRoot,
-      }, d);
+    if (o.phase !== null) {
+      result = d.composePhase({ runDir, phase: o.phase, pluginRoot: PLUGIN_ROOT, repoRoot }, d);
+    } else {
+      const sources = o.sources.map((label) => ({ label, file: path.resolve(cwd, label) }));
+      result = d.composeContext({ runDir, step: o.step, sources, repoRoot }, d);
+    }
   } catch (err) {
     if (err && err.name === 'MarkerError') {
       d.stderr(`compose-context.js: ${err.file}:${err.line}: ${err.message}\n`);
