@@ -343,16 +343,22 @@ function firstLocation(text) {
 // A staged finding file's leading header block: the maximal run of `Key: value` lines from the top. The run
 // counts only when it ends at a blank line or at end of file; a run that ends at prose is no header block.
 // { title, body }: title is the block's `Title:` value (null when absent or empty); body is the text after
-// the block, trimmed, or the whole text, trimmed, when there is no block (#4136).
+// the block, trimmed, or the whole text, trimmed, when there is no block (#4136). Header lines whose key
+// is not a bookkeeping or claim key (`Invariant:`, `Lenses:`, `Target:` ...) carry content: they lead the
+// body, in order, then a blank line, then the rest.
 const STAGED_HEADER_LINE_RE = /^[A-Za-z][A-Za-z-]*:[ \t]/;
+const STAGED_BOOKKEEPING_KEYS = new Set(['title', 'kind', 'finding', 'staged-at', 'ledger', 'severity', 'defers', 'defer-reason']);
 function stagedHeaderOf(text) {
   const lines = text.split('\n');
   let end = 0;
   while (end < lines.length && STAGED_HEADER_LINE_RE.test(lines[end])) end += 1;
   if (end === 0 || (end < lines.length && lines[end].trim() !== '')) return { title: null, body: text.trim() };
-  const titleLine = lines.slice(0, end).find((l) => l.startsWith('Title:'));
+  const header = lines.slice(0, end);
+  const titleLine = header.find((l) => l.startsWith('Title:'));
   const title = titleLine ? titleLine.slice('Title:'.length).trim() : '';
-  return { title: title || null, body: lines.slice(end + 1).join('\n').trim() };
+  const kept = header.filter((l) => !STAGED_BOOKKEEPING_KEYS.has(l.slice(0, l.indexOf(':')).toLowerCase()));
+  const rest = lines.slice(end + 1).join('\n').trim();
+  return { title: title || null, body: [kept.join('\n'), rest].filter(Boolean).join('\n\n') };
 }
 
 // A staged finding file's claim and location come from the same place. A claim taken from the digest

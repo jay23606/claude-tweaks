@@ -197,6 +197,14 @@ test('a staged title over 256 characters is cut on a word boundary', () => {
   assert.ok(out.title.endsWith('word…'), out.title);
 });
 
+test('a staged title whose 256-character cut lands exactly after a complete word keeps that word', () => {
+  // 'w00 w01 … w99': every word is 3 characters plus a space, so index 255 (max-1) is the space after w63.
+  const title = Array.from({ length: 100 }, (_, i) => `w${String(i).padStart(2, '0')}`).join(' ');
+  const out = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', staged: { title, body: '', severity: null } });
+  assert.ok(out.title.length <= 256, `title is ${out.title.length} characters`);
+  assert.ok(out.title.endsWith(' w63…'), out.title.slice(-20));
+});
+
 test('a staged title with no findings entry fences the staged claim, and the claim is not reported missing', () => {
   const out = composeFindingProposal({ item: item(), finding: null, runId: 'r', staged: { title: 'T claim', body: 'B', severity: null } });
   assert.strictEqual(out.claimMissing, false);

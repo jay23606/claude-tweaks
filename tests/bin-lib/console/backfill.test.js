@@ -690,12 +690,21 @@ test('R17b: the Finding: line still wins, the joined text is the fallback, and t
   const withFinding = stagedClaim('review-unconfirmed-4.md', `Title: x\nKind: y\n\nFinding: the guard reads a stale value\nTarget: plugin/x.js:3\n`);
   assert.strictEqual(withFinding.claimText, 'the guard reads a stale value');
   assert.deepStrictEqual(withFinding.stagedFinding, { title: 'x', body: 'Finding: the guard reads a stale value\nTarget: plugin/x.js:3', severity: null });
-  assert.strictEqual(stagedClaim('review-unconfirmed-8.md', 'Finding: the guard reads a stale value\nTarget: plugin/y.js:9\n').stagedFinding.body, '');
+  // Finding: is claim/bookkeeping and stays out of the body; Target: is content and is kept.
+  assert.strictEqual(stagedClaim('review-unconfirmed-8.md', 'Finding: the guard reads a stale value\nTarget: plugin/y.js:9\n').stagedFinding.body, 'Target: plugin/y.js:9');
   // digestTextOf yields nothing for a file of headings only: the joined text path is unchanged (here, empty -> claim-empty).
   const headingsOnly = stagedClaim('review-unconfirmed-5.md', '# plugin/x.js:3\n# more\n');
   assert.strictEqual(headingsOnly.kind, 'no-claim');
   assert.strictEqual(headingsOnly.noClaimReason, 'claim-empty');
   assert.strictEqual(stagedClaim('review-unconfirmed-1.md', R17B_TITLE).itemId, backfillItemId({ runId: '2026-10-24T090000-record-1', sourceKey: 'staged/review-unconfirmed-1.md', findingKey: '' }));
+});
+
+test('#4136: header lines that carry content stay in the staged body, bookkeeping keys do not', () => {
+  const kept = stagedClaim('review-unconfirmed-9.md', 'Target: plugin/x.js:3\nInvariant: the guard runs before the read\nFinding: the guard reads a stale value\nStaged-at: abc1234\n\nProse body.\n');
+  assert.strictEqual(kept.stagedFinding.body, 'Target: plugin/x.js:3\nInvariant: the guard runs before the read\n\nProse body.');
+  const lenses = stagedClaim('review-unconfirmed-10.md', 'Title: x\nLenses: 3c — direct read confirms the code\nSEVERITY: low\nFinding: the guard reads a stale value\nTarget: plugin/x.js:3\n\nProse body.\n');
+  assert.strictEqual(lenses.stagedFinding.title, 'x');
+  assert.strictEqual(lenses.stagedFinding.body, 'Lenses: 3c — direct read confirms the code\nTarget: plugin/x.js:3\n\nProse body.');
 });
 
 test('minor 12: a staged finding\'s claim and location come from the same table row', () => {

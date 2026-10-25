@@ -38,8 +38,9 @@ const oneLine = (s) => defuse(squash(s));
 function capWords(text, max) {
   if (text.length <= max) return text;
   let cut = text.slice(0, max - 1);
+  // Index max-1 is the first dropped character: when it is a space the slice already ends on a whole word.
   const space = cut.lastIndexOf(' ');
-  if (space > 0) cut = cut.slice(0, space);
+  if (text[max - 1] !== ' ' && space > 0) cut = cut.slice(0, space);
   return `${cut.trimEnd()}…`;
 }
 
@@ -58,8 +59,9 @@ function citation(path, line) {
 // { item, finding, runId, verdict?, staged? } -> { fingerprint, title, proposal, claimMissing }
 // `item` is a console item carrying `tiebreak`; `finding` is the review-findings.json entry whose
 // `id` equals item.tiebreak.id, or null. With no entry the claim is `tiebreak:{id}` and
-// `claimMissing` is true: the record says the claim text was lost rather than read as a finding,
-// and the caller reports the degrade (bin/console-filings.js). The id hashes the line, so such a
+// `claimMissing` is true — except when a non-empty `staged.title` supplies the claim text, where
+// `claimMissing` is false and the staged title is the fenced claim. Otherwise the record says the
+// claim text was lost rather than read as a finding, and the caller reports the degrade (bin/console-filings.js). The id hashes the line, so such a
 // record can twin a later run's filing of the same finding — accepted: the artifact is written
 // before any tiebreak dispatch (review/step3-tiebreak.md), so only a hand-removed artifact gets here.
 // `verdict` (#3950, the backlog backfill) is `{ kind: 'confirmed', evidence: { path, line, quote },
