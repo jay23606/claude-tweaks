@@ -79,9 +79,9 @@ touching shared state runs one member at a time.
 4. **Confirmation gate.** Read `close-out-confirmation.md` in this skill's directory and follow it
    (AC4). Declining stops here — the PR stays `pending-review` exactly as it was, and nothing below
    runs for this candidate.
-5. **On confirmation — merge.** When `close-out-update.md` ran, first re-read
+5. **On confirmation — merge.** When `close-out-update.md` handed off a `{verified-sha}`, first re-read
    `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than
-   its hand-off's `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`
+   that `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`
    as Step 3's expected head, so its `--match-head-commit` merges only that head.
    Run `_shared/pr-first-merge.md`'s Step 3 (Attempt auto-merge)
    directly against this PR — the second call site reaching Step 3 from outside a build or dispatch

@@ -19,15 +19,21 @@ One plain command per Bash call. Stops after step 2 tear down first (step 7).
    Declining touches nothing — the PR stays exactly as it was.
    `DIRTY` then stops the candidate (`stopped: mergeStateStatus DIRTY — update declined`);
    `BEHIND` was never a stop, so a declined update continues to `close-out.md` step 3 unchanged.
-2. **Worktree.** When `{wt}` already exists, it is a prior run's failed update: add nothing, run only the fetch check below, and resume at step 4.
-   Otherwise `BEHIND` first runs `gh pr update-branch {number}` (a merge — never the rebase variant);
-   a failure stops the candidate (`stopped: update failed — update-branch rejected`) with the PR untouched.
-   The call can return before GitHub's merge has landed, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads — for a sha that differs from the pre-update one;
-   that post-update sha is the expected head below (none appearing: `stopped: update failed — head moved`, with the PR as GitHub left it).
-   In every case `git fetch origin {head}` and require `git rev-parse origin/{head}` to equal the expected head (the values line's `headRefOid`; the post-update one on `BEHIND`) —
-   a ref missing or stale locally is fetched once more, and a mismatch after that stops (`stopped: update failed — head moved`).
-   Then `git worktree add --detach {wt} origin/{head}` — detached because the run's own worktree may still hold `{head}` checked out,
-   and never the main checkout.
+2. **Worktree.** To pin, `git fetch origin {head}` and require `git rev-parse origin/{head}` to equal the expected head — the values line's current `headRefOid`
+   on a resume and before any update, the post-update sha after `BEHIND`'s update below; a ref missing or stale locally is fetched once more,
+   and a mismatch after that stops (`stopped: update failed — head moved`).
+   **Resume.** When `{wt}` already exists, it is a prior run's failed update: add nothing, pin, then compare it with `origin/{head}`.
+   `git -C {wt} merge-base --is-ancestor origin/{head} HEAD` exits 0 (the PR head plus any unpushed resolution or fix): resume at step 4.
+   Else `git -C {wt} merge-base --is-ancestor HEAD origin/{head}` exits 0 (the PR moved ahead, e.g. a late-landing update): `git -C {wt} checkout --detach origin/{head}`, then step 4.
+   Neither (diverged): stop (`stopped: update failed — head moved`), keep `{wt}`, and tell the human to merge `origin/{head}` into it or remove it.
+   Before step 4, recover `{conflicted-files}`: `git -C {wt} log --merges -1 --format=%H origin/{head}..HEAD` names the resolution `{merge}` —
+   `git -C {wt} merge-tree --write-tree --name-only --no-messages {merge}^1 {merge}^2` lists its conflicted paths after the tree line (exit 1: it conflicted; exit 0: `none`);
+   no merge commit is a `BEHIND` update: `none`.
+   **Fresh.** Otherwise pin, then `git worktree add --detach {wt} origin/{head}` before anything touches the PR — detached because the run's own worktree
+   may still hold `{head}` checked out, and never the main checkout. `BEHIND` then runs `gh pr update-branch {number}` (a merge — never the rebase variant);
+   a failure stops the candidate (`stopped: update failed — update-branch rejected`).
+   The call can return before GitHub's merge has landed, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads — for a sha that differs from the pre-update one
+   (none appearing: `stopped: update failed — head moved`); pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`.
 3. **Merge (`DIRTY` only).** `git -C {wt} fetch origin {base}`, then `git -C {wt} merge --no-edit origin/{base}`.
    On a conflict, record `{conflicted-files}` with `git -C {wt} diff --name-only --diff-filter=U` and resolve per
    `_shared/git-discipline.md`'s Merge conflict resolution — both sides read, both intents kept. The human is present, so that section's
@@ -49,7 +55,8 @@ One plain command per Bash call. Stops after step 2 tear down first (step 7).
 6. **Re-read CI on the new HEAD.** Confirm `gh pr view {number} --json headRefOid` equals `{verified-sha}` — one re-read if it lags; a sha that still differs stops the candidate
    (`stopped: update failed — head moved`), since one sha is never verified and another merged.
    A watch started straight after a push can find no checks and exit at once, so first repeat `_shared/pr-first-merge.md` Step 2.5's head-run read
-   (`gh run list --commit {verified-sha}`) until it lists a run — up to 3 reads, else `stopped: CI pending after update`.
+   (`gh run list --commit {verified-sha}`) until it lists a run — up to 3 reads; still empty adds nothing (Step 2.5's empty-runs rule, e.g. no or path-filtered workflows),
+   so continue to the watch and step 1's read, which decide.
    Then wait with `gh pr checks {number} --watch` as its own Bash call with an explicit long timeout (the tool's maximum) — the one place close-out waits,
    since the update itself created the pending state; a timeout is `stopped: CI pending after update`.
    Then re-run `close-out.md` step 1's read: only `passing` continues (otherwise `stopped: CI {status} after update`),
@@ -58,11 +65,12 @@ One plain command per Bash call. Stops after step 2 tear down first (step 7).
    each stops the candidate (`stopped: mergeStateStatus {status} after update`). `UNKNOWN` is GitHub's lazily computed mergeability:
    re-read it — up to 3 reads, a few seconds apart, each its own plain command — and stop only if still `UNKNOWN` (`stopped: mergeStateStatus UNKNOWN after update`).
    Any other status continues. There is no second offer in the same run; the human re-runs close-out.
-7. **Tear down.** Runs after step 6, after step 3's brings-in-nothing read, and first on every stop after step 2 — except a failed step 4, which keeps `{wt}`.
+7. **Tear down.** Runs after step 6, after step 3's brings-in-nothing read, and first on every stop after step 2 — except a failed step 4
+   and any stop on a resume or on `BEHIND` before step 4 passes, each of which keeps `{wt}` as the resume marker (a pre-update `{wt}` is an ancestor of `origin/{head}`, so the check below would remove it).
    From `{main-checkout}` (a standalone `cd {main-checkout}` first if the shell is elsewhere), `git fetch origin {head}`, then `git -C {wt} merge-base --is-ancestor HEAD origin/{head}`;
    on exit 0, `git worktree remove {wt}` (`ExitWorktree` does not operate on `.worktrees/`, `_shared/scratch-worktree.md` §6).
-   Non-zero: list `git -C {wt} log origin/{head}..HEAD --oneline` and remove nothing — the next run resumes `{wt}` (step 2).
-8. **Hand off.** Pass the confirmation gate (`close-out-confirmation.md`) `{update-method}` (`merge` on `DIRTY`, `gh pr update-branch` on `BEHIND`, `resumed update` on a resume),
-   `{conflicted-files}` (comma-joined paths, `none`, or `unrecorded` on a resume), `{resolution-commit}` (short `{verified-sha}`, the PR's new HEAD —
+   Non-zero: list `git -C {wt} log origin/{head}..HEAD --oneline` and remove nothing — the next run's step 2 resumes `{wt}`, or stops on it once the PR head has diverged.
+8. **Hand off.** Pass the confirmation gate (`close-out-confirmation.md`) `{update-method}` (`merge` on `DIRTY`, `gh pr update-branch` on `BEHIND`; on a resume, `merge` when step 2 found a `{merge}`, else `gh pr update-branch`),
+   `{conflicted-files}` (comma-joined paths or `none`; on a resume, as step 2 recovered them), `{resolution-commit}` (short `{verified-sha}`, the PR's new HEAD —
    the conflict-resolution merge on `DIRTY`, GitHub's update merge on `BEHIND`), `{verified-sha}` itself (`close-out.md` step 5 merges only that head),
    and step 6's latest CI and mergeability reads. Continue at `close-out.md` step 3.

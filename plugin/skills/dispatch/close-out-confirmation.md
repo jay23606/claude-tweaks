@@ -15,7 +15,7 @@ session left to resume at all.
 - Option 1 — `label`: `"Merge"` (append `" (Recommended)"` per the Recommended-derivation rule below), `description`: `"Run the merge now — _shared/pr-first-merge.md's Step 3, arms or merges immediately depending on repo auto-merge settings"`
 - Option 2 — `label`: `"Skip"` (append `" (Recommended)"` instead when the rule below picks this option), `description`: `"Leave this PR pending-review; do nothing"`
 
-`{update-clause}`: when `close-out-update.md` ran for this candidate, `" Updated from {base} this session via
+`{update-clause}`: when `close-out-update.md` ran for this candidate, `" Updated from {base} by close-out via
 {update-method}: conflicted files {conflicted-files}, resolution commit {resolution-commit} — review it before
 merging."`; empty (omitted) when no update ran, so the question reads as before.
 

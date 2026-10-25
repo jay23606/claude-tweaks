@@ -70,10 +70,18 @@ const UPDATE_PINS = [
   ['approval-warning', 1, (s) => /dismiss existing approvals[\s\S]{0,120}`armed`, not `merged`/.test(s)],
   ['decline-untouched', 1, (s) => s.includes('Declining touches nothing — the PR stays exactly as it was')],
   ['behind-continues', 1, (s) => s.includes('`BEHIND` was never a stop, so a declined update continues to `close-out.md` step 3')],
-  ['resume', 2, (s) => /When `\{wt\}` already exists, it is a prior run's failed update[\s\S]{0,120}resume at step 4/.test(s)],
+  ['resume', 2, (s) => s.includes('When `{wt}` already exists, it is a prior run\'s failed update: add nothing, pin')
+    && /`git -C \{wt\} merge-base --is-ancestor origin\/\{head\} HEAD` exits 0[^\n]*: resume at step 4/.test(s)],
+  ['resume-fast-forward', 2, (s) => /`git -C \{wt\} merge-base --is-ancestor HEAD origin\/\{head\}` exits 0[^\n]*: `git -C \{wt\} checkout --detach origin\/\{head\}`, then step 4/.test(s)],
+  ['resume-diverged', 2, (s) => s.includes('Neither (diverged): stop (`stopped: update failed — head moved`), keep `{wt}`, and tell the human to merge `origin/{head}` into it or remove it')],
+  ['resume-conflicted-files', 2, (s) => /recover `\{conflicted-files\}`: `git -C \{wt\} log --merges -1 --format=%H origin\/\{head\}\.\.HEAD`[\s\S]{0,80}`git -C \{wt\} merge-tree --write-tree --name-only --no-messages \{merge\}\^1 \{merge\}\^2` lists its conflicted paths/.test(s)
+    && s.includes('no merge commit is a `BEHIND` update: `none`')],
+  ['resume-expected-head', 2, (s) => /— the values line's current `headRefOid`\s+on a resume/.test(s)],
   ['head-pin', 2, (s) => s.includes('`git fetch origin {head}` and require `git rev-parse origin/{head}` to equal the expected head')
     && s.includes('a mismatch after that stops (`stopped: update failed — head moved`)')],
   ['detached', 2, (s) => s.includes('`git worktree add --detach {wt} origin/{head}`')],
+  ['worktree-before-update', 2, (s) => before(s, '`git worktree add --detach {wt} origin/{head}` before anything touches the PR', '`gh pr update-branch {number}`')],
+  ['behind-post-update-checkout', 2, (s) => s.includes('pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`')],
   ['nothing-new-stops', 3, (s) => /brings in nothing[\s\S]{0,200}stop-set status stops the candidate \(`stopped: mergeStateStatus \{status\} after update`\)/.test(s)],
   ['cd-into-wt', 4, (s) => s.includes('a standalone `cd {wt}` (never chained) comes first')],
   ['lockfile', 4, (s) => /lockfile[\s\S]{0,120}`_shared\/worktree-adopt-freshness\.md` step 4/.test(s)],
@@ -85,15 +93,19 @@ const UPDATE_PINS = [
     && [...s.matchAll(/force[- ]push/gi)].every((m) => s.slice(Math.max(0, m.index - 30), m.index).includes('never'))],
   ['head-before-ci', 6, (s) => before(s, 'Confirm `gh pr view {number} --json headRefOid` equals `{verified-sha}`', '--watch`')],
   ['head-run-first', 6, (s) => s.includes('Step 2.5\'s head-run read') && before(s, '`gh run list --commit {verified-sha}`', '--watch`')],
+  ['empty-runs-continue', 6, (s) => /up to 3 reads; still empty adds nothing \(Step 2\.5's empty-runs rule[^)]*\),\s+so continue to the watch and step 1's read/.test(s)],
   ['watch-timeout', 6, (s) => /`gh pr checks \{number\} --watch` as its own Bash call with an explicit long timeout[\s\S]{0,160}a timeout is `stopped: CI pending after update`/.test(s)],
   ['ci-step1', 6, (s) => s.includes('re-run `close-out.md` step 1\'s read: only `passing` continues')],
   ['head-after-ci', 6, (s) => before(s, '--watch`', 're-check `headRefOid` against `{verified-sha}`')],
   ['mergeability-reread', 6, (s) => s.includes('re-run step 2\'s mergeability read')],
   ['stop-set', 6, (s) => /post-update stop set is `DIRTY`, `mergeable: CONFLICTING`, `BEHIND`[^.]{0,60}, a string result, or `null`/.test(s)],
   ['unknown-bounded', 6, (s) => /`UNKNOWN`[\s\S]{0,120}up to 3 reads[\s\S]{0,120}stop only if still `UNKNOWN` \(`stopped: mergeStateStatus UNKNOWN after update`\)/.test(s)],
-  ['teardown-on-stop', 7, (s) => s.includes('first on every stop after step 2 — except a failed step 4, which keeps `{wt}`')],
+  ['teardown-on-stop', 7, (s) => /first on every stop after step 2 — except a failed step 4\s+and any stop on a resume or on `BEHIND` before step 4 passes, each of which keeps `\{wt\}`/.test(s)],
+  ['teardown-next-run', 7, (s) => s.includes('the next run\'s step 2 resumes `{wt}`, or stops on it once the PR head has diverged')],
   ['teardown', 7, (s) => s.includes('`git worktree remove {wt}`')],
   ['handoff-sha', 8, (s) => s.includes('`{verified-sha}` itself')],
+  ['handoff-resume-values', 8, (s) => s.includes('on a resume, `merge` when step 2 found a `{merge}`, else `gh pr update-branch`')
+    && s.includes('on a resume, as step 2 recovered them') && !s.includes('unrecorded')],
 ];
 
 function assertUpdateSteps(update) {
@@ -169,9 +181,15 @@ const UPDATE_MUTATIONS = [
   ['approval-warning', ' —\n   and that the new head may dismiss existing approvals on a repo that dismisses stale reviews, so the merge may end `armed`, not `merged`.', '.'],
   ['decline-untouched', 'Declining touches nothing — the PR stays exactly as it was.\n', ''],
   ['behind-continues', '`BEHIND` was never a stop, so a declined update continues to `close-out.md` step 3 unchanged.', '`BEHIND` stops too.'],
-  ['resume', 'When `{wt}` already exists, it is a prior run\'s failed update: add nothing, run only the fetch check below, and resume at step 4.\n   Otherwise ', ''],
+  ['resume', 'exits 0 (the PR head plus any unpushed resolution or fix): resume at step 4.', 'exits 0: add a fresh worktree.'],
+  ['resume-fast-forward', ': `git -C {wt} checkout --detach origin/{head}`, then step 4.', ': resume at step 4 as it is.'],
+  ['resume-diverged', 'Neither (diverged): stop (`stopped: update failed — head moved`), keep `{wt}`, and tell the human to merge `origin/{head}` into it or remove it.', 'Neither (diverged): resume at step 4.'],
+  ['resume-conflicted-files', '`git -C {wt} merge-tree --write-tree --name-only --no-messages {merge}^1 {merge}^2` lists its conflicted paths', 'they are `unrecorded`'],
+  ['resume-expected-head', 'the values line\'s current `headRefOid`\n   on a resume and before any update', 'the values line\'s `headRefOid`'],
   ['head-pin', ' and require `git rev-parse origin/{head}` to equal the expected head', ''],
   ['detached', '`git worktree add --detach {wt} origin/{head}`', '`git worktree add {wt} {head}`'],
+  ['worktree-before-update', ' before anything touches the PR', ' after the update'],
+  ['behind-post-update-checkout', '; pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`.', '.'],
   ['nothing-new-stops', 'a stop-set status stops the candidate (`stopped: mergeStateStatus {status} after update`); otherwise hand', 'then hand'],
   ['cd-into-wt', 'so a standalone `cd {wt}` (never chained) comes first.', 'so run it there.'],
   ['lockfile', 'When the project has a lockfile, run its install command there (the mapping is `_shared/worktree-adopt-freshness.md` step 4) — after the merge, which may change it.\n', ''],
@@ -180,16 +198,19 @@ const UPDATE_MUTATIONS = [
   ['failed-verify-keeps-wt', 'keep `{wt}`, and report it', 'and report `{wt}`'],
   ['plain-push', '`git -C {wt} push origin HEAD:{head}` — plain.', 'then force-push the branch.'],
   ['head-before-ci', 'Confirm `gh pr view {number} --json headRefOid` equals `{verified-sha}` — one re-read if it lags; a sha that still differs stops the candidate\n   (`stopped: update failed — head moved`), since one sha is never verified and another merged.\n   ', ''],
-  ['head-run-first', 'so first repeat `_shared/pr-first-merge.md` Step 2.5\'s head-run read\n   (`gh run list --commit {verified-sha}`) until it lists a run — up to 3 reads, else `stopped: CI pending after update`.', 'so wait.'],
+  ['head-run-first', 'so first repeat `_shared/pr-first-merge.md` Step 2.5\'s head-run read\n   (`gh run list --commit {verified-sha}`) until it lists a run — ', 'so wait — '],
+  ['empty-runs-continue', '; still empty adds nothing (Step 2.5\'s empty-runs rule, e.g. no or path-filtered workflows),\n   so continue to the watch and step 1\'s read, which decide.', ', else `stopped: CI pending after update`.'],
   ['watch-timeout', ' as its own Bash call with an explicit long timeout (the tool\'s maximum)', ''],
   ['ci-step1', 're-run `close-out.md` step 1\'s read: only `passing` continues', 're-read CI'],
   ['head-after-ci', ',\n   and re-check `headRefOid` against `{verified-sha}` as above, since a push may have landed during the wait.', '.'],
   ['mergeability-reread', '   Last, re-run step 2\'s mergeability read. ', '   '],
   ['stop-set', 'The post-update stop set is `DIRTY`, `mergeable: CONFLICTING`, `BEHIND` (the base moved during the wait), a string result, or `null` —\n   each stops', 'A conflict stops'],
   ['unknown-bounded', 're-read it — up to 3 reads, a few seconds apart, each its own plain command — and stop only if still `UNKNOWN`', 'stop on it'],
-  ['teardown-on-stop', ', and first on every stop after step 2 — except a failed step 4, which keeps `{wt}`', ''],
+  ['teardown-on-stop', '\n   and any stop on a resume or on `BEHIND` before step 4 passes, each of which keeps', ', which keeps'],
+  ['teardown-next-run', 'the next run\'s step 2 resumes `{wt}`, or stops on it once the PR head has diverged', 'the next run resumes `{wt}`'],
   ['teardown', 'on exit 0, `git worktree remove {wt}`', 'on exit 0, leave it'],
   ['handoff-sha', '`{verified-sha}` itself (`close-out.md` step 5 merges only that head),\n   ', ''],
+  ['handoff-resume-values', 'on a resume, as step 2 recovered them', '`unrecorded` on a resume'],
 ];
 
 test('every close-out-update.md pin has exactly one go-red mutation', () => {
@@ -227,8 +248,9 @@ function assertMergeHeadCheck(closeOut) {
   const start = closeOut.indexOf('5. **On confirmation — merge.**');
   assert.ok(start >= 0, 'close-out step 5 found');
   const step5 = closeOut.slice(start, closeOut.indexOf('\n6. ', start));
-  assert.match(step5, /When `close-out-update\.md` ran, first re-read\s+`gh pr view \{number\} --json headRefOid` immediately before Step 3/, 'step 5 re-reads the head before Step 3');
-  assert.match(step5, /any sha other than\s+its hand-off's `\{verified-sha\}` \(`stopped: update failed — head moved`\)/, 'step 5 stops on a moved head');
+  // Keyed on a handed-off sha, not on the update having run: a merge that brought in nothing hands off none.
+  assert.match(step5, /When `close-out-update\.md` handed off a `\{verified-sha\}`, first re-read\s+`gh pr view \{number\} --json headRefOid` immediately before Step 3/, 'step 5 re-reads the head before Step 3');
+  assert.match(step5, /any sha other than\s+that `\{verified-sha\}` \(`stopped: update failed — head moved`\)/, 'step 5 stops on a moved head');
   assert.match(step5, /pass `\{verified-sha\}`\s+as Step 3's expected head/, 'step 5 passes the verified sha as the expected head');
 }
 
@@ -250,9 +272,15 @@ test('AC2.1: close-out step 5 merges only the verified head, via Step 3\'s --mat
 });
 
 test('go-red control: close-out step 5 without the head re-check fails', () => {
-  const from = 'When `close-out-update.md` ran, first re-read\n   `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than\n   its hand-off\'s `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`\n   as Step 3\'s expected head, so its `--match-head-commit` merges only that head.\n   ';
+  const from = 'When `close-out-update.md` handed off a `{verified-sha}`, first re-read\n   `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than\n   that `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`\n   as Step 3\'s expected head, so its `--match-head-commit` merges only that head.\n   ';
   assert.equal(CLOSE_OUT.split(from).length, 2, 'the head re-check occurs exactly once');
   assert.throws(() => assertMergeHeadCheck(CLOSE_OUT.replace(from, '')), /re-reads the head/);
+});
+
+test('go-red control: close-out step 5 keyed on the update having run, not on a handed-off sha, fails', () => {
+  const from = 'When `close-out-update.md` handed off a `{verified-sha}`, first';
+  assert.equal(CLOSE_OUT.split(from).length, 2, 'the trigger clause occurs exactly once');
+  assert.throws(() => assertMergeHeadCheck(CLOSE_OUT.replace(from, 'When `close-out-update.md` ran, first')), /re-reads the head/);
 });
 
 test('go-red control: pr-first-merge Step 3 without the expected-head sentence fails', () => {
@@ -280,7 +308,16 @@ function assertUpdateClause(text) {
   }
   assert.match(def, /close-out-update\.md/, 'values come from close-out-update.md, never re-derived');
   assert.match(def, /empty|omitted/i, 'no update → the clause is empty');
+  // A resumed update ran in an earlier session, so the clause must not claim "this session".
+  assert.match(def, /Updated from \{base\} by close-out via/, 'clause holds for a resumed update too');
+  assert.doesNotMatch(def, /this session/, 'clause never claims the update ran this session');
 }
+
+test('go-red control: an update clause claiming "this session" fails AC3.1', () => {
+  const from = 'Updated from {base} by close-out via';
+  assert.equal(CONFIRM.split(from).length, 2, 'the clause wording occurs exactly once');
+  assert.throws(() => assertUpdateClause(CONFIRM.replace(from, 'Updated from {base} this session via')), /resumed update too/);
+});
 
 test('AC3.1: the confirmation question names that an update ran, the conflicted files, and the resolution commit', () => {
   assertUpdateClause(CONFIRM);
