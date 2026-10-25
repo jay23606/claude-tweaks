@@ -56,7 +56,7 @@ touching shared state runs one member at a time.
    again at close-out time — read `close-out-update.md` in this skill's directory and follow it (an
    offer, then a re-verified merge of the base branch into the PR). `mergeStateStatus: BEHIND`:
    read `close-out-update.md` too (it offers `gh pr update-branch`); declining continues, since
-   BEHIND was never a stop. `mergeStateStatus: BLOCKED` with nothing else wrong is the forge
+   BEHIND was never a stop — except on a resume (the existing `.worktrees/close-out-{number}` or pending marker above), where `close-out-update.md` step 1 offers no skip: declining stops, since that head is unverified. `mergeStateStatus: BLOCKED` with nothing else wrong is the forge
    waiting on required checks/reviews, not a conflict — proceed.
 3. **Convert draft to ready, if needed (AC2).** **Acceptance labeling first** — this check, and
    any Step 1 run it leads to, precedes the Mark-ready call below, keeping
