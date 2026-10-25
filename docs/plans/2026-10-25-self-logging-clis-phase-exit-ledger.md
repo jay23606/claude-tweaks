@@ -2,7 +2,7 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
-| 1 | build/ops | Measure #4026 AC1 (`log-decision.js` calls per pipeline ≤ 10) and AC4 (median tool round trips from timing.json down ≥ 25 % vs baseline 407) over 10 post-merge pipeline runs (reason-not-auto: live-verification — needs 10 real future pipeline runs on the merged plugin; cannot run inside this build) | acknowledged | Auto-acknowledged (unattended ops ack); record proposal staged as `staged/ledger-record-1.md` — landing: born-ready (defer-reason: blocked-external) |
+| 1 | build/ops | Measure #4026 AC1 (`log-decision.js` calls per pipeline ≤ 10) and AC4 (median tool round trips from timing.json down ≥ 25 % vs baseline 407) over 10 post-merge pipeline runs (reason-not-auto: live-verification — needs 10 real future pipeline runs on the merged plugin; cannot run inside this build) | acknowledged | Auto-acknowledged (unattended ops ack); filed as #4346 at the Review Console — landing: born-ready (defer-reason: blocked-external) |
 | 2 | build | SDD T1: `entryProblem` rejects unknown element keys and multi-line step/lever/section — stricter than the single-entry flags; later batch writers must use `ENTRY_KEYS` | deferred | — |
 | 3 | build | SDD T1: `appendEntries` with items `[]` is a silent no-op (`created:false`) | deferred | — |
 | 4 | build | SDD T2: AC4.1/throwing-resolver tests weakened to `doesNotMatch AUTO` — SKIP existence covered elsewhere | deferred | — |
@@ -14,7 +14,7 @@
 | 10 | build | SDD T4: `auto-decision-log.md` Manifesto example lacks the `Reversibility: n/a.` tail | deferred | — |
 | 11 | build | SDD T5: pr-checks `logged:false` also on green/red (no-log states) — prose restricts fallback correctly | deferred | — |
 | 12 | build | SDD T6: verify-run-bookends SKIP text collapses whitespace (`/\s+/` → space) while `log-decision --text-file` only trims trailing | deferred | — |
-| 13 | build | SDD T7: `docs/journeys/clear-an-archive-refusal-for-an-untiebroken-finding-3945.md:59` still says `log-decision.js` failed twice (sibling 3947 journey updated) | deferred | — |
+| 13 | build | SDD T7: `docs/journeys/clear-an-archive-refusal-for-an-untiebroken-finding-3945.md:59` still says `log-decision.js` failed twice (sibling 3947 journey updated) | fixed | Journey corrected by the staged `wrap-up-journey-4.patch` applied at the Review Console |
 | 14 | build | SDD T7: tiebreak parity tests hardcode the old prose argv rather than reading prose | deferred | — |
 | 15 | build | SDD T8: `multispec-review-console.md` step 0 report list omits unattributable (pre-existing) | deferred | — |
 | 16 | build | SDD T8: multi-spec teardown logs step label `Cleanup item 2` though it is step 0 | deferred | — |
@@ -38,7 +38,7 @@
 | 34 | build | SDD final review (minor): re-running `phase-exit.js` (the two prose-mandated re-runs: after opening the PR, after a manual `record-worktree`) writes the dirty-tree and refused-push lines a second time — consider a `--rerun` flag or dedupe against existing lines | deferred | — |
 | 35 | build | SDD final review (minor): entries batched for `log-decision.js --entries` are lost if the session dies before phase end; no resume guidance tells the next session to flush the pending entries file | deferred | — |
 | 36 | build | SDD final review (minor): phase-exit's `resolveIntegrationBranch` spawns `resolve-policy.js` though `lib/policy.js` `readIntegrationBranch` already exists | deferred | — |
-| 37 | build | SDD fix wave (concern): the Leave-open mergeability re-check (`wrap-up/execution-and-verification.md`) names `mergeState.exit` null but not `mergeState` itself null, the shape when the wrap-up push failed | deferred | — |
+| 37 | build | SDD fix wave (concern): the Leave-open mergeability re-check (`wrap-up/execution-and-verification.md`) names `mergeState.exit` null but not `mergeState` itself null, the shape when the wrap-up push failed | fixed | Journey corrected by the staged `wrap-up-journey-3.patch` applied at the Review Console |
 | 38 | build | SDD fix wave (concern): `GIT_PUSH_TIMEOUT_MS` is env-only (`CLAUDE_TWEAKS_GIT_PUSH_TIMEOUT_MS`); an additive `git-push-timeout-ms` policy key would move the pinned `POLICY_KEYS` count | deferred | — |
 | 39 | build | SDD fix wave (concern): `_shared/git-discipline.md`'s envelope routing does not name phase-exit's wd-push-mismatch refusal by name (it falls under the generic refused-push route; the Review Console surfaces the event) | deferred | — |
 | 40 | build | SDD follow-up (pre-existing): `pr-check-gate.md`'s pending caveat says HEAD not yet pushed when an empty rollup reads pending with no names — file via `/claude-tweaks:capture` | fixed | `pr-checks.js` says `no check reported yet` for a pending state with no names (`HEAD not yet pushed` stays for stale); prose, pinned text and a new empty-rollup case moved together — `c0d74f278` |
@@ -51,8 +51,8 @@
 | 47 | review/3f | The origin/HEAD fallback test answered `origin/main`, equal to the fallback, so it passed with origin/HEAD ignored (3f×2, mutation-shown; direct-verified by reading the fake) | fixed | Fake answers `origin/trunk`: a `trunk` branch is refused and a `main` branch pushes (red with `return 'main'`) |
 | 48 | review/3f | Untested failure branches: per-spec parent FAILED-line read, unreadable short hash, record-pr hook throwing (3f) | fixed | Three tests added; the per-spec test is red with the parent read removed |
 | 49 | review/3e | `prPushReleased` mirrors `checkBookkeepingStampsGate`'s PR-stamp branch with nothing linking the copies (confirmed 3e×2, medium) | fixed | Cross-reference comment at the gate; the shared-predicate extraction is item 50 |
-| 50 | review/3e | Extract the PR-stamp release rule into one predicate both callers use, with a table-driven parity test | deferred | Staged proposal `staged/review-followup-1.md` (Defer-reason: genuinely-larger: it reshapes the block-tier gate) |
-| 51 | review/3a,3e | The self-logging append block is hand-rolled in ten CLIs with four failure-signal shapes (3a×2, 3e×2, all low-to-medium, anchored on different copies; direct-verified) | deferred | Staged proposal `staged/review-followup-2.md` (Defer-reason: genuinely-larger: an envelope contract change across ten CLIs) |
+| 50 | review/3e | Extract the PR-stamp release rule into one predicate both callers use, with a table-driven parity test | deferred | Filed as #4344 (Defer-reason: genuinely-larger: it reshapes the block-tier gate) |
+| 51 | review/3a,3e | The self-logging append block is hand-rolled in ten CLIs with four failure-signal shapes (3a×2, 3e×2, all low-to-medium, anchored on different copies; direct-verified) | deferred | Filed as #4345 (Defer-reason: genuinely-larger: an envelope contract change across ten CLIs) |
 | 52 | review/3d,3e | Two `resolve-policy.js` spawns per phase exit, `resolveIntegrationBranch` reimplemented beside `policy.js`'s reader, one `appendDecision` per line (3d×2, 3e) | accepted | Duplicate — matches item #36; no measured cost (a spawn is ~tens of ms against the model turns the CLI removes) |
 | 53 | review/3a | `build/SKILL.md:309` "carries provenance narrative" (3a, low) | accepted | False positive: the clause is pre-existing text moved by the diff, not added; the diff's net change shortens the paragraph |
 | 54 | review/3b | `resolveIntegrationBranch` falls back to `main` with no `master` probe (3b agent A only, medium) | open | Staged `staged/review-unconfirmed-1.md` |

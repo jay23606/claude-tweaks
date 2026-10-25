@@ -25,7 +25,7 @@ files:
 
 ### 2. A wrong body is refused, never overwritten
 - **URL:** `plugin/bin/pr-checklist.js` exit 4; `_shared/pr-checklist-refresh.md` exit-code list
-- **Action:** When the body's first line names a different run id (a PR reused or edited by another run), the CLI exits 4, prints `run marker mismatch on PR #{n}: body names run {found}, expected {runId} — nothing written`, and the agent logs the refusal as the refresh doc says — it does not fix the body by hand.
+- **Action:** When the body's first line names a different run id (a PR reused or edited by another run), the CLI exits 4, prints `run marker mismatch on PR #{n}: body names run {found}, expected {runId} — nothing written`, and logs the refusal to `decisions.md` itself (`refused on PR #{n} — run marker mismatch (…)`). The agent hand-logs it only on a `could not append` stderr line, and never fixes the body by hand.
 - **Should feel:** Safe — the check runs before the "already checked" shortcut, so a foreign PR that happens to show `- [x] build` is still refused rather than read as done.
 - **Should understand:** Exit 4 is distinct from exit 5 (`gh` failed) because the two need different handling: 4 is an integrity stop, 5 is a best-effort warning the pre-merge refresh catches up on.
 - **Red flags:** Any `gh pr edit` after a mismatch. Exit 4 treated as a transient retry.
