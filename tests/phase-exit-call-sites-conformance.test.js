@@ -9,6 +9,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
+const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } = require('./helpers/strip-comments');
 
 const ROOT = path.join(__dirname, '..');
 const read = (rel) => readText(path.join(ROOT, rel));
@@ -167,11 +168,18 @@ function listedSelfLoggers(text) {
   return [...m[1].matchAll(/`([^`]+)`/g)].map((x) => x[1]);
 }
 
-function assertAppendsThroughLib(name, files) {
-  const src = files.map((f) => read(f)).join('\n');
+// Over comment-stripped source: a file that only names the require or formatEntry( in a comment appends nothing.
+function assertSourcesAppendThroughLib(name, raws) {
+  const src = raws.map((raw) => {
+    const stripped = stripComments(raw);
+    const verdict = stripperVerdict(raw, stripped);
+    assert.equal(verdict, 'ok', `${name}: ${STRIPPER_VERDICT_MESSAGES[verdict]}`);
+    return stripped;
+  }).join('\n');
   assert.match(src, /require\(['"][./]*(?:lib\/)?log-decision\/append['"]\)/, `${name}: its source requires lib/log-decision/append`);
   assert.match(src, /formatEntry\(/, `${name}: its source formats a decisions.md entry`);
 }
+const assertAppendsThroughLib = (name, files) => assertSourcesAppendThroughLib(name, files.map((f) => read(f)));
 
 test('the self-logging CLI list names exactly the pinned CLIs, and each appends through lib/log-decision/append', () => {
   assert.deepEqual(listedSelfLoggers(AUTO_DECISION_LOG), Object.keys(SELF_LOGGING_SOURCES));
@@ -180,6 +188,10 @@ test('the self-logging CLI list names exactly the pinned CLIs, and each appends 
 
 test('go-red control: a listed CLI that does not append, or an unpinned name in the list, makes the pin throw', () => {
   assert.throws(() => assertAppendsThroughLib('resolve-policy.js', ['plugin/bin/resolve-policy.js']), { message: /requires lib\/log-decision\/append/ });
+  assert.throws(
+    () => assertSourcesAppendThroughLib('commented', ["'use strict';\n// const { formatEntry } = require('./lib/log-decision/append'); formatEntry(\n/* require('./lib/log-decision/append') */\n"]),
+    { message: /requires lib\/log-decision\/append/ },
+  );
   const extra = AUTO_DECISION_LOG.replace('`hooks.js delete-ledger`.', '`hooks.js delete-ledger`, `resolve-policy.js`.');
   assert.notEqual(extra, AUTO_DECISION_LOG);
   assert.notDeepEqual(listedSelfLoggers(extra), Object.keys(SELF_LOGGING_SOURCES));

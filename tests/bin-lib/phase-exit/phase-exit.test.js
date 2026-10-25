@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { runPhaseExit } = require('../../../plugin/bin/lib/phase-exit/phase-exit');
+const { execFileSync } = require('child_process');
+const { runPhaseExit, realDeps } = require('../../../plugin/bin/lib/phase-exit/phase-exit');
 const { run } = require('../../../plugin/bin/phase-exit');
 const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state');
 const { GIT_PUSH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../../../plugin/bin/lib/shared-primitives');
@@ -218,10 +219,17 @@ test('branch guard — a refused branch still runs the commit check, so a dirty 
 });
 
 test('branch guard — integration branch falls back to origin/HEAD, then main', () => {
-  const { main, runDir, wt } = fixture();
-  const h = makeDeps(main, wt, {});
-  runPhaseExit(opts(runDir, wt), h.deps);
-  assert.ok(h.calls.git.some((a) => a.slice(2).join(' ') === 'symbolic-ref --quiet --short refs/remotes/origin/HEAD'));
+  // origin/HEAD names `trunk`: a `trunk` branch is refused and a `main` branch is a run branch,
+  // so the answer is read, not assumed.
+  const underOriginHead = (branch) => {
+    const { main, runDir, wt } = fixture();
+    const h = makeDeps(main, wt, { branch });
+    const baseGit = h.deps.git;
+    h.deps.git = (args) => (args[2] === 'symbolic-ref' ? 'origin/trunk\n' : baseGit(args));
+    return runPhaseExit(opts(runDir, wt), h.deps);
+  };
+  assert.equal(underOriginHead('trunk').push.state, 'refused');
+  assert.equal(underOriginHead('main').push.state, 'pushed');
   const { main: m2, runDir: r2, wt: w2 } = fixture();
   const h2 = makeDeps(m2, w2, { branch: 'main' });
   const baseGit = h2.deps.git;
@@ -336,6 +344,19 @@ test('[IL-131] PR precondition — a logged PR-early FAILED line, prExempt, or a
   }
 });
 
+test('[IL-131] PR precondition — a per-spec run dir also reads its parent run dir for the FAILED degrade line', () => {
+  const failedLine = '- AUTO 10:00:00 — /build: PR-early run lifecycle: push of x FAILED (network); run proceeds local-only, no PR opened. Reversibility: n/a.\n';
+  for (const c of [{ parentLine: failedLine, state: 'pushed' }, { parentLine: null, state: 'skipped' }]) {
+    const { main, runDir, wt } = fixture({ worktree: '/wt' });
+    const specDir = path.join(runDir, 'spec-4');
+    fs.mkdirSync(specDir);
+    if (c.parentLine) fs.writeFileSync(path.join(runDir, 'decisions.md'), c.parentLine);
+    const h = makeDeps(main, wt, { prList: [] });
+    const env = runPhaseExit(opts(specDir, wt), h.deps);
+    assert.equal(env.push.state, c.state, JSON.stringify(c));
+  }
+});
+
 test('[IL-131] PR precondition — a first publish without its Step 1 line, or a Step 1 line on a tracked branch, stays skipped', () => {
   const step1Line = `- AUTO 10:00:00 — PR-early run lifecycle: no existing PR for ${BRANCH}; creating. Reversibility: n/a.\n`;
   for (const c of [{ decisions: null, noUpstream: true }, { decisions: step1Line, noUpstream: false }]) {
@@ -363,6 +384,8 @@ test('bookkeeping — an ambiguous, unreadable or unrecorded PR lookup reports f
     { prList: 'not json', detail: /gh pr list failed/ },
     { prList: [{ number: 'x', url: PR_URL }], detail: /unusable/ },
     { recordPr: 'claude-tweaks: failed to record PR for x — run-state.json could not be written\n', detail: /failed to record PR/ },
+    { recordPr: Object.assign(new Error('exit 1'), { stdout: 'claude-tweaks: record-pr requires --run — PR not recorded\n' }), detail: /did not record PR #42: claude-tweaks: record-pr requires --run/ },
+    { recordPr: new Error('spawn EAGAIN'), detail: /did not record PR #42: spawn EAGAIN/ },
   ];
   for (const c of cases) {
     const { main, runDir, wt } = fixture({ worktree: '/wt' });
@@ -630,6 +653,21 @@ test('push breadcrumb — deduped on (action, hash, dir) against a prior push ev
   assert.equal(eventsOf(runDir).length, 1);
 });
 
+test('push breadcrumb — an unreadable short hash writes the event without one, and the dedupe (which needs a hash) lets it repeat', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt);
+  const baseGit = h.deps.git;
+  h.deps.git = (args) => {
+    if (args.slice(2).join(' ') === 'rev-parse --short HEAD') throw new Error('no short hash');
+    return baseGit(args);
+  };
+  runPhaseExit(opts(runDir, wt), h.deps);
+  runPhaseExit(opts(runDir, wt), h.deps);
+  const events = eventsOf(runDir);
+  assert.equal(events.length, 2);
+  for (const e of events) assert.deepEqual({ type: e.type, action: e.action, hash: e.hash }, { type: 'commit', action: 'push', hash: undefined });
+});
+
 test('push breadcrumb — an append failure lands in logFailures and changes nothing else', () => {
   const { main, runDir, wt } = fixture();
   const good = runPhaseExit(opts(runDir, wt), makeDeps(main, wt).deps);
@@ -644,6 +682,20 @@ test('push breadcrumb — an append failure lands in logFailures and changes not
   const strip = (e) => ({ ...e, logFailures: [] });
   assert.deepEqual(strip(env), strip(good));
   assert.equal(h.calls.mergeState.length, 1);
+});
+
+// ---- the real git seam ----
+
+test('realDeps.git — output past execFileSync\'s 1 MiB default is returned, not killed (a chatty pre-push hook must not read as a timeout)', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-phase-exit-git-'));
+  created.push(repo);
+  const git = (...args) => execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', '-c', 'commit.gpgsign=false', ...args], { stdio: 'ignore', windowsHide: true });
+  git('init', '-q');
+  const message = path.join(repo, 'message.txt');
+  fs.writeFileSync(message, 'x'.repeat(2 * 1024 * 1024));
+  git('commit', '-q', '--allow-empty', '-F', message);
+  const out = realDeps.git(['-C', repo, 'log', '-1', '--format=%B']);
+  assert.ok(out.length >= 2 * 1024 * 1024, `read ${out.length} bytes`);
 });
 
 // ---- checklist ----

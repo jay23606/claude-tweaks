@@ -55,7 +55,7 @@ const { execFileSync } = require('child_process');
 const { formatEntry, appendEntry } = require('../log-decision/append');
 const { readRunStateWithParent, appendEvent, readEventLines } = require('../hooks/context');
 const { hasLoggedPrDegrade, hasLoggedPrEarlyStep1, hasNoUpstreamYet } = require('../hooks/pre-tool-use');
-const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS, GIT_PUSH_TIMEOUT_MS, isTimeoutError } = require('../shared-primitives');
+const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS, GIT_PUSH_TIMEOUT_MS, LARGE_MAX_BUFFER_BYTES, isTimeoutError } = require('../shared-primitives');
 const { canonicalRealpath } = require('../path-guard');
 const prChecklist = require('../../pr-checklist');
 const prMergeState = require('../../pr-merge-state');
@@ -72,8 +72,11 @@ const SKIP_TEXT = 'condition: integration-model=local-merge or current-branch mo
 const realDeps = {
   cwd: () => process.cwd(),
   mainRoot: undefined,
+  // maxBuffer: the push runs the consumer's pre-push hook with its output piped here; under
+  // execFileSync's 1 MiB default a chatty hook is killed with ENOBUFS (SIGTERM), which
+  // isTimeoutError would then report as a timeout.
   git: (args, { timeout = GIT_TIMEOUT_MS } = {}) => execFileSync('git', args, {
-    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout, windowsHide: true,
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout, windowsHide: true, maxBuffer: LARGE_MAX_BUFFER_BYTES,
   }),
   gh: (args, cwd) => execFileSync('gh', args, {
     cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GH_TIMEOUT_MS, windowsHide: true,
@@ -204,7 +207,8 @@ function runPhaseExit(opts, overrides = {}) {
     log('AUTO', 'Phase-exit push', `refused to push ${label} at ${phase} exit — not a run branch`);
   } else if (!closed && hasWorktree(state)) {
     // The run's assigned worktree vs --worktree -- the check hooks/pre-tool-use.js's E1
-    // loop makes for a Bash push, which never sees this process's push.
+    // loop makes for a Bash push, which never sees this process's push. Fails open on an
+    // unprovable path, as that loop does ("cannot prove the target -> allow", pre-tool-use.js).
     const expected = canonicalRealpath(state.worktree);
     const actual = canonicalRealpath(wt);
     if (expected && actual && expected !== actual) {
