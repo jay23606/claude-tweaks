@@ -497,7 +497,8 @@ function decideArchive(prState, consoleState) {
 // console classifies 'resolved' here while re-detecting as `ready` there.
 //
 // #3949: a 'resolved' or 'none' top-level state becomes 'residue' when the run
-// holds an unresolved item (pending / keep-staged) no human has acknowledged —
+// holds an unresolved item (pending / keep-staged, or a PR console item whose
+// outcome is filing-failed / reverse-failed, #4172) no human has acknowledged —
 // in console.json or any spec-*/console.json — or a console.json that cannot be
 // read (fails closed). 'unresolved' keeps precedence. An item whose staged file
 // is gone is `missing`, not residue (residue.js's readRunResidue).
@@ -521,11 +522,29 @@ function readTopLevelConsoleState(runDir) {
 }
 
 // The unacknowledged-residue evidence for a run: the item count across
-// unacknowledged consoles and the console.json paths that could not be read.
+// unacknowledged consoles, the console.json paths that could not be read, and
+// one `{id} ({resolution})` name per open item (#4172: so a refusal can say which).
 function consoleResidue(runDir) {
   const { consoles, unreadable } = readRunResidue(runDir);
   const open = consoles.filter((c) => !c.acknowledged);
-  return { items: open.reduce((n, c) => n + c.items.length, 0), unreadable };
+  const names = open.flatMap((c) => c.items.map((i) => `${typeof i.id === 'string' ? i.id : '(no id)'} (${i.resolution})`));
+  return { items: names.length, unreadable, names };
+}
+
+// The remedy for open console items, shared by the archive-run verb's refusal
+// line and the reconcile sweep's hint so the two cannot word the ack differently.
+function consoleAckRemedy(runDir) {
+  return `review them, then run console-residue.js --ack --run "${runDir}"`;
+}
+
+// The recovery line for a console-residue skip: name the open items, the
+// unreadable console.json files to repair, or both when both block.
+function consoleResidueHint(runDir) {
+  const { names, unreadable } = consoleResidue(runDir);
+  const parts = [];
+  if (names.length > 0) parts.push(`unresolved: ${names.join(', ')} — ${consoleAckRemedy(runDir)}`);
+  if (unreadable.length > 0) parts.push(`repair or remove ${unreadable.join(', ')}`);
+  return parts.join('; ');
 }
 
 function hasConsoleResidue(runDir) {
@@ -1984,8 +2003,9 @@ function settleMergedPartial(root, dir, prState, decision, coverage) {
 }
 
 // #3503: `unclosed` rides along on a merged-partial skip only; #3945: `missing`
-// and `hint` ride along on a tiebreak skip only. Every other reason keeps the
-// bare {runDir, reason} shape.
+// and `hint` ride along on a tiebreak skip only; #4172: `hint` also rides along
+// on a console-residue skip. Every other reason keeps the bare {runDir, reason}
+// shape.
 function skippedEntry(dir, { reason, unclosed, missing, hint }) {
   const entry = { runDir: dir, reason };
   if (unclosed !== undefined) entry.unclosed = unclosed;
@@ -2055,8 +2075,9 @@ function archiveMergedRun({
   );
   if (decision.action === 'skip') {
     if (onSkip) onSkip(decision.reason);
+    const hint = decision.reason === 'console-residue' ? consoleResidueHint(dir) : decision.hint;
     return {
-      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, hint: decision.hint,
+      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, hint,
     };
   }
 
@@ -2392,7 +2413,11 @@ function archiveMerged({
           }
           const consoleState = readConsoleState(dir);
           if (consoleState === 'unresolved' || consoleState === 'residue') {
-            skipped.push({ runDir: dir, reason: consoleState === 'residue' ? 'console-residue' : 'console-unresolved' });
+            if (consoleState === 'residue') {
+              skipped.push({ runDir: dir, reason: 'console-residue', hint: consoleResidueHint(dir) });
+            } else {
+              skipped.push({ runDir: dir, reason: 'console-unresolved' });
+            }
             continue;
           }
           if (consoleState === 'none') {
@@ -2507,7 +2532,7 @@ function archiveMerged({
 }
 
 module.exports = {
-  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, archiveRunDir, listSpecDirs,
+  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, consoleAckRemedy, consoleResidueHint, archiveRunDir, listSpecDirs,
   isStaleDir, classifyRunDir,
   isOrphanedMint, isAdHocStandaloneMint, isAdHocIntrinsicSkip, ADHOC_INTRINSIC_STUCK_REASONS, archiveOrphanedMint, ORPHAN_MINT_TTL_MS, trackArchiveResult,
   localHasMerge, lastOwnEventMs, ownEventRecency, isAbandonedInterrupted, STALE_INTERRUPTED_TTL_MS,

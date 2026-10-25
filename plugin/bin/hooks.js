@@ -1207,7 +1207,7 @@ async function runTeardownRun(argv) {
 
 async function runArchiveRun(argv) {
   const {
-    archiveRunDir, readConsoleState, consoleResidue, listSpecDirs, listStagedItems, consoleReplacedByAutoMerge,
+    archiveRunDir, readConsoleState, consoleResidue, consoleAckRemedy, listSpecDirs, listStagedItems, consoleReplacedByAutoMerge,
     TIEBREAK_COVERAGE_HINT,
   } = require('./lib/reconcile/archive-merged');
   const { NON_TERMINAL } = require('./lib/hooks/run-integrity');
@@ -1256,18 +1256,19 @@ async function runArchiveRun(argv) {
   // #3949: a resolved console can still hold an item no human has reviewed.
   if (consoleState === 'residue') {
     // --ack skips an unparseable console, so an unreadable one's remedy is repairing the file.
-    const { items, unreadable } = consoleResidue(runDir);
+    const { items, unreadable, names } = consoleResidue(runDir);
     const what = [];
     const remedies = [];
     if (items > 0) {
       what.push(`${items} unresolved item(s) no human has reviewed`);
-      remedies.push(`review them, then run console-residue.js --ack --run "${runDir}"`);
+      remedies.push(consoleAckRemedy(runDir));
     }
     if (unreadable.length > 0) {
       what.push(`${unreadable.length} console.json file(s) could not be read`);
       remedies.push(`repair or remove ${unreadable.join(', ')}, then re-run archive-run`);
     }
-    process.stdout.write(`claude-tweaks: archival refused — console-residue (${what.join(' and ')}; ${remedies.join('; ')})\n`);
+    const unresolved = names.length > 0 ? ` — unresolved: ${names.join(', ')}` : '';
+    process.stdout.write(`claude-tweaks: archival refused — console-residue (${what.join(' and ')}; ${remedies.join('; ')})${unresolved}\n`);
     return 0;
   }
   if (consoleState === 'none' && consoleReplacedByAutoMerge(runDir)) {
