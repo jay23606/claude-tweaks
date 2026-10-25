@@ -16,7 +16,7 @@ const {
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
   classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS, ADHOC_SESSION_ENDED_GRACE_MS, isMainCheckoutAdHoc,
   isClosedSlugStuck, recordNumbersFromSlug, refusal, unclosedRecords, runRecordSet, inFlightRecords,
-  listStagedItems, hasStagedItems, consoleReplacedByAutoMerge,
+  listStagedItems, hasStagedItems, consoleReplacedByAutoMerge, consoleResidue,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure, cachePath, beginCacheBatch, commitCacheBatch } = require('../../../plugin/bin/lib/reconcile/cache');
 const { structurallyStuckBody, parseStuckPaths } = require('../../../plugin/bin/lib/reconcile/escalate-residue');
@@ -3076,6 +3076,36 @@ test('archiveMerged: same shape as above, but a resolved console holds a keep-st
   assert.equal(fs.existsSync(runDir), true);
 });
 
+test('archiveMerged: same shape as above, but a resolved PR console holds a filing-failed item (no staged file) — stays in place with console-residue and names it (#4172)', { skip: PATH_STUB_SKIP }, () => {
+  const root = fs.realpathSync(makeRepo());
+  const runId = '2026-08-01T090000-record-1962-nobranch-closedpr-prfailed';
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify({
+    status: 'active',
+    worktree: path.join(root, '.claude', 'worktrees', 'gone-record-1962c'),
+    pr: { number: 1964, branch: 'worktree-record-1962-gone-c' },
+  }));
+  fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({
+    prNumber: 1964, commentIds: ['IC_1'], executedAt: '2026-08-01T00:00:00.000Z', resolved: false,
+    items: [{ id: '1', kind: 'staged', summary: '1', outcome: 'executed' }, { id: 'f1', kind: 'staged', summary: 'f1', outcome: 'filing-failed' }],
+  }));
+
+  const wrapper = installGhWrapper({ number: 1964, state: 'CLOSED', mergedAt: null, updatedAt: '2026-08-01T00:00:00Z', mergeCommit: null });
+  let result;
+  try {
+    result = archiveMerged({ cwd: root });
+  } finally {
+    wrapper.restore();
+  }
+  assert.ok(!result.archived.includes(runDir));
+  const skip = result.skipped.find((s) => s.runDir === runDir);
+  assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
+  assert.equal(skip.reason, 'console-residue');
+  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.equal(fs.existsSync(runDir), true);
+});
+
 test('archiveMerged: same shape as above, but the PR-by-number probe reports OPEN — falls back to the ordinary no-branch skip', { skip: PATH_STUB_SKIP }, () => {
   const root = fs.realpathSync(makeRepo());
   const runId = '2026-08-01T090000-record-1962-nobranch-openpr';
@@ -3628,6 +3658,27 @@ test('readConsoleState: no top-level console.json but a spec-N console holding a
 });
 test('readConsoleState: no console anywhere still reads none', () => {
   assert.strictEqual(readConsoleState(fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-none-'))), 'none');
+});
+
+// #4172: a PR console's failed item is residue; executed/dropped items are not, and
+// consoleResidue names each open item as "{id} ({resolution})".
+function prConsoleRunDir(items) {
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-residue-pr-'));
+  fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({
+    prNumber: 42, commentIds: ['IC_1'], executedAt: '2026-10-25T10:00:00.000Z', resolved: false,
+    items: items.map(([id, outcome]) => ({ id, kind: 'staged', summary: id, outcome })),
+  }));
+  return runDir;
+}
+test('consoleResidue: a PR console with a filing-failed item counts and names it; readConsoleState reads residue (#4172)', () => {
+  const runDir = prConsoleRunDir([['1', 'executed'], ['f1', 'filing-failed']]);
+  assert.deepStrictEqual(consoleResidue(runDir), { items: 1, unreadable: [], names: ['f1 (filing-failed)'] });
+  assert.strictEqual(readConsoleState(runDir), 'residue');
+});
+test('consoleResidue: a PR console with only executed/dropped items is not residue and reads resolved (#4172)', () => {
+  const runDir = prConsoleRunDir([['1', 'executed'], ['d1', 'dropped']]);
+  assert.deepStrictEqual(consoleResidue(runDir), { items: 0, unreadable: [], names: [] });
+  assert.strictEqual(readConsoleState(runDir), 'resolved');
 });
 
 test('decideArchiveCore: invalid-arguments skips with reason invalid-arguments (#3416)', () => {

@@ -513,11 +513,21 @@ function readTopLevelConsoleState(runDir) {
 }
 
 // The unacknowledged-residue evidence for a run: the item count across
-// unacknowledged consoles and the console.json paths that could not be read.
+// unacknowledged consoles, the console.json paths that could not be read, and
+// one `{id} ({resolution})` name per open item (#4172: so a refusal can say which).
 function consoleResidue(runDir) {
   const { consoles, unreadable } = readRunResidue(runDir);
   const open = consoles.filter((c) => !c.acknowledged);
-  return { items: open.reduce((n, c) => n + c.items.length, 0), unreadable };
+  const names = open.flatMap((c) => c.items.map((i) => `${typeof i.id === 'string' ? i.id : '(no id)'} (${i.resolution})`));
+  return { items: names.length, unreadable, names };
+}
+
+// The recovery line for a console-residue skip: name the open items, or, when
+// only unreadable console.json files block, name those to repair.
+function consoleResidueHint(runDir) {
+  const { names, unreadable } = consoleResidue(runDir);
+  if (names.length > 0) return `unresolved: ${names.join(', ')} — review, then run console-residue.js --ack --run "${runDir}"`;
+  return `repair or remove ${unreadable.join(', ')}`;
 }
 
 function hasConsoleResidue(runDir) {
@@ -2047,8 +2057,9 @@ function archiveMergedRun({
   );
   if (decision.action === 'skip') {
     if (onSkip) onSkip(decision.reason);
+    const hint = decision.reason === 'console-residue' ? consoleResidueHint(dir) : decision.hint;
     return {
-      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, hint: decision.hint,
+      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, hint,
     };
   }
 
@@ -2384,7 +2395,8 @@ function archiveMerged({
           }
           const consoleState = readConsoleState(dir);
           if (consoleState === 'unresolved' || consoleState === 'residue') {
-            skipped.push({ runDir: dir, reason: consoleState === 'residue' ? 'console-residue' : 'console-unresolved' });
+            const reason = consoleState === 'residue' ? 'console-residue' : 'console-unresolved';
+            skipped.push(reason === 'console-residue' ? { runDir: dir, reason, hint: consoleResidueHint(dir) } : { runDir: dir, reason });
             continue;
           }
           if (consoleState === 'none') {
@@ -2499,7 +2511,7 @@ function archiveMerged({
 }
 
 module.exports = {
-  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, archiveRunDir, listSpecDirs,
+  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, consoleResidueHint, archiveRunDir, listSpecDirs,
   isStaleDir, classifyRunDir,
   isOrphanedMint, isAdHocStandaloneMint, isAdHocIntrinsicSkip, ADHOC_INTRINSIC_STUCK_REASONS, archiveOrphanedMint, ORPHAN_MINT_TTL_MS, trackArchiveResult,
   localHasMerge, lastOwnEventMs, ownEventRecency, isAbandonedInterrupted, STALE_INTERRUPTED_TTL_MS,
