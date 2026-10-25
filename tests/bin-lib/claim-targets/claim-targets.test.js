@@ -1455,3 +1455,90 @@ test('without --run: the envelope carries no claimLogFailures key (existing beha
   assert.deepEqual(body.claimed, [751]);
   assert.ok(!('claimLogFailures' in body), 'claimLogFailures must be absent, not merely empty, when --run was never passed');
 });
+
+// ---- #4027: --steps skip-guard (flow/claim-targets.md's "neither build nor test" condition) ----
+
+const SKIP_GUARD_ENVELOPE = '{"claimed":[],"alreadyOwned":[],"skipped":[],"skipGuard":"no-build-or-test"}';
+
+// Recording fakes that also throw: a skip-guard exit must reach none of them.
+function recordingRefusers() {
+  const calls = { ghApi: [], gh: [], gitRunner: [], appendClaimLog: [] };
+  const refuse = (name) => (args) => { calls[name].push(args); throw new Error(`${name} must not be called`); };
+  return { calls, ghApi: refuse('ghApi'), gh: refuse('gh'), gitRunner: refuse('gitRunner'), appendClaimLog: refuse('appendClaimLog') };
+}
+
+test('--steps review,polish,wrap-up: exit 0, skipGuard envelope, zero ghApi/gh/gitRunner calls', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+  deps.gitRunner = r.gitRunner;
+
+  const code = run(['--run-id', 'r1', '--targets', '720,721', '--steps', 'review,polish,wrap-up'], deps);
+
+  assert.equal(code, 0);
+  assert.deepEqual(io.out, [SKIP_GUARD_ENVELOPE]);
+  assert.equal(JSON.parse(io.out[0]).skipGuard, 'no-build-or-test');
+  assert.deepEqual(r.calls, { ghApi: [], gh: [], gitRunner: [], appendClaimLog: [] });
+});
+
+test('--steps wrap-up with --keep-going and --run: same skip envelope, no claim-log write', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+  deps.gitRunner = r.gitRunner;
+  deps.appendClaimLog = r.appendClaimLog;
+
+  const code = run(['--run-id', 'r1', '--targets', '720', '--steps', 'wrap-up', '--keep-going', '--run', '/some/run/r1'], deps);
+
+  assert.equal(code, 0);
+  assert.deepEqual(io.out, [SKIP_GUARD_ENVELOPE]);
+  assert.deepEqual(r.calls, { ghApi: [], gh: [], gitRunner: [], appendClaimLog: [] });
+});
+
+test('--steps containing build or test: the normal claim path runs', () => {
+  for (const steps of ['build,test', 'test', 'build', ' review , test ']) {
+    const { ghApi, calls: apiCalls } = makeGhApi({
+      reads: { 720: [readAbsent, confirmRead()] },
+      writes: { 720: [writeOk] },
+    });
+    const { gh, calls: ghCalls } = makeGh({});
+    const { deps, io } = baseDeps({ ghApi, gh });
+
+    const code = run(['--run-id', 'r1', '--targets', '720', '--steps', steps], deps);
+
+    assert.equal(code, 0, `steps=${JSON.stringify(steps)}`);
+    const body = JSON.parse(io.out[0]);
+    assert.deepEqual(body.claimed, [720], `steps=${JSON.stringify(steps)}`);
+    assert.ok(!('skipGuard' in body), `steps=${JSON.stringify(steps)}: a claiming run carries no skipGuard key`);
+    assert.ok(apiCalls.some((a) => isWrite(a, '720')), `steps=${JSON.stringify(steps)}: claim write made`);
+    assert.ok(ghCalls.some((a) => a[0] === 'repo' && a[1] === 'view'), `steps=${JSON.stringify(steps)}: gh runner called`);
+  }
+});
+
+test('--steps empty, blank, bare, or with an empty part: exit 2 with usage, no gh call', () => {
+  for (const argv of [
+    ['--run-id', 'r1', '--targets', '720', '--steps', ''],
+    ['--run-id', 'r1', '--targets', '720', '--steps', '  '],
+    ['--run-id', 'r1', '--targets', '720', '--steps'],
+    ['--run-id', 'r1', '--targets', '720', '--steps', 'review,,wrap-up'],
+    ['--run-id', 'r1', '--targets', '720', '--steps', 'build,'],
+  ]) {
+    const r = recordingRefusers();
+    const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+    assert.equal(run(argv, deps), 2, `argv=${JSON.stringify(argv)}`);
+    assert.equal(io.out.length, 0);
+    assert.ok(io.err.join('').includes(USAGE));
+    assert.deepEqual(r.calls.ghApi, []);
+    assert.deepEqual(r.calls.gh, []);
+  }
+});
+
+test('--steps never bypasses argv validation: a skip-shaped step list with malformed --targets still exits 2', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+
+  assert.equal(run(['--run-id', 'r1', '--targets', '0,abc', '--steps', 'wrap-up'], deps), 2);
+  assert.equal(io.out.length, 0);
+});
+
+test('USAGE names the --steps flag', () => {
+  assert.match(USAGE, /\[--steps <step,step,\.\.\.>\]/);
+});
