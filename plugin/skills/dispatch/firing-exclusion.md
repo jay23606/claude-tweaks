@@ -27,6 +27,11 @@ disposition:
 - The second call's `OUTCOME` was `failed`/`blocked` — Settle already released the claim, so the
   label-based pre-filter would let the group right back in — append now.
 
+A call that handed off (`OUTCOME: handoff`, #4027) is judged on its last continuation's report
+(`two-call-gate.md` section 8). The `handoff` itself is never appended: it holds a live claim and
+this firing continues it. A refused handoff reports `build-test-blocked`/`blocked` and appends
+like any other.
+
 Do **not** append on `merged`/`armed`/`pending-review` (`pr-first`) or `ready-to-merge`
 (`local-merge`'s own outcome vocabulary — see `_shared/integration-model.md`): those hold a live
 claim (`bot:in-progress`) or are already resolved, so the ordinary claim/label mechanism already

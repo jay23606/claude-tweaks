@@ -127,7 +127,7 @@ template applied.
 
 ## First call — build,test
 
-**No handoff to capture from this call's report.** Dispatch Step 4 already minted this group's run directory before either call — `{minted-run-dir}` below is that same directory, substituted literally, on both calls. There is nothing to parse out of this call's prose report to construct the second call's input; the gate between calls (`two-call-gate.md`) reduces to reading the status line and `OUTCOME`.
+**No handoff to capture from this call's report.** Dispatch Step 4 already minted this group's run directory before either call — `{minted-run-dir}` below is that same directory, substituted literally, on both calls. There is nothing to parse out of this call's prose report to construct the second call's input; the gate between calls (`two-call-gate.md`) reduces to reading the status line and `OUTCOME` (plus `NEXT_STEPS` on a handoff).
 
 **Before substituting this template**, the dispatching session decides whether to add `DISPATCH_HEADLESS=1 ` immediately before `/claude-tweaks:flow` on the invocation line below — a decision made once, here, never left in the copy-pasted text for the dispatched agent to reason about. Add it when this firing came from a scheduled Routine — a bare drain, or its deprecated `next` alias — with nobody present; omit it entirely (no `{headless-marker}` placeholder, no trailing space) when a human typed the command directly, in any form (bare, `next`, `#N`, or explicit-list) — the same human-present/Routine discriminator `SKILL.md`'s Next Actions render rule already uses. When set, it tells this call's Settle procedure (`settle-and-merge.md`) that nobody is present to read a Step 2.8 claim-contest stop, so a contest there should self-report via `_shared/headless-self-report.md` instead of just failing silently to whoever isn't watching. This is exactly why the marker must not live inside the fenced block below: the block is copied verbatim into every dispatch regardless of firing form, and the dispatched agent itself has no way to know which form the dispatching session used — only the dispatching session can make this call, before substitution.
 
@@ -253,7 +253,8 @@ failure or a missing bookend.
 OUTPUT FORMAT (required) -- return ONLY these lines, no preamble:
 
 GROUP: {comma-joined issue numbers}
-OUTCOME: {build-test-ok | build-test-failed | build-test-blocked | already-shipped}
+OUTCOME: {build-test-ok | build-test-failed | build-test-blocked | already-shipped | handoff}
+NEXT_STEPS: {only with OUTCOME: handoff -- the comma-joined steps still to run; omit otherwise}
 MANIFEST: {absolute path to this group's run-dir manifest.yml/decisions.md -- a
   human-readable trace only; the dispatching session already holds this run's identity as
   {minted-run-dir} and derives nothing from this line}
@@ -298,7 +299,7 @@ this agent, so it is not the basis for the clause.
 
 ## Second call — review,polish,wrap-up (gated on the first call)
 
-**Only dispatch this call if the first call's status line was DONE or DONE_WITH_CONCERNS AND its OUTCOME was `build-test-ok`.** A `NEEDS_CONTEXT`/`BLOCKED` status, an `OUTCOME` of `build-test-failed`/`build-test-blocked`, or no parseable report at all means this second call is never dispatched — the first call's own agent settles its own failure (its template above instructs it to), and the dispatching session takes the terminal path in `two-call-gate.md` section 5 (fail-loud reporting plus the `/claude-tweaks:wrap-up {target} cleanup-only` teardown call). An `OUTCOME` of `already-shipped` (#2502) is a **third, distinct** case, neither success nor failure: this second call is never dispatched here either, but the reason is that the first call already finished the record (staged a Close proposal, closed any draft PR, released the claim) — there is nothing left to review, polish, or wrap up. Take `two-call-gate.md` §7's terminal path for it, never section 5's — §7 tears the worktree down the same way section 5 does, but never invokes Settle's failure classification, retry counting, or failure comment, and the dispatching session's own report surfaces the group as a no-op, not `pending-review`.
+**Only dispatch this call if the first call's status line was DONE or DONE_WITH_CONCERNS AND its OUTCOME was `build-test-ok`.** A `NEEDS_CONTEXT`/`BLOCKED` status, an `OUTCOME` of `build-test-failed`/`build-test-blocked`, or no parseable report at all means this second call is never dispatched — the first call's own agent settles its own failure (its template above instructs it to), and the dispatching session takes the terminal path in `two-call-gate.md` section 5 (fail-loud reporting plus the `/claude-tweaks:wrap-up {target} cleanup-only` teardown call). An `OUTCOME` of `already-shipped` (#2502) is a **third, distinct** case, neither success nor failure: this second call is never dispatched here either, but the reason is that the first call already finished the record (staged a Close proposal, closed any draft PR, released the claim) — there is nothing left to review, polish, or wrap up. Take `two-call-gate.md` §7's terminal path for it, never section 5's — §7 tears the worktree down the same way section 5 does, but never invokes Settle's failure classification, retry counting, or failure comment, and the dispatching session's own report surfaces the group as a no-op, not `pending-review`. An `OUTCOME` of `handoff` (#4027) is none of these: the first call stopped at a phase boundary past `/flow`'s context cap and is continued (Continuation call, below), and this gate reads the last continuation's report.
 
 **Substitute `{minted-run-dir}` into this call's command line**, exactly as `{issue list}` is substituted — not exported as a shell variable in the dispatching session, which would never reach the agent: a dispatched Task agent is a clean room that inherits no environment (`_shared/subagent-output-contract.md`'s Input Discipline). It is the same value substituted into the first call — dispatch Step 4 minted it once, before either call, so there is nothing to derive from the first call's report this time. `/flow` creates a fresh run directory of its own whenever it is not handed an existing one (`flow/SKILL.md` Step 3's adopt-if-set branch), so passing it remains non-negotiable — this call must still resume the exact directory the first call's `/flow` adopted, not start a new one.
 
@@ -453,7 +454,8 @@ bypassed.
 OUTPUT FORMAT (required), before the trailing status line -- return ONLY these lines, no preamble:
 
 GROUP: {comma-joined issue numbers}
-OUTCOME: {merged | armed | pending-review | ready-to-merge | failed | blocked}
+OUTCOME: {merged | armed | pending-review | ready-to-merge | failed | blocked | handoff}
+NEXT_STEPS: {only with OUTCOME: handoff -- the comma-joined steps still to run; omit otherwise}
 MANIFEST: {path to this group's run-dir manifest.yml/decisions.md -- a human-readable trace
   only; the dispatching session already holds this run's identity as {minted-run-dir} and
   derives nothing from this line}
@@ -510,3 +512,7 @@ dispatched **singleton**'s merge decision runs this same re-check through
 `bin/lib/dispatch/merge-verdict.js`. Keep both current if either clause's wording changes.
 
 None of Templates A/B/C (A in `_shared/subagent-dispatch-core.md`; B/C in `_shared/subagent-output-contract.md`) fit an agent that executes pipeline stages rather than returning findings/locations/a yes-no, so these are their own minimal templates, inlined verbatim at every dispatch site. The universal parts of the contract still apply: the four-value status line, minimal input, and literal (not referenced) output format.
+
+## Continuation call — after `OUTCOME: handoff` (#4027)
+
+A call that reports `OUTCOME: handoff` crossed `/flow`'s context cap at a phase boundary (`flow/context-handoff.md`'s Dispatched call) and is continued in a fresh `Task()` call, never treated as a failure. The continuation is that call's own template above, inlined verbatim with the same substitutions: the same `{minted-run-dir}`, `{context-pack}` and `DISPATCH_HEADLESS=1 ` decision, and the same model profile (`capable` for the first call, `standard` for the second). One thing changes: the step list on both invocation lines (`build,test`, or `review,polish,wrap-up`) is replaced by the report's `NEXT_STEPS` value. Every other sentence stays verbatim. In the first call's template that includes "Stop after the test gate", which holds a `test` continuation to `test`, because a single step argument otherwise resumes from that step onward (`flow/steps-and-gates.md`'s Step Arguments). `two-call-gate.md` section 8 owns the bound and what the gate reads afterward.
