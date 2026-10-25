@@ -74,6 +74,12 @@ function stripQuotes(s) {
   return s.replace(/^['"]|['"]$/g, '');
 }
 
+// Replaces each backslash pair whose escaped character is in `unescapable` with
+// that character; every other pair stays verbatim.
+function unescapeBackslashPairs(text, unescapable) {
+  return text.replace(/\\([\s\S])/g, (pair, c) => (unescapable.includes(c) ? c : pair));
+}
+
 // Tokenizer that keeps quoted spans (with spaces) as one token. Also merges a
 // quoted span into an immediately-adjacent (no whitespace between) match —
 // matching real shell word-splitting, where `"/tmp/safe/"$SUFFIX` is ONE word
@@ -113,11 +119,16 @@ function tokenize(seg) {
   let m;
   let prevEnd = -1;
   while ((m = re.exec(seg)) !== null) {
-    const val = m[1] !== undefined ? m[1].replace(/\\([\s\S])/g, (p, c) => (c === '"' ? c : p))
-      : m[2] !== undefined ? m[2]
-        : m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" || c === ' ' || c === '\t' ? c : p));
     const isSQ = m[2] !== undefined;
     const isDQ = m[1] !== undefined;
+    let val;
+    if (isDQ) {
+      val = unescapeBackslashPairs(m[1], '"');
+    } else if (isSQ) {
+      val = m[2];
+    } else {
+      val = unescapeBackslashPairs(m[3], '"\' \t');
+    }
     if (out.length && m.index === prevEnd) {
       out[out.length - 1] += val;
       if (isSQ) singleQuoted[singleQuoted.length - 1] = true;
