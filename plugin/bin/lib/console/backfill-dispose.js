@@ -137,7 +137,7 @@ function findingProposal(item, verdict, runId, confirmed) {
     },
     finding: { claim: item.claimText },
     runId,
-    ...(item.stagedFinding ? { staged: item.stagedFinding } : {}),
+    staged: item.stagedFinding,
     ...(confirmed ? { verdict: { kind: 'confirmed', evidence: verdict.evidence, mainSha: confirmed.mainSha } } : {}),
   });
   // The record is filed under its claim fingerprint (the first marker, which extractFingerprint reads);

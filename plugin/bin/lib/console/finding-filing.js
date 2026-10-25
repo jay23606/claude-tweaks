@@ -61,9 +61,10 @@ function citation(path, line) {
 // `id` equals item.tiebreak.id, or null. With no entry the claim is `tiebreak:{id}` and
 // `claimMissing` is true — except when a non-empty `staged.title` supplies the claim text, where
 // `claimMissing` is false and the staged title is the fenced claim. Otherwise the record says the
-// claim text was lost rather than read as a finding, and the caller reports the degrade (bin/console-filings.js). The id hashes the line, so such a
-// record can twin a later run's filing of the same finding — accepted: the artifact is written
-// before any tiebreak dispatch (review/step3-tiebreak.md), so only a hand-removed artifact gets here.
+// claim text was lost rather than read as a finding, and the caller reports the degrade
+// (bin/console-filings.js). The id hashes the line, so such a record can twin a later run's filing of
+// the same finding — accepted: the artifact is written before any tiebreak dispatch
+// (review/step3-tiebreak.md), so only a hand-removed artifact gets here.
 // `verdict` (#3950, the backlog backfill) is `{ kind: 'confirmed', evidence: { path, line, quote },
 // mainSha }`: the tiebreak settled the finding as real, so the record says so instead of "can't-tell"
 // — same fingerprint, so a confirmed filing and a can't-tell one of one finding dedup to one record.
