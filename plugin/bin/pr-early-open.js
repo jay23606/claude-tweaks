@@ -36,14 +36,19 @@
 //        whose push failed is still recorded, and its number is on stdout. A
 //        stale recorded PR (Resume found it closed or gone) is cleared to
 //        `pr: null` on a degrade, so nothing reads the closed PR as live.
-//      2 malformed invocation; a --run that fails the anchored-or-outside guard
-//        (lib/run-dir-guard.js), is not a directory, or whose basename is not a
-//        run id; an unreadable --summary-file; an integration-branch value
-//        holding whitespace; or gh absent — take the MCP path
-//        in pr-early-run-lifecycle.md's "gh absent" row.
+//      2 malformed invocation; a --run that is missing, not anchored under the
+//        main checkout (a worktree-local shadow, or outside every checkout), or
+//        whose basename is not a run id; an unreadable --summary-file; an
+//        integration-branch value holding whitespace; or gh absent — take the
+//        MCP path in pr-early-run-lifecycle.md's "gh absent" row.
 //      1 internal error (a gh/git read the procedure cannot do without failed,
 //        unparseable output, an unwritable decisions.md or run-state.json). The
 //        caller reads pr-early-run-lifecycle.md and finishes by hand.
+// --run is anchored strictly, through lib/stage-item/write.js's resolveTarget
+// (the sanctioned writers' predicate, reached through deps with mainRoot
+// injectable), because the callers branch on this CLI's exit codes and nothing
+// legitimately writes a run dir outside the main checkout. The refusal is
+// exit 2, not the sanctioned writers' 3: here 3 is the logged degrade.
 'use strict';
 
 const fs = require('fs');
@@ -53,7 +58,7 @@ const { execFileSync } = require('child_process');
 const { openPrEarly } = require('./lib/flow/pr-early-open');
 const { appendEntry } = require('./lib/log-decision/append');
 const ctxLib = require('./lib/hooks/context');
-const { anchoredOrOutsideMessage } = require('./lib/run-dir-guard');
+const { resolveTarget } = require('./lib/stage-item/write');
 const { resolvePolicyConfig } = require('./lib/policy-schema');
 const { ghAvailable, parseRepo, repoSlug } = require('./lib/repo-resolve');
 const { sessionTmpPath } = require('./lib/session-tmp');
@@ -93,10 +98,6 @@ function readFileSafe(p) {
   try { return fs.readFileSync(p, 'utf8'); } catch { return null; }
 }
 
-function isDirectory(p) {
-  try { return fs.statSync(p).isDirectory(); } catch { return false; }
-}
-
 const realDeps = {
   cwd: () => process.cwd(),
   ghAvailable: () => ghAvailable(),
@@ -109,7 +110,8 @@ const realDeps = {
   }),
   sleep: (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
   now: () => Date.now(),
-  anchoredOrOutsideMessage,
+  mainRoot: undefined, // resolveTarget derives the main-checkout anchor from cwd
+  resolveTarget,
   readFile: (p) => fs.readFileSync(p, 'utf8'),
   readRunState: (runDir) => ctxLib.readRunState(runDir),
   writeRunState: (runDir, patch) => ctxLib.writeRunState(runDir, patch),
@@ -141,12 +143,21 @@ async function run(argv, overrides = {}) {
   const fixes = o.fixes.split(',').map((s) => s.trim().replace(/^#/, ''));
   if (!fixes.every((n) => /^[1-9]\d*$/.test(n))) return usageError(`--fixes takes record numbers, comma-separated: ${o.fixes}`);
 
-  // 2. The run dir: anchored under the main checkout or outside every
-  // checkout, an existing directory, named by a run id (the PR body's marker).
-  const guard = deps.anchoredOrOutsideMessage(o.run, deps.cwd(), '--run');
-  if (guard) return usageError(guard);
-  const runDir = path.resolve(deps.cwd(), o.run);
-  if (!isDirectory(runDir)) return usageError(`--run dir does not exist or is not a directory: ${o.run}`);
+  // 2. The run dir: an existing directory anchored under the main checkout
+  // (strict), named by a run id (the PR body's marker).
+  let target;
+  try {
+    const cwd = deps.cwd();
+    target = deps.resolveTarget({ runDir: path.resolve(cwd, o.run), cwd, mainRoot: deps.mainRoot });
+  } catch (e) {
+    return usageError(errText(e));
+  }
+  if (!target.ok) {
+    return usageError(target.reason === 'missing'
+      ? `--run dir does not exist or is not a directory: ${o.run}`
+      : `--run ${o.run} is not anchored under the main checkout (a worktree-local shadow, or outside every checkout) — resolve $RUN_ROOT per _shared/pipeline-run-dir.md's Anchoring section and pass the main-checkout path`);
+  }
+  const runDir = target.dir;
   const runId = path.basename(runDir);
   if (!ctxLib.RUN_ID_RE.test(runId)) return usageError(`--run basename is not a run id (a spec- subdir answers for its parent run): ${runId}`);
 

@@ -8,6 +8,7 @@ const { openPrEarly } = require('../../../plugin/bin/lib/flow/pr-early-open');
 const { run } = require('../../../plugin/bin/pr-early-open');
 const { hasPrEarlyStep1LineFor, hasLoggedPrDegrade } = require('../../../plugin/bin/lib/hooks/pre-tool-use');
 const logDecision = require('../../../plugin/bin/log-decision');
+const { gitRepo } = require('../../helpers/git-fixtures');
 
 const RUN_ID = '2026-10-25T000001-record-4027';
 const BRANCH = 'worktree-dispatch-record-4027';
@@ -436,8 +437,11 @@ test('the written line is byte-identical to what log-decision.js --section /buil
 
 // ---------------------------------------------------------------- CLI
 
+// A run dir under a real git main checkout's .claude-tweaks/pipelines/. --run
+// is anchored strictly, so a dir outside every checkout is refused.
 function cliFixture({ policy = null, runState = null } = {}) {
-  const root = tmpDir('ct-pr-early-cli-');
+  const root = gitRepo();
+  created.push(root);
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
   fs.mkdirSync(runDir, { recursive: true });
   if (policy) fs.writeFileSync(path.join(root, '.claude-tweaks', 'policy.yml'), policy);
@@ -453,6 +457,7 @@ function cliDeps(fx, { list = [], create = `${URL42}\n`, push = null, ghAvailabl
   const out = []; const err = []; const calls = [];
   const deps = {
     cwd: () => fx.root,
+    mainRoot: fx.root,
     ghAvailable: () => ghAvailable,
     gh: (args, opts) => {
       calls.push(['gh', ...args]);
@@ -622,13 +627,45 @@ test('CLI: a run dir whose basename is not a run id exits 2', async () => {
   assert.match(h.err.join(''), /run id/);
 });
 
-test('CLI: a --run that fails the anchored-or-outside guard exits 2', async () => {
+test('CLI: a --run that resolveTarget refuses as not anchored exits 2', async () => {
   const fx = cliFixture();
   const h = cliDeps(fx);
-  h.deps.anchoredOrOutsideMessage = () => '--run x resolves outside the main checkout';
+  h.deps.resolveTarget = () => ({ ok: false, reason: 'not-anchored' });
   assert.equal(await run(cliArgv(fx), h.deps), 2);
-  assert.match(h.err.join(''), /resolves outside the main checkout/);
+  assert.match(h.err.join(''), /not anchored under the main checkout/);
   assert.deepEqual(h.calls, []);
+});
+
+test('CLI: a worktree-local shadow run dir exits 2 and the shadow stays untouched', async () => {
+  const main = gitRepo();
+  created.push(main);
+  const fx = cliFixture();
+  // fx.root is a real checkout, but not the main one this call is anchored to.
+  const h = cliDeps(fx);
+  h.deps.mainRoot = main;
+  assert.equal(await run(cliArgv(fx), h.deps), 2);
+  assert.deepEqual(fs.readdirSync(fx.runDir), []);
+  assert.deepEqual(h.calls, []);
+});
+
+test('CLI: a run dir outside every checkout exits 2 (strict anchoring), nothing written, nothing called', async () => {
+  const outside = tmpDir('ct-pr-early-outside-');
+  const runDir = path.join(outside, '.claude-tweaks', 'pipelines', RUN_ID);
+  fs.mkdirSync(runDir, { recursive: true });
+  const summaryFile = path.join(outside, 'summary.md');
+  fs.writeFileSync(summaryFile, 'S.\n');
+  const wt = path.join(outside, 'wt');
+  fs.mkdirSync(wt);
+  const fx = { root: outside, runDir, summaryFile, wt };
+  for (const mainRoot of [undefined, gitRepo()]) {
+    if (mainRoot) created.push(mainRoot);
+    const h = cliDeps(fx);
+    h.deps.mainRoot = mainRoot;
+    assert.equal(await run(cliArgv(fx), h.deps), 2, String(mainRoot));
+    assert.match(h.err.join(''), /not anchored under the main checkout/);
+    assert.deepEqual(h.calls, []);
+    assert.deepEqual(fs.readdirSync(runDir), [], 'no decisions.md, no run-state.json');
+  }
 });
 
 test('CLI: --worktree defaults to run-state.json\'s recorded worktree', async () => {
