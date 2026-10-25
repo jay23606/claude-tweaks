@@ -76,6 +76,34 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows: [#3064](https://github.com/thn-inc/claude-tweaks/issues/3064) stale-worktree test expects a native path… ([#4222](https://github.com/thn-inc/claude-tweaks/issues/4222)) ([cd9f6b8](https://github.com/thn-inc/claude-tweaks/commit/cd9f6b87815d059d37c10b23970a2bfc020eb454))
 * worktree-always write gate misses writes inside heredocs… ([#4149](https://github.com/thn-inc/claude-tweaks/issues/4149)) ([2a21fbe](https://github.com/thn-inc/claude-tweaks/commit/2a21fbee9d45aae8b4f8c9356cd0ab27f50934bd))
 
+### Highlights
+* No user-visible change.
+* A release run no longer archives review findings it could not read.
+* `/claude-tweaks:research` source checks no longer get refused in worktree sessions.
+* Maintainer-facing: the scheduled perf workflow has been proven on a real runner.
+* Releases whose review staged a design decision now archive normally instead of leaving the run open.
+* Reconcile's run-dir archival commit now always lands on the main checkout, even when the reconcile process inherits a `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` or `GIT_COMMON_DIR` that names a linked worktree.
+* The worktree-always guard again blocks writes into the main checkout that a heredoc runs through a non-shell executor or a later pipe.
+* Running `hooks.js` with an unknown or missing subcommand now prints the full list of valid subcommands, and names like `constructor` or `__proto__` are rejected with exit 1 instead of silently exiting 0.
+* `/claude-tweaks:stories` refine now validates stories against the current run's app URL instead of an origin left over from an earlier run.
+* Reconcile now cleans up the ad-hoc session directories a denial leaves in the main checkout, instead of escalating them as stuck runs.
+* No user-visible change: fixes a Windows-only failure in the verification runner's own tests.
+* Fix Windows-only failures in two reconcile tests added by #4032, which depended on a `#!/bin/sh` `gh` stub that Windows cannot spawn.
+* No user-visible change.
+* No user-visible change.
+* `reconcile --dry-run` no longer writes the cache or GitHub, and failed escalations now say why.
+* No user-visible change.
+* A multi-record pipeline run no longer closes a record it deliberately left open when its PR merges.
+* Records that only add docs and a diagram now get the lighter wrap-up ceremony.
+* Naming records in `/claude-tweaks:dispatch #A,#B,...` now builds them in the order you named them, and any left for a later firing by the batch cap are listed in the report.
+* The worktree-always gate now sees a redirect glued to a word that holds a quoted span (`echo "hi">x`), which it previously let through.
+* Pipeline agents stop tripping the worktree guard, removing thousands of wasted retry turns.
+* No user-visible change.
+* Impact-selected test runs no longer skip a test whose file reads could not be recorded while the map was built.
+* No user-visible change: the test runner's subset lane hardens its shared temp directory the same way the full lane does.
+* No user-visible change.
+* Reconcile finishes in seconds instead of about a minute.
+
 ## [6.154.0](https://github.com/thn-inc/claude-tweaks/compare/v6.153.0...v6.154.0) (2026-10-25)
 
 
