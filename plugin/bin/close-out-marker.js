@@ -77,6 +77,15 @@ const {
 const KIND = 'close-out-update';
 const SHA_RE = /^[0-9a-f]{40}$/i;
 
+// What `read` reports when no trusted marker comment exists.
+const NO_MARKER = Object.freeze({
+  status: 'none',
+  updateMethod: null,
+  conflictedFiles: null,
+  preUpdateHead: null,
+  resolutionCommits: null,
+});
+
 const USAGE = 'usage: close-out-marker.js read --comments-file <file> [--body-out <file>] [--help]\n'
   + '       close-out-marker.js write --comments-file <file> --update-method <merge|gh pr update-branch>\n'
   + '           (--conflicted-files-file <file> | --conflicted-files <none|unknown>)\n'
@@ -226,14 +235,15 @@ function run(argv, deps = realDeps) {
       }
       bodyWritten = o.bodyOut;
     }
+    const view = existing === null ? NO_MARKER : existing;
     deps.stdout(`${JSON.stringify({
-      status: existing === null ? 'none' : existing.status,
+      status: view.status,
       id: found.id,
       ids: found.ids,
-      updateMethod: existing === null ? null : existing.updateMethod,
-      conflictedFiles: existing === null ? null : existing.conflictedFiles,
-      preUpdateHead: existing === null ? null : existing.preUpdateHead,
-      resolutionCommits: existing === null ? null : existing.resolutionCommits,
+      updateMethod: view.updateMethod,
+      conflictedFiles: view.conflictedFiles,
+      preUpdateHead: view.preUpdateHead,
+      resolutionCommits: view.resolutionCommits,
       skipped: found.skipped,
       bodyWritten,
     })}\n`);
@@ -264,8 +274,9 @@ function run(argv, deps = realDeps) {
       };
     }
   } else {
-    if (existing === null || existing.status !== 'pending') {
-      return fail(1, `no pending marker to resolve (marker is ${existing === null ? 'none' : existing.status}); nothing written`);
+    const status = existing === null ? NO_MARKER.status : existing.status;
+    if (status !== 'pending') {
+      return fail(1, `no pending marker to resolve (marker is ${status}); nothing written`);
     }
     next = resolvePendingCommit(existing, o.sha);
     if (next === null) return fail(1, 'the pending marker has no pending resolution-commit entry to resolve; nothing written');

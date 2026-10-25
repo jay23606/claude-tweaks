@@ -98,9 +98,14 @@ function joinList(value) {
   return value === 'unknown' ? 'unknown' : value.join(', ');
 }
 
+function conflictedFilesText(conflicted) {
+  if (conflicted === 'unknown') return 'unknown';
+  if (conflicted.length === 0) return 'none';
+  return conflicted.join(', ');
+}
+
 function serializeMarker(fields) {
-  const conflicted = fields.conflictedFiles;
-  const conflictedText = conflicted === 'unknown' ? 'unknown' : conflicted.length === 0 ? 'none' : conflicted.join(', ');
+  const conflictedText = conflictedFilesText(fields.conflictedFiles);
   return [
     MARKER_LINE,
     PENDING_LINE,
