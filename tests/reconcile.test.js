@@ -21,7 +21,9 @@ const { gitRepo } = require('./helpers/git-fixtures');
 const { skipUnderRoot } = require('./helpers/root');
 const { readText } = require('./helpers/read-skill');
 
-const HOOKS = path.join(__dirname, '..', 'plugin', 'bin', 'hooks.js');
+const PATH_STUB_SKIP = process.platform === 'win32' && 'win32: execFileSync("gh") never spawns a #!/bin/sh stub named gh on PATH';
+
+const HOOKS =path.join(__dirname, '..', 'plugin', 'bin', 'hooks.js');
 
 // #1130: never let an omitted cwd fall through to the spawned subprocess's
 // own process.cwd() — that is the test runner's real working directory, and
@@ -2924,7 +2926,7 @@ test('reconcile(): one resolver per pass is created and persisted once, with arc
   assert.ok(r.timings.phases.archive && r.timings.phases.reap && r.timings.phases.finalize);
 });
 
-test('reconcile(): release, archive and reap all use the pass\'s one resolver (#4032)', async () => {
+test('reconcile(): release, archive and reap all use the pass\'s one resolver (#4032)', { skip: PATH_STUB_SKIP }, async () => {
   const { r, instances, events } = await reconcileWithRecordedResolver({ full: true });
   assert.equal(instances.length, 1);
   assert.ok(!r.skipped.some((s) => s.check === 'release'), `release must have run, got ${JSON.stringify(r.skipped)}`);
