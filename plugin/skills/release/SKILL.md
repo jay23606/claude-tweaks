@@ -152,13 +152,19 @@ Log which of the three resolved, and why — the review's scope is never a silen
 
 Invoke `/claude-tweaks:review base:{base}` (Input rule 9 — a whole-branch scope: every first-parent commit from the base to `origin/{integration-branch}`, spanning many already-merged PRs) with `$PIPELINE_RUN_DIR={run-dir}` set, so its findings stage into this run's own `staged/` directory per `_shared/staged-patch.md` and its decisions land in this run's `decisions.md`. Review is a component skill here: it renders no Next Actions of its own.
 
-**Invoke it from `$RUN_ROOT`, standing at the fetched tip.** Fetch, then run this check; it exits 0 exactly when the review may run:
+**Invoke it from `$RUN_ROOT`, standing at the fetched tip.** The review-tree check is two calls. First fetch and resolve the tip once, as its own call; on exit 0 it prints `{tip-sha}` (its only stdout line):
 
 ```bash
 git -C "$RUN_ROOT" fetch origin {branch} \
-  && git -C "$RUN_ROOT" rev-parse --abbrev-ref HEAD | grep -qxF '{branch}' \
-  && git -C "$RUN_ROOT" rev-list --count HEAD..origin/{branch} | grep -qx 0 \
-  && git -C "$RUN_ROOT" diff --quiet origin/{branch} HEAD -- ':!.claude-tweaks/pipelines'
+  && git -C "$RUN_ROOT" rev-parse --verify origin/{branch}
+```
+
+Then run the tree check with that printed sha pasted in literally as `{tip-sha}` (carrying it in a `$(git …)` substitution inside one call is a shape the worktree guard refuses, `_shared/scratch-worktree.md` §7); it exits 0 exactly when the review may run:
+
+```bash
+git -C "$RUN_ROOT" rev-parse --abbrev-ref HEAD | grep -qxF '{branch}' \
+  && git -C "$RUN_ROOT" rev-list --count HEAD..{tip-sha} | grep -qx 0 \
+  && git -C "$RUN_ROOT" diff --quiet {tip-sha} HEAD -- ':!.claude-tweaks/pipelines'
 ```
 
 `/claude-tweaks:review`'s own test gate verifies the tree it is standing in (`review/code-mode-steps.md`'s Step 1.5), so a review invoked from a feature-branch worktree would gate the release on a tree the reviewed range does not contain. Commits ahead are tolerated because reconcile's `[reconcile] archive run …` commits (`plugin/bin/lib/reconcile/archive-merged.js`) stay local and touch only `.claude-tweaks/pipelines/`, which never ships; the comparison is of trees, so a change reverted outside run dirs also passes.
@@ -179,9 +185,9 @@ Step 8's summary reads `failed` with that same reason.
 AUTO {HH:MM:SS} — Step 3: whole-branch review starting, base {base}..{branch} at reviewed tip {tip-sha}; ## /review marker: {k} existing lines{; review tree HEAD {head-sha} is origin/{branch} {tip-sha} plus run-dir-only commits}. Reversibility: n/a (marker).
 ```
 
-The optional `review tree HEAD` clause is written only when `rev-parse HEAD` and `origin/{branch}` differ, tracing the review's test-gate evidence to the tagged tip.
+The optional `review tree HEAD` clause is written only when `rev-parse HEAD` differs from `{tip-sha}`, tracing the review's test-gate evidence to the tagged tip.
 
-`{tip-sha}` is the full 40-hex `git -C "$RUN_ROOT" rev-parse origin/{branch}`, read right after the check above passes: the tip this review covers, recorded as a run fact. Step 5 compares `origin/{branch}` against it before the merge (`execute.md`) and cites this value, never re-deriving it.
+`{tip-sha}` is the full 40-hex sha that the check's first call prints: `origin/{branch}` resolved once, before the trees are compared, so `HEAD` is compared against the same literal that is recorded. Never re-read it with a second `rev-parse` after the check: a sibling session's fetch into the shared `$RUN_ROOT` in between would record a tip whose tree the review's test gate never ran on. This is the tip this review covers, recorded as a run fact. Step 5 compares `origin/{branch}` against it before the merge (`execute.md`) and cites this value, never re-deriving it.
 
 When it returns, read **only the lines this run appended after index `{k}`** in `{run-dir}/decisions.md`'s `## /review` block — never the whole block — and classify **against the log lines `/claude-tweaks:review` actually writes**, not against a severity field it does not emit. Its two routing shapes (`review/step3-routing.md`'s routing table) are:
 

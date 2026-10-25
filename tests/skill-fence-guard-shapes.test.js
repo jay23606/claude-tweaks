@@ -137,6 +137,7 @@ const ALLOWLIST = [
   ratchet('harness-health/filing.md', 'gh-computed-input', 'gh issue reopen <issue_number>'),
   ratchet('journey-health/SKILL.md', 'gh-computed-input', 'gh issue reopen <issue_number>'),
   ratchet('release/SKILL.md', 'git-var-operand', 'git -C "$RUN_ROOT" fetch origin {branch} \\'),
+  ratchet('release/SKILL.md', 'git-var-operand', 'git -C "$RUN_ROOT" rev-list --count HEAD..{tip-sha} | grep -qx 0 \\'),
   ratchet('release/bookkeeping.md', 'git-var-operand', 'git -C "$RUN_ROOT" add {the record files this step wrote}'),
   ratchet('release/execute.md', 'git-var-operand', 'git -C "$RUN_ROOT" rev-parse --abbrev-ref HEAD    # must equal {branch}; anything else → f'),
   ratchet('release/execute.md', 'git-var-operand', 'git -C "$RUN_ROOT" fetch --quiet origin {branch} \\'),
