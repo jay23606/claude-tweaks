@@ -71,6 +71,21 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows regression: 1 test file(s) newly failing after… ([#4177](https://github.com/thn-inc/claude-tweaks/issues/4177)) ([42aacbb](https://github.com/thn-inc/claude-tweaks/commit/42aacbbbd5a6c76731d011189fc0d31b1677d9ed))
 * worktree-always redirect scan misses a redirect glued to… ([#4015](https://github.com/thn-inc/claude-tweaks/issues/4015)) ([5d66bf3](https://github.com/thn-inc/claude-tweaks/commit/5d66bf378f00ed495a4b18013350d53be8f0b3bb))
 
+### Highlights
+* Maintainer-facing: timing budgets run on a schedule again, and the session-failures lock wait is covered by the regular suite.
+* The worktree-always gate now sees a redirect glued to a word (`echo foo>x`), which it previously let through.
+* Maintainer-only: a project skill for splitting a shared lib module without leaving stale location claims behind.
+* Each run reports where its turns went, and the Review Console flags runs that blow their efficiency budget.
+* No user-visible change.
+* Reconcile's consolidated stuck-runs record now closes by itself once every listed run directory has been archived.
+* No user-visible change: fixed the Windows-only failures in the verification runner's own tests, so post-merge Windows checks report real regressions again.
+* Merge commits composed from agent-filed records no longer include the record's "Filed by" footer.
+* No user-visible change.
+* No user-visible change.
+* No user-visible change.
+* The reflect skill no longer files a duplicate record when it could not reach the integration branch to check.
+* SessionStart reconcile no longer loads the wrap-up pack module it does not use.
+
 ## [6.153.0](https://github.com/thn-inc/claude-tweaks/compare/v6.152.0...v6.153.0) (2026-10-24)
 
 
