@@ -226,5 +226,13 @@
   "skill:lib-module-split": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792923657181
+  },
+  "skill:.claude/skills/skill-prose-conformance-tests/SKILL.md": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792929221496
+  },
+  "skill:.claude/skills/review-console-section-addition/SKILL.md": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792929225889
   }
 }
