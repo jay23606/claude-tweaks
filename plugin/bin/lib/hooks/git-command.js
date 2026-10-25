@@ -102,15 +102,17 @@ function unescapeBackslashPairs(text, unescapable) {
 // backslash pairs with the next character, so `\"` never closes a span and
 // `\\` is one pair (in a bare word, a backslash before a newline — a line
 // continuation — or at the end of the string stays a lone `\`). An escaped
-// quote yields the unescaped character, as bash does; in a bare word an
-// escaped blank (space or tab) likewise yields the blank, because a word that
-// runs on through an escaped blank must not swallow a following redirect
-// operator (`echo foo\ >x` is the token `foo >x`, so the glued-redirect scan
-// still resolves `x`). Every OTHER backslash pair stays verbatim, so a
-// Windows path (`C:\Windows\...\powershell.exe`) keeps its exact token value
-// and isUnresolvable()'s backslash guard still fires on a token that carried
-// a non-quote escape. Single-quoted spans give a backslash no meaning (as in
-// bash) and are unchanged.
+// double quote yields the `"`, as bash does (isUnresolvable() rejects any token
+// holding one); in a bare word an escaped blank (space or tab) likewise yields
+// the blank, because a word that runs on through an escaped blank must not
+// swallow a following redirect operator (`echo foo\ >x` is the token `foo >x`,
+// so the glued-redirect scan still resolves `x`). Every OTHER backslash pair
+// stays verbatim — an escaped single quote included, because a literal `'`
+// in a token would be stripped by stripQuotes() as if it were a delimiter and
+// fabricate a target — so a Windows path (`C:\Windows\...\powershell.exe`) keeps
+// its exact token value and isUnresolvable()'s backslash guard still fires on a
+// token that carried a non-blank, non-`"` escape. Single-quoted spans give a
+// backslash no meaning (as in bash) and are unchanged.
 function tokenize(seg) {
   const out = [];
   const singleQuoted = [];
@@ -127,7 +129,7 @@ function tokenize(seg) {
     } else if (isSQ) {
       val = m[2];
     } else {
-      val = unescapeBackslashPairs(m[3], '"\' \t');
+      val = unescapeBackslashPairs(m[3], '" \t');
     }
     if (out.length && m.index === prevEnd) {
       out[out.length - 1] += val;
@@ -151,9 +153,10 @@ const UNPROVABLE_FLAGS = ['--git-dir', '--work-tree'];
 // A raw (unquote-stripped) cd/-C argument that is unresolvable to a concrete,
 // literal path: no argument, "-", starts with "~", contains "$"/backtick, or
 // contains a backslash/double-quote. The last two guard against token-level
-// ambiguity: tokenize() unescapes only an escaped quote and keeps every other
-// backslash pair verbatim, so a token still carrying a backslash (a non-quote
-// escape) or a double-quote (an unescaped `\"`) cannot be trusted as a literal
+// ambiguity: tokenize() unescapes only an escaped double quote (and, in a bare
+// word, an escaped blank) and keeps every other backslash pair verbatim, so a
+// token still carrying a backslash (any other escape, `\'` included) or a
+// double-quote (an escaped `\"`, now unescaped) cannot be trusted as a literal
 // path — never claim an unprovable target. Also unresolvable: anything else
 // that looks like a FLAG (starts with "-", length > 1) — cd's own flags
 // (-L, -P, -e, -@, --) are not path arguments; without this, `cd -P
@@ -581,17 +584,35 @@ const REDIRECT_OP_RE = /^\d*(>>|>\||>)(.*)$/;
 const AMP_REDIRECT_OP_RE = /^&(>>|>)(.*)$/;
 
 // #4015: bash ends a word at an unquoted `>`, so `echo foo>x` redirects exactly
-// like `echo foo > x`. The prefix excludes quotes, backslash, `$` and backtick
-// because each can make the `>` literal or put it inside an expansion, and `(`
+// like `echo foo > x`. The prefix excludes quotes, a lone backslash, `$` and
+// backtick because each can make the `>` literal or put it inside an expansion
+// (an escaped backslash `\\` is a literal backslash, so it does not hide a
+// following `>`, and a pair is the only backslash form the prefix accepts), and `(`
 // because an unquoted `(` inside a bare word is only arithmetic (`((i>0))`, where
 // `>` is a comparison), `$(`, `<(` or extglob syntax; ambiguity resolves to no
 // target. Used only on a token the start-anchored scan above did not match, and
 // only when the caller's quoting flags say the token was bare.
-const GLUED_REDIRECT_RE = /^[^"'\\$`>(]+(>>|>\||>)(.*)$/;
+const GLUED_REDIRECT_RE = /^(?:[^"'\\$`>(]|\\\\)+(>>|>\||>)(.*)$/;
 
 function matchRedirectOperator(tok) {
   const m = REDIRECT_OP_RE.exec(tok) || AMP_REDIRECT_OP_RE.exec(tok);
   return m ? m[2] : null;
+}
+
+// The glued-redirect operand of a bare token, or null: eligibility is judged on
+// the pre-substitution `rawTok`, the operand is read from the post-substitution `tok`.
+function gluedRedirectOperand(tok, rawTok) {
+  if (!GLUED_REDIRECT_RE.test(rawTok)) return null;
+  const glued = GLUED_REDIRECT_RE.exec(tok);
+  return glued ? glued[2] : null;
+}
+
+// What follows the last blank of a token. A bare token only holds a blank where
+// the tokenizer unescaped `\ ` (#4212); bash ends no word at an escaped blank, but
+// a `>` right after it starts a redirect on the same word, so the tail is scanned
+// on its own (`$M\ >x`, whose whole token the glued prefix rule rejects).
+function afterLastBlank(s) {
+  return s.slice(Math.max(s.lastIndexOf(' '), s.lastIndexOf('\t')) + 1);
 }
 
 // #3989 heredoc-body stripping (see stripHeredocBodies below). Program words
@@ -888,10 +909,16 @@ function redirectWriteTargets(t, effCwd, quoting) {
   const out = [];
   for (let i = compoundBodyEnd(t); i < t.length; i += 1) {
     let rawTarget = matchRedirectOperator(t[i]);
-    if (rawTarget === null && quoting && !quoting.singleQuoted[i] && !quoting.doubleQuoted[i]
-      && GLUED_REDIRECT_RE.test(quoting.raw[i])) {
-      const glued = GLUED_REDIRECT_RE.exec(t[i]);
-      if (glued) rawTarget = glued[2];
+    if (rawTarget === null && quoting && !quoting.singleQuoted[i] && !quoting.doubleQuoted[i]) {
+      const rawTok = quoting.raw[i];
+      rawTarget = gluedRedirectOperand(t[i], rawTok);
+      if (rawTarget === null && /[ \t]/.test(rawTok)) {
+        const tail = afterLastBlank(t[i]);
+        const rawTail = afterLastBlank(rawTok);
+        rawTarget = matchRedirectOperator(rawTail) !== null
+          ? matchRedirectOperator(tail)
+          : gluedRedirectOperand(tail, rawTail);
+      }
     }
     if (rawTarget === null) continue;
     if (rawTarget === '') {

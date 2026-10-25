@@ -393,8 +393,30 @@ test('#4212: a redirect after a span holding an escaped quote still resolves (th
   assert.deepStrictEqual(fileWriteTargets('echo "a\\"b" > out.js', '/r'), [{ action: 'write', file: path.resolve('/r', 'out.js') }]);
 });
 
-test('#4212: a bare-word escaped quote glued to > fabricates no target', () => {
+// Bash would redirect to `c` here; the scan deliberately does not, because the word
+// as typed carries a backslash (#4015's documented glued-scan exclusion). The test
+// pins that known miss so a change to it is deliberate, not an accident.
+test('#4212: a bare word holding an escaped quote glued to > resolves no target (documented #4015 exclusion, a known miss)', () => {
   assert.deepStrictEqual(fileWriteTargets('echo a\\"b>c', '/r'), []);
+});
+
+test('#4212: a doubled backslash is a literal backslash, so a > right after it is a real redirect', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo foo\\\\>x', '/r'), [{ action: 'write', file: path.resolve('/r', 'x') }]);
+  assert.deepStrictEqual(fileWriteTargets('echo foo\\>x', '/r'), []);
+  assert.deepStrictEqual(fileWriteTargets('echo foo\\\\\\>x', '/r'), []);
+});
+
+test('AC2.1 #4212: an escaped blank after a word that holds $ or a backtick still lets a following > resolve (the tail is scanned on its own)', () => {
+  const cases = [
+    ['echo $M\\ >x', 'x'],
+    ['echo ${M}\\ >x', 'x'],
+    ['echo `d`\\ >x', 'x'],
+    ['echo $M\\ bar>x', 'x'],
+  ];
+  for (const [command, name] of cases) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/r', name) }], command);
+  }
+  assert.deepStrictEqual(fileWriteTargets('echo $M>x', '/r'), [], 'a `$` word glued straight to > stays the documented gap');
 });
 
 test('AC2.1 #4212: an escaped blank before a redirect still resolves its target (no escaped-blank bypass)', () => {

@@ -611,8 +611,14 @@ test('#4212: an escaped quote inside a double-quoted span yields the quote and k
   assert.deepStrictEqual(tokenize('echo "a\\" b>c "'), { tokens: ['echo', 'a" b>c '], singleQuoted: [false, false], doubleQuoted: [false, true] });
 });
 
-test('#4212: a bare-word escaped quote yields the unescaped character', () => {
-  assert.deepStrictEqual(tokenize('echo a\\"b it\\\'s').tokens, ['echo', 'a"b', "it's"]);
+test('#4212: a bare-word escaped double quote yields the quote; an escaped single quote stays verbatim so stripQuotes cannot strip it', () => {
+  assert.deepStrictEqual(tokenize('echo a\\"b it\\\'s').tokens, ['echo', 'a"b', "it\\'s"]);
+});
+
+test('#4212: an escaped single quote makes a cd or -C argument unresolvable instead of fabricating a target', () => {
+  assert.deepStrictEqual(gitTargets("cd \\'/wt\\' && git commit -m x", '/repo'), []);
+  assert.deepStrictEqual(gitTargets("git -C \\'/wt\\' commit -m x", '/repo'), []);
+  assert.deepStrictEqual(fileWriteTargets("echo x > \\'/abs/f\\'", '/r'), []);
 });
 
 test('#4212: an escaped space outside quotes joins the word and yields the space, as bash does', () => {
@@ -626,6 +632,10 @@ test('AC2.1 #4212: non-quote escapes stay verbatim — Windows paths, a doubled 
   assert.deepStrictEqual(tokenize('git commit -m "a\\\\" b'), { tokens: ['git', 'commit', '-m', 'a\\\\', 'b'], singleQuoted: [false, false, false, false, false], doubleQuoted: [false, false, false, true, false] });
   assert.deepStrictEqual(tokenize('echo foo\\').tokens, ['echo', 'foo\\']);
   assert.deepStrictEqual(tokenize('echo foo\\>x').tokens, ['echo', 'foo\\>x']);
+});
+
+test('#4212: an escaped space in a cd argument resolves to the unescaped directory for gitTargets', () => {
+  assert.deepStrictEqual(gitTargets('cd /r/a\\ b && git commit -m x', '/repo'), [{ action: 'commit', dir: path.resolve('/r/a b') }]);
 });
 
 test('AC2.1 #4212: a line continuation still resolves the next line\'s target', () => {
