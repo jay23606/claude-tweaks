@@ -128,8 +128,9 @@ worktree, before anything else in this file runs for it.
 1. **Read `NEXT_STEPS`.** Use `parseNextSteps` in `plugin/bin/lib/dispatch/first-call-artifact-check.js`.
    For the first call that is `parseNextSteps(reply, FIRST_CALL_STEPS)`, the parse
    `resolveFirstCallGate` runs before it returns `handoff`. For the second call it is
-   `parseNextSteps(reply)`, checked against `/flow`'s own step names. Its `{ ok: true, steps }` is
-   the continuation's step list. A `{ ok: false, reason, message }` result fails closed. That covers
+   `parseNextSteps(reply, SECOND_CALL_STEPS)`, the steps a second call can still run (`test`,
+   `review`, `polish`, `re-verify`, `wrap-up`). Its `{ ok: true, steps }` is the continuation's step
+   list. A `{ ok: false, reason, message }` result fails closed. That covers
    NEXT_STEPS missing or empty, a step the call does not run, and a step named twice. Log
    `Handoff refused: {message}` via `log-decision.js --status REFUSED --text-file "{text-file}"`
    (`_shared/auto-decision-log.md`'s Text from git or a user paragraph, since `{message}` quotes the
@@ -137,18 +138,20 @@ worktree, before anything else in this file runs for it.
    `blocked` (second call, section 6).
 2. **Continue.** Dispatch `task-prompt.md`'s Continuation call: the same call's template, its step
    list replaced by `NEXT_STEPS`, with the same `{minted-run-dir}` and the same model profile. Log it
-   first via `log-decision.js --status AUTO --step "Dispatch group {group}" --text "call {1|2} handed off ({n} of 3); continuing {NEXT_STEPS} in a fresh call" --reversibility n/a`.
+   first via `log-decision.js --status AUTO --step "Dispatch group {group}" --text "call {1|2} handed off ({n} of 3 this run); continuing {NEXT_STEPS} in a fresh call" --reversibility n/a`,
+   `{n}` counting this run's handoffs across both calls.
    A continuation that reports `handoff` again comes back to item 1 with its own report.
-3. **Bound: at most three continuations per call.** The gauge enforces the real bound before any
+3. **Bound: at most three handoffs per run.** The gauge enforces the real bound before any
    handoff is reported. `context-gauge.js` writes no handoff once the run has made `HANDOFF_BOUND`
    (3, `plugin/bin/lib/timing/context-gauge.js`) handoffs, counted in `handoff.json`'s
    `handoffCount`. The count is per run, not per call: both calls share one minted run dir, so they
    share the three. Past it the agent continues in place, and its call ends as it would without
    the gauge, completing or settling its own HARD-GATE (`flow/context-handoff.md`'s Reading the
-   result). This per-call bound is a backstop for a misbehaving agent and never fires on a
-   well-behaved one. A fourth handoff is not continued: report the call as `build-test-blocked`
-   (first call, section 5) or `blocked` (second call, section 6), naming the bound as the reason.
-   Log `Handoff bound: call {1|2} handed off a fourth time; {NEXT_STEPS} not run` first, the same
+   result). This session's own count, by the same per-run `{n}`, is a backstop for a misbehaving
+   agent and never fires on a well-behaved one. A fourth handoff in the run is not continued:
+   report the call as `build-test-blocked` (first call, section 5) or `blocked` (second call,
+   section 6), naming the bound as the reason.
+   Log `Handoff bound: call {1|2} is the run's fourth handoff; {NEXT_STEPS} not run` first, the same
    way as item 1's refusal.
 4. **Gate on the last continuation's report.** It stands as the call's report. For the first call,
    section 2 runs on it as if the first call had returned it: status line, `OUTCOME`, the artifact

@@ -582,6 +582,22 @@ test('parseNextSteps validates against FLOW_STEPS by default -- a second-call li
   assert.deepEqual([...FIRST_CALL_STEPS], ['build', 'stories', 'test']);
 });
 
+// Final review fix: a second call's continuation is restricted to the steps a second call can
+// still run (a resume at review auto-inserts test), so a build, stories or review-console entry
+// fails closed instead of becoming a continuation.
+test('parseNextSteps with SECOND_CALL_STEPS: the second call\'s steps parse, a first-call or review-console step fails closed', () => {
+  const { SECOND_CALL_STEPS } = require('../../../plugin/bin/lib/dispatch/first-call-artifact-check');
+  assert.deepEqual([...SECOND_CALL_STEPS], ['test', 'review', 'polish', 're-verify', 'wrap-up']);
+  assert.deepEqual(parseNextSteps(handoffReply('NEXT_STEPS: test,review,polish,re-verify,wrap-up'), SECOND_CALL_STEPS), { ok: true, steps: ['test', 'review', 'polish', 're-verify', 'wrap-up'] });
+  assert.deepEqual(parseNextSteps(handoffReply('NEXT_STEPS: wrap-up'), SECOND_CALL_STEPS), { ok: true, steps: ['wrap-up'] });
+  for (const step of ['build', 'stories', 'review-console']) {
+    const parsed = parseNextSteps(handoffReply(`NEXT_STEPS: ${step},wrap-up`), SECOND_CALL_STEPS);
+    assert.equal(parsed.ok, false, `${step} must not parse for a second call`);
+    assert.equal(parsed.reason, 'next-steps-invalid', step);
+    assert.ok(parsed.message.includes(`accepted: ${SECOND_CALL_STEPS.join(', ')}`), parsed.message);
+  }
+});
+
 // ---- #3661: checkFirstCallStamp -- the first call's runner-written pass stamp at HEAD ----
 // Every case injects `stampStatus` / `exists` except the last two, which exercise the real
 // default report check and the real verify.js spawn (its worktree cwd) against temp fixtures.

@@ -3,7 +3,7 @@
 // /flow call that crossed the context cap reports `OUTCOME: handoff` + `NEXT_STEPS:`
 // (flow/context-handoff.md's Dispatched call). The dispatcher continues it in a fresh
 // Task call built from the same template with the step list replaced by NEXT_STEPS,
-// at most three times per call, then gates on the last continuation's report. Pins
+// at most three handoffs per run, then gates on the last continuation's report. Pins
 // both templates' OUTPUT FORMAT, the substitution (a first-call `test` continuation
 // keeps "Stop after the test gate"), two-call-gate.md section 8, and every dispatch
 // file whose OUTCOME handling a handoff would otherwise fall through as a failure.
@@ -76,15 +76,21 @@ test('two-call-gate.md section 2 routes a handoff to section 8, and section 8 st
   assert.match(s, /not a failure/);
   assert.match(s, /no Settle, no `cleanup-only` teardown, no claim release/);
   assert.match(s, /`parseNextSteps\(reply, FIRST_CALL_STEPS\)`/);
+  assert.match(s, /`parseNextSteps\(reply, SECOND_CALL_STEPS\)`/);
   assert.match(s, /same `\{minted-run-dir\}`/);
   assert.match(s, /same model profile/);
-  assert.match(s, /at most three continuations per call/i);
-  assert.match(s, /fourth handoff[^.]*`build-test-blocked`[^.]*first call[^.]*`blocked`[^.]*second call/);
+  assert.match(s, /at most three handoffs per run/i);
+  assert.doesNotMatch(s, /continuations per call/i);
+  assert.match(s, /\(\{n\} of 3 this run\)/);
+  assert.match(s, /fourth handoff in the run[^.]*`build-test-blocked`[^.]*first call[^.]*`blocked`[^.]*second call/);
   assert.match(s, /last continuation's report/);
   assert.match(s, /neither the artifact check nor the stamp read/);
-  // code twin: the names the prose cites are the module's exports
+  // code twin: the names the prose cites are the module's exports, and the second call's
+  // list the prose spells out is SECOND_CALL_STEPS itself
   assert.equal(typeof gate.parseNextSteps, 'function');
   assert.ok(Array.isArray(gate.FIRST_CALL_STEPS));
+  assert.ok(Array.isArray(gate.SECOND_CALL_STEPS));
+  assert.ok(s.includes(`\`parseNextSteps(reply, SECOND_CALL_STEPS)\`, the steps a second call can still run (${gate.SECOND_CALL_STEPS.map((x) => `\`${x}\``).join(', ')})`));
 });
 
 test('the real bound is the gauge\'s per-run HANDOFF_BOUND: section 8 cites it, context-handoff.md says continue in place at it', () => {
@@ -119,6 +125,7 @@ test('firing-exclusion.md, reporting.md, sequential-execution.md treat a handoff
   assert.match(fx, /`handoff`[^.]*never appended/);
   const rp = squash(read('reporting.md'));
   assert.match(rp, /handed-off call[^.]*continuation[^.]*never a failure/i);
+  assert.match(rp, /\(\{n\} of 3 this run\)/);
   const loop = squash(region(read('sequential-execution.md'), '## The loop', '## No per-group timeout', 'loop section'));
   assert.match(loop, /`OUTCOME: handoff` passes this check/);
   assert.match(loop, /last continuation's report/);

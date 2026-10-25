@@ -356,6 +356,10 @@ const NEXT_STEPS_LINE_RE = /^NEXT_STEPS:(.*)$/;
 
 // The steps a first (`build,test`) call runs: `build` with its automatic `stories`, then `test`.
 const FIRST_CALL_STEPS = Object.freeze(['build', 'stories', 'test']);
+// The steps a second (`review,polish,wrap-up`) call can still run: a resume at `review`
+// auto-inserts `test` first, and `polish` carries its `re-verify`. Its handoff is read in
+// prose (`two-call-gate.md` section 8 item 1), which passes this list.
+const SECOND_CALL_STEPS = Object.freeze(['test', 'review', 'polish', 're-verify', 'wrap-up']);
 
 function replyLines(reply) {
   return String(reply == null ? '' : reply).split('\n').map((l) => l.replace(/\r$/, ''));
@@ -367,7 +371,7 @@ function replyLines(reply) {
 // Reads a handoff reply's first `NEXT_STEPS:` line. Fails closed, the same strictness as
 // context-gauge.js's own `--next-steps` parse: no line -> next-steps-missing; a blank value ->
 // next-steps-empty; an empty part or a name outside `allowed` (FLOW_STEPS by default; a
-// first call passes FIRST_CALL_STEPS) -> next-steps-invalid; a step named twice ->
+// first call passes FIRST_CALL_STEPS, a second call SECOND_CALL_STEPS) -> next-steps-invalid; a step named twice ->
 // next-steps-duplicate. A mangled list must never become a continuation that skips or
 // repeats a step.
 function parseNextSteps(reply, allowed = FLOW_STEPS) {
@@ -401,4 +405,4 @@ function resolveFirstCallGate({ reply, artifact }) {
   return 'artifact-failed';
 }
 
-module.exports = { checkFirstCallArtifacts, checkFirstCallStamp, resolveFirstCallGate, parseNextSteps, FIRST_CALL_STEPS, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
+module.exports = { checkFirstCallArtifacts, checkFirstCallStamp, resolveFirstCallGate, parseNextSteps, FIRST_CALL_STEPS, SECOND_CALL_STEPS, resolveIntegrationModel, headerBases, hasMaterializedHeader, defaultReadFile };
