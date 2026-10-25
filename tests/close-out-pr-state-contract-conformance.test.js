@@ -94,6 +94,9 @@ const UPDATE_PINS = [
     && s.includes('(`stopped: update failed — marker not written`), nothing pushed')
     && s.includes('never that procedure\'s issue fallback, since only the PR is ever read')],
   ['marker-failed-clear', 0, (s) => s.includes('A failed clear is reported and blocks nothing: a marker left pending costs one re-verify.')],
+  ['marker-accumulates', 0, (s) => s.includes('an update on a PR whose marker is already pending appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`')],
+  ['marker-write-trusted', 0, (s) => s.includes('After each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.')],
+  ['marker-read-by-id', 0, (s) => s.includes('then the `body` of the comment in the same payload whose `id` it returned')],
   ['marker-nothing-landed', 0, (s) => /When a landing call fails and step 2 found no pending marker, re-read `gh pr view \{number\} --json headRefOid`[\s\S]{0,160}\(`cleared \(nothing landed\)`\); any other head keeps it pending/.test(s)],
   ['offer-options', 1, (s) => s.includes('`DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`')
     && s.includes('`BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`')
@@ -129,7 +132,11 @@ const UPDATE_PINS = [
   ['resume-pending-resolution', 2, (s) => s.includes('is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge')],
   ['resume-no-marker-local', 2, (s) => s.includes('With no pending marker nothing was pushed, since the marker precedes every landing call, so recover')],
   ['marker-before-update-branch', 2, (s) => before(s, '`BEHIND` then writes the pending marker', '`gh pr update-branch {number}`')],
-  ['marker-post-update-sha', 2, (s) => s.includes('Then rewrite the marker\'s `resolution-commit` to that sha.')],
+  ['marker-post-update-sha', 2, (s) => s.includes('Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha.')],
+  ['pin-retry-after-exit0', 2, (s) => s.includes('after an exit-0 fetch, a ref missing or stale locally is fetched once more')],
+  ['base-moved-no-wt', 2, (s) => s.includes('— the one just added for a pending marker included — goes to step 1\'s offer')],
+  ['base-moved-fresh-carries', 2, (s) => s.includes('is still a resume for step 8, which hands off the marker as Fresh\'s write leaves it')],
+  ['resume-pre-update-head-field', 2, (s) => s.includes('`{pre-update-head}` being the marker\'s own field')],
   ['merge-base-in', 3, (s) => s.includes('`git -C {wt} fetch origin {base}`') && s.includes('Then `git -C {wt} merge --no-edit origin/{base}`')],
   ['nothing-new-stops', 3, (s) => /brings in nothing[\s\S]{0,200}stop-set status stops the candidate \(`stopped: mergeStateStatus \{status\} after update`\)/.test(s)],
   // #4317 — step 3
@@ -160,6 +167,7 @@ const UPDATE_PINS = [
   ['teardown-on-stop', 7, (s) => /first on every stop after step 2, except a failed step 4 and a stop on a `\{wt\}` step 2 found mid-merge or holding tracked changes —\s+each keeps `\{wt\}`/.test(s)],
   // #4317 — step 7
   ['teardown-marker-not-wt', 7, (s) => s.includes('`{wt}` is never the resume marker: the pending marker on the PR is, so every other stop tears down')],
+  ['teardown-nothing-new-scoped', 7, (s) => s.includes('after step 3\'s brings-in-nothing read when step 2 found no pending marker')],
   ['teardown-next-run', 7, (s) => s.includes('the next run\'s step 2 resumes `{wt}`, or stops on it once the PR head has diverged')],
   ['teardown', 7, (s) => s.includes('`git worktree remove {wt}`')],
   ['handoff-sha', 8, (s) => s.includes('`{verified-sha}` itself')],
@@ -240,9 +248,9 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
 });
 
 const PINS_4317 = {
-  'AC1.1': ['marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-skip-verifies', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept'],
-  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values'],
-  'AC3.1': ['fail-stops-git', 'base-fetch-checked'],
+  'AC1.1': ['marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-skip-verifies', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id'],
+  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field'],
+  'AC3.1': ['fail-stops-git', 'base-fetch-checked', 'pin-retry-after-exit0'],
   'AC4.1': ['gh-only'],
 };
 
@@ -326,7 +334,15 @@ const UPDATE_MUTATIONS = [
   ['resume-pending-resolution', 'is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge', 'stays `pending`'],
   ['resume-no-marker-local', 'With no pending marker nothing was pushed, since the marker precedes every landing call, so recover', 'Otherwise recover'],
   ['marker-before-update-branch', '`BEHIND` then writes the pending marker (`update-method: gh pr update-branch`, `conflicted-files: none`, `resolution-commit: pending`)\n   and runs `gh pr update-branch {number}`', '`BEHIND` then runs `gh pr update-branch {number}`'],
-  ['marker-post-update-sha', '\n   Then rewrite the marker\'s `resolution-commit` to that sha.', ''],
+  ['marker-post-update-sha', '\n   Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha.', ''],
+  ['pin-retry-after-exit0', 'after an exit-0 fetch, a ref missing', 'a ref missing'],
+  ['base-moved-no-wt', ' — the one just added for a pending marker included —', ''],
+  ['base-moved-fresh-carries', ' and is still a resume for step 8, which hands off the marker as Fresh\'s write leaves it.', ', with Fresh\'s own values.'],
+  ['resume-pre-update-head-field', ', `{pre-update-head}` being the marker\'s own field', ''],
+  ['marker-accumulates', 'appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`', 'overwrites it'],
+  ['marker-write-trusted', '\nAfter each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.', ''],
+  ['marker-read-by-id', 'then the `body` of the comment in the same payload whose `id` it returned', 'then its body'],
+  ['teardown-nothing-new-scoped', ' read when step 2 found no pending marker', ' read'],
   ['base-fetch-checked', 'then require `git -C {wt} rev-parse origin/{base}` to equal the first field of `git -C {wt} ls-remote origin refs/heads/{base}`', 'then trust it'],
   ['nothing-new-pending-verifies', ' —\n   or at step 4 when step 2 found a pending marker, since the head it marks is still unverified', ''],
   ['marker-before-push', 'First write the pending marker', 'After the push, write the pending marker'],
