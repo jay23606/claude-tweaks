@@ -61,7 +61,9 @@ files:
 - **Should feel:** that you are reviewing what changed. The question says the PR was updated by close-out, by which method, which files conflicted, and which resolution commit to look at.
 - **Should understand:**
   - CI status and mergeability in the question are the post-update reads.
-  - Close-out re-checks the head just before merging and passes the verified sha. Step 3 then appends `--match-head-commit`, so neither the armed nor the immediate merge can land an unverified head.
+  - Close-out re-checks the head just before merging and passes the verified sha. Step 3 then appends `--match-head-commit`, so a merge, or the arming of one, is accepted only against the verified head.
+  - The update note ends `review it before merging; any approval above predates it.` The approver the question names reviewed the head before the update, not the resolution.
+  - Declining here leaves the PR `pending-review`, but an update that already ran stays pushed.
 - **Red flags:** a question still showing the pre-update `DIRTY` and recommending Skip; a merge without `--match-head-commit` after an update.
 
 ## Origin
