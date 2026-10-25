@@ -48,7 +48,7 @@ files:
 ### 3. Settle the gap
 - **URL:** the run's `decisions.md`, or its `review-findings.json`
 - **Action:** the maintainer fixes it one of two ways:
-  - Re-run the review step's findings writer and tiebreak for the run. Each finding then gets one verdict line through `resolve-tiebreak`, whose output is `logStatus`/`logStep`/`logText`, written via `log-decision.js`.
+  - Re-run the review step's findings writer and tiebreak for the run. Each finding then gets one verdict line through `resolve-tiebreak --run`, which writes it to `decisions.md` itself. `log-decision.js` writes it only when the JSON says `logged: false`.
   - If the run predates the tiebreak, delete `review-findings.json`.
 
   Then they re-run `archive-run`.

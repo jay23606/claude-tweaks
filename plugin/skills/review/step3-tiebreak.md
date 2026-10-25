@@ -74,11 +74,11 @@ For each entry, once its agent has returned:
 2. Run, with `{checkout under review}` the worktree or checkout the review reads (not the run dir):
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" resolve-tiebreak "{path-F}" "{path-R}" --root "{checkout under review}"
+   node "${CLAUDE_PLUGIN_ROOT}/bin/review-coordination.js" resolve-tiebreak "{path-F}" "{path-R}" --root "{checkout under review}" --run "$PIPELINE_RUN_DIR"
    ```
 
-   It prints JSON with `outcome`, `severity`, `recommendation`, `logLine`, `logStatus`, `logStep`, `logText`, `listInConsole`, and `reason`. When `resolve-tiebreak` exits non-zero for an entry, never invent a verdict: log, through `--text-file` as step 3 does (the text written to `T`), `STAGED {HH:MM:SS} — Tiebreak: lens "{lens}" finding {path}:{line} unconfirmed; resolve-tiebreak exited {exit}, no verdict. Reversibility: high.` That finding has no verdict line, so the archive gate refuses the run and surfaces it.
-3. Log one line (a pipeline run only). `logText` can carry a verbatim source line — quotes, `$()`, backticks, backslashes — so it never goes on the command line: `Write` it, unchanged, to `T`, then pass `T`. `logStatus` and `logStep` are safe inline.
+   It prints JSON with `outcome`, `severity`, `recommendation`, `logLine`, `logStatus`, `logStep`, `logText`, `listInConsole`, and `reason`, plus `logged` under `--run` — which logs step 3's line itself; drop `--run` standalone and for an inline verdict. When `resolve-tiebreak` exits non-zero for an entry, never invent a verdict: log, through `--text-file` as step 3 does (the text written to `T`), `STAGED {HH:MM:SS} — Tiebreak: lens "{lens}" finding {path}:{line} unconfirmed; resolve-tiebreak exited {exit}, no verdict. Reversibility: high.` That finding has no verdict line, so the archive gate refuses the run and surfaces it.
+3. Log one line (a pipeline run only). `--run` wrote it already; log it here only on `logged: false` or for an inline verdict. `logText` can carry a verbatim source line — quotes, `$()`, backticks, backslashes — so it never goes on the command line: `Write` it, unchanged, to `T`, then pass `T`. `logStatus` and `logStep` are safe inline.
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status "{logStatus}" --step "{logStep}" --text-file "{path-T}" --reversibility high --section "/review"
