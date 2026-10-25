@@ -4,7 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const {
-  gitTargets, gitTargetsFrom, resolvedGitSegments, resolveGitCommand, fileWriteTargets, mkdirTargets, powershellOpaqueCommand, skipGlobalFlags,
+  gitTargets, gitTargetsFrom, resolvedGitSegments, resolveGitCommand, fileWriteTargets, mkdirTargets, powershellOpaqueCommand, skipGlobalFlags, tokenize,
 } = require('../plugin/bin/lib/hooks/git-command');
 
 test('plain commit resolves to cwd', () => {
@@ -605,4 +605,27 @@ test('an unrelated command, and a bare powershell invocation with no opaque flag
 
 test('an abbreviated flag form (-Com) is a deliberate, documented miss — not matched', () => {
   assert.strictEqual(powershellOpaqueCommand('powershell -Com "git push"', '/repo'), false);
+});
+
+test('#4212: an escaped quote inside a double-quoted span yields the quote and keeps the span whole', () => {
+  assert.deepStrictEqual(tokenize('echo "a\\" b>c "'), { tokens: ['echo', 'a" b>c '], singleQuoted: [false, false], doubleQuoted: [false, true] });
+});
+
+test('#4212: a bare-word escaped quote yields the unescaped character', () => {
+  assert.deepStrictEqual(tokenize('echo a\\"b it\\\'s').tokens, ['echo', 'a"b', "it's"]);
+});
+
+test('#4212: an escaped space outside quotes joins the word, and the token stays unresolvable', () => {
+  assert.deepStrictEqual(tokenize('mkdir a\\ b').tokens, ['mkdir', 'a\\ b']);
+  assert.deepStrictEqual(mkdirTargets('mkdir a\\ b', '/r'), []);
+});
+
+test('AC2.1 #4212: non-quote escapes stay verbatim — Windows paths, a doubled backslash before a closing quote, a trailing backslash', () => {
+  assert.strictEqual(tokenize('C:\\Windows\\System32\\powershell.exe -Command x').tokens[0], 'C:\\Windows\\System32\\powershell.exe');
+  assert.deepStrictEqual(tokenize('git commit -m "a\\\\" b'), { tokens: ['git', 'commit', '-m', 'a\\\\', 'b'], singleQuoted: [false, false, false, false, false], doubleQuoted: [false, false, false, true, false] });
+  assert.deepStrictEqual(tokenize('echo foo\\').tokens, ['echo', 'foo\\']);
+});
+
+test('AC2.1 #4212: a line continuation still resolves the next line\'s target', () => {
+  assert.deepStrictEqual(mkdirTargets('mkdir -p \\\n/abs/dir', '/r'), [{ action: 'mkdir', file: path.resolve('/abs/dir') }]);
 });

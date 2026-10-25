@@ -384,6 +384,19 @@ test('AC1.2 AC2.1 #4015: a `>` that is quoted, escaped, expanded, an fd dup, a s
   }
 });
 
+test('AC1.1 AC1.2 #4212: a backslash-escaped quote does not end a double-quoted span, so the text after it is not a redirect', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo "a\\" b>c "', '/r'), []);
+  assert.deepStrictEqual(fileWriteTargets('echo foo>x', '/r'), [{ action: 'write', file: path.resolve('/r', 'x') }]);
+});
+
+test('#4212: a redirect after a span holding an escaped quote still resolves (the span really closed)', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo "a\\"b" > out.js', '/r'), [{ action: 'write', file: path.resolve('/r', 'out.js') }]);
+});
+
+test('#4212: a bare-word escaped quote glued to > fabricates no target', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo a\\"b>c', '/r'), []);
+});
+
 // #3989: a heredoc body is data for the reading program, not shell — its `>`
 // is not a redirection. The opener line and whatever follows the closing
 // delimiter still are scanned.

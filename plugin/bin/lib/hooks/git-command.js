@@ -91,15 +91,27 @@ function stripQuotes(s) {
 // `'$WT/a.js'` and `"$WT/a.js"` are indistinguishable post-tokenize, and the
 // substitution step would wrongly expand the single-quoted (never-expanded)
 // form, fabricating a target real bash would never produce for that command.
+//
+// Escape-aware (#4212): inside a double-quoted span and in a bare word, a
+// backslash pairs with the next character, so `\"` never closes a span and
+// `\\` is one pair (in a bare word, a backslash before a newline — a line
+// continuation — or at the end of the string stays a lone `\`). An escaped
+// quote yields the unescaped character, as bash does; every OTHER backslash
+// pair stays verbatim, so a Windows path (`C:\Windows\...\powershell.exe`)
+// keeps its exact token value and isUnresolvable()'s backslash guard still
+// fires on a token that carried a non-quote escape. Single-quoted spans give
+// a backslash no meaning (as in bash) and are unchanged.
 function tokenize(seg) {
   const out = [];
   const singleQuoted = [];
   const doubleQuoted = [];
-  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  const re = /"((?:[^"\\]|\\[\s\S])*)"|'([^']*)'|((?:\\[^\n]?|[^\s\\])+)/g;
   let m;
   let prevEnd = -1;
   while ((m = re.exec(seg)) !== null) {
-    const val = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3];
+    const val = m[1] !== undefined ? m[1].replace(/\\([\s\S])/g, (p, c) => (c === '"' ? c : p))
+      : m[2] !== undefined ? m[2]
+        : m[3].replace(/\\([\s\S])/g, (p, c) => (c === '"' || c === "'" ? c : p));
     const isSQ = m[2] !== undefined;
     const isDQ = m[1] !== undefined;
     if (out.length && m.index === prevEnd) {
@@ -124,11 +136,11 @@ const UNPROVABLE_FLAGS = ['--git-dir', '--work-tree'];
 // A raw (unquote-stripped) cd/-C argument that is unresolvable to a concrete,
 // literal path: no argument, "-", starts with "~", contains "$"/backtick, or
 // contains a backslash/double-quote. The last two guard against token-level
-// ambiguity: the regex tokenizer below is not escape-aware, so a value that
-// still carries a backslash or stray quote (from an escaped-quote sequence
-// upstream) cannot be trusted as a literal path — never claim an unprovable
-// target. Also unresolvable: anything else that looks like a FLAG (starts
-// with "-", length > 1) — cd's own flags (-L, -P, -e, -@, --) are not path
+// ambiguity: tokenize() unescapes only an escaped quote and keeps every other
+// backslash pair verbatim, so a token still carrying a backslash (a non-quote
+// escape) or a double-quote (an unescaped `\"`) cannot be trusted as a literal
+// path — never claim an unprovable target. Also unresolvable: anything else
+// that looks like a FLAG (starts with "-", length > 1) — cd's own flags (-L, -P, -e, -@, --) are not path
 // arguments; without this, `cd -P /other-repo` would resolve "-P" itself as
 // a literal (almost certainly nonexistent) child directory of the current
 // cwd instead of recognizing the real target is unprovable from here.
