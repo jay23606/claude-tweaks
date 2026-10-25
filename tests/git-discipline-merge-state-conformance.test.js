@@ -23,11 +23,11 @@ const HEADING = '### Post-push merge-state check';
 function assertMergeStateSection(text) {
   const start = text.indexOf(HEADING);
   assert.ok(start !== -1, `AC1.1: "${HEADING}" subsection not found`);
-  const phaseExit = text.indexOf('## Phase-exit push');
+  const phaseExit = text.indexOf('## Phase exit — one `phase-exit.js` call');
   const catchUp = text.indexOf('## Catching a branch up with `main`');
   assert.ok(
     phaseExit !== -1 && phaseExit < start && start < catchUp,
-    'AC1.1: the subsection sits after "## Phase-exit push" and before "## Catching a branch up with `main`"',
+    'AC1.1: the subsection sits after "## Phase exit — one `phase-exit.js` call" and before "## Catching a branch up with `main`"',
   );
   // Whitespace-collapsed so a re-wrap of the prose never breaks a pin.
   const section = text.slice(start, catchUp).replace(/\s+/g, ' ');

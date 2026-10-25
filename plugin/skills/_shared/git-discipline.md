@@ -35,7 +35,7 @@ These apply in ALL modes. They exist because multiple processes may commit to th
 | **Never `--no-verify` / `--no-gpg-sign`** | Skipping hooks or signing bypasses safety the user opted into. If a hook fails, fix the underlying issue. |
 | **A transient `index.lock` collision retries, never `rm`s the lock** | A sibling agent's git call or a PostToolUse hook in the same shared checkout can hold the lock for a couple of seconds — a real process, not a stale one. `bin/lib/git-retry.js`'s `withIndexLockRetry` is the shared, bounded (~15 attempts at 2s) implementation every plugin commit call site routes through (#2346); a hand-written `git commit` in a skill's own procedure follows the same rule — retry on the `index.lock`/"another git process seems to be running" signature, never delete the lock file. |
 
-## Phase-exit push (`integration-model: pr-first` only)
+## Phase exit — one `phase-exit.js` call
 
 Under `pr-first` (`_shared/integration-model.md`), every pipeline phase that commits — build,
 test, review, polish, wrap-up — ends by pushing the branch. This is what makes the run's draft PR

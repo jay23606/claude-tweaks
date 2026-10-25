@@ -53,6 +53,7 @@ function assertLeaveOpenParagraph(text) {
   // takes one read of its own, late in the step, against the run dir where it now lives.
   has('unless it printed `unknown`', 'late read: only an unknown (or exit 3) triggers a read of its own');
   has('exited 3 because cleanup item 8', 'late read: an archived run dir is named as the exit-3 cause');
+  has('never printed one: `mergeState.exit` is `null` (the sub-CLI threw)', 'late read: a pr-merge-state.js crash takes the late read too');
   has('take one read of its own, as the last call of this execution step', 'late read: one read, placed last');
   has('before the Verify execution section', 'late read: placed before Verify execution');
   has('`node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "{run-dir}" --phase wrap-up`', 'late read: the command');
@@ -108,6 +109,11 @@ test('go-red control: a re-check that never reads late, or reads the archived-aw
   // Anchored on pr-merge-state.js: the phase-exit.js call above carries the same --run/--phase pair.
   const staleRun = assertMutated(EXEC, EXEC.replace('pr-merge-state.js" --run "{run-dir}" --phase wrap-up', 'pr-merge-state.js" --run "$PIPELINE_RUN_DIR" --phase wrap-up'));
   assert.throws(() => assertLeaveOpenParagraph(staleRun), /late read: the command/);
+});
+
+test('go-red control: a re-check that reuses a crashed merge-state read makes the shared assertion throw', () => {
+  const mutated = assertMutated(EXEC, EXEC.replace(' — or never printed\none: `mergeState.exit` is `null` (the sub-CLI threw)', ''));
+  assert.throws(() => assertLeaveOpenParagraph(mutated), /late read: a pr-merge-state\.js crash/);
 });
 
 function assertGitDisciplineException(text) {

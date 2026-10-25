@@ -187,9 +187,9 @@ test('go-red control: a listed CLI that does not append, or an unpinned name in 
 
 const GIT_DISCIPLINE = read('plugin/skills/_shared/git-discipline.md');
 const phaseExitSection = (text) => {
-  const start = text.indexOf('## Phase-exit push (`integration-model: pr-first` only)');
+  const start = text.indexOf('## Phase exit — one `phase-exit.js` call');
   const end = text.indexOf('### Post-push merge-state check');
-  assert.ok(start !== -1 && end > start, 'the Phase-exit push section precedes the Post-push merge-state check');
+  assert.ok(start !== -1 && end > start, 'the Phase exit section precedes the Post-push merge-state check');
   return text.slice(start, end);
 };
 const ROUTING_FACTS = [
@@ -210,7 +210,7 @@ const ROUTING_FACTS = [
   { name: 'parallel-wave members never call it', re: /Under `MULTISPEC_PARALLEL_WAVE=1` a member never calls it: write one `SKIP` entry naming the marker instead/ },
 ];
 
-test('git-discipline.md: the Phase-exit push section is the one phase-exit.js call and routes every envelope branch', () => {
+test('git-discipline.md: the Phase exit section is the one phase-exit.js call and routes every envelope branch', () => {
   assert.deepEqual(missingFacts(phaseExitSection(GIT_DISCIPLINE), ROUTING_FACTS), []);
 });
 

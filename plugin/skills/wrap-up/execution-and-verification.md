@@ -43,7 +43,7 @@ commit and flips wrap-up's PR checklist row —
 `node "${CLAUDE_PLUGIN_ROOT}/bin/phase-exit.js" --run "{run-dir}" --phase wrap-up --worktree "{worktree-path}" --fixes {n}[,{m}...]`,
 in any model or mode; it pushes only under `pr-first` in `worktree` mode. `{run-dir}` is the
 archive path once cleanup item 8 archived the run directory (`_shared/git-discipline.md`'s
-Post-push merge-state check) — routed per `_shared/git-discipline.md`'s Phase-exit push section
+Post-push merge-state check) — routed per `_shared/git-discipline.md`'s Phase exit section
 and `_shared/pr-checklist-refresh.md`'s Phase-checklist update section. This is the last phase-exit
 push of the run; it does not mark the PR ready for merge or touch its draft state — that
 transition belongs to the merge-path sub-issue, not this one (Non-Goals).
@@ -59,8 +59,9 @@ Post-push merge-state check otherwise leaves to the merge path at wrap-up's exit
 that check's `pr-merge-state.js --phase wrap-up` read just printed (`phase-exit.js`'s
 `mergeState`) — never a second read — unless
 it printed `unknown` (GitHub's mergeability computation, which that request started, not finished
-straight after the push) or exited 3 because cleanup item 8 (`cleanup-procedures.md`) had already
-archived `$PIPELINE_RUN_DIR` — item 8 runs before this step's commit and push. Then take one read
+straight after the push), exited 3 because cleanup item 8 (`cleanup-procedures.md`) had already
+archived `$PIPELINE_RUN_DIR` — item 8 runs before this step's commit and push — or never printed
+one: `mergeState.exit` is `null` (the sub-CLI threw). Then take one read
 of its own, as the last call of this execution step — after the `phase-exit.js` call, before the
 Verify execution section:
 `node "${CLAUDE_PLUGIN_ROOT}/bin/pr-merge-state.js" --run "{run-dir}" --phase wrap-up`, where
