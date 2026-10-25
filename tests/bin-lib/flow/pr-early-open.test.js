@@ -69,6 +69,7 @@ function harness({
     now: () => NOW,
     appendDecision: (line) => { calls.push(['log', line]); lines.push(line); },
     recordPr: (pr) => { calls.push(['record', pr.number]); records.push(pr); },
+    clearPr: () => { calls.push(['clear']); },
     readRunState: () => runState,
     readDecisions: () => decisions,
     writeBodyFile: (name, text) => {
@@ -179,7 +180,7 @@ test('a failed rebind is a logged SKIP, never a stop', async () => {
 test('a rejected reopen falls through to creation with its own Step 1 line', async () => {
   const h = harness({ list: [{ number: 7, url: URL7, state: 'CLOSED' }], reopen: new Error('GraphQL: Could not open the pull request') });
   const res = await openPrEarly(OPTS, h.deps);
-  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42 });
+  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42, reopenRejected: 7 });
   const step1 = h.lines[0];
   assert.match(step1, /reopen of closed PR #7 for worktree-dispatch-record-4027 was rejected; creating\./);
   assert.ok(hasPrEarlyStep1LineFor(step1, BRANCH));
@@ -279,12 +280,86 @@ test('a body whose first line does not name this run hard-stops before gh pr cre
   assert.equal(h.calls.find(isCreate), undefined);
 });
 
+test('a create retried after a transient error that then says "already exists" adopts the PR that landed', async () => {
+  const h = harness({
+    lists: [[], [], [{ number: 42, url: URL42, state: 'OPEN' }]],
+    create: [new Error('HTTP 504: Gateway Timeout'), new Error(`a pull request for branch "${BRANCH}" into branch "dev" already exists:\n${URL42}`)],
+  });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42 });
+  assert.equal(h.calls.filter(isCreate).length, 2);
+  assert.ok(!h.lines.some((l) => /FAILED/.test(l)), 'no FAILED line while a live draft PR exists');
+  assert.deepEqual(h.records, [{ number: 42, url: URL42 }]);
+});
+
+test('a retry that times out after a transient first error re-lists and adopts a PR that landed late', async () => {
+  const h = harness({
+    lists: [[], [], [{ number: 42, url: URL42, state: 'OPEN' }]],
+    create: [new Error('HTTP 503: Service Unavailable'), new Error('Post "https://api.github.com/graphql": context deadline exceeded')],
+  });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42 });
+  assert.equal(h.calls.filter(isCreate).length, 2);
+});
+
+test('an "already exists" retry error after a non-transient first error also re-lists and adopts', async () => {
+  const h = harness({
+    lists: [[], [], [{ number: 42, url: URL42, state: 'OPEN' }]],
+    create: [new Error('GraphQL: something odd (createPullRequest)'), new Error('a pull request for branch "x" into branch "dev" already exists')],
+  });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.deepEqual(res, { outcome: 'opened', number: 42, url: URL42 });
+});
+
+test('a failed recheck never retries the create: FAILED line names the unverifiable state', async () => {
+  const h = harness({
+    lists: [[], new Error('HTTP 502: Bad Gateway')],
+    create: [new Error('HTTP 502: Bad Gateway'), `${URL42}\n`],
+  });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.equal(res.outcome, 'create-failed');
+  assert.equal(h.calls.filter(isCreate).length, 1, 'no second create when the recheck could not look');
+  const failed = h.lines[h.lines.length - 1];
+  assert.match(failed, /gh pr create for \S+ FAILED \(.*unverifiable.*\); run proceeds local-only, no PR opened\./);
+  const dir = tmpDir('ct-pr-early-gate-');
+  fs.writeFileSync(path.join(dir, 'decisions.md'), `${h.lines.join('\n')}\n`);
+  assert.ok(hasLoggedPrDegrade(dir));
+});
+
+test('a stale recorded PR is cleared and logged when the push then degrades', async () => {
+  const h = harness({ runState: { pr: { number: 9 } }, view: { state: 'CLOSED' }, list: [], push: [new Error('fatal: Authentication failed')] });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.equal(res.outcome, 'push-failed');
+  assert.deepEqual(h.calls.filter((c) => c[0] === 'clear'), [['clear']]);
+  assert.ok(h.lines.some((l) => l.includes('PR-early run lifecycle: recorded PR #9 no longer open; none reused or created.')));
+});
+
+test('a stale recorded PR is cleared and logged when the create then degrades', async () => {
+  const h = harness({ runState: { pr: { number: 9 } }, view: { state: 'CLOSED' }, list: [], create: [new Error('HTTP 422'), new Error('HTTP 422')] });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.equal(res.outcome, 'create-failed');
+  assert.deepEqual(h.calls.filter((c) => c[0] === 'clear'), [['clear']]);
+  assert.ok(h.lines.some((l) => l.includes('recorded PR #9 no longer open; none reused or created.')));
+});
+
+test('a stale recorded PR replaced by a reused one is logged even when the push then fails, and never cleared', async () => {
+  const h = harness({ runState: { pr: { number: 9 } }, view: { state: 'CLOSED' }, list: [{ number: 7, url: URL7, state: 'OPEN' }], push: [new Error('fatal: Authentication failed')] });
+  const res = await openPrEarly(OPTS, h.deps);
+  assert.deepEqual(res.outcome, 'push-failed');
+  assert.equal(res.number, 7);
+  assert.ok(h.lines.some((l) => l.includes('recorded PR #9 no longer open; reused #7.')));
+  assert.equal(h.calls.find((c) => c[0] === 'clear'), undefined);
+  assert.deepEqual(h.records, [{ number: 7, url: URL7 }]);
+});
+
 test('every line written satisfies the bookkeeping-stamps gate\'s own matchers', async () => {
+  const adoptedLine = `- AUTO 10:00:00 — x: adopted prior attempt abc1234 from closed PR #7 for ${BRANCH}. Reversibility: high.\n`;
   const scenarios = [
     harness({ list: [] }),
     harness({ list: [{ number: 7, url: URL7, state: 'OPEN' }] }),
     harness({ list: [{ number: 7, url: URL7, state: 'CLOSED' }] }),
     harness({ list: [{ number: 7, url: URL7, state: 'CLOSED' }], reopen: new Error('rejected') }),
+    harness({ list: [{ number: 7, url: URL7, state: 'CLOSED' }], decisions: adoptedLine }),
   ];
   for (const h of scenarios) await openPrEarly(OPTS, h.deps);
   for (const h of scenarios) {
@@ -306,6 +381,18 @@ test('every line written satisfies the bookkeeping-stamps gate\'s own matchers',
     assert.equal(hasLoggedPrDegrade(dir), true, `degrade line matches: ${h.lines[h.lines.length - 1]}`);
     assert.ok(hasPrEarlyStep1LineFor(h.lines[0], BRANCH));
   }
+  // The spec's own rebind-failure SKIP wording contains "failed", and
+  // hasLoggedPrDegrade's regex is case-insensitive, so it does read as a
+  // degrade. That is harmless only because the reopened PR is recorded
+  // first, so the run is never PR-less. Pin both halves.
+  const rebindFail = harness({ list: [{ number: 7, url: URL7, state: 'CLOSED' }], decisions: adoptedLine, edit: new Error('HTTP 422') });
+  await openPrEarly(OPTS, rebindFail.deps);
+  assert.ok(hasPrEarlyStep1LineFor(rebindFail.lines[0], BRANCH));
+  const dir = tmpDir('ct-pr-early-gate-');
+  fs.writeFileSync(path.join(dir, 'decisions.md'), `${rebindFail.lines.join('\n')}\n`);
+  assert.equal(hasLoggedPrDegrade(dir), true);
+  assert.deepEqual(rebindFail.records, [{ number: 7, url: URL7 }]);
+  assert.ok(rebindFail.calls.findIndex((c) => c[0] === 'record') < rebindFail.calls.findIndex(isPush));
 });
 
 test('the written line is byte-identical to what log-decision.js --section /build would write', async () => {
@@ -338,7 +425,7 @@ function cliFixture({ policy = null, runState = null } = {}) {
   return { root, runDir, summaryFile, wt };
 }
 
-function cliDeps(fx, { list = [], create = `${URL42}\n`, push = null, ghAvailable = true, defaultBranch = 'main' } = {}) {
+function cliDeps(fx, { list = [], create = `${URL42}\n`, push = null, ghAvailable = true, defaultBranch = 'main', view = null } = {}) {
   const out = []; const err = []; const calls = [];
   const deps = {
     cwd: () => fx.root,
@@ -350,7 +437,9 @@ function cliDeps(fx, { list = [], create = `${URL42}\n`, push = null, ghAvailabl
         return JSON.stringify({ nameWithOwner: REPO, url: 'https://github.com/thn-inc/claude-tweaks', defaultBranchRef: { name: defaultBranch } });
       }
       if (args[0] === 'pr' && args[1] === 'list') return JSON.stringify(list);
-      if (args[0] === 'pr' && args[1] === 'create') return create;
+      if (args[0] === 'pr' && args[1] === 'view' && view) return JSON.stringify(view);
+      if (args[0] === 'pr' && args[1] === 'reopen') return '';
+      if (args[0] === 'pr' && args[1] === 'create') { if (create instanceof Error) throw create; return create; }
       throw new Error(`unexpected gh ${args.join(' ')}`);
     },
     git: (args, opts) => {
@@ -425,6 +514,52 @@ test('CLI: create failing twice exits 3 and logs the FAILED line', async () => {
   assert.equal(await run(cliArgv(fx), h.deps), 3);
   assert.equal(JSON.parse(h.out.join('')).outcome, 'create-failed');
   assert.match(fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8'), /gh pr create for \S+ FAILED/);
+});
+
+for (const [label, over] of [
+  ['an auth push failure', { push: new Error('fatal: Authentication failed for https://github.com/') }],
+  ['a create failing twice', { create: new Error('HTTP 422: Validation Failed') }],
+]) {
+  test(`CLI: a stale recorded PR is cleared from run-state.json when ${label} degrades, and the lines still satisfy the gate`, async () => {
+    const fx = cliFixture({ runState: { worktree: null, pr: { number: 9, url: URL7 } } });
+    const h = cliDeps(fx, { view: { state: 'CLOSED', url: URL7 }, ...over });
+    assert.equal(await run(cliArgv(fx), h.deps), 3, h.err.join(''));
+    const state = JSON.parse(fs.readFileSync(path.join(fx.runDir, 'run-state.json'), 'utf8'));
+    assert.equal(state.pr, null, 'the closed PR no longer reads as live');
+    const decisions = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+    assert.match(decisions, /PR-early run lifecycle: recorded PR #9 no longer open; none reused or created\./);
+    assert.ok(hasLoggedPrDegrade(fx.runDir));
+    assert.ok(hasPrEarlyStep1LineFor(decisions, BRANCH));
+  });
+}
+
+for (const state of ['OPEN', 'CLOSED']) {
+  test(`CLI: a ${state} match followed by a failed push exits 3 with the PR still recorded and its number on stdout`, async () => {
+    const fx = cliFixture();
+    const h = cliDeps(fx, { list: [{ number: 7, url: URL7, state }], push: new Error('fatal: Authentication failed') });
+    assert.equal(await run(cliArgv(fx), h.deps), 3, h.err.join(''));
+    const res = JSON.parse(h.out.join(''));
+    assert.equal(res.outcome, 'push-failed');
+    assert.equal(res.number, 7);
+    const rs = JSON.parse(fs.readFileSync(path.join(fx.runDir, 'run-state.json'), 'utf8'));
+    assert.deepEqual(rs.pr, { number: 7, url: URL7, branch: BRANCH });
+  });
+}
+
+test('CLI: --base overrides the policy value verbatim, and skips a malformed one', async () => {
+  const fx = cliFixture({ policy: 'integration-branch: my branch\n' });
+  const h = cliDeps(fx);
+  assert.equal(await run(cliArgv(fx, ['--base', 'release/2026.10']), h.deps), 0, h.err.join(''));
+  const createCall = h.calls.find(isCreate);
+  assert.equal(createCall[createCall.indexOf('--base') + 1], 'release/2026.10');
+});
+
+test('CLI: an integration-branch value containing whitespace exits 2 instead of falling back', async () => {
+  const fx = cliFixture({ policy: 'integration-branch: my branch\n' });
+  const h = cliDeps(fx);
+  assert.equal(await run(cliArgv(fx), h.deps), 2);
+  assert.match(h.err.join(''), /integration-branch.*whitespace/);
+  assert.equal(h.calls.find(isPush), undefined);
 });
 
 test('CLI: gh absent exits 2 naming the MCP path, before any gh or git call', async () => {

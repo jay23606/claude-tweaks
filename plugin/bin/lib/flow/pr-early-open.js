@@ -9,14 +9,19 @@
 // `log-decision.js --section "/build" --status AUTO --text ... --reversibility ...`
 // would write it, because pre-tool-use.js's checkBookkeepingStampsGate reads
 // them: hasPrEarlyStep1LineFor needs a Step 1 line before the first push, and
-// hasLoggedPrDegrade releases a PR-less run only on a `... FAILED` line. No
-// other line may contain the word "failed" in any case (that regex is
-// case-insensitive), which is why the reopen-rejected line carries no reason.
+// hasLoggedPrDegrade releases a PR-less run only on a `... FAILED` line. That
+// regex is case-insensitive, so a line on a path that can leave the run
+// PR-less must not contain "failed" unless it is that degrade: this is why
+// the reopen-rejected line carries no reason. The one other line containing
+// "failed" is the spec's own rebind SKIP wording. It does read as a degrade,
+// and that is harmless only because the reopened PR is recorded before the
+// rebind's outcome matters, so that run is never PR-less.
 //
 // deps: { gh(args) -> stdout (throws on failure), git(args, {cwd}) -> stdout,
 //   sleep(ms), now(), appendDecision(line), recordPr({number, url}),
-//   readRunState() -> run-state object | null, readDecisions() -> string,
-//   writeBodyFile(name, text) -> path, readFile(path) -> string }.
+//   clearPr() (drop a stale recorded pr), readRunState() -> run-state object
+//   | null, readDecisions() -> string, writeBodyFile(name, text) -> path,
+//   readFile(path) -> string }.
 // A gh/git read whose answer the procedure cannot do without (pr list, a
 // non-404 pr view failure, unparseable JSON) throws; the CLI maps a throw to
 // exit 1.
@@ -33,6 +38,9 @@ const RETRY_WAIT_MS = 15000;
 const AUTH_OR_REF_RE = /auth|credential|permission|denied|\b40[13]\b|could not read (?:username|password)|repository not found|rejected|non-fast-forward|fetch first|does not appear to be a git repository|no such remote|src refspec|protected branch/i;
 // Step 3's create retries once either way; only this signature waits 15 s first.
 const TRANSIENT_RE = /\b5\d\d\b|server error|bad gateway|service unavailable|gateway time-?out|timed? ?out|timeout|deadline exceeded|ETIMEDOUT|ECONNRESET|connection reset/i;
+// `gh pr create` refusing because a PR for this head already exists — after a
+// lost response, usually our own first attempt.
+const ALREADY_EXISTS_RE = /already exists/i;
 // `gh pr view` on a PR that is gone.
 const NOT_FOUND_RE = /could not resolve to a pullrequest|no pull requests? found|not found|\b404\b/i;
 
@@ -144,9 +152,9 @@ async function openPrEarly(opts, deps) {
   if (open) {
     log(`reusing open PR #${open.number} for ${branch}`, 'high');
     record(open.number, open.url);
+    logStale('reused', open.number);
     const failed = await push();
     if (failed !== null) return { outcome: 'push-failed', number: open.number, url: open.url, reason: failed };
-    logStale('reused', open.number);
     return { outcome: 'reused', number: open.number, url: open.url };
   }
 
@@ -176,9 +184,9 @@ async function openPrEarly(opts, deps) {
         }
       }
       record(pick.number, pick.url);
+      logStale('reused', pick.number);
       const failed = await push();
       if (failed !== null) return { outcome: 'push-failed', number: pick.number, url: pick.url, reason: failed };
-      logStale('reused', pick.number);
       return { outcome: 'reopened', number: pick.number, url: pick.url };
     }
   }
@@ -187,37 +195,62 @@ async function openPrEarly(opts, deps) {
   if (reopenRejected !== null) log(`reopen of closed PR #${reopenRejected} for ${branch} was rejected; creating`, 'n/a');
   else log(`no existing PR for ${branch}; creating`, 'n/a');
 
+  // The result names a rejected reopen, so the caller can repoint an earlier
+  // attempt's issue pointer comment at the new PR (the spec's "Reopen fails"
+  // paragraph). That comment update is the caller's, not this module's.
+  const withRejected = (res) => (reopenRejected !== null ? { ...res, reopenRejected } : res);
+  // A degrade leaves the run PR-less. A stale recorded PR must not survive it:
+  // the bookkeeping gate and preflight's backfill would read the closed PR
+  // as live. Clear it through the same writer and say so.
+  const degrade = (res) => {
+    if (stale !== null) {
+      log(`recorded PR #${stale} no longer open; none reused or created`, 'n/a');
+      deps.clearPr();
+    }
+    return withRejected(res);
+  };
+
   const pushFailed = await push();
-  if (pushFailed !== null) return { outcome: 'push-failed', reason: pushFailed };
+  if (pushFailed !== null) return degrade({ outcome: 'push-failed', reason: pushFailed });
 
   const bodyPath = writeBody();
   const createArgs = ['pr', 'create', '--repo', repo, '--draft', '--base', base, '--head', branch,
     '--title', title, '--body-file', bodyPath];
   let created = null;
   let reason = null;
-  for (let attempt = 1; attempt <= 2 && !created; attempt++) {
-    if (attempt === 2) {
-      if (TRANSIENT_RE.test(reason)) await deps.sleep(RETRY_WAIT_MS);
-      // gh pr create is not idempotent: a "failed" attempt may have landed
-      // with only its response lost, so look before creating again.
-      let landed = null;
-      try { landed = listPrs().find((p) => p.state === 'OPEN') || null; } catch { landed = null; }
-      if (landed) { created = { number: landed.number, url: landed.url }; break; }
-    }
+  const tryCreate = () => {
+    try { created = createdPr(deps.gh(createArgs)); } catch (e) { reason = oneLine(errText(e)); }
+    return created !== null;
+  };
+  // gh pr create is not idempotent: a "failed" attempt may have landed with
+  // only its response lost, so look for an open PR on this head before
+  // creating again, and after a retry that a landed first attempt explains.
+  // A look that cannot list leaves the state unverifiable: never create blind.
+  const lookForLanded = () => {
     try {
-      created = createdPr(deps.gh(createArgs));
+      const landed = listPrs().find((p) => p.state === 'OPEN');
+      if (landed) created = { number: landed.number, url: landed.url };
+      return true;
     } catch (e) {
-      reason = oneLine(errText(e));
+      reason = oneLine(`${reason}; recheck of open PRs for ${branch} could not list (${oneLine(errText(e))}), so whether a PR landed is unverifiable`);
+      return false;
+    }
+  };
+  if (!tryCreate()) {
+    const firstTransient = TRANSIENT_RE.test(reason);
+    if (firstTransient) await deps.sleep(RETRY_WAIT_MS);
+    if (lookForLanded() && !created && !tryCreate() && (firstTransient || ALREADY_EXISTS_RE.test(reason))) {
+      lookForLanded();
     }
   }
   if (!created) {
     log(`gh pr create for ${branch} FAILED (${reason}); run proceeds local-only, no PR opened`, 'n/a');
-    return { outcome: 'create-failed', reason };
+    return degrade({ outcome: 'create-failed', reason });
   }
   log(`opened PR #${created.number} for ${branch}`, 'high');
   record(created.number, created.url);
   logStale('created', created.number);
-  return { outcome: 'opened', number: created.number, url: created.url };
+  return withRejected({ outcome: 'opened', number: created.number, url: created.url });
 }
 
 module.exports = { openPrEarly, adoptedPriorAttemptPr, AUTH_OR_REF_RE, TRANSIENT_RE };
