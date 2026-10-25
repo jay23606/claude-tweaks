@@ -244,7 +244,9 @@ unacknowledged console holding `pending`/`keep-staged` items (or a PR console it
 `filing-failed`/`reverse-failed`), or an unreadable one (fail closed).
 Every site that skips `console-unresolved` — `decideArchiveCore`, the `status: clean` by-number
 sweep, `hooks.js archive-run` — skips or refuses `console-residue` too, which a human clears with
-`console-residue.js --ack` (an unreadable `console.json` must be repaired or removed instead). It is
+`console-residue.js --ack` (an unreadable `console.json` must be repaired or removed instead). The
+skip carries a `hint` naming the open items and any unreadable
+`console.json`, which `reconcile/index.js` passes through to `result.runs` (#4172). It is
 deliberately not in `STRUCTURALLY_STUCK_REASONS`: an acknowledgement, not a re-run, converges it.
 
 **Residue pruning.** After every `archive` pass, `cache.js`'s `pruneResidueFailures` drops any

@@ -489,7 +489,8 @@ function decideArchive(prState, consoleState) {
 // console classifies 'resolved' here while re-detecting as `ready` there.
 //
 // #3949: a 'resolved' or 'none' top-level state becomes 'residue' when the run
-// holds an unresolved item (pending / keep-staged) no human has acknowledged —
+// holds an unresolved item (pending / keep-staged, or a PR console item whose
+// outcome is filing-failed / reverse-failed, #4172) no human has acknowledged —
 // in console.json or any spec-*/console.json — or a console.json that cannot be
 // read (fails closed). 'unresolved' keeps precedence. An item whose staged file
 // is gone is `missing`, not residue (residue.js's readRunResidue).
@@ -522,12 +523,14 @@ function consoleResidue(runDir) {
   return { items: names.length, unreadable, names };
 }
 
-// The recovery line for a console-residue skip: name the open items, or, when
-// only unreadable console.json files block, name those to repair.
+// The recovery line for a console-residue skip: name the open items, the
+// unreadable console.json files to repair, or both when both block.
 function consoleResidueHint(runDir) {
   const { names, unreadable } = consoleResidue(runDir);
-  if (names.length > 0) return `unresolved: ${names.join(', ')} — review, then run console-residue.js --ack --run "${runDir}"`;
-  return `repair or remove ${unreadable.join(', ')}`;
+  const parts = [];
+  if (names.length > 0) parts.push(`unresolved: ${names.join(', ')} — review, then run console-residue.js --ack --run "${runDir}"`);
+  if (unreadable.length > 0) parts.push(`repair or remove ${unreadable.join(', ')}`);
+  return parts.join('; ');
 }
 
 function hasConsoleResidue(runDir) {
@@ -1986,8 +1989,9 @@ function settleMergedPartial(root, dir, prState, decision, coverage) {
 }
 
 // #3503: `unclosed` rides along on a merged-partial skip only; #3945: `missing`
-// and `hint` ride along on a tiebreak skip only. Every other reason keeps the
-// bare {runDir, reason} shape.
+// and `hint` ride along on a tiebreak skip only; #4172: `hint` also rides along
+// on a console-residue skip. Every other reason keeps the bare {runDir, reason}
+// shape.
 function skippedEntry(dir, { reason, unclosed, missing, hint }) {
   const entry = { runDir: dir, reason };
   if (unclosed !== undefined) entry.unclosed = unclosed;

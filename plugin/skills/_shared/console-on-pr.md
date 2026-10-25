@@ -168,9 +168,6 @@ record rather than silently trusting this note.
 }
 ```
 
-After execution each item also carries `"outcome"` (and `"note"` for a non-executed one) —
-`console-execution.md`'s Write order.
-
 `commentIds[0]` is the primary comment — the one carrying the Resolve checkbox and legend, and the
 one this file's find-by-marker lookup (`<!-- claude-tweaks-console: {run-id} -->` as its first
 line) always locates first. Any further entries are overflow comments (below), linked from the
@@ -193,9 +190,10 @@ rendered the console, so the render-time short-circuit's session-scoped knowledg
 would otherwise be invisible to it — this field is the durable copy. See
 `_shared/console-execution.md`'s "consoleAutoResolve wiring" section for the read side.
 
-Two further optional fields arrive only after execution, never at render time: `executedAt` (ISO
-timestamp) and `resolved: true`, both written by `console-execution.md`'s Write order — see that
-file for the write order and what reads them.
+Further fields arrive only after execution, never at render time: `executedAt` (ISO timestamp) and
+`resolved: true`, both written by `console-execution.md`'s Write order — see that file for the write
+order and what reads them — and, on each item, `"outcome"` (plus `"note"` for a non-executed one),
+written by the same Write order.
 
 A stale or deleted comment id (the human deleted it, or it's simply gone) — recreate the comment
 fresh and update `console.json` with the new id; do not treat a missing comment as "already

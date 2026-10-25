@@ -16,7 +16,7 @@ const {
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
   classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS, ADHOC_SESSION_ENDED_GRACE_MS, isMainCheckoutAdHoc,
   isClosedSlugStuck, recordNumbersFromSlug, refusal, unclosedRecords, runRecordSet, inFlightRecords,
-  listStagedItems, hasStagedItems, consoleReplacedByAutoMerge, consoleResidue,
+  listStagedItems, hasStagedItems, consoleReplacedByAutoMerge, consoleResidue, consoleResidueHint,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure, cachePath, beginCacheBatch, commitCacheBatch } = require('../../../plugin/bin/lib/reconcile/cache');
 const { structurallyStuckBody, parseStuckPaths } = require('../../../plugin/bin/lib/reconcile/escalate-residue');
@@ -3567,6 +3567,42 @@ test('AC5.1 fail-closed: a spec-N/staged that exists as a file (ENOTDIR) counts 
   assert.equal(fs.existsSync(runDir), true);
 });
 
+// #4172: the branch-joined path (archiveMergedRun) reaches console-residue through
+// its own skip site, which must carry the item-naming hint like the by-number one.
+test('archiveMerged: ordinary branch-resolvable path — a PR console holding a filing-failed item skips console-residue and names it (#4172)', { skip: PATH_STUB_SKIP }, () => {
+  const branch = 'feat-4172-ordinary-prconsole';
+  const runId = '2026-10-25T090000-record-4172-ordinary-prconsole';
+  const { root, featureSha } = mergedFeatureBranchRepo(branch);
+  const runDir = path.join(root, '.claude-tweaks', 'pipelines', runId);
+  fs.mkdirSync(runDir, { recursive: true });
+  fs.writeFileSync(path.join(runDir, 'config.yml'), 'x: 1\n');
+  fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify({
+    status: 'active',
+    worktree: path.join(root, '.claude', 'worktrees', `gone-${runId}`),
+    pr: { number: 4172001, branch },
+  }));
+  fs.writeFileSync(path.join(runDir, 'console.json'), JSON.stringify({
+    prNumber: 4172001, commentIds: ['IC_1'], executedAt: '2026-10-25T00:00:00.000Z', resolved: false,
+    items: [{ id: '1', kind: 'staged', summary: '1', outcome: 'executed' }, { id: 'f1', kind: 'staged', summary: 'f1', outcome: 'filing-failed' }],
+  }));
+  const wrapper = installGhWrapper([{
+    number: 4172001, state: 'MERGED', mergedAt: '2026-10-25T00:00:00Z', updatedAt: '2026-10-25T00:00:00Z',
+    mergeCommit: { oid: featureSha },
+  }]);
+  let result;
+  try {
+    result = archiveMerged({ cwd: root });
+  } finally {
+    wrapper.restore();
+  }
+  assert.ok(!result.archived.includes(runDir), 'a PR console holding a failed item must never be archived');
+  const skip = result.skipped.find((s) => s.runDir === runDir);
+  assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
+  assert.equal(skip.reason, 'console-residue');
+  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.equal(fs.existsSync(runDir), true);
+});
+
 test('isAbandonedInterrupted: false for a non-interrupted status', () => {
   assert.equal(isAbandonedInterrupted('/x', { status: 'active' }, 'sess-1', Date.now()), false);
 });
@@ -3679,6 +3715,23 @@ test('consoleResidue: a PR console with only executed/dropped items is not resid
   const runDir = prConsoleRunDir([['1', 'executed'], ['d1', 'dropped']]);
   assert.deepStrictEqual(consoleResidue(runDir), { items: 0, unreadable: [], names: [] });
   assert.strictEqual(readConsoleState(runDir), 'resolved');
+});
+
+test('consoleResidueHint: names the open items and the unreadable console.json when both block (#4172)', () => {
+  const runDir = prConsoleRunDir([['1', 'executed'], ['f1', 'filing-failed']]);
+  const badPath = path.join(runDir, 'spec-12', 'console.json');
+  fs.mkdirSync(path.dirname(badPath), { recursive: true });
+  fs.writeFileSync(badPath, '{not json');
+  const hint = consoleResidueHint(runDir);
+  assert.match(hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.ok(hint.includes(`repair or remove ${badPath}`), hint);
+});
+test('consoleResidueHint: names only the unreadable console.json when no item is open (#4172)', () => {
+  const runDir = prConsoleRunDir([['1', 'executed']]);
+  const badPath = path.join(runDir, 'spec-12', 'console.json');
+  fs.mkdirSync(path.dirname(badPath), { recursive: true });
+  fs.writeFileSync(badPath, '{not json');
+  assert.strictEqual(consoleResidueHint(runDir), `repair or remove ${badPath}`);
 });
 
 test('decideArchiveCore: invalid-arguments skips with reason invalid-arguments (#3416)', () => {
