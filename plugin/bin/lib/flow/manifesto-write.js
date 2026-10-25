@@ -1,14 +1,17 @@
-// plugin/bin/lib/flow/manifesto.js — /flow Step 3's Pipeline Config Manifesto
+// plugin/bin/lib/flow/manifesto-write.js — /flow Step 3's Pipeline Config Manifesto
 // write, as one procedure (#4027): compute the 13 levers, write config.yml,
 // initialize decisions.md with the config snapshot header, create staged/,
 // and log the Manifesto's own decision lines. The behavior spec stays
 // plugin/skills/flow/manifesto.md (lever list, Recommendation defaults,
 // Source values, Approval flow / Write mechanism); bin/manifesto-write.js is
-// the CLI. This is the fresh-run path (adoption cases 2 and 5): a run dir that
-// already carries config.yml is case 1 and is refused (AdoptedRunError), and
-// one whose decisions.md already carries a snapshot header is case 3's
-// recovery, also refused (InitializedLogError) — case 3 prefers that header's
-// values over a fresh computation, which this module does not do.
+// the CLI. This is the `auto`-mode fresh-run path only (adoption cases 2 and
+// 5); confirm/hybrid keep manifesto.md's hand procedure. A run dir that
+// already carries config.yml is case 1 and is refused (AdoptedRunError). Case 3
+// is NOT detected here — callers must route it elsewhere (steps-and-gates.md
+// case 3, which prefers the snapshot header's values over a fresh
+// computation): only a decisions.md that already carries a snapshot header is
+// refused (InitializedLogError); a headerless case-3 decisions.md (e.g. a
+// lost `## /build` line) simply gets a header prepended above its content.
 //
 // Writers: config.yml levers and the run pin only through
 // bin/lib/set-config/write.js (every value validated before any is written);
@@ -34,7 +37,9 @@ const { writeFileAtomic } = require('../atomic-write');
 const { lstatType } = require('../path-guard');
 const { LEVER_KEYS } = require('./preflight');
 
-const MODES = Object.freeze(['auto', 'confirm', 'hybrid']);
+// confirm/hybrid gate the Manifesto on an approval (and may override levers),
+// so they keep manifesto.md's hand procedure; interactive runs no Manifesto.
+const MODES = Object.freeze(['auto']);
 const MODE_SOURCES = Object.freeze(['arg', 'dispatch', 'policy', 'default']);
 const CEREMONIES = Object.freeze(['fast-lane', 'standard']);
 const CEREMONY_SOURCES = Object.freeze(['label', 'judged']);
@@ -79,22 +84,39 @@ function checkRecords(records) {
   }
 }
 
-// { mode, modeSource, records, resolved } -> [{ key, value, source }] for all
-// 13 levers in MANIFESTO_LEVERS order. `resolved` is preflight's resolvePolicy
-// result over POLICY_REQUEST_KEYS ({key: {value, source, invalid?, error?}}).
-function computeLevers({ mode, modeSource, records, resolved }) {
-  if (!MODES.includes(mode)) throw new ManifestoInputError(`mode must be one of ${MODES.join(', ')} (interactive runs no Manifesto), got ${mode}`);
+// manifesto.md's Merge authorization row: the `pre-authorize-merge` token is
+// refused on a dispatch-bound run (run-state.json `dispatched: true` — a
+// dispatched record's merge authority is its `auto:merge` label) and on a
+// multi-record run (its consolidated console owns the merge decision).
+// -> null (no token, or the token applies) | 'dispatch-bound' | 'multi-record'.
+function mergeAuthorizationRefusal({ preAuthorizeMerge, dispatched, records }) {
+  if (!preAuthorizeMerge) return null;
+  if (dispatched === true) return 'dispatch-bound';
+  if (Array.isArray(records) && records.length > 1) return 'multi-record';
+  return null;
+}
+
+// { mode, modeSource, records, resolved, preAuthorizeMerge?, dispatched? } ->
+// [{ key, value, source }] for all 13 levers in MANIFESTO_LEVERS order.
+// `resolved` is preflight's resolvePolicy result over POLICY_REQUEST_KEYS
+// ({key: {value, source, invalid?, error?}}).
+function computeLevers({ mode, modeSource, records, resolved, preAuthorizeMerge = false, dispatched = false }) {
+  if (!MODES.includes(mode)) throw new ManifestoInputError(`mode must be auto — confirm/hybrid follow flow/manifesto.md's approval gate by hand, and interactive runs no Manifesto; got ${mode}`);
   if (!MODE_SOURCES.includes(modeSource)) throw new ManifestoInputError(`mode source must be one of ${MODE_SOURCES.join(', ')}, got ${modeSource}`);
   checkRecords(records);
   const res = resolved || {};
   const autonomy = res.autonomy && res.autonomy.value;
   return MANIFESTO_LEVERS.map((key) => {
-    // `confirm` is "auto mode, but gate the Manifesto" (flow/SKILL.md Step 1).
-    if (key === 'mode') return { key, value: mode === 'confirm' ? 'auto' : mode, source: modeSource };
+    if (key === 'mode') return { key, value: mode, source: modeSource };
     if (key === 'ceremony-profile') {
       return { key, value: records.every((r) => r.ceremony === 'fast-lane') ? 'fast-lane' : 'standard', source: 'header' };
     }
-    if (key === 'merge-authorization') return { key, value: 'ask', source: 'default' };
+    // Never a policy.yml value: only the live `pre-authorize-merge` token sets it.
+    if (key === 'merge-authorization') {
+      return preAuthorizeMerge && mergeAuthorizationRefusal({ preAuthorizeMerge, dispatched, records }) === null
+        ? { key, value: 'pre-authorized', source: 'arg' }
+        : { key, value: 'ask', source: 'default' };
+    }
     const entry = res[key];
     if (!entry || entry.error !== undefined || entry.value === null || entry.value === undefined) {
       throw new LeverError(`lever ${key} did not resolve${entry && entry.error ? ` (${entry.error})` : ''}`);
@@ -171,13 +193,19 @@ function initDecisions(runDir, header) {
   });
 }
 
-// { runDir, records, levers, integrationModel?, now } -> { configPath, table }.
-// `integrationModel` is the resolved run pin, or null/'' when it resolved
-// empty: the pair is then omitted (so the 13 levers still write) and a SKIP is
-// logged — the omit-on-empty rule of manifesto.md's Write mechanism.
-function writeManifesto({ runDir, records, levers, integrationModel = null, now }, deps = {}) {
+// { runDir, records, levers, integrationModel?, mergeRefusal?, now } ->
+// { configPath, table }. `integrationModel` is the resolved run pin, or
+// null/'' when it resolved empty: the pair is then omitted (so the 13 levers
+// still write) and a SKIP is logged — the omit-on-empty rule of manifesto.md's
+// Write mechanism. `mergeRefusal` is mergeAuthorizationRefusal's answer; a
+// non-null one logs manifesto.md's merge-authorization SKIP line.
+function writeManifesto({ runDir, records, levers, integrationModel = null, mergeRefusal = null, now }, deps = {}) {
   const set = deps.setConfigLever || setConfigLever;
   const append = deps.appendEntry || appendEntry;
+  const mkdir = deps.mkdir || fs.mkdirSync;
+  if (mergeRefusal !== null && mergeRefusal !== 'dispatch-bound' && mergeRefusal !== 'multi-record') {
+    throw new ManifestoInputError(`mergeRefusal must be null, dispatch-bound or multi-record, got ${mergeRefusal}`);
+  }
   checkRecords(records);
   const created = runCreated(runDir);
   const configPath = path.join(runDir, 'config.yml');
@@ -194,7 +222,11 @@ function writeManifesto({ runDir, records, levers, integrationModel = null, now 
   }
 
   initDecisions(runDir, headerText(path.basename(runDir), levers, pin));
-  fs.mkdirSync(path.join(runDir, 'staged'), { recursive: true });
+  try {
+    mkdir(path.join(runDir, 'staged'), { recursive: true });
+  } catch (err) {
+    throw new Error(`could not create ${path.join(runDir, 'staged')} (${err && err.message ? err.message : err}) — the decisions.md snapshot header was already written and config.yml was not written, so the run dir now reads as case 3 (steps-and-gates.md): recover it there`, { cause: err });
+  }
   try {
     for (const { key, value } of pairs) set({ runDir, key, value });
     // spec:/created: are run bookkeeping, not levers — set-config refuses
@@ -213,6 +245,9 @@ function writeManifesto({ runDir, records, levers, integrationModel = null, now 
     if (r.ceremonySource === 'judged') log('AUTO', 'Manifesto ceremony-check', `#${r.n} carries no ceremony:* label -> CEREMONY: ${r.ceremony}`);
   }
   log('AUTO', 'Manifesto', `levers written to ${configPath}`);
+  if (mergeRefusal) {
+    log('SKIP', 'Manifesto merge-authorization', `condition: pre-authorize-merge on a ${mergeRefusal} run → fallback: merge-authorization written as ask`);
+  }
   if (!pin) {
     log('SKIP', 'Manifesto', 'condition: integration-model resolved empty (invalid or unresolvable in policy.yml) → fallback: config.yml written without the run pin; the run proceeds unpinned');
   }
@@ -225,5 +260,5 @@ function writeManifesto({ runDir, records, levers, integrationModel = null, now 
 module.exports = {
   MODES, MODE_SOURCES, POLICY_REQUEST_KEYS,
   ManifestoInputError, AdoptedRunError, InitializedLogError, LeverError,
-  computeLevers, renderFyi, configPresent, runCreated, writeManifesto,
+  computeLevers, mergeAuthorizationRefusal, renderFyi, configPresent, runCreated, writeManifesto,
 };

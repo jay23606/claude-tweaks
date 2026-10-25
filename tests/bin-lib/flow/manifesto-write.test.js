@@ -5,8 +5,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  computeLevers, writeManifesto, renderFyi, AdoptedRunError, POLICY_REQUEST_KEYS,
-} = require('../../../plugin/bin/lib/flow/manifesto');
+  computeLevers, writeManifesto, renderFyi, mergeAuthorizationRefusal, AdoptedRunError, ManifestoInputError, POLICY_REQUEST_KEYS,
+} = require('../../../plugin/bin/lib/flow/manifesto-write');
 const { run } = require('../../../plugin/bin/manifesto-write');
 const { MANIFESTO_LEVERS } = require('../../../plugin/bin/lib/set-config/write');
 const { formatEntry } = require('../../../plugin/bin/lib/log-decision/append');
@@ -24,15 +24,17 @@ test.after(() => {
   for (const dir of created) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-// A run dir under a tmp root outside every checkout — the anchored-or-outside
-// guard accepts it, the same tmp-root fixture shape compose-context.js's tests use.
-function fixture({ decisions = null, config = null } = {}) {
-  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'ct-manifesto-')));
+// A run dir under a real git main checkout's .claude-tweaks/pipelines/ — the
+// CLI anchors --run strictly (stage-item's resolveTarget), so a run dir
+// outside every checkout is refused, not accepted.
+function fixture({ decisions = null, config = null, runState = null } = {}) {
+  const root = gitRepo();
   created.push(root);
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
   fs.mkdirSync(runDir, { recursive: true });
   if (decisions !== null) fs.writeFileSync(path.join(runDir, 'decisions.md'), decisions);
   if (config !== null) fs.writeFileSync(path.join(runDir, 'config.yml'), config);
+  if (runState !== null) fs.writeFileSync(path.join(runDir, 'run-state.json'), JSON.stringify(runState));
   return { root, runDir };
 }
 
@@ -63,6 +65,7 @@ function cliDeps(fx, over = {}) {
     out, err,
     deps: {
       cwd: () => fx.root,
+      mainRoot: fx.root,
       resolvePolicy: () => resolved(),
       now: () => NOW,
       stdout: (s) => out.push(s),
@@ -116,14 +119,31 @@ test('ceremony-profile folds with AND: [fast-lane, standard] -> standard, [fast-
   assert.deepStrictEqual(fold(['standard']), { key: 'ceremony-profile', value: 'standard', source: 'header' });
 });
 
-test('merge-authorization is always ask, whatever the resolved map holds; confirm writes mode auto', () => {
+test('merge-authorization is ask unless pre-authorize-merge is passed, whatever the resolved map holds; never resolved from policy', () => {
   const levers = computeLevers({
-    mode: 'confirm', modeSource: 'arg', records: ONE_STANDARD,
+    mode: 'auto', modeSource: 'arg', records: ONE_STANDARD,
     resolved: resolved({ 'merge-authorization': { value: 'pre-authorized', source: 'run-config' } }),
   });
   assert.deepStrictEqual(lever(levers, 'merge-authorization'), { key: 'merge-authorization', value: 'ask', source: 'default' });
-  assert.deepStrictEqual(lever(levers, 'mode'), { key: 'mode', value: 'auto', source: 'arg' });
   assert.ok(!POLICY_REQUEST_KEYS.includes('merge-authorization'), 'never resolved from policy');
+});
+
+test('pre-authorize-merge: pre-authorized (arg) on a fresh single-record run; ask with a named refusal when dispatch-bound or multi-record', () => {
+  const two = [...ONE_STANDARD, { n: 4031, ceremony: 'standard', ceremonySource: 'label' }];
+  const ma = (records, dispatched) => lever(computeLevers({ mode: 'auto', modeSource: 'default', records, resolved: resolved(), preAuthorizeMerge: true, dispatched }), 'merge-authorization');
+  assert.deepStrictEqual(ma(ONE_STANDARD, false), { key: 'merge-authorization', value: 'pre-authorized', source: 'arg' });
+  assert.deepStrictEqual(ma(ONE_STANDARD, true), { key: 'merge-authorization', value: 'ask', source: 'default' });
+  assert.deepStrictEqual(ma(two, false), { key: 'merge-authorization', value: 'ask', source: 'default' });
+  assert.strictEqual(mergeAuthorizationRefusal({ preAuthorizeMerge: true, dispatched: false, records: ONE_STANDARD }), null);
+  assert.strictEqual(mergeAuthorizationRefusal({ preAuthorizeMerge: true, dispatched: true, records: ONE_STANDARD }), 'dispatch-bound');
+  assert.strictEqual(mergeAuthorizationRefusal({ preAuthorizeMerge: true, dispatched: false, records: two }), 'multi-record');
+  assert.strictEqual(mergeAuthorizationRefusal({ preAuthorizeMerge: false, dispatched: true, records: two }), null, 'no token, nothing refused');
+});
+
+test('computeLevers runs only the auto FYI path: confirm, hybrid and interactive are refused', () => {
+  for (const mode of ['confirm', 'hybrid', 'interactive']) {
+    assert.throws(() => computeLevers({ mode, modeSource: 'arg', records: ONE_STANDARD, resolved: resolved() }), (e) => e instanceof ManifestoInputError, mode);
+  }
 });
 
 test('POLICY_REQUEST_KEYS is preflight\'s LEVER_KEYS minus the two non-policy levers, plus autonomy and the run pin', () => {
@@ -194,7 +214,6 @@ test('a judged record logs the ceremony-check line; a label record logs none; th
     viaCli('Manifesto', `levers written to ${path.join(fx.runDir, 'config.yml')}`),
     viaCli('Manifesto', 'design-critique resolved to auto (source: default)', 'n/a (a policy read, not a code mutation)'),
   ]);
-  assert.ok(path.isAbsolute(path.join(fx.runDir, 'config.yml')));
   assert.ok(!flow.some((l) => l.includes('#4031 carries no ceremony')), 'a labeled record logs no ceremony-check line');
 });
 
@@ -226,6 +245,54 @@ test('a decisions.md that already carries a snapshot header is refused: it is a 
   const before = snapshot(fx.runDir);
   assert.throws(() => write(fx), /case 3/);
   assert.deepStrictEqual(snapshot(fx.runDir), before);
+});
+
+test('a headerless case-3 decisions.md is NOT detected: it gets a header prepended (callers route case 3 elsewhere)', () => {
+  const case3 = `${CLAIM}\n## /build\n- AUTO 18:50:00 — Common Step 1: worktree created. Reversibility: high.\n`;
+  const fx = fixture({ decisions: case3 });
+  write(fx);
+  const text = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+  assert.ok(text.startsWith(`# Auto-Decision Log — pipeline ${RUN_ID}\n\nPipeline config snapshot:\n`), text);
+  // The Manifesto's own lines land inside the existing `## /flow` section, so
+  // the old content stays in place: the claim right below the header, and the
+  // `## /build` section verbatim at the end.
+  // (appendEntry inserts at the section's end, after its trailing blank line.)
+  assert.ok(text.includes(`\n\n${CLAIM}`), 'the claim block follows the header');
+  assert.ok(text.endsWith('\n## /build\n- AUTO 18:50:00 — Common Step 1: worktree created. Reversibility: high.\n'), text);
+});
+
+test('a staged/ mkdir failure after the header landed names what landed: the run dir now reads as case 3', () => {
+  const fx = fixture({ decisions: CLAIM });
+  const mkdir = () => { const e = new Error('EACCES: simulated'); e.code = 'EACCES'; throw e; };
+  assert.throws(() => write(fx, { deps: { mkdir } }), (e) => /EACCES/.test(e.message)
+    && /decisions\.md snapshot header was already written/.test(e.message)
+    && /config\.yml was not written/.test(e.message)
+    && /case 3/.test(e.message));
+  assert.ok(!fs.readdirSync(fx.runDir).includes('config.yml'));
+  assert.ok(fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8').includes('Pipeline config snapshot:'));
+});
+
+test('a refused pre-authorize-merge logs manifesto.md\'s SKIP line verbatim; a granted one writes pre-authorized to config, header and table', () => {
+  const two = [...ONE_STANDARD, { n: 4031, ceremony: 'standard', ceremonySource: 'label' }];
+  for (const [records, dispatched, which] of [[ONE_STANDARD, true, 'dispatch-bound'], [two, false, 'multi-record']]) {
+    const fx = fixture({ decisions: CLAIM });
+    const levers = computeLevers({ mode: 'auto', modeSource: 'default', records, resolved: resolved(), preAuthorizeMerge: true, dispatched });
+    const mergeRefusal = mergeAuthorizationRefusal({ preAuthorizeMerge: true, dispatched, records });
+    writeManifesto({ runDir: fx.runDir, records, levers, integrationModel: 'pr-first', mergeRefusal, now: NOW });
+    const text = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+    const skip = formatEntry({ status: 'SKIP', now: NOW, step: 'Manifesto merge-authorization', text: `condition: pre-authorize-merge on a ${which} run → fallback: merge-authorization written as ask`, reversibility: 'n/a' });
+    assert.ok(text.split('\n').includes(skip), `${which}: ${text}`);
+    assert.match(text, /^- merge-authorization: ask$/m);
+    assert.match(fs.readFileSync(path.join(fx.runDir, 'config.yml'), 'utf8'), /^merge-authorization: ask$/m);
+  }
+  const fx = fixture({ decisions: CLAIM });
+  const levers = computeLevers({ mode: 'auto', modeSource: 'default', records: ONE_STANDARD, resolved: resolved(), preAuthorizeMerge: true, dispatched: false });
+  const { table } = writeManifesto({ runDir: fx.runDir, records: ONE_STANDARD, levers, integrationModel: 'pr-first', mergeRefusal: null, now: NOW });
+  const text = fs.readFileSync(path.join(fx.runDir, 'decisions.md'), 'utf8');
+  assert.match(text, /^- merge-authorization: pre-authorized$/m);
+  assert.ok(!text.includes('Manifesto merge-authorization'), 'no SKIP when granted');
+  assert.match(fs.readFileSync(path.join(fx.runDir, 'config.yml'), 'utf8'), /^merge-authorization: pre-authorized$/m);
+  assert.match(table, /\| Merge authorization \| pre-authorized \| arg \|\n/);
 });
 
 test('a fresh-manifesto run dir classifies as case 1 afterwards; its decisions.md classifies as content, as any headed file does today', () => {
@@ -288,7 +355,6 @@ test('CLI: --ceremony :judged marks a judged record; several records parse', () 
 
 test('CLI: malformed invocations exit 2 and write nothing', () => {
   const cases = [
-    ['--mode', 'interactive'],
     ['--mode', 'turbo'],
     ['--mode-source', 'guess'],
     ['--ceremony', '4027=deluxe'],
@@ -317,6 +383,67 @@ test('CLI: malformed invocations exit 2 and write nothing', () => {
   fs.mkdirSync(odd);
   assert.strictEqual(run(['--run', odd, '--mode', 'auto', '--mode-source', 'default', '--ceremony', '1=standard'], deps), 2, 'basename is not a run id');
   assert.deepStrictEqual(fs.readdirSync(odd), []);
+});
+
+test('CLI: only --mode auto runs; confirm, hybrid and interactive exit 2 naming the manual manifesto.md path', () => {
+  for (const mode of ['confirm', 'hybrid', 'interactive']) {
+    const fx = fixture({ decisions: CLAIM });
+    const before = snapshot(fx.runDir);
+    const { err, deps } = cliDeps(fx);
+    assert.strictEqual(run([...ARGV(fx), '--mode', mode], deps), 2, mode);
+    assert.match(err.join(''), /flow\/manifesto\.md/, mode);
+    assert.deepStrictEqual(snapshot(fx.runDir), before, mode);
+  }
+});
+
+test('CLI: a run dir outside every checkout is refused with exit 2 (strict anchoring), nothing written', () => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-manifesto-outside-'));
+  created.push(outside);
+  const runDir = path.join(outside, '.claude-tweaks', 'pipelines', RUN_ID);
+  fs.mkdirSync(runDir, { recursive: true });
+  const fx = { root: outside, runDir };
+  for (const mainRoot of [undefined, gitRepo()]) {
+    if (mainRoot) created.push(mainRoot);
+    const { err, deps } = cliDeps(fx, { mainRoot });
+    assert.strictEqual(run(ARGV(fx), deps), 2, String(mainRoot));
+    assert.match(err.join(''), /not anchored under the main checkout/);
+    assert.deepStrictEqual(fs.readdirSync(runDir), []);
+  }
+});
+
+test('CLI: --pre-authorize-merge writes pre-authorized (arg) on a fresh single-record run; a dispatch-bound or multi-record run keeps ask and logs the SKIP', () => {
+  const fresh = fixture({ decisions: CLAIM });
+  const a = cliDeps(fresh);
+  assert.strictEqual(run([...ARGV(fresh), '--pre-authorize-merge'], a.deps), 0, a.err.join(''));
+  assert.match(fs.readFileSync(path.join(fresh.runDir, 'config.yml'), 'utf8'), /^merge-authorization: pre-authorized$/m);
+  assert.match(fs.readFileSync(path.join(fresh.runDir, 'decisions.md'), 'utf8'), /^- merge-authorization: pre-authorized$/m);
+  assert.match(a.out.join(''), /\| Merge authorization \| pre-authorized \| arg \|\n/);
+
+  const skipLine = (which) => formatEntry({ status: 'SKIP', now: NOW, step: 'Manifesto merge-authorization', text: `condition: pre-authorize-merge on a ${which} run → fallback: merge-authorization written as ask`, reversibility: 'n/a' });
+  const bound = fixture({ decisions: CLAIM, runState: { dispatched: true } });
+  const b = cliDeps(bound);
+  assert.strictEqual(run([...ARGV(bound), '--pre-authorize-merge'], b.deps), 0, b.err.join(''));
+  assert.match(fs.readFileSync(path.join(bound.runDir, 'config.yml'), 'utf8'), /^merge-authorization: ask$/m);
+  assert.ok(fs.readFileSync(path.join(bound.runDir, 'decisions.md'), 'utf8').split('\n').includes(skipLine('dispatch-bound')));
+  assert.match(b.out.join(''), /\| Merge authorization \| ask \| default \|\n/);
+
+  const multi = fixture({ decisions: CLAIM });
+  const c = cliDeps(multi);
+  assert.strictEqual(run(['--run', multi.runDir, '--mode', 'auto', '--mode-source', 'default', '--ceremony', '4027=standard,4031=standard', '--pre-authorize-merge'], c.deps), 0, c.err.join(''));
+  assert.match(fs.readFileSync(path.join(multi.runDir, 'config.yml'), 'utf8'), /^merge-authorization: ask$/m);
+  assert.ok(fs.readFileSync(path.join(multi.runDir, 'decisions.md'), 'utf8').split('\n').includes(skipLine('multi-record')));
+
+  const plain = fixture({ decisions: CLAIM, runState: { dispatched: true } });
+  const d = cliDeps(plain);
+  assert.strictEqual(run(ARGV(plain), d.deps), 0, d.err.join(''));
+  assert.ok(!fs.readFileSync(path.join(plain.runDir, 'decisions.md'), 'utf8').includes('Manifesto merge-authorization'), 'no token, no SKIP');
+});
+
+test('CLI: a staged/ mkdir failure exits 1 and stderr names what already landed', () => {
+  const fx = fixture({ decisions: CLAIM });
+  const { err, deps } = cliDeps(fx, { mkdir: () => { throw new Error('EACCES: simulated'); } });
+  assert.strictEqual(run(ARGV(fx), deps), 1);
+  assert.match(err.join(''), /snapshot header was already written.*config\.yml was not written.*case 3/);
 });
 
 test('CLI: --help prints usage and exits 0 without touching the run dir', () => {
@@ -380,6 +507,6 @@ test('CLI from a linked-worktree cwd: writes the main-checkout run dir with the 
   fs.mkdirSync(shadow, { recursive: true });
   const e2 = [];
   assert.strictEqual(run(['--run', shadow, '--mode', 'auto', '--mode-source', 'default', '--ceremony', '4027=standard'], { ...deps, stderr: (s) => e2.push(s) }), 2);
-  assert.match(e2.join(''), /resolves outside the main checkout/);
+  assert.match(e2.join(''), /not anchored under the main checkout/);
   assert.deepStrictEqual(fs.readdirSync(shadow), []);
 });

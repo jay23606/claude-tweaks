@@ -43,7 +43,7 @@ const MANIFESTO_LEVERS = Object.freeze([
 
 // Canonical lever labels, per manifesto.md's "Canonical lever numbering"
 // paragraph — presentation data for the two `### Pipeline Config (auto)`
-// renderers (bin/set-config.js's renderManifestoFyi, bin/lib/flow/manifesto.js's
+// renderers (bin/set-config.js's renderManifestoFyi, bin/lib/flow/manifesto-write.js's
 // renderFyi), kept beside the lever list they label.
 const LEVER_LABELS = Object.freeze({
   mode: 'Mode',
