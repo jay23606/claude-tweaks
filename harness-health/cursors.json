@@ -65,7 +65,7 @@
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792933214734
+    "lastAuditedMs": 1792961762572
   },
   "skill:work-record-facet-rename": {
     "lastAuditedSha": null,
@@ -121,7 +121,7 @@
   },
   "skill:compose-context-fencing": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792843230369
+    "lastAuditedMs": 1792961769328
   },
   "skill:run-directory-fact-packs": {
     "lastAuditedSha": null,
