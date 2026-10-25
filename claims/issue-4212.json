@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-25T080649-record-4212",
-  "sessionId": "86e7c80e-6968-4a67-865e-69a8054b95fb",
-  "claimedAt": "2026-10-25T08:08:53.368Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "abandoned: spec 4212 (superseded by #4235; residue in #4294)",
+  "releasedAt": "2026-10-25T13:56:51.777Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/4223"
 }
