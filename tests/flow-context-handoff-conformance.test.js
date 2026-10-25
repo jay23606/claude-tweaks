@@ -168,6 +168,23 @@ test("steps-and-gates.md's Steps Complete note has a handed-off variant of its w
   assert.match(r, /This run is not finished — its remaining steps \{next-steps\} were handed to a fresh agent/);
 });
 
+// Fix round 2: a single step argument resumes onward (steps-and-gates.md's
+// Step Arguments), so a one-entry top-level --next-steps would run wrap-up in
+// the child. A top-level run gauges only with two or more steps before wrap-up.
+test('a top-level run gauges only with two or more steps before wrap-up: the one-step case is excluded, the two-step case allowed', () => {
+  const premise = read(STEPS_AND_GATES);
+  assert.match(premise, /\| Single step \| Resume from that step onward \|/, 'the premise moved: a single step argument no longer resumes onward');
+  assert.match(premise, /\| Multiple steps \(comma-separated\) \| Run exactly those steps \|/, 'the premise moved: a comma list no longer runs exactly those steps');
+  const item = stepFourItem();
+  assert.match(item, /gauges only when two or more steps remain before `wrap-up`/);
+  assert.match(item, /a single step resumes from that step onward/);
+  const bullet = region(read(HANDOFF), '- **Never `wrap-up` from a top-level run.**', '\n', 'top-level wrap-up bullet');
+  assert.match(bullet, /gauges only when two or more steps remain before `wrap-up`/);
+  assert.match(bullet, /one step left before `wrap-up`[^.]*does not gauge/);
+  assert.match(bullet, /two or more[^.]*always a comma list/);
+  assert.match(bullet, /a single step resumes from that step onward/);
+});
+
 test('flow/SKILL.md stays under RAIL_BYTES with the cap-check item', () => {
   const bytes = Buffer.byteLength(read(FLOW), 'utf8');
   assert.ok(bytes < RAIL_BYTES, `${FLOW} is ${bytes} B, rail ${RAIL_BYTES} B`);
