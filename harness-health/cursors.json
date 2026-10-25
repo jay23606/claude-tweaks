@@ -61,7 +61,7 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792951345117
+    "lastAuditedMs": 1792952773419
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
@@ -109,7 +109,7 @@
   },
   "skill:pre-tool-use-gate-exemptions": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792936934430
+    "lastAuditedMs": 1792952766479
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
@@ -169,7 +169,7 @@
   },
   "skill:windows-checkout-test-parity": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792934988298
+    "lastAuditedMs": 1792952759773
   },
   "skill:node-test-output-evidence": {
     "lastAuditedSha": null,
@@ -234,5 +234,13 @@
   "skill:.claude/skills/review-console-section-addition/SKILL.md": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792929225889
+  },
+  "skill:shell-scanner-bash-differential": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792952752708
+  },
+  "skill:pretooluse-updatedinput-normalizer": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1792952770027
   }
 }
