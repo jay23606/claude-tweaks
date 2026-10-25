@@ -1,0 +1,335 @@
+// The whole pr-first phase exit as one call (#4026), behind bin/phase-exit.js.
+// It replaces the agent-run sequence _shared/git-discipline.md's Phase-exit push
+// section, build/SKILL.md Common Step 7's Bookkeeping assertion and
+// _shared/pr-checklist-refresh.md's Phase-checklist update used to spell out,
+// and keeps each guard that prose left to the reader as its own branch:
+//
+//   1. Route. `git rev-parse --git-dir --git-common-dir` equal -> current-branch
+//      (no worktree branch: no bookkeeping, no push). Else integration-model via
+//      resolve-policy.js --run: local-merge -> no push, no gh; pr-first -> on.
+//      Either skip writes git-discipline.md's SKIP line at build only.
+//      An unresolvable model pushes nothing and writes one SKIP degrade trace.
+//   2. Branch guard (pr-first). A detached HEAD or the integration branch
+//      (integration-branch policy, else origin/HEAD, else main) is refused: no
+//      commit check, no push, no merge-state read; the checklist still flips.
+//   3. Commit check. Uncommitted paths are logged and the push goes ahead.
+//   4. Bookkeeping, in worktree mode under either model: a run-state with no
+//      `worktree` runs `hooks.js record-worktree`; under pr-first, one with no
+//      `pr` (and no prExempt) looks up the branch's one open PR and runs
+//      `hooks.js record-pr`. Only a backfill that ran writes a line. An archived
+//      run dir (wrap-up after cleanup item 8) is never written: an absent field
+//      reports failed / missing. Opening a missing PR stays the caller's
+//      (_shared/pr-early-run-lifecycle.md).
+//   5. Push. A failure is logged and never written to run-state.json; the next
+//      phase exit's push retries.
+//   6. Checklist: bin/pr-checklist.js in-process, every pr-first route that got
+//      past step 1. Its exit 4/5 lines are its own.
+//   7. Merge state: bin/pr-merge-state.js in-process, only after a push landed.
+//      Its lines are its own.
+//
+// This module writes decisions.md only through lib/log-decision/append.js and
+// run-state.json only through hooks.js verbs. A failed append never changes an
+// outcome: it lands in `logFailures` (with the entry's status/step/text, so the
+// caller can hand-log it) plus one stderr line.
+'use strict';
+
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { formatEntry, appendEntry } = require('../log-decision/append');
+const { readRunStateWithParent } = require('../hooks/context');
+const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../shared-primitives');
+const prChecklist = require('../../pr-checklist');
+const prMergeState = require('../../pr-merge-state');
+
+const { PHASE_SECTIONS } = prMergeState;
+const BIN = path.resolve(__dirname, '..', '..');
+const RESOLVE_POLICY_JS = path.join(BIN, 'resolve-policy.js');
+const HOOKS_JS = path.join(BIN, 'hooks.js');
+
+// git-discipline.md's Phase-exit push SKIP text, verbatim.
+const SKIP_TEXT = 'condition: integration-model=local-merge or current-branch mode → fallback: no phase-exit push, one push at finish';
+
+const realDeps = {
+  cwd: () => process.cwd(),
+  mainRoot: undefined,
+  git: (args) => execFileSync('git', args, {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true,
+  }),
+  gh: (args, cwd) => execFileSync('gh', args, {
+    cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GH_TIMEOUT_MS, windowsHide: true,
+  }),
+  resolvePolicy: (runDir, key, cwd) => execFileSync(process.execPath, [RESOLVE_POLICY_JS, '--run', runDir, '--values', key], {
+    cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true,
+  }).split('\n')[0].trim(),
+  hooks: (args, cwd) => execFileSync(process.execPath, [HOOKS_JS, ...args], {
+    cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true,
+  }),
+  prChecklistRun: (argv, deps) => prChecklist.run(argv, deps),
+  prMergeStateRun: (argv, deps) => prMergeState.run(argv, deps),
+  appendDecision: (args) => appendEntry(args),
+  readRunState: (runDir) => readRunStateWithParent(runDir, { requireRunIdParent: true }).state,
+  now: () => new Date(),
+  stdout: (s) => process.stdout.write(s),
+  stderr: (s) => process.stderr.write(s),
+};
+
+function firstLine(v) {
+  return String(v == null ? '' : v).split('\n').map((l) => l.trim()).find(Boolean) || '';
+}
+
+function errLine(e) {
+  return firstLine(e && e.stderr) || firstLine(e && e.message) || firstLine(e);
+}
+
+// `.claude-tweaks/pipelines/archive/{run-id}[/spec-N]` -- cleanup item 8's archive path.
+function isArchivedRun(runDir) {
+  const abs = path.resolve(runDir);
+  const runIdDir = /^spec-/.test(path.basename(abs)) ? path.dirname(abs) : abs;
+  const archive = path.dirname(runIdDir);
+  return path.basename(archive) === 'archive' && path.basename(path.dirname(archive)) === 'pipelines';
+}
+
+// `git status --porcelain -z` records -> the paths they name. A rename or copy
+// carries its source path as the next NUL-separated record, skipped here.
+function parsePorcelainZ(out) {
+  const recs = String(out || '').split('\0');
+  const paths = [];
+  for (let i = 0; i < recs.length; i++) {
+    const rec = recs[i];
+    if (rec.length < 4) continue;
+    paths.push(rec.slice(3));
+    if (rec[0] === 'R' || rec[0] === 'C') i++;
+  }
+  return paths;
+}
+
+class InvalidWorktreeError extends Error {}
+
+// opts: { run, phase, worktree, fixes?, remove?, summaryFile? } -- already validated by
+// the CLI wrapper (phase is a PHASE_SECTIONS key; run resolved and anchored).
+// Throws InvalidWorktreeError when --worktree is not a git checkout; otherwise returns
+// the envelope and never throws on a seam failure.
+function runPhaseExit(opts, overrides = {}) {
+  const deps = { ...realDeps, ...overrides };
+  const { run: runDir, phase } = opts;
+  const wt = opts.worktree;
+  const section = PHASE_SECTIONS[phase];
+  const env = {
+    phase, route: null, branch: null, head: null, commit: null, bookkeeping: null,
+    push: null, checklist: null, mergeState: null, logFailures: [],
+  };
+
+  const log = (status, step, text, reversibility = 'n/a') => {
+    try {
+      const entry = formatEntry({ status, now: deps.now(), step, text, reversibility });
+      deps.appendDecision({ runDir, section, entry });
+    } catch (e) {
+      const error = (e && e.message) || String(e);
+      env.logFailures.push({ status, step, text, error });
+      deps.stderr(`phase-exit.js: could not append the decisions.md entry (${step}): ${error}\n`);
+    }
+  };
+  const tryGit = (args) => { try { return deps.git(args); } catch { return null; } };
+
+  // 1. Route. The checkout probe doubles as --worktree validation.
+  let dirs;
+  try { dirs = deps.git(['-C', wt, 'rev-parse', '--git-dir', '--git-common-dir']); } catch (e) {
+    throw new InvalidWorktreeError(`--worktree is not a git checkout: ${wt} (${errLine(e)})`);
+  }
+  const [gitDir, commonDir] = String(dirs).split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!gitDir || !commonDir) throw new InvalidWorktreeError(`--worktree is not a git checkout: ${wt} (rev-parse printed no git dir)`);
+  env.branch = firstLine(tryGit(['-C', wt, 'branch', '--show-current'])) || null;
+  env.head = firstLine(tryGit(['-C', wt, 'rev-parse', 'HEAD'])) || null;
+
+  if (path.resolve(wt, gitDir) === path.resolve(wt, commonDir)) {
+    env.route = 'current-branch';
+    env.bookkeeping = { worktree: 'n/a', pr: 'n/a' };
+    env.push = { state: 'skipped', reason: 'current-branch mode' };
+    if (phase === 'build') log('SKIP', 'Common Step 7 phase-exit push (skipped)', SKIP_TEXT);
+    return env;
+  }
+
+  let model; let modelDetail;
+  try { model = deps.resolvePolicy(runDir, 'integration-model', wt); } catch (e) { modelDetail = errLine(e) || 'resolve-policy.js failed'; }
+  if (modelDetail === undefined && model !== 'pr-first' && model !== 'local-merge') {
+    modelDetail = model ? `unexpected value ${JSON.stringify(model)}` : 'empty value';
+  }
+  if (modelDetail !== undefined) {
+    env.push = { state: 'skipped', reason: `integration-model unresolved (${modelDetail})` };
+    log('SKIP', 'Phase-exit push', `condition: integration-model unresolved (${modelDetail}) → fallback: no phase-exit push this phase; the next phase exit retries`);
+    return env;
+  }
+  env.route = model;
+
+  let state = null;
+  try { state = deps.readRunState(runDir); } catch { state = null; }
+
+  if (model === 'local-merge') {
+    env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, log, prFirst: false, branch: null });
+    env.push = { state: 'skipped', reason: 'integration-model=local-merge' };
+    if (phase === 'build') log('SKIP', 'Common Step 7 phase-exit push (skipped)', SKIP_TEXT);
+    return env;
+  }
+
+  // 2. Branch guard.
+  const integration = resolveIntegrationBranch(deps, runDir, wt);
+  const runBranch = env.branch && env.branch !== integration ? env.branch : null;
+  if (!runBranch) {
+    const label = env.branch || 'detached HEAD';
+    env.push = { state: 'refused', reason: `${label} is not a run branch` };
+    log('AUTO', 'Phase-exit push', `refused to push ${label} at ${phase} exit — not a run branch`);
+  } else {
+    // 3. Commit check.
+    try {
+      const dirty = parsePorcelainZ(deps.git(['-C', wt, '--no-optional-locks', 'status', '--porcelain', '-z']));
+      env.commit = { clean: dirty.length === 0, dirty };
+      if (dirty.length) log('AUTO', 'Phase-exit push', `${dirty.length} uncommitted path(s) at ${phase} exit not included in the push`);
+    } catch (e) {
+      env.commit = { clean: null, dirty: [], error: errLine(e) };
+    }
+  }
+
+  // 4. Bookkeeping.
+  env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, log, prFirst: true, branch: runBranch });
+
+  // 5. Push.
+  if (runBranch) {
+    try {
+      deps.git(['-C', wt, 'push', 'origin', runBranch]);
+      env.push = { state: 'pushed' };
+    } catch (e) {
+      const reason = errLine(e) || 'git push failed';
+      env.push = { state: 'failed', reason };
+      log('AUTO', 'Phase-exit push', `push of ${runBranch} to origin FAILED at ${phase} exit (${reason}); the next phase exit's push retries`);
+    }
+  }
+
+  // 6. Checklist.
+  const forwarded = [];
+  if (opts.remove) forwarded.push('--remove');
+  if (opts.fixes) forwarded.push('--fixes', opts.fixes);
+  if (opts.summaryFile) forwarded.push('--summary-file', opts.summaryFile);
+  const cl = runSub(deps, deps.prChecklistRun, ['--run', runDir, '--phase', phase, ...forwarded]);
+  env.checklist = { exit: cl.exit, ...(cl.parsed || {}), ...(cl.error ? { error: cl.error } : {}) };
+
+  // 7. Merge state.
+  if (env.push.state === 'pushed') {
+    const ms = runSub(deps, deps.prMergeStateRun, ['--run', runDir, '--phase', phase]);
+    env.mergeState = ms.exit === 0 && ms.parsed ? ms.parsed : { exit: ms.exit, ...(ms.parsed || {}), ...(ms.error ? { error: ms.error } : {}) };
+  }
+  return env;
+}
+
+// integration-branch policy, else origin/HEAD minus `origin/`, else main.
+function resolveIntegrationBranch(deps, runDir, wt) {
+  let name = '';
+  try { name = firstLine(deps.resolvePolicy(runDir, 'integration-branch', wt)); } catch { name = ''; }
+  if (name) return name;
+  try {
+    name = firstLine(deps.git(['-C', wt, 'symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'])).replace(/^origin\//, '');
+  } catch { name = ''; }
+  return name || 'main';
+}
+
+// A sibling CLI run in-process with its stdout captured; its last stdout line is its JSON.
+function runSub(deps, fn, argv) {
+  const out = [];
+  let exit;
+  try {
+    exit = fn(argv, { cwd: deps.cwd, mainRoot: deps.mainRoot, stdout: (s) => out.push(s), stderr: (s) => deps.stderr(s) });
+  } catch (e) {
+    return { exit: null, parsed: null, error: errLine(e) || 'threw' };
+  }
+  let parsed = null;
+  const last = out.join('').trim().split('\n').pop();
+  try { parsed = last ? JSON.parse(last) : null; } catch { parsed = null; }
+  if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) parsed = null;
+  return { exit, parsed };
+}
+
+const hasWorktree = (s) => Boolean(s && typeof s.worktree === 'string' && s.worktree);
+const hasPr = (s) => Boolean(s && s.pr && Number.isInteger(s.pr.number) && s.pr.number > 0);
+
+function runHook(deps, args, wt) {
+  try { return { out: String(deps.hooks(args, wt) || '') }; } catch (e) {
+    return { out: String((e && e.stdout) || ''), error: errLine(e) };
+  }
+}
+
+function bookkeeping({ deps, runDir, wt, phase, state, log, prFirst, branch }) {
+  const step = phase === 'build' ? 'Common Step 7 bookkeeping assertion' : 'Phase-exit bookkeeping assertion';
+  const archived = isArchivedRun(runDir);
+  const result = { worktree: null, pr: null };
+  const details = [];
+
+  if (hasWorktree(state)) {
+    result.worktree = 'present';
+  } else if (archived) {
+    result.worktree = 'failed';
+    details.push('archived run dir carries no worktree field — not written');
+  } else {
+    const r = runHook(deps, ['record-worktree', '--run', runDir, path.resolve(wt)], wt);
+    if (r.out.includes('worktree recorded for ')) {
+      result.worktree = 'backfilled';
+      log('AUTO', step, 'backfilled worktree registration before phase-exit push', 'high');
+    } else {
+      result.worktree = 'failed';
+      details.push(`record-worktree did not record the worktree: ${firstLine(r.out) || r.error || 'no output'}`);
+    }
+  }
+
+  if (!prFirst || (!hasPr(state) && state && state.prExempt)) {
+    result.pr = 'n/a';
+  } else if (hasPr(state)) {
+    result.pr = 'present';
+  } else if (archived) {
+    result.pr = 'missing';
+    details.push('archived run dir carries no pr field — not written');
+  } else if (!branch) {
+    result.pr = 'missing';
+    details.push('no run branch to look up an open PR for');
+  } else {
+    backfillPr({ deps, runDir, wt, branch, step, log, result, details });
+  }
+
+  if (details.length) result.detail = details.join('; ');
+  return result;
+}
+
+function backfillPr({ deps, runDir, wt, branch, step, log, result, details }) {
+  let list;
+  try {
+    list = JSON.parse(deps.gh(['pr', 'list', '--head', branch, '--state', 'open', '--json', 'number,url'], wt));
+    if (!Array.isArray(list)) throw new Error('not a list');
+  } catch (e) {
+    result.pr = 'failed';
+    details.push(`gh pr list failed: ${errLine(e)}`);
+    return;
+  }
+  if (list.length === 0) {
+    result.pr = 'missing';
+    details.push(`no open PR for ${branch}`);
+    return;
+  }
+  if (list.length > 1) {
+    result.pr = 'failed';
+    details.push(`${list.length} open PRs for ${branch} — not recorded`);
+    return;
+  }
+  const { number, url } = list[0] || {};
+  if (!Number.isInteger(number) || number <= 0 || typeof url !== 'string' || !url) {
+    result.pr = 'failed';
+    details.push('gh pr list returned an unusable PR entry');
+    return;
+  }
+  const r = runHook(deps, ['record-pr', '--run', runDir, String(number), url], wt);
+  if (r.out.includes(`PR #${number} recorded for `)) {
+    result.pr = 'backfilled';
+    log('AUTO', step, `backfilled PR-early lifecycle (recorded open PR #${number}) before phase-exit push`, 'high');
+  } else {
+    result.pr = 'failed';
+    details.push(`record-pr did not record PR #${number}: ${firstLine(r.out) || r.error || 'no output'}`);
+  }
+}
+
+module.exports = { runPhaseExit, realDeps, parsePorcelainZ, isArchivedRun, InvalidWorktreeError, PHASE_SECTIONS };
