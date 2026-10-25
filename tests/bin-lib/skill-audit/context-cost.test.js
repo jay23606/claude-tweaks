@@ -300,10 +300,11 @@ test('findComposeCallSites: a --phase line emits one row per registered bundle, 
   fs.writeFileSync(path.join(skillDir, 'SKILL.md'), `line one\n${callLine}\n`);
   assert.deepStrictEqual(findComposeCallSites(root), [
     {
-      step: 'claims', file: 'demo/SKILL.md', line: 2, sources: [path.resolve(root, 'skills/_shared/issue-claims.md')],
+      step: 'claims', phase: 'second-call', file: 'demo/SKILL.md', line: 2, sources: [path.resolve(root, 'skills/_shared/issue-claims.md')],
     },
     {
       step: 'merge',
+      phase: 'second-call',
       file: 'demo/SKILL.md',
       line: 2,
       sources: [path.resolve(root, 'skills/_shared/pr-first-merge.md'), path.resolve(root, 'skills/_shared/pr-checklist-refresh.md')],
@@ -319,10 +320,11 @@ test('composedRailViolations: an unknown --phase in the prose fails the composed
   assert.deepStrictEqual(composedRailViolations(root), [{ file: 'null @ demo/SKILL.md:1', error: 'unknown phase nope' }]);
 });
 
-test('findComposeCallSites: finds all three real merge sites in the shipped corpus', () => {
+test('findComposeCallSites: finds all four real merge sites in the shipped corpus', () => {
   const sites = findComposeCallSites(REPO).filter((s) => s.step === 'merge');
   const files = sites.map((s) => s.file).sort();
   assert.deepStrictEqual(files, [
+    'dispatch/task-prompt.md',
     'wrap-up/auto-merge-short-circuit.md',
     'wrap-up/merge-mode.md',
     'wrap-up/review-console.md',

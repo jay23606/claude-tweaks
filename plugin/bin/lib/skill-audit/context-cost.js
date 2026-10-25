@@ -316,9 +316,11 @@ function findComposeCallSites(repoRoot) {
         });
         continue;
       }
-      // A `--phase` line is one row per registered bundle, so each bundle meets the rail on its own.
+      // A `--phase` line is one row per registered bundle, so each bundle meets the rail on its own;
+      // each such row also names its `phase`.
       for (const site of parsed.bundles || [parsed]) {
-        out.push({ step: site.step, file, line: i + 1, sources: site.sources });
+        const phase = parsed.phase ? { phase: parsed.phase } : {};
+        out.push({ step: site.step, ...phase, file, line: i + 1, sources: site.sources });
       }
     }
   }

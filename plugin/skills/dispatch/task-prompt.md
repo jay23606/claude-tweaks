@@ -31,9 +31,10 @@ that needs no resolution, only inclusion:
    | `materialize.js` | `node "{plugin-root}/bin/materialize.js" <n> --run-dir "{minted-run-dir}" [--multi-record-slug <n>]` |
    | claims-registry read | `{minted-run-dir}/context/claims.md`'s "Reading claim state" git-trees path (`claims/issue-{n}.json` on the `claims-registry` branch) — never `gh api ...?ref=` query-string quoting, never `-f ref=` on a GET (if that bundle is absent, read `_shared/issue-claims.md` directly) |
 
-5. **Composed bundles** — `{minted-run-dir}/context/claims.md` and
-   `{minted-run-dir}/context/merge.md`, composed by the dispatching session before either call;
+5. **Composed bundles** — composed by the dispatching session before the call that reads them;
    every citation of them in the templates below carries its own fallback to the source file.
+   `{minted-run-dir}/context/claims.md` is on-demand in both calls: read it only where a citation
+   sends you. `{minted-run-dir}/context/merge.md` is read once, whole, up front by the second call only.
 
 6. **Worktree shell constraint** — the Claude Code harness enforces limits on Bash commands in a single call, independent of filesystem effect (see `_shared/scratch-worktree.md` §7 ("Shell constraint") for the full boundary description, if that bundle is absent, read `_shared/scratch-worktree.md` directly). Avoid these shapes: quoted JSON containing `git`; a `git` call inside a `$(...)` substitution (e.g. `"$(git merge-base HEAD origin/main)"` as another command's argument — run it as its own call and paste the result in); a runtime variable such as `${CLAUDE_PLUGIN_ROOT}` inside the `node -e` script text of a command that also runs `git` (piping `git`/`gh` output into `node -e` passes once the paths are literal); a `for`/`while` loop variable; a glob argument; a `gh api` call inside an `if RAW=$(...)`; `sed -i` on a variable path; `cat "$P/…"` or `sed -n 'a,bp' "$P/…"` where `$P` is a runtime-computed path variable; a path spelled with a backslash-escaped space (e.g. `Code\ Workspaces` — double-quote the whole path instead, `"/Users/…/Code Workspaces/…"`; §7's row). Use `Write`/`Edit`/`Read` tools instead of equivalent shell commands, separate commands instead of loops or compound constructs, and literal file paths instead of variables. One plain command per Bash call is the general pattern.
 
@@ -92,18 +93,20 @@ environment facts and tool signatures only — never a prior call's conclusions 
 verdicts) — so it does not weaken the two-call gate's fresh-context independence property (see
 each template's own "CRITICAL"/re-derive-from-artifacts language, unchanged by this section).
 
-**Before substituting `{context-pack}` into either call, compose item 5's two bundles** — once,
-into the minted run directory, one physical line each:
-`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --step claims "{plugin-root}/skills/_shared/issue-claims.md"`
-and
-`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --step merge "{plugin-root}/skills/_shared/pr-first-merge.md" "{plugin-root}/skills/_shared/pr-checklist-refresh.md"`.
-The directory needs nothing else to compose into: Step 4 minted it mkdir-only, and `mode` is
-unresolved at this point (no `config.yml` yet) — neither bundle's sources branch on that key
-today. `integration-model` resolves only from `.claude-tweaks/policy.yml`'s pin — on a repo that
-does not pin it the `merge` bundle keeps both integration-model branches, and item 3's resolved
-value is what the agent acts on. These `{plugin-root}` lines are placeholders to the
-composed-bytes scanner, not call sites of their own — the bundles are measured at their skill
-call sites. Compose both before either dispatch anyway: if the compose command is unavailable or exits non-zero, read the named source files directly — which, for the dispatched agent, each template citation's own fallback already says.
+**Before substituting `{context-pack}` into a call, compose that call's phase** into the minted
+run directory with one physical line — before the first call:
+`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase first-call`
+and before the second call:
+`node "{plugin-root}/bin/compose-context.js" --run "{minted-run-dir}" --phase second-call`.
+The phase registry (`bin/lib/compose-context/phases.js`) names each phase's bundles and whether
+the call reads each one up front or on demand — item 5 above is that list for these two calls.
+The directory needs nothing else to compose into: Step 4 minted it mkdir-only, and before the
+first call `mode` is unresolved (no `config.yml` yet) — neither bundle's sources branch on that
+key today. `integration-model` resolves from the run's `config.yml` pin (the first call's
+Manifesto writes it) or `.claude-tweaks/policy.yml`'s — with neither, the `merge` bundle keeps
+both integration-model branches, and item 3's resolved value is what the agent acts on. The
+composed-bytes scanner expands each `--phase` line into the phase's registered bundles, so these
+two lines are measured call sites; if the compose command is unavailable or exits non-zero, read the named source files directly — which, for the dispatched agent, each template citation's own fallback already says.
 
 **Log each group's resolved first-call model (#3212).** This is a dispatching-session step, not
 part of `{context-pack}`. When resolving the first call's profile
@@ -343,6 +346,10 @@ backgrounded sleep): treat every child still outstanding as silent at the bound.
 without a tool call ends the turn.
 
 {context-pack}
+
+Read {minted-run-dir}/context/merge.md once, whole, with one Read call, before your first step
+(if that bundle is absent, read `_shared/pr-first-merge.md` directly). That one read serves every
+later citation of it, including wrap-up's own instruction to read it: never re-read it or open its source files piecewise (sed, grep, cat).
 
 Ephemeral dev server liveness (only if `{minted-run-dir}/ephemeral-server.txt` exists): before
 the first browser-driving step, and again before any `trace stop`, verify the recorded pid
