@@ -1208,7 +1208,7 @@ async function runTeardownRun(argv) {
 async function runArchiveRun(argv) {
   const {
     archiveRunDir, readConsoleState, consoleResidue, consoleAckRemedy, listSpecDirs, listStagedItems, consoleReplacedByAutoMerge,
-    TIEBREAK_COVERAGE_HINT,
+    TIEBREAK_COVERAGE_HINT, CANT_TELL_UNFILED_HINT, unfiledCantTellFindings,
   } = require('./lib/reconcile/archive-merged');
   const { NON_TERMINAL } = require('./lib/hooks/run-integrity');
   const { runDir, invalidRunArg, worktreeLocalFallback } = resolveRunArg(
@@ -1275,6 +1275,12 @@ async function runArchiveRun(argv) {
     const pending = listStagedItems(runDir);
     if (pending.length) {
       process.stdout.write(`claude-tweaks: archival refused — console-never-rendered-staged-pending (an auto-merge path — the wrap-up short-circuit or the dispatch bundle Auto-merge gate — rendered no console; pending: ${pending.join(', ')}) — apply or delete the pending staged/ items (and any spec-*/staged/), or write a resolved console.json, then re-run archive-run\n`);
+      return 0;
+    }
+    // #4171: the same auto-merge shape drops a can't-tell finding no run ever filed.
+    const unfiled = unfiledCantTellFindings(runDir);
+    if (unfiled.length) {
+      process.stdout.write(`claude-tweaks: archival refused — cant-tell-unfiled (${unfiled.length} can't-tell finding(s) an auto-merge path never filed: ${unfiled.join(', ')}) — ${CANT_TELL_UNFILED_HINT.replaceAll('{run-dir}', () => runDir)}, then re-run archive-run\n`);
       return 0;
     }
   }

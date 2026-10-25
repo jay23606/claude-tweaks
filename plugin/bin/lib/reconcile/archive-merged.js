@@ -412,8 +412,9 @@ function unclosedRecords(prState, records, repoSlug) {
 // #3945: `coverage` (checkRunTiebreakCoverage's `{ artifactPresent,
 // artifactValid, missing }`) is evaluated only at the two points that would
 // otherwise return `{ action: 'archive' }`, so it sits after every guard above.
-// Absent, or `artifactPresent: false`, it is ignored — byte-identical to the
-// 4-arg decision. The skip carries its own recovery `hint`.
+// Absent, it is ignored — byte-identical to the 4-arg decision. `artifactPresent:
+// false` skips only the artifact checks: #4171's `unfiledCantTell` is evaluated
+// regardless of it. Each skip carries its own recovery `hint`.
 function decideArchiveCore(prState, consoleState, hasStagedPending, recordCheck, coverage) {
   if (prState === 'gh-absent') return { action: 'skip', reason: 'gh-absent' };
   if (prState === 'network-failure') return { action: 'skip', reason: 'network-failure' };
@@ -463,20 +464,61 @@ function decideArchiveCore(prState, consoleState, hasStagedPending, recordCheck,
 // skips carry no hint, and archiveRunDir's refusal() hints are a different path.
 const TIEBREAK_COVERAGE_HINT = "re-run the review step's findings writer for this run, or delete review-findings.json if the run predates the tiebreak";
 
+// #4171: an auto-merge path renders no console, so a can't-tell finding the run held is
+// lost at archive time unless it was filed. `coverage.unfiledCantTell` names the unfiled ones.
+// `{run-dir}` is a placeholder; archive-run substitutes the real run dir before printing.
+const CANT_TELL_UNFILED_HINT = "file the run's can't-tell findings — an auto-merge path (the wrap-up short-circuit or the dispatch bundle Auto-merge gate) rendered no console to file them — through wrap-up/review-console.md's Can't-tell filings (console-filings.js --run \"{run-dir}\"; a spec-N/-prefixed id is filed and logged with --run \"{run-dir}/spec-N\", its own decisions.md), logging each as '{item} filed as #{n} (work-fingerprint {fp})', or write a resolved console.json";
+
 // `{ action: 'archive' }` unless the run's findings artifact is present and
-// either unreadable/malformed or lists a finding with no verdict line.
+// either unreadable/malformed or lists a finding with no verdict line, or (#4171)
+// an auto-merge run holds a can't-tell finding with no filed record.
 function archiveUnlessTiebreakGap(coverage) {
-  if (!coverage || !coverage.artifactPresent) return { action: 'archive' };
-  if (!coverage.artifactValid) return { action: 'skip', reason: 'tiebreak-artifact-invalid', hint: TIEBREAK_COVERAGE_HINT };
-  if (Array.isArray(coverage.missing) && coverage.missing.length > 0) {
-    return { action: 'skip', reason: 'tiebreak-coverage-missing', missing: coverage.missing, hint: TIEBREAK_COVERAGE_HINT };
+  if (!coverage) return { action: 'archive' };
+  if (coverage.artifactPresent) {
+    if (!coverage.artifactValid) return { action: 'skip', reason: 'tiebreak-artifact-invalid', hint: TIEBREAK_COVERAGE_HINT };
+    if (Array.isArray(coverage.missing) && coverage.missing.length > 0) {
+      return { action: 'skip', reason: 'tiebreak-coverage-missing', missing: coverage.missing, hint: TIEBREAK_COVERAGE_HINT };
+    }
+  }
+  if (Array.isArray(coverage.unfiledCantTell) && coverage.unfiledCantTell.length > 0) {
+    return { action: 'skip', reason: 'cant-tell-unfiled', unfiled: coverage.unfiledCantTell, hint: CANT_TELL_UNFILED_HINT };
   }
   return { action: 'archive' };
 }
 
+// #4171: the item ids of the run's can't-tell findings with no filed evidence — `[]` unless the run
+// merged through the auto-merge short-circuit with no console (the only shape that silently drops
+// them). A spec dir's items are `spec-N/`-prefixed. A read failure fails closed.
+function unfiledCantTellFindings(runDir) {
+  if (readTopLevelConsoleState(runDir) !== 'none' || !consoleReplacedByAutoMerge(runDir)) return [];
+  // Lazy: finding-outcomes loads console/resolve.js, which loads wrap-up/pack.js — reconcile/index.js
+  // must not pull pack.js at module load (#4060).
+  const { unfiledCantTell } = require('../console/finding-outcomes');
+  const deps = {
+    readFile: (p) => fs.readFileSync(p, 'utf8'),
+    readdir: (p) => { try { return fs.readdirSync(p); } catch { return []; } },
+  };
+  // console/resolve.js swallows a read failure into an empty decisions.md, which would read as "no
+  // findings" — so probe decisions.md here: any non-ENOENT read error is unreadable (fails closed).
+  const unfiledIn = (dir, prefix) => {
+    try { fs.readFileSync(path.join(dir, 'decisions.md'), 'utf8'); } catch (err) {
+      if (!(err && err.code === 'ENOENT')) return [`(unreadable: ${prefix}decisions.md: ${err && err.message})`];
+    }
+    return unfiledCantTell({ runDir: dir, deps }).map((u) => `${prefix}${u.item}`);
+  };
+  try {
+    return [
+      ...unfiledIn(runDir, ''),
+      ...listSpecDirs(runDir).sort().flatMap((name) => unfiledIn(path.join(runDir, name), `${name}/`)),
+    ];
+  } catch (err) {
+    return [`(unreadable: ${err && err.message})`];
+  }
+}
+
 // The run's coverage for a caller that holds a run dir; undefined without one.
 function runTiebreakCoverage(dir) {
-  return dir ? checkRunTiebreakCoverage(dir, listSpecDirs(dir)) : undefined;
+  return dir ? { ...checkRunTiebreakCoverage(dir, listSpecDirs(dir)), unfiledCantTell: unfiledCantTellFindings(dir) } : undefined;
 }
 
 function decideArchive(prState, consoleState) {
@@ -1717,9 +1759,14 @@ const STRUCTURALLY_STUCK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // tracked: a findings artifact with an uncovered or unreadable entry never
 // self-resolves, only a re-run of the findings writer and tiebreak (or deleting
 // a pre-tiebreak artifact) converges it.
+// 'cant-tell-unfiled' (#4171) is tracked on the same grounds: an auto-merge run
+// with no console never gets its can't-tell findings filed on its own — only a
+// human running the Can't-tell filings step (or writing a resolved console.json)
+// converges it.
 const STRUCTURALLY_STUCK_REASONS = new Set([
   'no-worktree', 'no-branch', 'no-pr', 'console-never-rendered-pr-closed', 'console-never-rendered-staged-pending',
   'pr-not-found', 'merged-partial', 'no-repo-slug', 'tiebreak-coverage-missing', 'tiebreak-artifact-invalid',
+  'cant-tell-unfiled',
 ]);
 
 // #1732: thin wrapper — see isOrphanedMint's comment on the `kinds` scoping
@@ -1945,8 +1992,8 @@ function trackArchiveResult(cacheTarget, repoSlug, dir, result, { escalate = esc
 // already closed a `clean` run, so no record is still being built. #3668: this
 // loop tracks only console-never-rendered-staged-pending skips of auto-merge
 // runs (the short-circuit, or since #3740 the dispatch bundle gate), plus (#3945)
-// the two tiebreak reasons, which a closed run can never converge on its own (see
-// the clean loop's onSkip). close-run has already run,
+// the two tiebreak reasons, which a closed run can never converge on its own, and
+// (#4171) cant-tell-unfiled (see the clean loop's onSkip). close-run has already run,
 // so no later step renders a console or applies those staged items, and
 // archive-run refuses exactly that subset — an untracked skip would freeze the
 // dir silently. Other closed no-console staged-pending runs stay untracked:
@@ -2004,12 +2051,14 @@ function settleMergedPartial(root, dir, prState, decision, coverage) {
 
 // #3503: `unclosed` rides along on a merged-partial skip only; #3945: `missing`
 // and `hint` ride along on a tiebreak skip only; #4172: `hint` also rides along
-// on a console-residue skip. Every other reason keeps the bare {runDir, reason}
+// on a console-residue skip; #4171: `unfiled` rides along on a cant-tell-unfiled
+// skip (with its `hint`). Every other reason keeps the bare {runDir, reason}
 // shape.
-function skippedEntry(dir, { reason, unclosed, missing, hint }) {
+function skippedEntry(dir, { reason, unclosed, missing, unfiled, hint }) {
   const entry = { runDir: dir, reason };
   if (unclosed !== undefined) entry.unclosed = unclosed;
   if (missing !== undefined) entry.missing = missing;
+  if (unfiled !== undefined) entry.unfiled = unfiled;
   if (hint !== undefined) entry.hint = hint;
   return entry;
 }
@@ -2056,7 +2105,7 @@ function resolveRunPrState(root, state, branch, prStates) {
 // differ: the main loop calls `trackStuckSkip` on every `decideArchiveCore`
 // skip (#1613's structurally-stuck visibility); the clean loop passes a hook
 // that tracks only console-never-rendered-staged-pending on auto-merge
-// runs (#3668, #3740) and the two tiebreak reasons (#3945) — see
+// runs (#3668, #3740), the two tiebreak reasons (#3945) and cant-tell-unfiled (#4171) — see
 // iterCleanRunDirs' comment for why that subset, and why the rest stay untracked.
 function archiveMergedRun({
   root, repoSlug, dir, branch, state, dryRun, onSkip, runner, cacheTarget = root, integration, recordCheck, prStates,
@@ -2077,7 +2126,7 @@ function archiveMergedRun({
     if (onSkip) onSkip(decision.reason);
     const hint = decision.reason === 'console-residue' ? consoleResidueHint(dir) : decision.hint;
     return {
-      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, hint,
+      outcome: 'skipped', reason: decision.reason, unclosed: decision.unclosed, missing: decision.missing, unfiled: decision.unfiled, hint,
     };
   }
 
@@ -2491,8 +2540,8 @@ function archiveMerged({
   // the same local-fast-forward check before any move — via the same
   // archiveMergedRun helper. Its onSkip tracks only
   // console-never-rendered-staged-pending on auto-merge runs (#3668, #3740), and
-  // the two tiebreak reasons (#3945): archive-run refuses exactly those closed
-  // subsets (#3668), so an untracked skip would freeze the dir. Other closed
+  // the two tiebreak reasons (#3945) and cant-tell-unfiled (#4171): archive-run
+  // refuses exactly those closed subsets (#3668), so an untracked skip would freeze the dir. Other closed
   // no-console staged-pending runs stay untracked (typically in-terminal
   // consoles that retain staged/ by design).
   for (const { dir, state } of iterCleanRunDirs(root)) {
@@ -2503,7 +2552,7 @@ function archiveMerged({
       root, repoSlug, dir, branch, state, dryRun, runner, cacheTarget: cacheBatch, integration, prStates,
       onSkip: (reason) => {
         if (reason === 'console-never-rendered-staged-pending' && consoleReplacedByAutoMerge(dir)) track(dir, reason);
-        if (reason === 'tiebreak-coverage-missing' || reason === 'tiebreak-artifact-invalid') track(dir, reason);
+        if (reason === 'tiebreak-coverage-missing' || reason === 'tiebreak-artifact-invalid' || reason === 'cant-tell-unfiled') track(dir, reason);
       },
     });
     if (runResult.outcome === 'archived') { archived.push(dir); continue; }
@@ -2542,5 +2591,5 @@ module.exports = {
   compareWorkTwin, resolveIdenticalWorkTwin, listFilesRecursive,
   isClosedSlugStuck, recordNumbersFromSlug, runRecordSet, inFlightRecords,
   listStagedItems, hasStagedItems, consoleReplacedByAutoMerge,
-  refusal, TIEBREAK_COVERAGE_HINT,
+  refusal, TIEBREAK_COVERAGE_HINT, CANT_TELL_UNFILED_HINT, unfiledCantTellFindings,
 };
