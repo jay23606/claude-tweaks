@@ -19,8 +19,8 @@ Root cause, and Resume sections to reach the content they actually need at merge
 
 ## Phase-checklist update (every phase exit)
 
-At each phase's own exit (build, test, review, polish, wrap-up — after that phase's own
-phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` field:
+At each phase's own exit (build, test, review, polish, wrap-up), `bin/phase-exit.js` runs this
+after its push (`_shared/git-discipline.md`), as `checklist`. By `run-state.json`'s `pr` field:
 
 - **Not set, `local-merge` run**: skip entirely — no PR to update.
 - **Not set, `pr-first` run (a degraded run)**: before skipping, check whether recovery is safe —
@@ -45,9 +45,9 @@ phase-exit push, `_shared/git-discipline.md`), check `run-state.json`'s `pr` fie
   - **0**, by `action`: `written`/`no-op` done, but a flip's `row-absent`/`no-phases-span` checked
     nothing → warn; `logFailed` → hand-log the restore line (`bin/log-decision.js`); `no-pr` → the
     degraded-run recovery above; `gh-absent` → MCP below.
-  - **4** (run marker mismatch, nothing written): log `AUTO {time} — PR checklist refresh: refused
-    on PR #{number} — run marker mismatch ({stderr}). Reversibility: n/a.`; never edit by hand.
-  - **5** (`gh` failed): the "Best-effort" warning below.
+  - **4** (run marker mismatch, nothing written; never edit by hand), **5** (`gh` failed, the
+    "Best-effort" rule below): the CLI logs its own line — hand-log it only on a `could not
+    append` stderr line.
   - **2**, **3**: a bad call (flags, `--summary-file`, run dir) — fix, re-run.
 
   **Refresh the Spec summary after a premise reversal (#3050).** `bin/pr-checklist.js` reads this
