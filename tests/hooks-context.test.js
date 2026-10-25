@@ -582,6 +582,8 @@ test('refreshOwnerBlock never throws', () => {
 // evidence entry, and whether a different current pid re-stamps the block.
 test('AC1.1: refreshOwnerBlock and runLiveness give the same answer on the stamped owner pid, an unreadable start time included', () => {
   const { gatherEvidence } = require('../plugin/bin/lib/run-liveness');
+  // The 'stored start time is not a ps string' (invalid-start-time) and 'stored pid is not a usable pid' (no-pid)
+  // rows are the ones that prove the routing through probeOwnerPid — the old inline check passed the rest — so do not prune them as redundant.
   const rows = [
     { name: 'start time cannot be read', startOf: { 200: 'T200' }, entry: ['error', 'start-time-unavailable'], restamp: false },
     { name: 'stored start time is not a ps string', over: { pidStartedAt: 12345 }, entry: ['error', 'invalid-start-time'], restamp: false },

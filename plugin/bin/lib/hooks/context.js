@@ -787,9 +787,12 @@ function isTrustedOwnedRun(ownedRun) {
 // still alive. A nested child's SessionEnd always fires while its parent is
 // alive (the parent's Bash tool is blocked on the child), so the incident case
 // keeps its protection. A dead owner is the crash + `claude --resume` shape: the
-// original process died without a SessionEnd, the resumed process (new pid, same
-// session id) never re-stamps ownerPid, and its ending is the run's real
-// interruption — suppressing it would regress to a never-flagged run. Probe
+// original process died without a SessionEnd, and a `resume` SessionStart
+// re-stamps ownerPid with the new process's pid (session-start.js's
+// restampOwnerPidOnResume); before that re-stamp — or for a run never resumed —
+// the dead owner is what isNestedSession sees, and the ending of the resumed
+// process (new pid, same session id) is the run's real interruption —
+// suppressing it would regress to a never-flagged run. Probe
 // errors other than "alive" fail open (never nested, never throw from a hook).
 // (claudePid itself lives in run-liveness/process-probe.js, imported above, so
 // the run-liveness modules can share it without requiring this file.)
