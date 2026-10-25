@@ -3102,7 +3102,7 @@ test('archiveMerged: same shape as above, but a resolved PR console holds a fili
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
   assert.equal(skip.reason, 'console-residue');
-  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review them, then run console-residue\.js --ack --run /);
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -3599,7 +3599,7 @@ test('archiveMerged: ordinary branch-resolvable path — a PR console holding a 
   const skip = result.skipped.find((s) => s.runDir === runDir);
   assert.ok(skip, `expected ${runDir} reported in skipped, got ${JSON.stringify(result)}`);
   assert.equal(skip.reason, 'console-residue');
-  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.match(skip.hint, /unresolved: f1 \(filing-failed\) — review them, then run console-residue\.js --ack --run /);
   assert.equal(fs.existsSync(runDir), true);
 });
 
@@ -3723,7 +3723,7 @@ test('consoleResidueHint: names the open items and the unreadable console.json w
   fs.mkdirSync(path.dirname(badPath), { recursive: true });
   fs.writeFileSync(badPath, '{not json');
   const hint = consoleResidueHint(runDir);
-  assert.match(hint, /unresolved: f1 \(filing-failed\) — review, then run console-residue\.js --ack --run /);
+  assert.match(hint, /unresolved: f1 \(filing-failed\) — review them, then run console-residue\.js --ack --run /);
   assert.ok(hint.includes(`repair or remove ${badPath}`), hint);
 });
 test('consoleResidueHint: names only the unreadable console.json when no item is open (#4172)', () => {

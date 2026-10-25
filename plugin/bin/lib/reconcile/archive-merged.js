@@ -523,12 +523,18 @@ function consoleResidue(runDir) {
   return { items: names.length, unreadable, names };
 }
 
+// The remedy for open console items, shared by the archive-run verb's refusal
+// line and the reconcile sweep's hint so the two cannot word the ack differently.
+function consoleAckRemedy(runDir) {
+  return `review them, then run console-residue.js --ack --run "${runDir}"`;
+}
+
 // The recovery line for a console-residue skip: name the open items, the
 // unreadable console.json files to repair, or both when both block.
 function consoleResidueHint(runDir) {
   const { names, unreadable } = consoleResidue(runDir);
   const parts = [];
-  if (names.length > 0) parts.push(`unresolved: ${names.join(', ')} — review, then run console-residue.js --ack --run "${runDir}"`);
+  if (names.length > 0) parts.push(`unresolved: ${names.join(', ')} — ${consoleAckRemedy(runDir)}`);
   if (unreadable.length > 0) parts.push(`repair or remove ${unreadable.join(', ')}`);
   return parts.join('; ');
 }
@@ -2518,7 +2524,7 @@ function archiveMerged({
 }
 
 module.exports = {
-  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, consoleResidueHint, archiveRunDir, listSpecDirs,
+  archiveMerged, prefetchArchivePrStates, decideArchive, decideArchiveCore, unclosedRecords, readConsoleState, consoleResidue, consoleAckRemedy, consoleResidueHint, archiveRunDir, listSpecDirs,
   isStaleDir, classifyRunDir,
   isOrphanedMint, isAdHocStandaloneMint, isAdHocIntrinsicSkip, ADHOC_INTRINSIC_STUCK_REASONS, archiveOrphanedMint, ORPHAN_MINT_TTL_MS, trackArchiveResult,
   localHasMerge, lastOwnEventMs, ownEventRecency, isAbandonedInterrupted, STALE_INTERRUPTED_TTL_MS,

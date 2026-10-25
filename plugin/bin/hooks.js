@@ -1209,7 +1209,7 @@ async function main(argv) {
   }
   if (cmd === 'archive-run') {
     const {
-      archiveRunDir, readConsoleState, consoleResidue, listSpecDirs, listStagedItems, consoleReplacedByAutoMerge,
+      archiveRunDir, readConsoleState, consoleResidue, consoleAckRemedy, listSpecDirs, listStagedItems, consoleReplacedByAutoMerge,
       TIEBREAK_COVERAGE_HINT,
     } = require('./lib/reconcile/archive-merged');
     const { NON_TERMINAL } = require('./lib/hooks/run-integrity');
@@ -1263,7 +1263,7 @@ async function main(argv) {
       const remedies = [];
       if (items > 0) {
         what.push(`${items} unresolved item(s) no human has reviewed`);
-        remedies.push(`review them, then run console-residue.js --ack --run "${runDir}"`);
+        remedies.push(consoleAckRemedy(runDir));
       }
       if (unreadable.length > 0) {
         what.push(`${unreadable.length} console.json file(s) could not be read`);
