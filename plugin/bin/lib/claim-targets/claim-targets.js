@@ -92,9 +92,10 @@ function parseTargets(raw) {
 }
 
 // /flow's step vocabulary — `skills/flow/steps-and-gates.md`'s Allowed Steps
-// table plus the bundled `re-verify` it names as a no-op list entry. Held
-// here as data, never grepped from that prose at runtime.
-const FLOW_STEPS = Object.freeze(['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up']);
+// table plus the bundled `re-verify` it names as a no-op list entry and the
+// resume-only `review-console` (`/flow {specs} review-console` must skip, not
+// hard-stop). Held here as data, never grepped from that prose at runtime.
+const FLOW_STEPS = Object.freeze(['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up', 'review-console']);
 
 // `--steps` is the resolved /flow step list (`flow/SKILL.md` Step 1, item 4).
 // Same strictness as parseTargets: a blank value, a bare trailing flag
@@ -102,11 +103,16 @@ const FLOW_STEPS = Object.freeze(['build', 'stories', 'test', 'review', 'polish'
 // another flag (`--steps --keep-going` consumed `--keep-going` as the value),
 // or any name outside FLOW_STEPS (`Build`, `biuld`) is malformed, never
 // silently read as "no build/test" — a mangled list must not turn into a
-// skipped claim.
+// skipped claim. Returns `{steps}` or `{error}` (the caller prints `error`,
+// when non-empty, ahead of USAGE).
 function parseSteps(raw) {
-  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  if (typeof raw !== 'string' || raw.trim() === '') return { error: '' };
   const parts = raw.split(',').map((s) => s.trim());
-  return parts.every((p) => !p.startsWith('-') && FLOW_STEPS.includes(p)) ? parts : null;
+  const bad = parts.find((p) => p.startsWith('-') || !FLOW_STEPS.includes(p));
+  if (bad !== undefined) {
+    return { error: `claim-targets: unknown --steps entry ${JSON.stringify(bad)} — accepted: ${FLOW_STEPS.join(', ')}\n` };
+  }
+  return { steps: parts };
 }
 
 // Default `deps.appendClaimLog` implementation — writes the exact Step 2.8
@@ -280,8 +286,8 @@ function run(argv, deps) {
   // claim read or write, no label, no claim-log line, with or without
   // `--keep-going`/`--run`. Without `--steps`, behaviour is unchanged.
   if (opts.stepsRaw !== null) {
-    const steps = parseSteps(opts.stepsRaw);
-    if (!steps) { deps.stderr(USAGE); return 2; }
+    const { steps, error } = parseSteps(opts.stepsRaw);
+    if (!steps) { deps.stderr(error + USAGE); return 2; }
     if (!steps.includes('build') && !steps.includes('test')) {
       deps.stdout(JSON.stringify({
         claimed: [], alreadyOwned: [], skipped: [], skipGuard: 'no-build-or-test',

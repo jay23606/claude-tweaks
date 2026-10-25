@@ -1549,8 +1549,30 @@ for (const [label, argv] of [
   });
 }
 
-test('FLOW_STEPS is /flow\'s Allowed Steps vocabulary (steps-and-gates.md), re-verify included', () => {
-  assert.deepEqual([...FLOW_STEPS], ['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up']);
+test('FLOW_STEPS is /flow\'s Allowed Steps vocabulary (steps-and-gates.md), re-verify and resume-only review-console included', () => {
+  assert.deepEqual([...FLOW_STEPS], ['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up', 'review-console']);
+});
+
+// Fix round 2: `/flow {specs} review-console` is a valid resume invocation
+// (steps-and-gates.md's "Resume-only step"), so it must skip, not hard-stop.
+test('--steps review-console: exit 0, skipGuard envelope, zero gh/ghApi calls', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+
+  assert.equal(run(['--run-id', 'r1', '--targets', '720', '--steps', 'review-console'], deps), 0);
+  assert.deepEqual(io.out, [SKIP_GUARD_ENVELOPE]);
+  assert.deepEqual(r.calls.ghApi, []);
+  assert.deepEqual(r.calls.gh, []);
+});
+
+test('--steps with an unknown step: the exit-2 message names the offending entry and lists every accepted name', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+
+  assert.equal(run(['--run-id', 'r1', '--targets', '720', '--steps', 'review,biuld'], deps), 2);
+  const err = io.err.join('');
+  assert.ok(err.includes('"biuld"'), err);
+  assert.ok(err.includes(`accepted: ${FLOW_STEPS.join(', ')}`), err);
 });
 
 test('every non-build/test FLOW_STEPS member is accepted by --steps (build/test: the claim-path test above)', () => {
