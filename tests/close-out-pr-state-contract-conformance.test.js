@@ -8,6 +8,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
+const { serializeMarker } = require('../plugin/bin/lib/dispatch/close-out-marker.js');
 
 function readSkillFile(...segments) {
   return readText(path.join(__dirname, '..', 'plugin', 'skills', ...segments));
@@ -87,18 +88,19 @@ const UPDATE_PINS = [
   ['marker-kind', 0, (s) => s.includes('a `close-out-update` run comment (`_shared/pr-run-comments.md`\'s Comment kinds)')
     && s.includes('<!-- run-comment: close-out-update -->')],
   ['marker-before-landing', 0, (s) => s.includes('Write it pending before each call that lands an update — `gh pr update-branch` in step 2, the push in step 5 — never after.')],
-  ['marker-read', 0, (s) => s.includes('a second line `close-out-update: pending` is a pending marker')
+  ['marker-read', 0, (s) => s.includes('its `status` `pending` is a pending marker')
     && s.includes('still routes to the resume, with that value `unknown`')],
-  ['marker-read-unrecognised-stops', 0, (s) => s.includes('any other second line is unreadable (`stopped: update failed — marker unreadable`), never none')
-    && s.includes('compare with trailing whitespace trimmed')],
+  ['marker-read-unrecognised-stops', 0, (s) => s.includes('`unreadable` stops the candidate (`stopped: update failed — marker unreadable`), never none')],
+  ['marker-cli', 0, (s) => ['read', 'write', 'resolve-pending'].every((verb) => s.includes(`bin/close-out-marker.js" ${verb} --comments-file "{comments-path}"`))
+    && s.includes('never by hand')],
   ['marker-clear-only', 0, (s) => /only after `close-out\.md` step 5's `merged`, a decline at its step 4 gate,\s+or a landing call that landed nothing \(below\); every other stop leaves it pending/.test(s)],
   ['marker-failures-stop', 0, (s) => s.includes('(`stopped: update failed — marker unreadable`)')
     && s.includes('(`stopped: update failed — marker not written`), nothing pushed')
     && s.includes('never that procedure\'s issue fallback, since only the PR is ever read')],
   ['marker-failed-clear', 0, (s) => s.includes('A failed clear is reported and blocks nothing: a marker left pending costs one re-verify.')],
-  ['marker-accumulates', 0, (s) => s.includes('an update on a PR whose marker is already pending appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`')],
+  ['marker-accumulates', 0, (s) => s.includes('`write` given a payload whose marker is pending appends this update to it')],
   ['marker-write-trusted', 0, (s) => s.includes('After each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.')],
-  ['marker-read-by-id', 0, (s) => s.includes('then the `body` of the comment in the same payload whose `id` it returned')],
+  ['marker-read-by-id', 0, (s) => s.includes('`read` prints its `id` (the comment to update in place)')],
   ['marker-nothing-landed', 0, (s) => /When a landing call fails,[\s\S]{0,120}re-read `gh pr view \{number\} --json headRefOid`[\s\S]{0,360}\(`cleared \(nothing landed\)`\); any other head on any read keeps it pending/.test(s)],
   ['marker-landing-rereads', 0, (s) => s.includes('a call GitHub accepted can still land after it errors, so re-read')
     && s.includes('up to 3 reads, a few seconds apart, each its own plain command:\nthe pre-update head on every read means nothing landed')],
@@ -141,12 +143,12 @@ const UPDATE_PINS = [
   ['resume-pending-resolution', 2, (s) => s.includes('is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge')],
   ['resume-no-marker-local', 2, (s) => s.includes('With no pending marker nothing was pushed, since the marker precedes every landing call, so recover')],
   ['marker-before-update-branch', 2, (s) => before(s, '`BEHIND` then writes the pending marker', '`gh pr update-branch {number}`')],
-  ['marker-post-update-sha', 2, (s) => s.includes('Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha.')],
+  ['marker-post-update-sha', 2, (s) => s.includes('Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha with `resolve-pending`.')],
   ['pin-retry-after-exit0', 2, (s) => s.includes('after an exit-0 fetch, a ref missing or stale locally is fetched once more')],
   ['base-moved-no-wt', 2, (s) => s.includes('— the one just added for a pending marker included — goes to step 1\'s offer')],
   ['base-moved-fresh-carries', 2, (s) => s.includes('is still a resume for step 8, which hands off the marker as Fresh\'s write leaves it')],
-  ['resume-pre-update-head-hex', 2, (s) => s.includes('a `{pre-update-head}` that is not a full 40-hex sha (`unknown` included, since a comment body is never pasted into a command unchecked)')],
-  ['resume-pre-update-head-field', 2, (s) => s.includes('`{pre-update-head}` being the marker\'s own field')],
+  ['resume-pre-update-head-hex', 2, (s) => s.includes('a `preUpdateHead` of `unknown` (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked)')],
+  ['resume-pre-update-head-field', 2, (s) => s.includes('`{pre-update-head}` being the Read\'s `preUpdateHead`')],
   ['resume-pending-unknown-no-stop', 2, (s) => s.includes('or a `rev-list` that exits non-zero: `unknown`, never a stop')],
   ['merge-base-in', 3, (s) => s.includes('`git -C {wt} fetch origin {base}`') && s.includes('Then `git -C {wt} merge --no-edit origin/{base}`')],
   ['nothing-new-stops', 3, (s) => /brings in nothing[\s\S]{0,200}stop-set status stops the candidate \(`stopped: mergeStateStatus \{status\} after update`\)/.test(s)],
@@ -264,7 +266,7 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
 });
 
 const PINS_4317 = {
-  'AC1.1': ['marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-decline-stops', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id', 'resume-offer-no-skip', 'resume-decline-not-continue', 'marker-read-every-candidate', 'marker-clear-noop', 'marker-failed-landing-restores', 'marker-read-unrecognised-stops', 'marker-landing-rereads'],
+  'AC1.1': ['marker-cli', 'marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-decline-stops', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id', 'resume-offer-no-skip', 'resume-decline-not-continue', 'marker-read-every-candidate', 'marker-clear-noop', 'marker-failed-landing-restores', 'marker-read-unrecognised-stops', 'marker-landing-rereads'],
   'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field', 'handoff-conflicted-marker', 'handoff-every-entry', 'resume-pending-unknown-no-stop', 'resume-pre-update-head-hex'],
   'AC3.1': ['fail-stops-git', 'base-fetch-checked', 'pin-retry-after-exit0', 'base-fetch-retry'],
   'AC4.1': ['gh-only'],
@@ -342,17 +344,18 @@ const UPDATE_MUTATIONS = [
   ['marker-clear-noop', ' a no-op when Find returns none (a `{wt}` from before the marker existed); else', ''],
   ['marker-failed-landing-restores', 'so rewrite the marker to the body it had\nbefore this run\'s write — or, when step 2 found no pending marker, clear it', 'so clear it'],
   ['resume-pending-unknown-no-stop', ', or a `rev-list` that exits non-zero: `unknown`, never a stop.', ': `unknown`.'],
-  ['resume-pre-update-head-hex', ' that is not a full 40-hex sha (`unknown` included, since a comment body is never pasted into a command unchecked)', ' of `unknown`'],
+  ['resume-pre-update-head-hex', ' (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked)', ''],
   ['gh-only', '(`stopped: update failed — gh absent`) — the PR is never touched', '(`stopped: update failed — gh absent`) after the update'],
   ['marker-kind', 'a `close-out-update` run comment (`_shared/pr-run-comments.md`\'s Comment kinds)', 'a local note'],
   ['marker-before-landing', 'Write it pending before each call that lands an update', 'Write it pending after each call that lands an update'],
-  ['marker-read', 'still routes to the resume, with that value `unknown`', 'is ignored'],
+  ['marker-read', 'its `status` `pending` is a pending marker', 'its `status` is ignored'],
+  ['marker-cli', ', never by hand', ''],
   ['marker-clear-only', '; every other stop leaves it pending', ', or on any stop'],
   ['marker-failures-stop', ' — never that procedure\'s issue fallback, since only the PR is ever read', ', or post it to the issue instead'],
   ['marker-failed-clear', 'A failed clear is reported and blocks nothing: a marker left pending costs one re-verify.', 'A failed clear stops the candidate.'],
   ['marker-nothing-landed', '; any other head on any read keeps it pending', ''],
   ['marker-landing-rereads', 'a call GitHub accepted can still land after it errors, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads, a few seconds apart, each its own plain command:\nthe pre-update head on every read means', 're-read `gh pr view {number} --json headRefOid`: the pre-update head still there means'],
-  ['marker-read-unrecognised-stops', 'any other second line is unreadable (`stopped: update failed — marker unreadable`), never none.', 'any other second line is none.'],
+  ['marker-read-unrecognised-stops', '`unreadable` stops the candidate (`stopped: update failed — marker unreadable`), never none.', '`unreadable` is none.'],
   ['fail-stops-git', 'before any later command of steps 2-6 runs', 'unless the next step can continue'],
   ['resume-from-marker', 'No `{wt}` (a pending marker left by another checkout, or a `{wt}` since removed): add it as Fresh below does, detached at `origin/{head}`, then step 4', 'No `{wt}`: continue at step 3'],
   ['base-moved-again', 'goes to step 1\'s offer instead of step 4', 'goes to step 4'],
@@ -360,15 +363,15 @@ const UPDATE_MUTATIONS = [
   ['resume-values-marker', 'A pending marker supplies `{update-method}`, `{conflicted-files}` and `{resolution-commit}`', '`{wt}` supplies the values'],
   ['resume-pending-resolution', 'is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge', 'stays `pending`'],
   ['resume-no-marker-local', 'With no pending marker nothing was pushed, since the marker precedes every landing call, so recover', 'Otherwise recover'],
-  ['marker-before-update-branch', '`BEHIND` then writes the pending marker (`update-method: gh pr update-branch`, `conflicted-files: none`, `resolution-commit: pending`)\n   and runs `gh pr update-branch {number}`', '`BEHIND` then runs `gh pr update-branch {number}`'],
-  ['marker-post-update-sha', '\n   Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha.', ''],
+  ['marker-before-update-branch', '`BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`)\n   and runs `gh pr update-branch {number}`', '`BEHIND` then runs `gh pr update-branch {number}`'],
+  ['marker-post-update-sha', '\n   Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha with `resolve-pending`.', ''],
   ['pin-retry-after-exit0', 'after an exit-0 fetch, a ref missing', 'a ref missing'],
   ['base-moved-no-wt', ' — the one just added for a pending marker included —', ''],
   ['base-moved-fresh-carries', ' and is still a resume for step 8, which hands off the marker as Fresh\'s write leaves it.', ', with Fresh\'s own values.'],
-  ['resume-pre-update-head-field', ', `{pre-update-head}` being the marker\'s own field', ''],
-  ['marker-accumulates', 'appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`', 'overwrites it'],
+  ['resume-pre-update-head-field', ', `{pre-update-head}` being the Read\'s `preUpdateHead`', ''],
+  ['marker-accumulates', 'appends this update to it', 'overwrites it'],
   ['marker-write-trusted', '\nAfter each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.', ''],
-  ['marker-read-by-id', 'then the `body` of the comment in the same payload whose `id` it returned', 'then its body'],
+  ['marker-read-by-id', '`read` prints its `id` (the comment to update in place)', '`read` prints its body'],
   ['teardown-nothing-new-scoped', ' read when step 2 found no pending marker', ' read'],
   ['base-fetch-retry', 'on a mismatch fetch and compare once more, and stop on one after that', 'on a mismatch stop'],
   ['base-fetch-checked', 'then require `git -C {wt} rev-parse origin/{base}` to equal the first field of `git -C {wt} ls-remote origin refs/heads/{base}`', 'then trust it'],
@@ -393,6 +396,33 @@ for (const [id, from, to] of UPDATE_MUTATIONS) {
     assert.throws(() => assertUpdateRouting(STEP_2, mutated, CLOSE_OUT), new RegExp(`pin ${id} `));
   });
 }
+
+// Prose-code twin (#4331): the marker template's explanatory paragraph is composed by the module's
+// serializeMarker and restated in the doc's ```text template, so the two must stay byte-equal.
+const TWIN_SAMPLE = { updateMethod: ['merge'], conflictedFiles: [], preUpdateHead: 'a'.repeat(40), resolutionCommits: ['pending'] };
+
+function paragraphLine(text, where) {
+  const lines = text.split('\n').filter((l) => l.startsWith('While this reads'));
+  assert.equal(lines.length, 1, `${where} has exactly one "While this reads" paragraph line`);
+  return lines[0];
+}
+
+function assertExplanationTwin(update) {
+  const templates = [...update.matchAll(/```text\n([\s\S]*?)```/g)].filter((m) => m[1].startsWith('<!-- run-comment: close-out-update -->'));
+  assert.equal(templates.length, 1, 'close-out-update.md has exactly one marker template fence');
+  assert.equal(paragraphLine(templates[0][1], 'the marker template'), paragraphLine(serializeMarker(TWIN_SAMPLE), 'serializeMarker\'s body'),
+    'the template\'s explanatory paragraph equals serializeMarker\'s');
+}
+
+test('#4331 prose-code twin: the marker template\'s paragraph equals serializeMarker\'s', () => {
+  assertExplanationTwin(UPDATE);
+});
+
+test('#4331 prose-code twin go-red control: one reworded word in the template paragraph fails', () => {
+  const from = 're-verifies the head before the merge question';
+  assertOccursOnce(UPDATE, from, 'the paragraph clause occurs exactly once');
+  assert.throws(() => assertExplanationTwin(UPDATE.replace(from, 're-checks the head before the merge question')), /explanatory paragraph equals serializeMarker/);
+});
 
 // close-out.md step 2 clauses: [label, exact text, replacement, expected message]
 const STEP_2_MUTATIONS = [

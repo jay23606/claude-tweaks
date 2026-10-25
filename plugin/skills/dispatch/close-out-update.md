@@ -20,7 +20,7 @@ When `command -v gh` exits non-zero, stop before step 1 offers anything (`stoppe
 
 **Update marker.** An update on GitHub is unverified until step 4's stamp and step 6's CI read pass on its head, and `{wt}` lives in one checkout,
 so the pending state is kept on the PR: a `close-out-update` run comment (`_shared/pr-run-comments.md`'s Comment kinds), found, written and rewritten
-by that file's Post-or-update procedure with `{kind}` = `close-out-update` and `{pr-number}` = `{number}`. Its body, marker first:
+by that file's Post-or-update procedure with `{kind}` = `close-out-update` and `{pr-number}` = `{number}`. Its body, marker first, is composed only by `bin/close-out-marker.js` (rules in `bin/lib/dispatch/close-out-marker.js`), never by hand:
 
 ```text
 <!-- run-comment: close-out-update -->
@@ -33,12 +33,25 @@ resolution-commit: {full sha | pending}[, …]
 While this reads `pending`, close-out has pushed an update to this PR whose head had not passed a full-suite verify and CI when it was written; a close-out run from any checkout re-verifies the head before the merge question.
 ```
 
+Its three verbs read the Find step's payload `{comments-path}` and write the body to `{body-path}` (both from that procedure's Find); each is one plain command — exit 1: the payload or the marker cannot be used, 2: a malformed call, 3: `--out` unwritable:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" read --comments-file "{comments-path}"
+```
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" write --comments-file "{comments-path}" --update-method "{merge | gh pr update-branch}" --conflicted-files "{comma-joined paths | none | unknown}" --pre-update-head "{the values line's headRefOid}" --resolution-commit "{full sha | pending}" --out "{body-path}"
+```
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" resolve-pending --comments-file "{comments-path}" --sha "{post-update sha}" --out "{body-path}"
+```
+
 Write it pending before each call that lands an update — `gh pr update-branch` in step 2, the push in step 5 — never after.
-A marker covers every update since its last clear: an update on a PR whose marker is already pending appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`, so an earlier agent-made resolution stays named until a verified merge or a decline clears it.
+A marker covers every update since its last clear: `write` given a payload whose marker is pending appends this update to it, so an earlier agent-made resolution stays named until a verified merge or a decline clears it.
 After each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.
-**Read** it with that procedure's Find, then the `body` of the comment in the same payload whose `id` it returned: a second line `close-out-update: pending` is a pending marker, and `close-out-update: cleared (…)` or no trusted comment is none
-(compare with trailing whitespace trimmed — an edit in the GitHub web UI can turn a line ending into CRLF);
-any other second line is unreadable (`stopped: update failed — marker unreadable`), never none. A pending marker missing a field still routes to the resume, with that value `unknown`.
+**Read** it with that procedure's Find fetch, then `read`: its `status` `pending` is a pending marker, and `cleared` or `none` (no trusted comment) is none;
+`unreadable` stops the candidate (`stopped: update failed — marker unreadable`), never none. `read` prints its `id` (the comment to update in place) and Find's `skipped` notes. A pending marker missing a field still routes to the resume, with that value `unknown`.
 **Clear** it — a no-op when Find returns none (a `{wt}` from before the marker existed); else the second line rewritten to `close-out-update: cleared ({reason})`, the rest kept — only after `close-out.md` step 5's `merged`, a decline at its step 4 gate,
 or a landing call that landed nothing (below); every other stop leaves it pending, so the next run, from any checkout, re-verifies first.
 A failed Find or read stops the candidate (`stopped: update failed — marker unreadable`), and a failed pending write stops it before the landing call
@@ -77,16 +90,16 @@ before this run's write — or, when step 2 found no pending marker, clear it (`
    (`git -C {wt} checkout --detach origin/{head}` in place of the add) and is still a resume for step 8, which hands off the marker as Fresh's write leaves it.
    Declining stops the candidate on either status, as step 1 says — a resume offers no `"Skip update"`, since that head is unverified.
    **Resume values**, before step 4. A pending marker supplies `{update-method}`, `{conflicted-files}` and `{resolution-commit}`: a pushed update is no longer in `origin/{head}..HEAD`, so `{wt}` cannot recover them.
-   A last `resolution-commit` entry `pending` (a `BEHIND` run that stopped before its re-read) is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub's update merge, `{pre-update-head}` being the marker's own field — none printed, a `{pre-update-head}` that is not a full 40-hex sha (`unknown` included, since a comment body is never pasted into a command unchecked), or a `rev-list` that exits non-zero: `unknown`, never a stop.
+   A last `resolution-commit` entry `pending` (a `BEHIND` run that stopped before its re-read) is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub's update merge, `{pre-update-head}` being the Read's `preUpdateHead` — none printed, a `preUpdateHead` of `unknown` (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked), or a `rev-list` that exits non-zero: `unknown`, never a stop.
    With no pending marker nothing was pushed, since the marker precedes every landing call, so recover `{conflicted-files}`: `git -C {wt} log --merges -1 --format=%H origin/{head}..HEAD` names the resolution `{merge}` —
    `git -C {wt} merge-tree --write-tree --name-only --no-messages {merge}^1 {merge}^2` lists its conflicted paths after the tree line (exit 1: it conflicted; exit 0: `none`; any other exit — git older than 2.38, an unresolvable ref — `unknown`);
    no merge commit is a `BEHIND` update: `none`.
    **Fresh.** Otherwise pin, then `git worktree add --detach {wt} origin/{head}` before anything touches the PR — detached because the run's own worktree
-   may still hold `{head}` checked out, and never the main checkout. `BEHIND` then writes the pending marker (`update-method: gh pr update-branch`, `conflicted-files: none`, `resolution-commit: pending`)
+   may still hold `{head}` checked out, and never the main checkout. `BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`)
    and runs `gh pr update-branch {number}` (a merge — never the rebase variant); a failure stops the candidate (`stopped: update failed — update-branch rejected`).
    The call can return before GitHub's merge has landed, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads, a few seconds apart, each its own plain command — for a sha that differs from the pre-update one
    (none appearing: `stopped: update failed — head moved`); pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`.
-   Then rewrite the marker's `pending` `resolution-commit` entry to that sha.
+   Then rewrite the marker's `pending` `resolution-commit` entry to that sha with `resolve-pending`.
 3. **Merge (`DIRTY` only).** `git -C {wt} fetch origin {base}`, then require `git -C {wt} rev-parse origin/{base}` to equal the first field of `git -C {wt} ls-remote origin refs/heads/{base}` —
    a fetch can exit 0 and still leave the ref behind under a concurrent session; on a mismatch fetch and compare once more, and stop on one after that (`stopped: update failed — base not fetched`), nothing merged.
    Then `git -C {wt} merge --no-edit origin/{base}`.
@@ -106,7 +119,7 @@ before this run's write — or, when step 2 found no pending marker, clear it (`
    `/claude-tweaks:dispatch close-out #{record}` (`{record}` = a `Fixes` record of the PR), which resumes here (step 2). On `BEHIND` the update is
    already on GitHub, so that resume — never a later merge on CI alone — is what clears it.
 5. **Push.** Only when `{wt}` holds commits the PR lacks (`git -C {wt} merge-base --is-ancestor HEAD origin/{head}` exits non-zero — a `DIRTY` resolution or a resumed fix).
-   First write the pending marker with this update's `update-method`, `conflicted-files` and resolution commit (in full), appended to a pending one per the Update marker above;
+   First write the pending marker with `write`, passing this update's `update-method`, `conflicted-files` and resolution commit (in full) — `write` appends it to a pending one, per the Update marker above;
    a resume that went straight to step 4 and found one pending keeps it as it is, since a fix commit is not the update. Then
    `git -C {wt} push origin HEAD:{head}` — plain. A rejection is reported and stops the candidate
    (`stopped: update failed — push rejected`); it is never retried as a force-push.
