@@ -38,7 +38,7 @@
 
 const path = require('path');
 const { resolveTarget } = require('./lib/log-decision/append');
-const { runPhaseExit, realDeps, InvalidWorktreeError, PHASE_SECTIONS } = require('./lib/phase-exit/phase-exit');
+const { runPhaseExit, realDeps, checklistFlags, InvalidWorktreeError, PHASE_SECTIONS } = require('./lib/phase-exit/phase-exit');
 const prChecklist = require('./pr-checklist');
 
 const PHASES = Object.keys(PHASE_SECTIONS).join('|');
@@ -85,9 +85,7 @@ function run(argv, overrides = {}) {
   if (!Object.hasOwn(PHASE_SECTIONS, o.phase)) return usageError(`invalid --phase: ${o.phase}`);
   if (!o.worktree) return usageError('--worktree <path> is required');
   // The forwarded flags must be ones pr-checklist.js accepts -- checked by its own parser.
-  const forwarded = [...(o.remove ? ['--remove'] : []), ...(o.fixes ? ['--fixes', o.fixes] : []),
-    ...(o.summaryFile ? ['--summary-file', o.summaryFile] : [])];
-  const fwd = prChecklist.parseArgs(forwarded);
+  const fwd = prChecklist.parseArgs(checklistFlags(o));
   if (fwd.error) return usageError(fwd.error);
 
   const target = resolveTarget({ runDir: o.run, cwd: deps.cwd(), mainRoot: deps.mainRoot });

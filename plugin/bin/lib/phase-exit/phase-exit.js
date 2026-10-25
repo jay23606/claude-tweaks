@@ -246,19 +246,22 @@ function runPhaseExit(opts, overrides = {}) {
   }
 
   // 6. Checklist.
-  const forwarded = [];
-  if (opts.remove) forwarded.push('--remove');
-  if (opts.fixes) forwarded.push('--fixes', opts.fixes);
-  if (opts.summaryFile) forwarded.push('--summary-file', opts.summaryFile);
-  const cl = runSub(deps, deps.prChecklistRun, ['--run', runDir, '--phase', phase, ...forwarded]);
-  env.checklist = { exit: cl.exit, ...(cl.parsed || {}), ...(cl.error ? { error: cl.error } : {}) };
+  env.checklist = runSub(deps, deps.prChecklistRun, ['--run', runDir, '--phase', phase, ...checklistFlags(opts)]);
 
   // 7. Merge state.
   if (env.push.state === 'pushed') {
-    const ms = runSub(deps, deps.prMergeStateRun, ['--run', runDir, '--phase', phase]);
-    env.mergeState = { exit: ms.exit, ...(ms.parsed || {}), ...(ms.error ? { error: ms.error } : {}) };
+    env.mergeState = runSub(deps, deps.prMergeStateRun, ['--run', runDir, '--phase', phase]);
   }
   return env;
+}
+
+// The flags phase-exit forwards to bin/pr-checklist.js unchanged.
+function checklistFlags({ remove, fixes, summaryFile }) {
+  const flags = [];
+  if (remove) flags.push('--remove');
+  if (fixes) flags.push('--fixes', fixes);
+  if (summaryFile) flags.push('--summary-file', summaryFile);
+  return flags;
 }
 
 // Whether a pr-first push may go ahead with no recorded PR. Mirrors
@@ -272,8 +275,9 @@ function runPhaseExit(opts, overrides = {}) {
 function prPushReleased(deps, runDir, wt, branch, state, bookkeepingResult) {
   if (bookkeepingResult.pr === 'present' || bookkeepingResult.pr === 'backfilled') return true;
   if (state && (state.prExempt || state.status === 'clean' || hasPr(state))) return true;
+  const absRunDir = path.resolve(runDir);
   const dirs = [runDir];
-  if (/^spec-/.test(path.basename(path.resolve(runDir)))) dirs.push(path.dirname(path.resolve(runDir)));
+  if (/^spec-/.test(path.basename(absRunDir))) dirs.push(path.dirname(absRunDir));
   if (dirs.some((d) => hasLoggedPrDegrade(d))) return true;
   let noUpstream = false;
   try { noUpstream = deps.hasNoUpstreamYet(wt) === true; } catch { noUpstream = false; }
@@ -319,19 +323,20 @@ function resolveIntegrationBranch(deps, runDir, wt) {
 }
 
 // A sibling CLI run in-process with its stdout captured; its last stdout line is its JSON.
+// Returns the envelope entry: { exit, ...its JSON envelope, error? }.
 function runSub(deps, fn, argv) {
   const out = [];
   let exit;
   try {
     exit = fn(argv, { cwd: deps.cwd, mainRoot: deps.mainRoot, stdout: (s) => out.push(s), stderr: (s) => deps.stderr(s) });
   } catch (e) {
-    return { exit: null, parsed: null, error: errLine(e) || 'threw' };
+    return { exit: null, error: errLine(e) || 'threw' };
   }
   let parsed = null;
   const last = out.join('').trim().split('\n').pop();
   try { parsed = last ? JSON.parse(last) : null; } catch { parsed = null; }
   if (parsed !== null && (typeof parsed !== 'object' || Array.isArray(parsed))) parsed = null;
-  return { exit, parsed };
+  return { exit, ...parsed };
 }
 
 const hasWorktree = (s) => Boolean(s && typeof s.worktree === 'string' && s.worktree);
@@ -425,4 +430,4 @@ function backfillPr({ deps, runDir, wt, branch, step, log, result, details }) {
   }
 }
 
-module.exports = { runPhaseExit, realDeps, parsePorcelainZ, isArchivedRun, InvalidWorktreeError, PHASE_SECTIONS };
+module.exports = { runPhaseExit, realDeps, checklistFlags, parsePorcelainZ, isArchivedRun, InvalidWorktreeError, PHASE_SECTIONS };
