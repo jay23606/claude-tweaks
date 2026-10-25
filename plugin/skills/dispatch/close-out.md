@@ -77,12 +77,12 @@ touching shared state runs one member at a time.
    confirmation gate — the gate's own question states the PR's current state, and "still draft"
    would already be stale by the time a human reads it otherwise.
 4. **Confirmation gate.** Read `close-out-confirmation.md` in this skill's directory and follow it
-   (AC4). Declining stops here — the PR stays `pending-review` exactly as it was, and nothing below
+   (AC4). Declining stops here — the PR stays `pending-review` as it was (an update that already ran stays pushed), and nothing below
    runs for this candidate.
 5. **On confirmation — merge.** When `close-out-update.md` handed off a `{verified-sha}`, first re-read
    `gh pr view {number} --json headRefOid` immediately before Step 3 and stop on any sha other than
    that `{verified-sha}` (`stopped: update failed — head moved`); then pass `{verified-sha}`
-   as Step 3's expected head, so its `--match-head-commit` merges only that head.
+   as Step 3's expected head, so its `--match-head-commit` accepts only that head.
    Run `_shared/pr-first-merge.md`'s Step 3 (Attempt auto-merge)
    directly against this PR — the second call site reaching Step 3 from outside a build or dispatch
    pipeline (the first is `actions-github-issues.md`'s `## Arm ready PR`), reusing that file's full
@@ -111,7 +111,7 @@ touching shared state runs one member at a time.
 
 One line per candidate: `#{number} — {outcome}` where `{outcome}` is one of `merged`, `armed`,
 `stopped: CI {status}`, `stopped: mergeStateStatus DIRTY — update declined`,
-`stopped: update failed — {conflict not resolved | verification | push rejected | update-branch rejected | head moved}`,
+`stopped: update failed — {conflict not resolved | verification | push rejected | update-branch rejected | head moved | command failed}`,
 `stopped: CI {status} after update`, `stopped: mergeStateStatus {status} after update`,
 `stopped: acceptance labeling unverifiable — no run dir`, or `declined at confirmation gate`.
 The bare form's summary line names how many candidates were found, merged/armed, stopped, and declined. This mode is never headless-self-reporting like bare

@@ -17,7 +17,7 @@ session left to resume at all.
 
 `{update-clause}`: when `close-out-update.md` ran for this candidate, `" Updated from {base} by close-out via
 {update-method}: conflicted files {conflicted-files}, resolution commit {resolution-commit} — review it before
-merging."`; empty (omitted) when no update ran, so the question reads as before.
+merging; any approval above predates it."`; empty (omitted) when no update ran, so the question reads as before.
 
 **Recommended-derivation rule.** Modeled on `resume-confirmation.md`'s own rule (same shape — a
 single-predicate Recommended pick, never both, never neither) but not identical, since this gate
@@ -53,6 +53,6 @@ approval exists — that is the repository's own branch-protection configuration
 job to duplicate — it only reports who approved, when known, so the human answering has that
 context.
 
-Declining (Option 2) stops here — the PR stays `pending-review` exactly as it was, and
+Declining (Option 2) stops here — the PR stays `pending-review` as it was (an update that already ran stays pushed), and
 `close-out.md`'s steps 5-7 never run for this candidate. On the bare form, move to the next
 candidate; on the `#N` form, this is the whole invocation's result.
