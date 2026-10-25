@@ -284,15 +284,33 @@ function readRunMode(runDir, { fsImpl = fs } = {}) {
 // keeps its stops.
 const RESUME_AS_AUTO = new Set(['auto', 'confirm', 'hybrid']);
 
+// The most handoffs one run may make. The count is per run, not per call: one
+// minted run dir spans both of a dispatch group's Task calls, so they share
+// it. At the bound the gauge writes no handoff, and the caller continues in
+// place (`handoff: null`), so a well-behaved agent never reports a fourth
+// handoff — its call completes, or HARD-GATEs and settles itself.
+const HANDOFF_BOUND = 3;
+
+// runDir -> the run's earlier handoffs: {run}/handoff.json's `handoffCount`.
+// A missing or unparseable file, or a count that is not a non-negative
+// integer, counts as 0.
+function readHandoffCount(runDir, { fsImpl = fs } = {}) {
+  let parsed;
+  try { parsed = JSON.parse(fsImpl.readFileSync(path.join(runDir, 'handoff.json'), 'utf8')); } catch { return 0; }
+  const n = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed.handoffCount : undefined;
+  return Number.isInteger(n) && n >= 0 ? n : 0;
+}
+
 // -> the handoff.json object a fresh agent resumes from. `mode` is the run's
-// recorded mode (null when none).
-function buildHandoff({ runDir, nextSteps, contextTokens, cap, targets, mode = null, now }) {
+// recorded mode (null when none); `handoffCount` counts this handoff too.
+function buildHandoff({ runDir, nextSteps, contextTokens, cap, targets, mode = null, handoffCount = 1, now }) {
   const modeToken = RESUME_AS_AUTO.has(mode) ? ' auto' : '';
   return {
     nextSteps: [...nextSteps],
     contextTokens,
     cap,
     mode,
+    handoffCount,
     writtenAt: new Date(now).toISOString(),
     resume: `PIPELINE_RUN_DIR="${runDir}" /claude-tweaks:flow "${targets.join(',')}" ${nextSteps.join(',')}${modeToken}`,
   };
@@ -300,5 +318,5 @@ function buildHandoff({ runDir, nextSteps, contextTokens, cap, targets, mode = n
 
 module.exports = {
   CONTEXT_CAP_TOKENS, FIRST_USER_SCAN_BYTES, CALLER_TAIL_BYTES, firstUserText, hasInFlightGaugeCall, findAgentTranscript, gauge,
-  resolveTargetRecords, readRunMode, buildHandoff,
+  resolveTargetRecords, readRunMode, buildHandoff, HANDOFF_BOUND, readHandoffCount,
 };

@@ -87,6 +87,25 @@ test('two-call-gate.md section 2 routes a handoff to section 8, and section 8 st
   assert.ok(Array.isArray(gate.FIRST_CALL_STEPS));
 });
 
+test('the real bound is the gauge\'s per-run HANDOFF_BOUND: section 8 cites it, context-handoff.md says continue in place at it', () => {
+  const { HANDOFF_BOUND } = require('../plugin/bin/lib/timing/context-gauge');
+  assert.equal(HANDOFF_BOUND, 3);
+  const s = squash(region(read('two-call-gate.md'), '## 8. Continuing a handed-off call', null, 'section 8'));
+  assert.match(s, /`HANDOFF_BOUND` \(3, `plugin\/bin\/lib\/timing\/context-gauge\.js`\)/);
+  assert.match(s, /`handoffCount`/);
+  assert.match(s, /per run, not per call/);
+  assert.match(s, /backstop for a misbehaving agent/);
+  // the closing Settle-gap note covers only the malformed NEXT_STEPS refusal now
+  const note = s.slice(s.indexOf('A handoff refused for a malformed `NEXT_STEPS`'));
+  assert.notEqual(note.length, s.length, 'closing note anchor not found');
+  assert.match(note, /section 5 item 1's report that cannot be parsed/);
+  assert.doesNotMatch(note, /item 1 or 3|bound/);
+  const h = squash(readText(path.join(__dirname, '..', 'plugin', 'skills', 'flow', 'context-handoff.md')));
+  assert.match(h, /`HANDOFF_BOUND` \(3\) handoffs per run, counted in handoff\.json's `handoffCount`/);
+  assert.match(h, /per run, not per call/);
+  assert.match(h, /`handoff bound reached \(3 handoffs this run\): continue in place`\. Continue in this agent and never stop/);
+});
+
 test('dispatch/SKILL.md: neither the Step 5 gate summary nor the Step 6 catch-all swallows a handoff', () => {
   const t = read('SKILL.md');
   const step5 = squash(region(t, '**The gate between calls', '\n\n', 'Step 5 gate summary'));

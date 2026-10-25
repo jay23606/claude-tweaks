@@ -22,8 +22,13 @@
 //
 // Stdout: one JSON line, {contextTokens, cap, over, transcript, handoff, reason}.
 // over is contextTokens > cap. When over and --next-steps was given,
-// {run}/handoff.json = {nextSteps, contextTokens, cap, mode, writtenAt, resume}
-// is written atomically and `handoff` is its path; `resume` is
+// {run}/handoff.json = {nextSteps, contextTokens, cap, mode, handoffCount, writtenAt, resume}
+// is written atomically and `handoff` is its path. `handoffCount` is the
+// existing handoff.json's count plus one (a missing or unreadable file counts
+// 0); the count is per run, shared by both dispatch calls of one run dir. At
+// HANDOFF_BOUND (3) earlier handoffs nothing is written: over: true,
+// handoff: null, reason "handoff bound reached (3 handoffs this run): continue
+// in place". `resume` is
 // `PIPELINE_RUN_DIR="{run}" /claude-tweaks:flow "{target}" {next-steps}[ auto]`,
 // {target} the run's records (#N[,#M]) from its spec-{N}/ subdirs (in
 // manifest.yml's order) or its work/{n}-spec.md names (lib's
@@ -54,7 +59,7 @@ const { resolveTarget, findGitRoot } = require('./lib/stage-item/write');
 const ctxLib = require('./lib/hooks/context');
 const { FLOW_STEPS } = require('./lib/claim-targets/claim-targets');
 const {
-  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, readRunMode, buildHandoff,
+  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, readRunMode, buildHandoff, HANDOFF_BOUND, readHandoffCount,
 } = require('./lib/timing/context-gauge');
 
 const USAGE = 'usage: context-gauge.js --run <run-dir> [--transcript <path>] [--cap <n>] [--next-steps <step,...>] [--help]\n'
@@ -102,6 +107,7 @@ const realDeps = {
   gauge,
   resolveTargetRecords,
   readRunMode: (runDir) => readRunMode(runDir),
+  readHandoffCount: (runDir) => readHandoffCount(runDir),
   writeFile: (p, text) => writeFileAtomic(p, text),
   now: () => Date.now(),
   stdout: (s) => process.stdout.write(s),
@@ -158,6 +164,8 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
   if (!result.over || !nextSteps) return done();
 
   try {
+    const previous = deps.readHandoffCount(runDir);
+    if (previous >= HANDOFF_BOUND) return done(`handoff bound reached (${HANDOFF_BOUND} handoffs this run): continue in place`);
     let state = null;
     try { state = deps.readRunState(runDir); } catch { state = null; }
     const worktree = state && typeof state.worktree === 'string' ? state.worktree : null;
@@ -167,7 +175,7 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
     }
     const handoffPath = path.join(runDir, 'handoff.json');
     const mode = deps.readRunMode(runDir);
-    const handoff = buildHandoff({ runDir, nextSteps, contextTokens: result.contextTokens, cap, targets, mode, now: deps.now() });
+    const handoff = buildHandoff({ runDir, nextSteps, contextTokens: result.contextTokens, cap, targets, mode, handoffCount: previous + 1, now: deps.now() });
     deps.writeFile(handoffPath, `${JSON.stringify(handoff, null, 2)}\n`);
     result.handoff = handoffPath;
   } catch (e) {

@@ -23,6 +23,7 @@ The gauge prints one JSON line, `{contextTokens, cap, over, transcript, handoff,
 
 - `over: false` means continue in this agent, whatever `reason` says: a missing or unreadable transcript fails open to `over: false`.
 - `over: true` with `handoff: null` also continues in this agent: `{run}/handoff.json` could not be written, and `reason` says why.
+- At the bound the gauge writes no handoff. The bound is `HANDOFF_BOUND` (3) handoffs per run, counted in handoff.json's `handoffCount`. The count is per run, not per call: a dispatch group's two calls share one run dir, so they share the three. At the bound the gauge prints `over: true` and `handoff: null` with `reason` `handoff bound reached (3 handoffs this run): continue in place`. Continue in this agent and never stop: the call ends as it would have without the gauge, completing or hitting a HARD-GATE it settles itself.
 - Exit 2 (a malformed call, a refused `--run`) or any non-JSON output: continue in this agent.
 
 A gauge failure never stops the run. Only `over: true` with `handoff` set hands off. Log it first, as its own Bash call:
@@ -51,7 +52,7 @@ A top-level run never hands off `wrap-up`: its `--next-steps` stops before `wrap
 3. **Wait** for the child. The template's 20-minute bound (`sleep 20` at most 60 times) applies only when this agent is itself a subagent, such as an earlier handoff's child, whose own prompt already carries that rule: wait within the turn under it and never end the turn with the child outstanding. A top-level session waits for the child's task-notification with no bound, as the parallel-wave orchestrator does (`_shared/dispatch-waiting.md`): a child phase often runs past 20 minutes. Never redo the child's steps in this session, since a child that has not reported may still be writing. Any blocked report (a subagent's bound expired, the `Agent` call failed) must tell the reader to confirm the child has stopped before anyone runs `resume`, then give `{run}/handoff.json`'s `resume` line on its own line.
 4. **Relay** the child's final report, unchanged. If it is a failure card, or its status is not `DONE`/`DONE_WITH_CONCERNS`, stop there: a gate failed (Step 4 item 3). After relaying the child's Steps Complete note, this agent runs `wrap-up` and Step 5 itself. It does so when `wrap-up` is in its step list, continuing its own Step 4 loop at that step with `$PIPELINE_RUN_DIR` unchanged. With no `wrap-up` in the list, the relayed note is this run's close.
 
-The child may cross the cap and hand off in turn. That does not end because each hop finishes a step (a resume at `review` auto-inserts `test` first, `steps-and-gates.md`'s Auto-insert rule). The chain ends because a fresh agent starts well under the cap and so finishes several steps before it nears the cap again.
+The child may cross the cap and hand off in turn. That does not end because each hop finishes a step (a resume at `review` auto-inserts `test` first, `steps-and-gates.md`'s Auto-insert rule). The chain ends because a fresh agent starts well under the cap and so finishes several steps before it nears the cap again. The gauge's per-run bound of three handoffs (Reading the result) caps it regardless.
 
 ```
 Task scope: continue a /claude-tweaks:flow run in a fresh context. The previous agent

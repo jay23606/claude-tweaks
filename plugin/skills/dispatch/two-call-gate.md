@@ -139,13 +139,17 @@ worktree, before anything else in this file runs for it.
    list replaced by `NEXT_STEPS`, with the same `{minted-run-dir}` and the same model profile. Log it
    first via `log-decision.js --status AUTO --step "Dispatch group {group}" --text "call {1|2} handed off ({n} of 3); continuing {NEXT_STEPS} in a fresh call" --reversibility n/a`.
    A continuation that reports `handoff` again comes back to item 1 with its own report.
-3. **Bound: at most three continuations per call.** The first and second calls each get their own
-   three. Every handoff comes after a passing step, and a call has at most two steps after its
-   first (`build,test` one, `review,polish,wrap-up` two), so a chain that is progressing needs at
-   most two continuations. A fourth handoff is not continued: report the call as
-   `build-test-blocked` (first call, section 5) or `blocked` (second call, section 6), naming the
-   bound as the reason. Log `Handoff bound: call {1|2} handed off a fourth time; {NEXT_STEPS} not run`
-   first, the same way as item 1's refusal.
+3. **Bound: at most three continuations per call.** The gauge enforces the real bound before any
+   handoff is reported. `context-gauge.js` writes no handoff once the run has made `HANDOFF_BOUND`
+   (3, `plugin/bin/lib/timing/context-gauge.js`) handoffs, counted in `handoff.json`'s
+   `handoffCount`. The count is per run, not per call: both calls share one minted run dir, so they
+   share the three. Past it the agent continues in place, and its call ends as it would without
+   the gauge, completing or settling its own HARD-GATE (`flow/context-handoff.md`'s Reading the
+   result). This per-call bound is a backstop for a misbehaving agent and never fires on a
+   well-behaved one. A fourth handoff is not continued: report the call as `build-test-blocked`
+   (first call, section 5) or `blocked` (second call, section 6), naming the bound as the reason.
+   Log `Handoff bound: call {1|2} handed off a fourth time; {NEXT_STEPS} not run` first, the same
+   way as item 1's refusal.
 4. **Gate on the last continuation's report.** It stands as the call's report. For the first call,
    section 2 runs on it as if the first call had returned it: status line, `OUTCOME`, the artifact
    check, the repair branch, the stamp read. For the second call, its `OUTCOME` routes like any
@@ -153,6 +157,7 @@ worktree, before anything else in this file runs for it.
    report runs neither the artifact check nor the stamp read, because the steps that leave those
    artifacts have not all run yet.
 
-A refused handoff (item 1 or 3) never ran Settle, since a handoff never settles. On the first call
-this is section 5 item 1's gap. On the second it is section 6's worse case. In both, the
-`cleanup-only` call's Section E release is what frees the claim, and no retry is counted.
+A handoff refused for a malformed `NEXT_STEPS` (item 1) never ran Settle, since a handoff never
+settles. That is the same accepted gap as section 5 item 1's report that cannot be parsed: the
+claim is freed by the `cleanup-only` call's Section E release, or lapses via its TTL. No retry is
+counted.

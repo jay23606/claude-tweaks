@@ -308,7 +308,7 @@ test('CLI: 250000 tokens is over the cap — handoff.json is written with nextSt
   const handoffPath = path.join(fx.runDir, 'handoff.json');
   assert.deepStrictEqual(c.json(), { contextTokens: 250000, cap: 200000, over: true, transcript: t, handoff: handoffPath, reason: null });
   assert.deepStrictEqual(JSON.parse(fs.readFileSync(handoffPath, 'utf8')), {
-    nextSteps: ['test'], contextTokens: 250000, cap: 200000, mode: 'auto', writtenAt: '2026-10-25T18:00:00.000Z',
+    nextSteps: ['test'], contextTokens: 250000, cap: 200000, mode: 'auto', handoffCount: 1, writtenAt: '2026-10-25T18:00:00.000Z',
     resume: RESUME(fx.runDir, '#4027', 'test'),
   });
   assert.strictEqual(c.out.join('').split('\n').filter(Boolean).length, 1, 'one JSON line');
@@ -409,6 +409,52 @@ test('CLI: a failed handoff write is reported, never thrown — exit 0, handoff:
   assert.strictEqual(c.json().over, true);
   assert.strictEqual(c.json().handoff, null);
   assert.match(c.json().reason, /^handoff\.json not written: EACCES: simulated/);
+});
+
+// #4027 Task 9 fix: the handoff bound lives in the gauge. handoff.json's handoffCount counts
+// the run's handoffs (one run dir spans both dispatch calls); at HANDOFF_BOUND nothing is
+// written, so a well-behaved agent continues in place and can never report a fourth handoff.
+const { HANDOFF_BOUND } = require('../../../plugin/bin/lib/timing/context-gauge');
+const readHandoff = (runDir) => JSON.parse(fs.readFileSync(path.join(runDir, 'handoff.json'), 'utf8'));
+
+test('CLI: handoffCount increments from the existing handoff.json', async () => {
+  const fx = runFixture();
+  const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
+  fs.writeFileSync(path.join(fx.runDir, 'handoff.json'), JSON.stringify({ nextSteps: ['test'], handoffCount: 2 }));
+  const c = cli(fx);
+  assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'review,wrap-up'], c.deps), 0);
+  assert.strictEqual(c.json().handoff, path.join(fx.runDir, 'handoff.json'));
+  assert.strictEqual(readHandoff(fx.runDir).handoffCount, 3);
+  assert.deepStrictEqual(readHandoff(fx.runDir).nextSteps, ['review', 'wrap-up']);
+});
+
+test('CLI: a missing, garbage, or count-less handoff.json counts as 0 handoffs', async () => {
+  const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
+  for (const existing of [null, '{not json', '[]', JSON.stringify({ handoffCount: 'two' }), JSON.stringify({ handoffCount: -4 }), JSON.stringify({ nextSteps: ['test'] })]) {
+    const fx = runFixture();
+    if (existing !== null) fs.writeFileSync(path.join(fx.runDir, 'handoff.json'), existing);
+    const c = cli(fx);
+    assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'test'], c.deps), 0);
+    assert.strictEqual(c.json().reason, null, String(existing));
+    assert.strictEqual(readHandoff(fx.runDir).handoffCount, 1, String(existing));
+  }
+});
+
+test('CLI: at the bound (3 earlier handoffs) nothing is written — over: true, handoff: null, continue in place', async () => {
+  assert.strictEqual(HANDOFF_BOUND, 3);
+  const fx = runFixture();
+  const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
+  const prior = `${JSON.stringify({ nextSteps: ['wrap-up'], handoffCount: 3 })}\n`;
+  fs.writeFileSync(path.join(fx.runDir, 'handoff.json'), prior);
+  const writes = [];
+  const c = cli(fx, { writeFile: (p, text) => writes.push([p, text]) });
+  assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'polish,wrap-up'], c.deps), 0);
+  assert.deepStrictEqual(c.json(), {
+    contextTokens: 250000, cap: 200000, over: true, transcript: t, handoff: null,
+    reason: 'handoff bound reached (3 handoffs this run): continue in place',
+  });
+  assert.deepStrictEqual(writes, []);
+  assert.strictEqual(fs.readFileSync(path.join(fx.runDir, 'handoff.json'), 'utf8'), prior);
 });
 
 test('CLI: target records — the run dir\'s work/ when no worktree is recorded; spec-{N}/ dirs for a multi-spec run; none found is reported', async () => {
