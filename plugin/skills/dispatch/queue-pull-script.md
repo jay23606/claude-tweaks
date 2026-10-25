@@ -498,12 +498,12 @@ NODE_EVAL_EOF
 done
 
 # #1984: shipped-candidate classification. Runs unconditionally, right after
-# the #1224 open-PR exclusion above (a candidate excluded there is never
-# re-classified here — order matters, see this record's own Gotchas) and
-# before the #1579 cross-PR overlap report below.
-# #4314: classifyShipped skips a mention whose PR was
-# opened before the record was created -- a follow-up filed during that PR's
-# build, never its target.
+# the #1224 open-PR and #1983 target-missing exclusions above (a candidate
+# excluded there is never re-classified here — order matters, see this
+# record's own Gotchas) and before the #1579 cross-PR overlap report below.
+# #4314: when a mention's PR was opened before the record was created,
+# classifyShipped skips it -- a follow-up filed during that PR's build,
+# never its target.
 # Reuses $DISPATCH_LINKED_PRS's `mentions` field — #1984 extended record.js's
 # batched query and linked-prs.js's fetchLinkedPRs to carry every same-repo
 # PR that has ever cross-referenced the candidate, closing keyword or not —
