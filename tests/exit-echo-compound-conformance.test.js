@@ -18,7 +18,14 @@ const SKILLS_DIR = path.join(__dirname, '..', 'plugin', 'skills');
 // its rows carry the compound on purpose. Nothing else is exempt.
 const EXEMPT = new Set(['_shared/scratch-worktree.md']);
 
-const COMPOUND_PATTERN = /[^\s`;][^`\n]*;\s*echo\s+["']?exit=\$\?/;
+// Matches a command, then `;` or `&&`, then an exit-status echo, all on one line. Accepted limits
+// (each pinned as a not-flagged fixture below, not bugs):
+//   - a compound split across a line break is two lines, and neither line carries both halves;
+//   - a backtick before the separator (`npm test` ; echo exit=$?) breaks the `[^`\n]*` run, so the
+//     span is not read as one command;
+//   - a span whose first non-space text is the separator itself (the description form
+//     `(`; echo exit=$?`)`) has no command before `;`, so it is not flagged, by design.
+const COMPOUND_PATTERN = /[^\s`;&][^`\n]*(?:;|&&)\s*echo\s+["']?exit=\$\?/;
 
 function findAllMdFiles(dir) {
   const out = [];
@@ -64,8 +71,28 @@ test('findCompoundSites: flags the unquoted foo; echo exit=$? form', () => {
   assert.strictEqual(findCompoundSites(text).length, 1, 'must go red on the unquoted form');
 });
 
+test('findCompoundSites: flags the && chaining form foo && echo "exit=$?"', () => {
+  const text = 'foo && echo "exit=$?"';
+  assert.strictEqual(findCompoundSites(text).length, 1, 'must go red on the && form');
+});
+
 test('findCompoundSites: does not flag a span that opens with ; (a description, not an instruction)', () => {
   const text = '(`; echo exit=$?`)';
+  assert.deepStrictEqual(findCompoundSites(text), []);
+});
+
+test('findCompoundSites: does not flag a span that opens with && (a description, not an instruction)', () => {
+  const text = '(`&& echo exit=$?`)';
+  assert.deepStrictEqual(findCompoundSites(text), []);
+});
+
+test('findCompoundSites: accepted limit, a compound split across a line break is not flagged per line', () => {
+  const text = 'cmd > out 2>&1;\necho "exit=$?"';
+  assert.deepStrictEqual(findCompoundSites(text), []);
+});
+
+test('findCompoundSites: accepted limit, a backtick before the separator is not flagged', () => {
+  const text = 'run `npm test` ; echo "exit=$?"';
   assert.deepStrictEqual(findCompoundSites(text), []);
 });
 
