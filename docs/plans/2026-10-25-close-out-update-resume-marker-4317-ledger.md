@@ -2,3 +2,15 @@
 
 | # | Phase | Item | Status | Resolution |
 |---|-------|------|--------|------------|
+| 1 | build | step 8 does not say whether a multi-entry resolution-commit hands off every entry shortened or only the last | fixed | 7c9566ab2 — step 8 hands off every entry of the pending marker's, shortened |
+| 2 | build | an earlier pending resolution-commit entry followed by an appended sha is never resolved (needs two consecutive interrupted updates) | deferred | origin: SDD fix-round-1 re-review (#4317); affects plugin/skills/dispatch/close-out-update.md Update marker accumulation + step 2 Resume values; display-only (a literal `pending` in the gate's update clause); revisit when the marker format is next touched or two consecutive interrupted BEHIND updates are observed |
+| 3 | build | conflicted-files union with an existing `unknown` value is undefined | deferred | origin: SDD fix-round-1 re-review (#4317); affects plugin/skills/dispatch/close-out-update.md Update marker accumulation; display-only, never changes routing or verification; revisit with item 2 |
+| 4 | build | the marker's human line (close-out-update.md Update marker body) has no pin | deferred | origin: SDD final re-review (#4317); affects tests/close-out-pr-state-contract-conformance.test.js; descriptive text, not a procedure clause; revisit when the human line is next edited |
+| 5 | build | parked: close-out.md step 2's BEHIND clause still says declining continues with no resume carve-out | observation | Ruling: the pending marker routes every resume to close-out-update.md, whose step 1 offers no Skip update on a resume, so no path reaches the gate unverified; router wording is stale for that case — taken up as a fix-now alignment item in Common Step 4.5 |
+| 6 | build | parked: step 7 teardown after a failed git worktree add runs git -C on an absent {wt} | observation | Ruling: harmless — the ancestor check fails and removes nothing; a no-op-when-absent clause is polish |
+| 7 | build | SDD ruling — no-{wt} resume reroute: the base-moved-again reroute covers the {wt} just added for a pending marker; ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
+| 8 | build | SDD ruling — accumulating marker: update-method/resolution-commit entries append oldest first, conflicted-files unions; ratify or reverse at the Review Console (staged/sdd-ruling-2.md) | open | — |
+| 9 | build | SDD ruling — fold task-review Minors and the trusted-author write check into fix round 1; ratify or reverse at the Review Console (staged/sdd-ruling-3.md) | open | — |
+| 10 | build | SDD ruling — BEHIND resume offers Update/Stop only; ratify or reverse at the Review Console (staged/sdd-ruling-4.md) | open | — |
+| 11 | build | SDD ruling — close-out.md step 2 reads the Update marker for every candidate; ratify or reverse at the Review Console (staged/sdd-ruling-5.md) | open | — |
+| 12 | build | SDD ruling — fold final-review Minors 3-8 and deferred minor 1 into the one fix wave; ratify or reverse at the Review Console (staged/sdd-ruling-6.md) | open | — |
