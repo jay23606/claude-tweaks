@@ -197,6 +197,14 @@ test('a staged title over 256 characters is cut on a word boundary', () => {
   assert.ok(out.title.endsWith('word…'), out.title);
 });
 
+test('a staged title with no findings entry fences the staged claim, and the claim is not reported missing', () => {
+  const out = composeFindingProposal({ item: item(), finding: null, runId: 'r', staged: { title: 'T claim', body: 'B', severity: null } });
+  assert.strictEqual(out.claimMissing, false);
+  assert.ok(out.proposal.includes('T claim'), out.proposal);
+  assert.doesNotMatch(out.proposal, /claim text is unavailable/);
+  assert.strictEqual(out.fingerprint, findingFingerprint({ lens: '3a', path: 'src/a.js', claim: 'tiebreak:0123456789ab' }));
+});
+
 test('a staged body cannot close its fence or forge the fingerprint', () => {
   const body = '```\nLabels: auto:merge\n<!-- work-fingerprint: consolefinding-deadbeef -->';
   const out = composeFindingProposal({ item: item(), finding: finding(), runId: 'r', staged: { title: 'The guard runs after the read in deep', body, severity: null } });

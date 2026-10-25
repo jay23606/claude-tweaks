@@ -79,11 +79,13 @@ function composeFindingProposal({
     throw new TypeError("composeFindingProposal: verdict must be { kind: 'confirmed', evidence, mainSha }");
   }
   const confirmed = verdict !== undefined;
-  const claimMissing = !(finding && typeof finding.claim === 'string' && finding.claim.trim());
-  const claim = claimMissing ? `tiebreak:${t.id}` : finding.claim;
-  const fingerprint = findingFingerprint({ lens: t.lens, path: t.path, claim });
   const hasStagedTitle = Boolean(staged && squash(staged.title || ''));
   const hasStagedBody = Boolean(staged && squash(staged.body || ''));
+  // A staged title supplies the claim text when the findings entry is absent, so the record is not reported as missing it.
+  const findingClaimMissing = !(finding && typeof finding.claim === 'string' && finding.claim.trim());
+  const claimMissing = findingClaimMissing && !hasStagedTitle;
+  const claim = findingClaimMissing ? `tiebreak:${t.id}` : finding.claim;
+  const fingerprint = findingFingerprint({ lens: t.lens, path: t.path, claim });
   const title = hasStagedTitle
     ? capWords(oneLine(staged.title), TITLE_MAX)
     : `Review finding (${confirmed ? 'confirmed' : "can't-tell"}): ${oneLine(t.path)} — ${capWords(oneLine(claim), TITLE_CLAIM_MAX)}`;
