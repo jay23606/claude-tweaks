@@ -180,7 +180,8 @@ function partitionByOpenNativeBlockers(candidates, repoData) {
 // which linked-prs.js's fetchLinkedPRs filters out; `repository{
 // nameWithOwner }` lets it filter to same-repo mentions only (a
 // CrossReferencedEvent's source can live in an unrelated repository).
-// #4314: also selects the source PR's createdAt — classifyShipped skips a mention whose PR was already open when the record was filed.
+// #4314: also selects the source PR's createdAt — classifyShipped skips
+// a mention whose PR was already open when the record was filed.
 //
 // #2449: `timelineItems` paginates oldest-first, so `first:N` fetches the
 // OLDEST N cross-reference events — for a long-lived record that
