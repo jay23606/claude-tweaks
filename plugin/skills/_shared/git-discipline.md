@@ -49,31 +49,33 @@ chained onto anything else (the `worktree-always` gate denies a compound command
 node "${CLAUDE_PLUGIN_ROOT}/bin/phase-exit.js" --run "$PIPELINE_RUN_DIR" --phase {build|test|review|polish|wrap-up} --worktree "{worktree-path}" --fixes {n}[,{m}...]
 ```
 
-Call it at every phase exit of a run with a run dir, under either model: it resolves the route
-itself (`current-branch` when the checkout is no linked worktree, else the run's
-`integration-model`). In a linked worktree it backfills a missing `run-state.json` `worktree`
-field (`hooks.js record-worktree`). Under `pr-first` it also records the branch's one open PR
-when `pr` is missing (`record-pr`), refuses to push a detached HEAD or the integration branch,
-logs uncommitted paths, pushes the branch, flips this phase's checklist row (`_shared/pr-checklist-refresh.md`'s Phase-checklist update;
-`--fixes`, `--remove` and `--summary-file` pass through to it) and, after a landed push, runs the
-Post-push merge-state check below. It prints `{phase, route, branch, head, commit, bookkeeping,
-push, checklist, mergeState, logFailures}` and exits 0 in every route and state — 2 is a bad flag
-or a `--worktree` that is no git checkout, 3 a run dir missing or not anchored: fix the call and
-re-run. It writes every `decisions.md` line those steps owe itself (`_shared/auto-decision-log.md`'s
-CLIs that log their own entries). **Route the envelope** — every call site cites this list rather
-than restating it:
+Call it at every phase exit of a run with a run dir — any model or mode; it pushes only under
+`pr-first` in `worktree` mode, and resolves the route itself. Its sub-steps, flags, envelope and
+exit codes are in `node "${CLAUDE_PLUGIN_ROOT}/bin/phase-exit.js" --help`; an exit 2 or 3 is a bad
+call — fix it and re-run. It runs `_shared/pr-checklist-refresh.md`'s Phase-checklist update
+(`--fixes`, `--remove` and `--summary-file` pass through) and, after a landed push, the Post-push
+merge-state check below, and writes every `decisions.md` line those steps owe itself
+(`_shared/auto-decision-log.md`'s CLIs that log their own entries). **Route the envelope** — every
+call site cites this list rather than restating it:
 
-- `route` `local-merge` or `current-branch` — nothing more (at `--phase build` the CLI wrote the
-  `SKIP` below).
+- `route` `local-merge` or `current-branch` — nothing more, except a `bookkeeping.worktree:
+  'failed'` (below).
 - `push.state: 'pushed'` — route `mergeState` per the Post-push merge-state check below.
 - `push.state: 'failed'` — nothing: the CLI logged it, and the next phase exit's push retries.
 - `push.state: 'skipped'` with a `reason` naming no recorded PR — run
   `_shared/pr-early-run-lifecycle.md`'s push-and-open-draft-PR procedure, then re-run
-  `phase-exit.js`. Any other `skipped`, and a `refused` push, is already logged: continue.
+  `phase-exit.js`. Ignore the `checklist.action: 'no-pr'` that comes with it: this route owns it,
+  and the re-run flips the row. Any other `skipped`, and a `refused` push, is already logged:
+  continue.
 - `bookkeeping.worktree: 'failed'` on a live run dir — run `record-worktree` by hand
-  (`build/worktree-setup.md` Step 4.5), then re-run `phase-exit.js`.
-- `checklist.action: 'no-pr'` — `_shared/pr-checklist-refresh.md`'s degraded-run recovery;
-  `'gh-absent'` — its MCP branch. Every other `checklist` result routes per that section.
+  (`build/worktree-setup.md` Step 4.5), then re-run `phase-exit.js`. If that `record-worktree`
+  fails too, log one `SKIP` with `log-decision.js` naming the CLI's `bookkeeping.detail` (class (a)
+  of `_shared/auto-decision-log.md`'s CLIs that log their own entries).
+- `checklist.action: 'no-pr'` with any other push state — `_shared/pr-checklist-refresh.md`'s
+  degraded-run recovery; `'gh-absent'` — its MCP branch. Every other `checklist` result routes per
+  that section.
+- `checklist.exit` or `mergeState.exit` `null` with an `error` (the sub-CLI threw) — proceed: the
+  next phase exit re-runs both, and the pre-merge refresh re-flips the row.
 - `logFailures` — hand-log each `decision` element (its `status`, `step` and `text`) with
   `log-decision.js`.
 
@@ -95,9 +97,7 @@ one didn't, so a single transient failure self-heals without any retry logic of 
 `current-branch` mode (no worktree branch to push mid-run). Either condition is `build/SKILL.md`
 Common Step 7's documented conditional action, and `phase-exit.js --phase build` writes its one
 `SKIP` entry per `_shared/auto-decision-log.md`'s degrade-trace rule (the existing failure-degrade warning above is
-unaffected — that already logs on a genuine push failure, a distinct case from this clean no-op):
-step `Common Step 7 phase-exit push (skipped)`, text `condition: integration-model=local-merge or
-current-branch mode → fallback: no phase-exit push, one push at finish`.
+unaffected — that already logs on a genuine push failure, a distinct case from this clean no-op).
 
 Standalone `/build` (no run dir): list the skip in the Step 7 handoff instead (`build/handoff-template.md`'s inline-skip listing).
 

@@ -38,15 +38,15 @@ work — carries no closing keyword; there was never an issue to close.
 at PR-open time — adding a second, differently-scoped set here would duplicate (and risk
 disagreeing with) that authoritative list. This step's commit is an ordinary commit.
 
-**Phase exit (`worktree` mode, `integration-model: pr-first`):** one call pushes this commit and
-flips wrap-up's PR checklist row — `node "${CLAUDE_PLUGIN_ROOT}/bin/phase-exit.js" --run
-"{run-dir}" --phase wrap-up --worktree "{worktree-path}" --fixes {n}[,{m}...]`, `{run-dir}` the
+**Phase exit (any run with a run dir, `_shared/integration-model.md`):** one call pushes this
+commit and flips wrap-up's PR checklist row —
+`node "${CLAUDE_PLUGIN_ROOT}/bin/phase-exit.js" --run "{run-dir}" --phase wrap-up --worktree "{worktree-path}" --fixes {n}[,{m}...]`,
+in any model or mode; it pushes only under `pr-first` in `worktree` mode. `{run-dir}` is the
 archive path once cleanup item 8 archived the run directory (`_shared/git-discipline.md`'s
 Post-push merge-state check) — routed per `_shared/git-discipline.md`'s Phase-exit push section
 and `_shared/pr-checklist-refresh.md`'s Phase-checklist update section. This is the last phase-exit
 push of the run; it does not mark the PR ready for merge or touch its draft state — that
-transition belongs to the merge-path sub-issue, not this one (Non-Goals). A no-op under
-`local-merge` or `current-branch` mode.
+transition belongs to the merge-path sub-issue, not this one (Non-Goals).
 
 **Leave-open mergeability re-check (`worktree` mode, `integration-model: pr-first`, #3483).** When
 the Review Console's merge half resolved leave-open — `console.json`'s `merge.resolution` reads

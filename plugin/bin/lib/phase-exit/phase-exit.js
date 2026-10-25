@@ -59,7 +59,8 @@ const BIN = path.resolve(__dirname, '..', '..');
 const RESOLVE_POLICY_JS = path.join(BIN, 'resolve-policy.js');
 const HOOKS_JS = path.join(BIN, 'hooks.js');
 
-// git-discipline.md's Phase-exit push SKIP text, verbatim.
+// The Common Step 7 phase-exit push SKIP text callers hand-logged before #4026 (this
+// module is now its only home; git-discipline.md's Phase-exit push section names the SKIP only).
 const SKIP_TEXT = 'condition: integration-model=local-merge or current-branch mode → fallback: no phase-exit push, one push at finish';
 
 const realDeps = {

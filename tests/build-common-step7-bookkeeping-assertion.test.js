@@ -39,7 +39,7 @@ test('build/SKILL.md: bookkeeping assertion logs only when a backfill actually r
 
 test('build/SKILL.md: bookkeeping assertion appears before the phase-exit push paragraph', () => {
   const assertionIdx = BUILD_SKILL.indexOf('**Bookkeeping assertion (`worktree` mode');
-  const phaseExitIdx = BUILD_SKILL.indexOf('**Phase exit (`worktree` mode, `integration-model: pr-first`');
+  const phaseExitIdx = BUILD_SKILL.indexOf('**Phase exit (any run with a run dir');
   assert.ok(assertionIdx > -1 && phaseExitIdx > -1, 'both paragraphs must exist');
   assert.ok(assertionIdx < phaseExitIdx, 'the bookkeeping assertion must run before the phase-exit push');
 });

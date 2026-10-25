@@ -23,14 +23,15 @@ At each phase's own exit (build, test, review, polish, wrap-up), `bin/phase-exit
 after its push (`_shared/git-discipline.md`), as `checklist`. By `run-state.json`'s `pr` field:
 
 - **Not set, `local-merge` run**: skip entirely — no PR to update.
-- **Not set, `pr-first` run (a degraded run)**: before skipping, check whether recovery is safe —
+- **Not set, `pr-first` run (a degraded run)**: reported with `phase-exit.js`'s `push.state:
+  'skipped'` (no recorded PR) → follow `_shared/git-discipline.md`'s route for it instead.
+  Otherwise, before skipping, check whether recovery is safe —
   `git rev-parse --abbrev-ref --symbolic-full-name @{u}` against the worktree branch. **Fails**
-  (no upstream configured — the branch never actually reached `origin`, regardless of which phase
-  degraded it): retry `_shared/pr-early-run-lifecycle.md`'s "Run start: push, then open (or reuse)
-  the draft PR" Steps 2-4 now, from this phase's own worktree — the `#989` one-shot push exemption
-  is guaranteed to apply cleanly on this attempt, since it keys on exactly this precondition.
-  **Succeeds** (upstream is set but no PR — a rarer case, e.g. an interrupted `gh pr create`): skip
-  this phase's checklist update as before; do not attempt recovery blind against a branch state
+  (no upstream — the branch never reached `origin`): retry `_shared/pr-early-run-lifecycle.md`'s
+  "Run start: push, then open (or reuse) the draft PR" Steps 2-4 now, from this phase's own
+  worktree — the `#989` one-shot push exemption applies, since it keys on exactly this precondition.
+  **Succeeds** (upstream is set but no PR, e.g. an interrupted `gh pr create`): skip
+  this phase's checklist update; do not attempt recovery blind against a branch state
   this section cannot fully diagnose.
 - **Set**, `gh` present: one call does the whole update —
 
