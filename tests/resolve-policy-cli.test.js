@@ -337,3 +337,28 @@ test('--values with only valid keys (run-config overlay + policy): stderr is emp
   assert.strictEqual(res.stdout, '7\nunattended\n');
   assert.strictEqual(res.stderr, '');
 });
+
+test('--values: a key requested twice warns once per request, in request order', () => {
+  const { tmp } = makeFixtureRepo({ policy: 'policy-invalid.yml' });
+  const res = runCli(['--values', 'trust-revert-window-days', 'trust-revert-window-days'], tmp);
+  assert.strictEqual(res.status, 0);
+  assert.strictEqual(res.stdout, '14\n14\n');
+  const line = 'resolve-policy: warning: trust-revert-window-days has invalid value "banana" — using default "14"\n';
+  assert.strictEqual(res.stderr, line + line);
+});
+
+test('--values: an invalid derived-default key names the derived default, not the schema literal', () => {
+  const { tmp } = makeFixtureRepo({ policy: 'policy-invalid-derived.yml' });
+  const res = runCli(['--values', 'housekeeping-auto-merge'], tmp);
+  assert.strictEqual(res.status, 0);
+  assert.strictEqual(res.stdout, 'true\n');
+  assert.strictEqual(res.stderr, 'resolve-policy: warning: housekeeping-auto-merge has invalid value "maybe" — using default "true"\n');
+});
+
+test('--all with an invalid value writes nothing to stderr (the flag carries it)', () => {
+  const { tmp } = makeFixtureRepo({ policy: 'policy-invalid.yml' });
+  const res = runCli(['--all'], tmp);
+  assert.strictEqual(res.status, 0);
+  assert.strictEqual(res.stderr, '');
+  assert.strictEqual(JSON.parse(res.stdout)['trust-revert-window-days'].invalid, true);
+});
