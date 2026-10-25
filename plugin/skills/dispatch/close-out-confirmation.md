@@ -11,9 +11,13 @@ session left to resume at all.
 
 **Confirm before merging.** Before running Step 5 of `close-out.md`, call `AskUserQuestion`:
 
-- `question`: `"Merge {target}'s pending-review PR #{number} ({url})? CI: {status}, mergeable: {mergeable-summary}, approved by: {approver-or-unknown}. Declining leaves it pending-review."`, `header`: `"Close out PR"`, `multiSelect`: `false`
+- `question`: `"Merge {target}'s pending-review PR #{number} ({url})? CI: {status}, mergeable: {mergeable-summary}, approved by: {approver-or-unknown}.{update-clause} Declining leaves it pending-review."`, `header`: `"Close out PR"`, `multiSelect`: `false`
 - Option 1 — `label`: `"Merge"` (append `" (Recommended)"` per the Recommended-derivation rule below), `description`: `"Run the merge now — _shared/pr-first-merge.md's Step 3, arms or merges immediately depending on repo auto-merge settings"`
 - Option 2 — `label`: `"Skip"` (append `" (Recommended)"` instead when the rule below picks this option), `description`: `"Leave this PR pending-review; do nothing"`
+
+`{update-clause}`: when `close-out-update.md` ran for this candidate, `" Updated from {base} this session via
+{update-method}: conflicted files {conflicted-files}, resolution commit {resolution-commit} — review it before
+merging."`; empty (omitted) when no update ran, so the question reads as before.
 
 **Recommended-derivation rule.** Modeled on `resume-confirmation.md`'s own rule (same shape — a
 single-predicate Recommended pick, never both, never neither) but not identical, since this gate
@@ -37,7 +41,8 @@ its own evidence, exactly as `resume-confirmation.md` states for its own gate.
 
 **Source values live, never from a stale scan.** PR number/URL, CI status, and mergeability come
 from `close-out.md`'s own steps 1-2, already re-read fresh for this candidate — never re-fetched a
-third time here. `{approver-or-unknown}`: `gh pr view {number} --json reviews --jq '[.reviews[] |
+third time here. `{update-method}`, `{conflicted-files}`, and `{resolution-commit}` come from
+`close-out-update.md`'s own hand-off (its step 8), never re-derived here. `{approver-or-unknown}`: `gh pr view {number} --json reviews --jq '[.reviews[] |
 select(.state == "APPROVED")] | last | .author.login'` (or the MCP equivalent when `gh` is
 absent), `unknown` when no approved review is found. This gate does not itself enforce that an
 approval exists — that is the repository's own branch-protection configuration, not this skill's

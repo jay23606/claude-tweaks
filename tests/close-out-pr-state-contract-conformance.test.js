@@ -111,3 +111,17 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
   assert.match(UPDATE, /lockfile/i, 'installs dependencies before verifying');
   assert.match(UPDATE, /BEHIND[\s\S]{0,400}continue/i, 'a declined BEHIND update continues to step 3 as before');
 });
+
+const CONFIRM = readText(path.join(__dirname, '..', 'plugin', 'skills', 'dispatch', 'close-out-confirmation.md'));
+
+test('AC3.1: the confirmation question names that an update ran, the conflicted files, and the resolution commit', () => {
+  const question = CONFIRM.split('\n').find((l) => l.includes('`question`:'));
+  assert.ok(question, 'question line found');
+  assert.ok(question.includes('{update-clause}'), 'question carries {update-clause}');
+  const def = CONFIRM.slice(CONFIRM.indexOf('{update-clause}', CONFIRM.indexOf(question) + question.length));
+  for (const v of ['{update-method}', '{conflicted-files}', '{resolution-commit}']) {
+    assert.ok(def.includes(v), `{update-clause} definition names ${v}`);
+  }
+  assert.match(def, /close-out-update\.md/, 'values come from close-out-update.md, never re-derived');
+  assert.match(def, /empty|omitted/i, 'no update → the clause is empty');
+});
