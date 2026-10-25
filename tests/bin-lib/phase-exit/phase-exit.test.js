@@ -6,6 +6,8 @@ const os = require('os');
 const path = require('path');
 const { runPhaseExit } = require('../../../plugin/bin/lib/phase-exit/phase-exit');
 const { run } = require('../../../plugin/bin/phase-exit');
+const { closeRunState } = require('../../../plugin/bin/lib/hooks/close-run-state');
+const { GIT_PUSH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../../../plugin/bin/lib/shared-primitives');
 
 const RUN_ID = '2026-10-25T000001-record-1';
 const BRANCH = 'worktree-dispatch-record-1';
@@ -390,28 +392,72 @@ test('AC2.2: bookkeeping — record-worktree failing output reports failed', () 
   }
 });
 
-test('bookkeeping — an archived run dir is never written: absent fields report failed / missing', () => {
-  const { main, runDir, wt } = fixture({}, { archived: true });
-  const h = makeDeps(main, wt);
-  const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
-  assert.equal(env.bookkeeping.worktree, 'failed');
-  assert.equal(env.bookkeeping.pr, 'missing');
-  assert.match(env.bookkeeping.detail, /archived/);
-  assert.equal(h.calls.hooks.length, 0);
-  assert.equal(h.calls.gh.length, 0);
-  assert.equal(env.push.state, 'skipped', 'no recorded PR on the archived run: the [IL-131] precondition holds');
-  assert.equal(entriesOf(runDir).length, 1);
-  assert.match(entriesOf(runDir)[0], /^- SKIP .* — Phase-exit push: condition: no recorded PR/);
+// The run dir cleanup item 8 leaves at wrap-up's exit: the real close-run write (status clean,
+// worktree null, worktreeAtClose), on the live path (archive-run refused) or moved under archive/.
+function closedFixture(runState, { archive }) {
+  const f = fixture(runState);
+  const closed = closeRunState(f.runDir, { explicit: true, checkLiveWorktree: false });
+  assert.equal(closed.status, 'closed');
+  assert.ok(closed.writeOk);
+  if (!archive) return f;
+  const archived = path.join(f.main, '.claude-tweaks', 'pipelines', 'archive', RUN_ID);
+  fs.mkdirSync(path.dirname(archived), { recursive: true });
+  fs.renameSync(f.runDir, archived);
+  return { ...f, runDir: archived };
+}
+const runStateOf = (runDir) => JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
+const commitEventsOf = (runDir) => eventsOf(runDir).filter((e) => e.type === 'commit');
+
+test('closed run — close-run\'s shape is never re-armed: n/a bookkeeping, no hook, no gh, no breadcrumb; push, checklist and merge state still run', () => {
+  for (const archive of [false, true]) {
+    for (const state of [{ worktree: '/wt', pr: { number: 42, url: PR_URL } }, { worktree: '/wt' }]) {
+      const label = `${archive ? 'archive' : 'live'} path, ${state.pr ? 'with' : 'no'} pr`;
+      const { main, runDir, wt } = closedFixture(state, { archive });
+      const before = runStateOf(runDir);
+      assert.equal(before.status, 'clean', label);
+      assert.equal(before.worktree, null, label);
+      assert.equal(before.worktreeAtClose, '/wt', label);
+      const h = makeDeps(main, wt);
+      const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
+      assert.deepEqual(env.bookkeeping, { worktree: 'n/a', pr: 'n/a' }, label);
+      assert.deepEqual(h.calls.hooks, [], label);
+      assert.deepEqual(h.calls.gh, [], label);
+      assert.deepEqual(runStateOf(runDir), before, label);
+      assert.equal(env.push.state, 'pushed', `${label}: a clean run releases the push, as the PreToolUse PR-stamp gate does`);
+      assert.equal(pushCalls(h.calls).length, 1, label);
+      assert.deepEqual(commitEventsOf(runDir), [], `${label}: no events.jsonl breadcrumb into a closed run`);
+      assert.equal(h.calls.checklist.length, 1, label);
+      assert.equal(h.calls.mergeState.length, 1, label);
+      assert.deepEqual(entriesOf(runDir), [], `${label}: no backfill line`);
+      assert.deepEqual(env.logFailures, [], label);
+    }
+  }
 });
 
-test('bookkeeping — an archived run dir carrying both fields pushes without any write but the breadcrumb', () => {
-  const { main, runDir, wt } = fixture(undefined, { archived: true });
+test('closed run — a worktreeAtClose alone, or an archived dir with no close-run fields, is never written either', () => {
+  for (const [state, archived] of [[{ worktreeAtClose: '/wt', pr: { number: 42, url: PR_URL } }, false], [{}, true]]) {
+    const { main, runDir, wt } = fixture(state, { archived });
+    const h = makeDeps(main, wt);
+    const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
+    assert.deepEqual(env.bookkeeping, { worktree: 'n/a', pr: 'n/a' }, JSON.stringify(state));
+    assert.deepEqual(h.calls.hooks, [], JSON.stringify(state));
+    assert.deepEqual(h.calls.gh, [], JSON.stringify(state));
+    assert.deepEqual(commitEventsOf(runDir), [], JSON.stringify(state));
+  }
+  // Not status clean and no recorded PR: the [IL-131] precondition still holds.
+  const { main, runDir, wt } = fixture({}, { archived: true });
+  const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), makeDeps(main, wt).deps);
+  assert.equal(env.push.state, 'skipped');
+  assert.deepEqual(entriesOf(runDir).map(stripTime), [NO_PR_SKIP]);
+});
+
+test('active run — a run-state with status active and no worktree still backfills it', () => {
+  const { main, runDir, wt } = fixture({ status: 'active', pr: { number: 42, url: PR_URL } });
   const h = makeDeps(main, wt);
   const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
-  assert.deepEqual(env.bookkeeping, { worktree: 'present', pr: 'present' });
-  assert.equal(env.push.state, 'pushed');
-  assert.equal(h.calls.hooks.length, 0);
-  assert.deepEqual(entriesOf(runDir), []);
+  assert.equal(env.bookkeeping.worktree, 'backfilled');
+  assert.deepEqual(h.calls.hooks, [['record-worktree', '--run', runDir, path.resolve(wt)]]);
+  assert.equal(commitEventsOf(runDir).length, 1);
 });
 
 // ---- push ----
@@ -431,6 +477,84 @@ test('AC2.2: push failure logs the FAILED line, skips merge-state, still flips t
   assert.deepEqual(entriesOf(runDir).map(stripTime), [
     `- AUTO — Phase-exit push: push of ${BRANCH} to origin FAILED at build exit (fatal: unable to access remote); the next phase exit's push retries. Reversibility: n/a.`,
   ]);
+});
+
+test('push timeout — the push runs under GIT_PUSH_TIMEOUT_MS, not the git bound, and a timeout kill names it', () => {
+  assert.ok(GIT_PUSH_TIMEOUT_MS > GIT_TIMEOUT_MS, 'a pre-push hook that runs tests needs more than the 30 s git bound');
+  const { main, runDir, wt } = fixture();
+  const killed = Object.assign(new Error('spawnSync git ETIMEDOUT'), { code: 'ETIMEDOUT', killed: true, signal: 'SIGTERM' });
+  const h = makeDeps(main, wt, { push: killed });
+  const seen = [];
+  const base = h.deps.git;
+  h.deps.git = (args, o) => { seen.push({ sub: args[2], o }); return base(args); };
+  const env = runPhaseExit(opts(runDir, wt), h.deps);
+  assert.deepEqual(seen.filter((s) => s.sub === 'push').map((s) => s.o), [{ timeout: GIT_PUSH_TIMEOUT_MS }]);
+  assert.ok(seen.filter((s) => s.sub !== 'push').every((s) => s.o === undefined), 'every other git call keeps the default bound');
+  assert.deepEqual(env.push, { state: 'failed', reason: `timed out after ${GIT_PUSH_TIMEOUT_MS} ms` });
+  assert.deepEqual(entriesOf(runDir).map(stripTime), [
+    `- AUTO — Phase-exit push: push of ${BRANCH} to origin FAILED at build exit (timed out after ${GIT_PUSH_TIMEOUT_MS} ms); the next phase exit's push retries. Reversibility: n/a.`,
+  ]);
+});
+
+// ---- worktree guard (wd-push-mismatch) ----
+
+// An active run whose run-state names `assigned` as its worktree; both directories exist on disk.
+function assignedFixture(assignedName) {
+  const f = fixture(null);
+  fs.mkdirSync(f.wt, { recursive: true });
+  const assigned = assignedName ? path.join(f.main, '.claude', 'worktrees', assignedName) : f.wt;
+  fs.mkdirSync(assigned, { recursive: true });
+  fs.writeFileSync(path.join(f.runDir, 'run-state.json'), JSON.stringify({ status: 'active', worktree: assigned, pr: { number: 42, url: PR_URL } }));
+  return { ...f, assigned };
+}
+
+test('worktree guard — a --worktree other than the active run\'s refuses the push and appends wd-push-mismatch', () => {
+  const { main, runDir, wt, assigned } = assignedFixture('dispatch-record-2');
+  const h = makeDeps(main, wt);
+  const env = runPhaseExit(opts(runDir, wt, 'review'), h.deps);
+  const expected = fs.realpathSync(assigned);
+  const actual = fs.realpathSync(wt);
+  assert.deepEqual(env.push, { state: 'refused', reason: `--worktree ${actual} is not the run's worktree ${expected}` });
+  assert.equal(pushCalls(h.calls).length, 0);
+  assert.equal(h.calls.checklist.length, 1, 'a refused push still flips the checklist');
+  assert.equal(h.calls.mergeState.length, 0);
+  const events = eventsOf(runDir);
+  assert.equal(events.length, 1);
+  const { ts, ...rest } = events[0];
+  assert.match(ts, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(rest, { type: 'wd-push-mismatch', expected, actual, command: `git -C ${wt} push origin ${BRANCH}` });
+  assert.deepEqual(entriesOf(runDir).map(stripTime), [
+    `- AUTO — Phase-exit push: refused to push ${BRANCH} at review exit — --worktree ${actual} is not the run's worktree ${expected}. Reversibility: n/a.`,
+  ]);
+  // A failed event append is reported, and the refusal stands.
+  const f2 = assignedFixture('dispatch-record-2');
+  const h2 = makeDeps(f2.main, f2.wt, { appendEvent: () => { throw new Error('EROFS'); } });
+  const env2 = runPhaseExit(opts(f2.runDir, f2.wt, 'review'), h2.deps);
+  assert.equal(env2.push.state, 'refused');
+  assert.equal(env2.logFailures.length, 1);
+  assert.equal(env2.logFailures[0].kind, 'event');
+  assert.equal(env2.logFailures[0].type, 'wd-push-mismatch');
+});
+
+test('worktree guard — the run\'s own worktree, also through a symlink, pushes with no mismatch event', () => {
+  const { main, runDir, wt } = assignedFixture(null);
+  const link = path.join(main, 'wt-link');
+  fs.symlinkSync(wt, link);
+  for (const target of [wt, link]) {
+    const h = makeDeps(main, target);
+    const env = runPhaseExit(opts(runDir, target), h.deps);
+    assert.equal(env.push.state, 'pushed', target);
+    assert.equal(eventsOf(runDir).filter((e) => e.type === 'wd-push-mismatch').length, 0, target);
+  }
+});
+
+test('worktree guard — a closed run is never compared, so its worktreeAtClose cannot refuse the push', () => {
+  const other = os.tmpdir(); // a real directory that is not --worktree
+  const { main, runDir, wt } = closedFixture({ worktree: other, pr: { number: 42, url: PR_URL } }, { archive: false });
+  fs.mkdirSync(wt, { recursive: true });
+  const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), makeDeps(main, wt).deps);
+  assert.equal(env.push.state, 'pushed');
+  assert.equal(eventsOf(runDir).filter((e) => e.type === 'wd-push-mismatch').length, 0);
 });
 
 // ---- push breadcrumb (events.jsonl) ----
@@ -731,8 +855,10 @@ test('CLI: a relative --run and --worktree reach every sub-step as one absolute 
 });
 
 test('CLI: an archived wrap-up run dir resolves', () => {
-  const { main, runDir, wt } = fixture(undefined, { archived: true });
+  const { main, runDir, wt } = closedFixture(undefined, { archive: true });
   const h = makeDeps(main, wt);
   assert.equal(run(['--run', runDir, '--phase', 'wrap-up', '--worktree', wt], h.deps), 0);
-  assert.equal(JSON.parse(h.out.join('')).push.state, 'pushed');
+  const env = JSON.parse(h.out.join(''));
+  assert.equal(env.push.state, 'pushed');
+  assert.deepEqual(env.bookkeeping, { worktree: 'n/a', pr: 'n/a' });
 });

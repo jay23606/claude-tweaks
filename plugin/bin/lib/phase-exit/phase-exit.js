@@ -1,5 +1,5 @@
 // The whole pr-first phase exit as one call (#4026), behind bin/phase-exit.js.
-// It replaces the agent-run sequence _shared/git-discipline.md's Phase-exit push
+// It replaces the agent-run sequence _shared/git-discipline.md's Phase exit
 // section, build/SKILL.md Common Step 7's Bookkeeping assertion and
 // _shared/pr-checklist-refresh.md's Phase-checklist update used to spell out,
 // and keeps each guard that prose left to the reader as its own branch:
@@ -12,25 +12,30 @@
 //   2. Branch guard (pr-first). A detached HEAD or the integration branch
 //      (integration-branch policy, else origin/HEAD, else main) is refused: no
 //      push, no merge-state read; the commit check and the checklist still run.
+//      So is a --worktree whose real path is not an active run's recorded
+//      `worktree` -- the check hooks/pre-tool-use.js's E1 loop makes for a Bash
+//      push -- which also appends E1's `wd-push-mismatch` event.
 //   3. Commit check. Uncommitted paths are logged and the push goes ahead.
 //   4. Bookkeeping, in worktree mode under either model: a run-state with no
 //      `worktree` runs `hooks.js record-worktree`; under pr-first, one with no
 //      `pr` (and no prExempt) looks up the branch's one open PR and runs
-//      `hooks.js record-pr`. Only a backfill that ran writes a line. An archived
-//      run dir (wrap-up after cleanup item 8) is never written: an absent field
-//      reports failed / missing. Opening a missing PR stays the caller's
+//      `hooks.js record-pr`. Only a backfill that ran writes a line. A closed
+//      run (wrap-up after cleanup item 8's close-run, archived or not) is never
+//      written: both report n/a. Opening a missing PR stays the caller's
 //      (_shared/pr-early-run-lifecycle.md).
-//   5. Push. Still no recorded PR after step 4 -> the push is skipped unless one
-//      of hooks/pre-tool-use.js checkBookkeepingStampsGate's PR-stamp release
-//      conditions holds ([IL-131]): prExempt, a logged `PR-early run lifecycle:
-//      … FAILED` line, or a first-publish push whose Step 1 line is logged. A
-//      push from this process is invisible to that PreToolUse gate, so the gate's
-//      rule is applied here. A failed push is logged and never written to
-//      run-state.json; the next phase exit's push retries. A landed push appends
-//      the same `{type:'commit', action:'push', dir, hash}` events.jsonl line
-//      hooks/post-tool-use.js writes for a Bash `git push` (through the same
-//      context.js appendEvent, deduped the same way): lib/timing/derive.js starts
-//      the merge phase at the first push after wrap-up starts.
+//   5. Push, under GIT_PUSH_TIMEOUT_MS (the consumer's pre-push hook runs
+//      inside it). Still no recorded PR after step 4 -> the push is skipped unless
+//      one of hooks/pre-tool-use.js checkBookkeepingStampsGate's PR-stamp release
+//      conditions holds ([IL-131]): prExempt, a closed run, a logged `PR-early run
+//      lifecycle: … FAILED` line, or a first-publish push whose Step 1 line is
+//      logged. A push from this process is invisible to that PreToolUse gate, so
+//      the gate's rule is applied here. A failed push is logged and never written
+//      to run-state.json; the next phase exit's push retries. A landed push on a
+//      run that is not closed appends the same `{type:'commit', action:'push',
+//      dir, hash}` events.jsonl line hooks/post-tool-use.js writes for a Bash
+//      `git push` (through the same context.js appendEvent, deduped the same
+//      way): lib/timing/derive.js starts the merge phase at the first push after
+//      wrap-up starts.
 //   6. Checklist: bin/pr-checklist.js in-process, every pr-first route that got
 //      past step 1. Its exit 4/5 lines are its own.
 //   7. Merge state: bin/pr-merge-state.js in-process, only after a push landed.
@@ -50,7 +55,8 @@ const { execFileSync } = require('child_process');
 const { formatEntry, appendEntry } = require('../log-decision/append');
 const { readRunStateWithParent, appendEvent, readEventLines } = require('../hooks/context');
 const { hasLoggedPrDegrade, hasLoggedPrEarlyStep1, hasNoUpstreamYet } = require('../hooks/pre-tool-use');
-const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS } = require('../shared-primitives');
+const { GH_TIMEOUT_MS, GIT_TIMEOUT_MS, GIT_PUSH_TIMEOUT_MS, isTimeoutError } = require('../shared-primitives');
+const { canonicalRealpath } = require('../path-guard');
 const prChecklist = require('../../pr-checklist');
 const prMergeState = require('../../pr-merge-state');
 
@@ -60,14 +66,14 @@ const RESOLVE_POLICY_JS = path.join(BIN, 'resolve-policy.js');
 const HOOKS_JS = path.join(BIN, 'hooks.js');
 
 // The Common Step 7 phase-exit push SKIP text callers hand-logged before #4026 (this
-// module is now its only home; git-discipline.md's Phase-exit push section names the SKIP only).
+// module is now its only home; git-discipline.md's Phase exit section names the SKIP only).
 const SKIP_TEXT = 'condition: integration-model=local-merge or current-branch mode → fallback: no phase-exit push, one push at finish';
 
 const realDeps = {
   cwd: () => process.cwd(),
   mainRoot: undefined,
-  git: (args) => execFileSync('git', args, {
-    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GIT_TIMEOUT_MS, windowsHide: true,
+  git: (args, { timeout = GIT_TIMEOUT_MS } = {}) => execFileSync('git', args, {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout, windowsHide: true,
   }),
   gh: (args, cwd) => execFileSync('gh', args, {
     cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: GH_TIMEOUT_MS, windowsHide: true,
@@ -180,9 +186,10 @@ function runPhaseExit(opts, overrides = {}) {
 
   let state = null;
   try { state = deps.readRunState(runDir); } catch { state = null; }
+  const closed = isClosedRun(state, runDir);
 
   if (model === 'local-merge') {
-    env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, log, prFirst: false, branch: null });
+    env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, closed, log, prFirst: false, branch: null });
     env.push = { state: 'skipped', reason: 'integration-model=local-merge' };
     if (phase === 'build') log('SKIP', 'Common Step 7 phase-exit push (skipped)', SKIP_TEXT);
     return env;
@@ -195,7 +202,19 @@ function runPhaseExit(opts, overrides = {}) {
     const label = env.branch || 'detached HEAD';
     env.push = { state: 'refused', reason: `${label} is not a run branch` };
     log('AUTO', 'Phase-exit push', `refused to push ${label} at ${phase} exit — not a run branch`);
+  } else if (!closed && hasWorktree(state)) {
+    // The run's assigned worktree vs --worktree -- the check hooks/pre-tool-use.js's E1
+    // loop makes for a Bash push, which never sees this process's push.
+    const expected = canonicalRealpath(state.worktree);
+    const actual = canonicalRealpath(wt);
+    if (expected && actual && expected !== actual) {
+      const reason = `--worktree ${actual} is not the run's worktree ${expected}`;
+      env.push = { state: 'refused', reason };
+      appendRunEvent(deps, runDir, env, 'wd-push-mismatch', { expected, actual, command: `git -C ${wt} push origin ${runBranch}`.slice(0, 200) }, 'wd-push-mismatch event');
+      log('AUTO', 'Phase-exit push', `refused to push ${runBranch} at ${phase} exit — ${reason}`);
+    }
   }
+  const pushBranch = env.push ? null : runBranch;
 
   // 3. Commit check -- also on a refused branch, so a dirty tree still leaves its trace.
   try {
@@ -207,22 +226,23 @@ function runPhaseExit(opts, overrides = {}) {
   }
 
   // 4. Bookkeeping.
-  env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, log, prFirst: true, branch: runBranch });
+  env.bookkeeping = bookkeeping({ deps, runDir, wt, phase, state, closed, log, prFirst: true, branch: runBranch });
 
   // 5. Push.
-  if (runBranch && !prPushReleased(deps, runDir, wt, runBranch, state, env.bookkeeping)) {
+  if (pushBranch && !prPushReleased(deps, runDir, wt, pushBranch, state, env.bookkeeping)) {
     env.push = { state: 'skipped', reason: 'no recorded PR — open it first (pr-early-run-lifecycle)' };
-    log('SKIP', 'Phase-exit push', `condition: no recorded PR for ${runBranch} and no PR-early run lifecycle FAILED line → fallback: no phase-exit push this phase; open the PR first (_shared/pr-early-run-lifecycle.md)`);
-  } else if (runBranch) {
+    log('SKIP', 'Phase-exit push', `condition: no recorded PR for ${pushBranch} and no PR-early run lifecycle FAILED line → fallback: no phase-exit push this phase; open the PR first (_shared/pr-early-run-lifecycle.md)`);
+  } else if (pushBranch) {
+    const timeout = GIT_PUSH_TIMEOUT_MS;
     try {
-      deps.git(['-C', wt, 'push', 'origin', runBranch]);
+      deps.git(['-C', wt, 'push', 'origin', pushBranch], { timeout });
       env.push = { state: 'pushed' };
     } catch (e) {
-      const reason = errLine(e) || 'git push failed';
+      const reason = isTimeoutError(e) ? `timed out after ${timeout} ms` : (errLine(e) || 'git push failed');
       env.push = { state: 'failed', reason };
-      log('AUTO', 'Phase-exit push', `push of ${runBranch} to origin FAILED at ${phase} exit (${reason}); the next phase exit's push retries`);
+      log('AUTO', 'Phase-exit push', `push of ${pushBranch} to origin FAILED at ${phase} exit (${reason}); the next phase exit's push retries`);
     }
-    if (env.push.state === 'pushed') recordPushEvent(deps, runDir, wt, env);
+    if (env.push.state === 'pushed' && !closed) recordPushEvent(deps, runDir, wt, env);
   }
 
   // 6. Checklist.
@@ -247,10 +267,11 @@ function runPhaseExit(opts, overrides = {}) {
 // prExempt, a logged `PR-early run lifecycle: … FAILED` line (on the run dir or,
 // as lib/pr-bookkeeping/precondition.js also reads it, a per-spec dir's parent),
 // or the #989/#1800 first-publish release -- the branch has no upstream of its
-// own yet and this branch's Step 1 line is logged.
+// own yet and this branch's Step 1 line is logged. A closed run (status clean) is
+// released outright, as that gate returns early on one.
 function prPushReleased(deps, runDir, wt, branch, state, bookkeepingResult) {
   if (bookkeepingResult.pr === 'present' || bookkeepingResult.pr === 'backfilled') return true;
-  if (state && state.prExempt) return true;
+  if (state && (state.prExempt || state.status === 'clean' || hasPr(state))) return true;
   const dirs = [runDir];
   if (/^spec-/.test(path.basename(path.resolve(runDir)))) dirs.push(path.dirname(path.resolve(runDir)));
   if (dirs.some((d) => hasLoggedPrDegrade(d))) return true;
@@ -266,16 +287,23 @@ function recordPushEvent(deps, runDir, wt, env) {
   let short = null;
   try { short = firstLine(deps.git(['-C', wt, 'rev-parse', '--short', 'HEAD'])) || null; } catch { short = null; }
   const data = { action: 'push', dir: path.resolve(wt), hash: short || undefined };
+  appendRunEvent(deps, runDir, env, 'commit', data, 'push breadcrumb', () => {
+    if (!data.hash) return false;
+    const prior = deps.readEventLines(runDir) || [];
+    return prior.some((ev) => ev && ev.type === 'commit' && ev.action === 'push' && ev.hash === data.hash && ev.dir === data.dir);
+  });
+}
+
+// One events.jsonl line through context.js appendEvent, unless `isDuplicate()` says
+// it is already there; a throw from either lands in logFailures plus one stderr line.
+function appendRunEvent(deps, runDir, env, type, data, what, isDuplicate = () => false) {
   try {
-    if (data.hash) {
-      const prior = deps.readEventLines(runDir) || [];
-      if (prior.some((ev) => ev && ev.type === 'commit' && ev.action === 'push' && ev.hash === data.hash && ev.dir === data.dir)) return;
-    }
-    deps.appendEvent(runDir, 'commit', data);
+    if (isDuplicate()) return;
+    deps.appendEvent(runDir, type, data);
   } catch (e) {
     const error = (e && e.message) || String(e);
-    env.logFailures.push({ kind: 'event', type: 'commit', data, error });
-    deps.stderr(`phase-exit.js: could not append the events.jsonl push breadcrumb: ${error}\n`);
+    env.logFailures.push({ kind: 'event', type, data, error });
+    deps.stderr(`phase-exit.js: could not append the events.jsonl ${what}: ${error}\n`);
   }
 }
 
@@ -315,17 +343,24 @@ function runHook(deps, args, wt) {
   }
 }
 
-function bookkeeping({ deps, runDir, wt, phase, state, log, prFirst, branch }) {
+// A run cleanup item 8 already closed: close-run's write (status clean, worktree null,
+// worktreeAtClose), or the run dir archive-run moved under archive/. Terminal, so it is
+// never written again -- a record-worktree here would write status active back and
+// re-arm E1 -- and gets no events.jsonl line (wrap-up/cleanup-procedures-execution.md:
+// E2/E3 logging stops at close-run).
+function isClosedRun(state, runDir) {
+  if (state && (state.status === 'clean' || (typeof state.worktreeAtClose === 'string' && state.worktreeAtClose))) return true;
+  return isArchivedRun(runDir);
+}
+
+function bookkeeping({ deps, runDir, wt, phase, state, closed, log, prFirst, branch }) {
+  if (closed) return { worktree: 'n/a', pr: 'n/a' };
   const step = phase === 'build' ? 'Common Step 7 bookkeeping assertion' : 'Phase-exit bookkeeping assertion';
-  const archived = isArchivedRun(runDir);
   const result = { worktree: null, pr: null };
   const details = [];
 
   if (hasWorktree(state)) {
     result.worktree = 'present';
-  } else if (archived) {
-    result.worktree = 'failed';
-    details.push('archived run dir carries no worktree field — not written');
   } else {
     const r = runHook(deps, ['record-worktree', '--run', runDir, path.resolve(wt)], wt);
     if (r.out.includes('worktree recorded for ')) {
@@ -341,9 +376,6 @@ function bookkeeping({ deps, runDir, wt, phase, state, log, prFirst, branch }) {
     result.pr = 'n/a';
   } else if (hasPr(state)) {
     result.pr = 'present';
-  } else if (archived) {
-    result.pr = 'missing';
-    details.push('archived run dir carries no pr field — not written');
   } else if (!branch) {
     result.pr = 'missing';
     details.push('no run branch to look up an open PR for');

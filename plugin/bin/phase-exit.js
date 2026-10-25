@@ -3,7 +3,7 @@
 // branch guard, commit check, bookkeeping backfill, push, PR checklist flip and
 // post-push merge-state read. The sub-steps and the guard each keeps are
 // lib/phase-exit/phase-exit.js's; the procedures it runs are
-// skills/_shared/git-discipline.md's Phase-exit push and Post-push merge-state
+// skills/_shared/git-discipline.md's Phase exit and Post-push merge-state
 // check, build/SKILL.md Common Step 7's Bookkeeping assertion and
 // skills/_shared/pr-checklist-refresh.md's Phase-checklist update.
 //
@@ -20,10 +20,13 @@
 // mergeState: {exit, ...pr-merge-state envelope} | null,
 // logFailures: [{kind: 'decision', status, step, text, error} | {kind: 'event', type, data, error}]}.
 //   route        pr-first | local-merge | current-branch | null (integration-model unresolved)
-//   push.state   pushed | failed | refused | skipped (also: pr-first with no recorded PR and
-//                no release condition of hooks/pre-tool-use.js's PR-stamp gate, [IL-131])
-//   worktree     present | backfilled | failed | n/a (current-branch)
-//   pr           present | backfilled | missing | failed | n/a (local-merge, current-branch, prExempt)
+//   push.state   pushed | failed | refused (not a run branch, or --worktree is not the active
+//                run's worktree: a wd-push-mismatch event) | skipped (also: pr-first with no
+//                recorded PR and no release condition of hooks/pre-tool-use.js's PR-stamp gate, [IL-131])
+//   worktree     present | backfilled | failed | n/a (current-branch, closed run)
+//   pr           present | backfilled | missing | failed | n/a (local-merge, current-branch, prExempt, closed run)
+// The push runs under GIT_PUSH_TIMEOUT_MS (lib/shared-primitives.js: 10 minutes, or
+// CLAUDE_TWEAKS_GIT_PUSH_TIMEOUT_MS, 1000-3600000); a kill is reason `timed out after {n} ms`.
 // The CLI writes its own decisions.md lines under the phase's section; the
 // sub-CLIs write theirs. A caller hand-logs only a logFailures entry.
 //
@@ -46,6 +49,9 @@ const USAGE = `usage: phase-exit.js --run <run-dir> --phase <${PHASES}> --worktr
   + '  PR checklist flip (pr-checklist.js), merge-state read after a push (pr-merge-state.js)\n'
   + '  prints {phase, route, branch, head, commit, bookkeeping, push, checklist, mergeState, logFailures}\n'
   + '  route: pr-first | local-merge | current-branch | null; push.state: pushed | failed | refused | skipped\n'
+  + '  refused: not a run branch, or --worktree is not the active run\'s worktree (wd-push-mismatch event)\n'
+  + '  a closed run (close-run, archived or not) gets no bookkeeping write and no events.jsonl line\n'
+  + '  the push may run 10 minutes (CLAUDE_TWEAKS_GIT_PUSH_TIMEOUT_MS overrides, 1000-3600000)\n'
   + '  --fixes, --remove, --summary-file are forwarded to pr-checklist.js unchanged\n'
   + '  exit 0 in every route and state; 2 malformed invocation or --worktree not a git checkout;\n'
   + '       3 run dir missing or not anchored\n';
