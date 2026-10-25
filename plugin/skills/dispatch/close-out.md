@@ -6,8 +6,9 @@ section, and `resume-confirmation.md`'s confirm-before-resume gate) — neither 
 session has already exited and a human later reviews and approves the PR directly on GitHub, days
 or weeks on. Nothing else re-verifies CI is still green (rather than stale from an earlier
 infrastructure blip), converts a still-draft PR to ready, flags a PR that quietly went from clean
-to conflicting while it sat parked, or performs the merge (and any project deploy step) once
-approval is confirmed. `_shared/github-pr-scan.md`'s `repo-wide` scope item 11 (`[pr-stale]`)
+to conflicting while it sat parked (and offers to update it, `close-out-update.md`), or performs
+the merge (and any project deploy step) once approval is confirmed.
+`_shared/github-pr-scan.md`'s `repo-wide` scope item 11 (`[pr-stale]`)
 already detects the conflicting case on a schedule; this mode is the close-out action item 11's
 own text names but never performs itself — "flag-only… a human, or #2364's own close-out process,
 acts on it."
@@ -49,12 +50,12 @@ touching shared state runs one member at a time.
    call) / `'pr-not-found'` (GitHub confirmed the queried number names no PR), or `null` for a
    missing number. Any string result (or `null`) stops this candidate — report
    it, and never read it as "not DIRTY".
-   `mergeStateStatus: DIRTY`: this is item 11's own finding surfacing again at close-out time —
-   report it with that scope's own recommendation (rebase and re-verify: typecheck, lint, full test
-   suite) and stop for this candidate. Rebasing changes PR content without the author present, so
-   this mode never performs it any more than item 11's own sweep does — flag-only holds at
-   close-out time too, not just at discovery time. `mergeStateStatus: BLOCKED` with nothing else
-   wrong is the forge waiting on required checks/reviews, not a conflict — proceed.
+   `mergeStateStatus: DIRTY` or `mergeable: CONFLICTING`: this is item 11's own finding surfacing
+   again at close-out time — read `close-out-update.md` in this skill's directory and follow it (an
+   offer, then a re-verified merge of the base branch into the PR). `mergeStateStatus: BEHIND`:
+   read `close-out-update.md` too (it offers `gh pr update-branch`); declining continues, since
+   BEHIND was never a stop. `mergeStateStatus: BLOCKED` with nothing else wrong is the forge
+   waiting on required checks/reviews, not a conflict — proceed.
 3. **Convert draft to ready, if needed (AC2).** **Acceptance labeling first** — this check, and
    any Step 1 run it leads to, precedes the Mark-ready call below, keeping
    `_shared/pr-first-merge.md`'s own Step 1 → Step 2 order. Apply
@@ -102,7 +103,9 @@ touching shared state runs one member at a time.
 ## Reporting
 
 One line per candidate: `#{number} — {outcome}` where `{outcome}` is one of `merged`, `armed`,
-`stopped: CI {status}`, `stopped: mergeStateStatus DIRTY — rebase and re-verify first`,
+`stopped: CI {status}`, `stopped: mergeStateStatus DIRTY — update declined`,
+`stopped: update failed — {conflict not resolved | verification | push rejected}`,
+`stopped: CI {status} after update`,
 `stopped: acceptance labeling unverifiable — no run dir`, or `declined at confirmation gate`.
 The bare form's summary line names how many candidates were found, merged/armed, stopped, and declined. This mode is never headless-self-reporting like bare
 `/dispatch`'s own Preflight failures (`_shared/headless-self-report.md`) — its confirmation gate
@@ -114,7 +117,8 @@ reaching that gate; do not schedule `close-out` as a headless Routine for that r
 
 | Pattern | Why It Fails |
 |---------|---------------|
-| Rebasing a `DIRTY` candidate to clear it automatically | Changes PR content without the author present — flag-only holds at close-out time exactly as it does at `_shared/github-pr-scan.md` item 11's discovery time (AC3) |
+| Rebasing or force-pushing a candidate, or updating one without a passing full suite | The branch is public behind its PR, so `close-out-update.md` merges `{base}` in and re-verifies; the no-update ban belongs to `_shared/github-pr-scan.md` item 11's headless sweep, where nobody is present to review a resolution, and to any update without a passing full-suite `verify.js` stamp on the new HEAD |
+| Merging an updated PR on its pre-update CI read | The update made a new HEAD — only a stamp and a CI read on that HEAD count |
 | Merging on a cached/prior CI result | The whole reason this mode exists — a `pending-review` PR can sit for weeks; step 1 always re-reads live state (AC1) |
 | Silencing the confirmation gate under `unattended` | No `autonomy`-ceiling carve-out — see `close-out-confirmation.md`; a `pending-review` PR reaching this mode means nothing upstream has yet authorized this specific merge |
 | Batching multiple candidates' confirmations into one `AskUserQuestion` | Each PR is a distinct merge decision on distinct content — batching would misattribute one answer to every candidate |
