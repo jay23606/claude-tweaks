@@ -12,7 +12,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const {
-  run, BOT_IN_PROGRESS, ABORT_REASON, USAGE, defaultAppendClaimLog,
+  run, BOT_IN_PROGRESS, ABORT_REASON, USAGE, FLOW_STEPS, defaultAppendClaimLog,
 } = require('../../../plugin/bin/lib/claim-targets/claim-targets');
 const { hasClaimLogFor, classifyDecisions } = require('../../../plugin/bin/lib/log-decision/claim-log');
 // #787 residual finding (progress.md's parked "expectedContent has zero test
@@ -1529,6 +1529,35 @@ test('--steps empty, blank, bare, or with an empty part: exit 2 with usage, no g
     assert.deepEqual(r.calls.ghApi, []);
     assert.deepEqual(r.calls.gh, []);
   }
+});
+
+// Fix round 1: a value-less `--steps` followed by another flag, or a step
+// name outside /flow's vocabulary, must fail closed (exit 2), never skip.
+for (const [label, argv] of [
+  ['--steps --keep-going (flag consumed as the value)', ['--run-id', 'r1', '--targets', '720', '--steps', '--keep-going']],
+  ['--steps Build (wrong case)', ['--run-id', 'r1', '--targets', '720', '--steps', 'Build']],
+  ['--steps biuld (typo)', ['--run-id', 'r1', '--targets', '720', '--steps', 'biuld']],
+]) {
+  test(`${label}: exit 2 with usage, no skipGuard envelope, no gh call`, () => {
+    const r = recordingRefusers();
+    const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+    assert.equal(run(argv, deps), 2);
+    assert.equal(io.out.length, 0);
+    assert.ok(io.err.join('').includes(USAGE));
+    assert.deepEqual(r.calls.ghApi, []);
+    assert.deepEqual(r.calls.gh, []);
+  });
+}
+
+test('FLOW_STEPS is /flow\'s Allowed Steps vocabulary (steps-and-gates.md), re-verify included', () => {
+  assert.deepEqual([...FLOW_STEPS], ['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up']);
+});
+
+test('every non-build/test FLOW_STEPS member is accepted by --steps (build/test: the claim-path test above)', () => {
+  const r = recordingRefusers();
+  const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+  assert.equal(run(['--run-id', 'r1', '--targets', '720', '--steps', 'stories,review,polish,re-verify,wrap-up'], deps), 0);
+  assert.deepEqual(io.out, [SKIP_GUARD_ENVELOPE]);
 });
 
 test('--steps never bypasses argv validation: a skip-shaped step list with malformed --targets still exits 2', () => {

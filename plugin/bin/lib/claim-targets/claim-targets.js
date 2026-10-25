@@ -91,15 +91,22 @@ function parseTargets(raw) {
   return targets.length ? targets : null;
 }
 
+// /flow's step vocabulary — `skills/flow/steps-and-gates.md`'s Allowed Steps
+// table plus the bundled `re-verify` it names as a no-op list entry. Held
+// here as data, never grepped from that prose at runtime.
+const FLOW_STEPS = Object.freeze(['build', 'stories', 'test', 'review', 'polish', 're-verify', 'wrap-up']);
+
 // `--steps` is the resolved /flow step list (`flow/SKILL.md` Step 1, item 4).
 // Same strictness as parseTargets: a blank value, a bare trailing flag
-// (`undefined`), or any empty part (`review,,wrap-up`, `build,`) is
-// malformed, never silently read as "no build/test" — a mangled list must
-// not turn into a skipped claim.
+// (`undefined`), an empty part (`review,,wrap-up`, `build,`), a part that is
+// another flag (`--steps --keep-going` consumed `--keep-going` as the value),
+// or any name outside FLOW_STEPS (`Build`, `biuld`) is malformed, never
+// silently read as "no build/test" — a mangled list must not turn into a
+// skipped claim.
 function parseSteps(raw) {
   if (typeof raw !== 'string' || raw.trim() === '') return null;
   const parts = raw.split(',').map((s) => s.trim());
-  return parts.every((p) => p !== '') ? parts : null;
+  return parts.every((p) => !p.startsWith('-') && FLOW_STEPS.includes(p)) ? parts : null;
 }
 
 // Default `deps.appendClaimLog` implementation — writes the exact Step 2.8
@@ -612,5 +619,5 @@ function run(argv, deps) {
 }
 
 module.exports = {
-  run, parseArgs, parseTargets, USAGE, BOT_IN_PROGRESS, ABORT_REASON, defaultAppendClaimLog,
+  run, parseArgs, parseTargets, USAGE, FLOW_STEPS, BOT_IN_PROGRESS, ABORT_REASON, defaultAppendClaimLog,
 };
