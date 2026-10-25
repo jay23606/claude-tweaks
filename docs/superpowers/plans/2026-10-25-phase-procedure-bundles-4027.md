@@ -17,7 +17,7 @@
 - Node 18+; zero runtime dependencies; tests use `node:test` + `node:assert/strict` and run under `npm test`.
 - Every new `plugin/bin/*.js` CLI follows the `gh-api-module-pattern` skill's CLI wrapper contract (its `cli-wrapper-contract.md`): `run(argv, deps)` seam, `require.main === module` guard, `process.exitCode` (never `process.exit()` after a write), exit `0` ok / `2` malformed invocation / `1` internal or filesystem failure, plus any documented domain codes.
 - Every `execFileSync`/`spawnSync` call passes `windowsHide: true`; every `git`/`gh` value argument comes after its `--end-of-options`/`--` separator where the tool supports one. The `bin-source-scan-conformance` suites (`tests/path-guard-conformance.test.js`, `tests/windows-hide-conformance.test.js`, and siblings under `tests/` matching `*conformance*`) must stay green.
-- `--run` values are anchored with `bin/lib/run-dir-guard.js`'s `anchoredOrOutsideMessage` (a worktree-local shadow run dir is refused, [IL-127]).
+- `--run` values are anchored strictly (cli-wrapper-contract.md: strict is the default): stage-item's `resolveTarget` with an injectable `mainRoot` — a missing dir, a dir outside every checkout, and a worktree-local shadow all exit 2 ([IL-127]). (Amended during execution; Task 4/5 rulings.)
 - `decisions.md` lines are written only through `bin/lib/log-decision/append.js`'s `formatEntry`/`appendEntry`; `run-state.json` only through `bin/lib/hooks/context.js`'s `writeRunState`; `config.yml` levers only through `bin/lib/set-config/write.js`.
 - Shipped code under `plugin/**` hardcodes no repo-specific literal (no `main`, no `origin` default other than the documented remote, no `thn-inc`) — resolve the integration branch via `resolve-policy.js`'s `integration-branch` key.
 - Commit subjects: `{Verb} {what} — {detail}`, body `refs #4027`, trailer `Claude-Session: https://claude.ai/code/session_01BnAahExvB2qMQJHFbCiiXm`. Never `closes`/`fixes`.
@@ -130,9 +130,9 @@ Decision lines (exact `--text` bodies, section `/build`, status `AUTO`, written 
 ### Task 5: `manifesto-write.js` — compute and write the levers in one call
 
 **Files:**
-- Create: `plugin/bin/lib/flow/manifesto.js`
+- Create: `plugin/bin/lib/flow/manifesto-write.js`
 - Create: `plugin/bin/manifesto-write.js`
-- Test: `tests/bin-lib/flow/manifesto.test.js`
+- Test: `tests/bin-lib/flow/manifesto-write.test.js`
 
 **Interfaces:**
 - Consumes: `LEVER_KEYS` and the policy resolution `gatherPreflight` uses (`bin/lib/flow/preflight.js` — reuse its `deps.resolvePolicy` shape, never re-parse policy.yml), `MANIFESTO_LEVERS`/`validateLever`/`setConfigLever` (`bin/lib/set-config/write.js`), `appendEntry`/`formatEntry`.
@@ -144,7 +144,7 @@ Decision lines (exact `--text` bodies, section `/build`, status `AUTO`, written 
 - CLI: `manifesto-write.js --run <dir> --mode <auto|confirm|hybrid> --mode-source <arg|dispatch|policy|default> --ceremony <n>=<fast-lane|standard>[:judged][,...]`. On success it prints the FYI table as markdown (`### Pipeline Config (auto)` heading, `| Lever | Value | Source |` rows, closing line `→ proceeding (no approval needed) · run with \`confirm\` to review/override`), exit 0. Exit `3` means `config.yml` already present (case-1 adoption: read `preflight.levers` instead). Exit `2` means malformed input. Exit `1` means a filesystem failure. `--mode interactive` exits 2, since no Manifesto runs in interactive mode.
 
 - [ ] **Step 1: Failing tests:** the ceiling rule (unattended+default → `medium`; unattended+policy `low` → `low`; attended+default → `low`); the ceremony fold (`[fast-lane, standard]` → `standard`, `[fast-lane, fast-lane]` → `fast-lane`); a run dir whose `decisions.md` holds `## /flow\n- AUTO 17:24:24 — Step 2.8: claimed #4027 (bin/claim-targets.js, transport: git). Reversibility: high.` keeps that line byte-for-byte below the new header; an existing `config.yml` → `AdoptedRunError` and the CLI exits 3 with nothing changed; a `judged` record produces the ceremony line and a `label` record produces none; the levers line names the absolute `config.yml` path.
-- [ ] **Step 2: Run** `node --test tests/bin-lib/flow/manifesto.test.js` — expect FAIL.
+- [ ] **Step 2: Run** `node --test tests/bin-lib/flow/manifesto-write.test.js` — expect FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run — expect PASS**, plus `node --test tests/bin-lib/set-config/ tests/bin-lib/flow/`.
 - [ ] **Step 5: Commit** — `Add manifesto-write CLI — compute, write and log the 13 levers in one call`.
