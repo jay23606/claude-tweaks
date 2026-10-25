@@ -112,7 +112,7 @@ The queue: **open + `auto:build` + no `bot:*` + no open `Blocked by #N` dependen
 **False-positive posture (#1984).** A record whose full deliverable set is already shipped, but
 whose resolving PR never carried a closing keyword, can only be excluded here when a **merged**
 PR both mentions it AND either matches its title (Jaccard token similarity) or touches every path
-in its own `### Key Files` — two independent signals, never one alone. That exclusion costs one
+in its own `### Key Files` — two independent signals, never one alone. A mention from a PR opened before the record was created never counts (#4314): a record filed during a PR's build is that PR's follow-up, not its target. That exclusion costs one
 human approval (the staged Close proposal `queue-pull-script.md` stages, never an autonomous
 close) — it is never silent and it never removes a candidate from `dispatch-groups.json` without
 also naming the reason in this run's session-scoped `dispatch-exclusions.json` (`reason:
