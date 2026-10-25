@@ -24,7 +24,9 @@ const REVERSIBILITY = ['high', 'med', 'low', 'n/a'];
 const REVERSIBILITY_RE = new RegExp(`^(?:${REVERSIBILITY.join('|')})( \\(.+\\))?$`);
 // The single-entry flags --entries replaces; any of them alongside --entries is a usage error.
 const SINGLE_ENTRY_FLAGS = ['--status', '--text', '--text-file', '--step', '--spec', '--reversibility', '--lever'];
-const ENTRY_KEYS = ['status', 'text', 'step', 'spec', 'reversibility', 'lever', 'section'];
+// A split string, not an array literal: `['status', …]` reads as a git status argv to
+// tests/git-status-optional-locks.test.js's scanner.
+const ENTRY_KEYS = 'status text step spec reversibility lever section'.split(' ');
 
 function parseArgs(argv) {
   const o = { run: null, status: null, text: null, textFile: null, spec: null, step: null, reversibility: 'n/a', lever: null, section: null, entries: null, singleFlags: [], help: false };
