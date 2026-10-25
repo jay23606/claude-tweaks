@@ -239,7 +239,7 @@ Exit 0 is required. On exit 1, run each `missing` entry's `remedy` (substituting
 `OUTCOME: build-test-blocked` / `STATUS: BLOCKED`, never `DONE`. Exit 2 is a malformed invocation,
 not a missing bookend: correct the `--run`/`--targets` arguments and re-run, never report `DONE`
 on it.
-A `verify-run-bookends: degraded —` stderr line (exit 0; the run's `config.yml` carries no valid
+A `verify-run-bookends: degraded —` stderr line (exit 0 or 1; the run's `config.yml` carries no valid
 `integration-model` pin) is logged as a `SKIP` decision by the check itself; only when its JSON
 says `logged: false`, log it via `log-decision.js --status SKIP --text-file "{text-file}"`,
 where `{text-file}` holds
