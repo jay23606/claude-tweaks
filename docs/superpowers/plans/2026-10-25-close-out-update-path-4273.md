@@ -230,3 +230,10 @@ git commit -m "Point item 11 at close-out's update path and sync dispatch docs â
 | AC3.1 | Task 2 test |
 | AC4.1 | Task 1 `assertUpdateRouting` (no rebase / force-push command spans, update-branch without --rebase) |
 | AC5.1 | Task 3 test (item 11 flag-only) + Task 1 (anti-pattern row rescoped; tests pin the new branch) |
+
+## As-built deviations (Common Step 4.5, all Beneficial)
+
+1. The update procedure is a lazy-loaded sub-file, `plugin/skills/dispatch/close-out-update.md`, not inline prose in `close-out.md` step 2. Step 2 routes to it, the same split `close-out-confirmation.md` uses, so a clean candidate never loads it.
+2. To make AC2 hold at merge time, `_shared/pr-first-merge.md` Step 3 gained one additive sentence: a caller-supplied expected head appends `--match-head-commit` to every `gh pr merge`. Only close-out passes it, and only after an update; every other caller is unchanged.
+3. The spec says nothing about recovery, so the update worktree `{main-checkout}/.worktrees/close-out-{number}` doubles as the resume marker. A later run resumes verification from it, and any `BEHIND` stop before verification keeps it. `UNKNOWN` mergeability gets a bounded re-read.
+4. Item 11's `[pr-stale]` recommendation now says "update from the integration branch and re-verify", not "rebase and re-verify". This matches the no-rebase rule, and item 11 stays flag-only.
