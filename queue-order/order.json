@@ -1,41 +1,171 @@
 {
-  "computedAt": "2026-10-24T19:34:23.748Z",
-  "runId": null,
+  "computedAt": "2026-10-25T08:05:40.859Z",
+  "runId": "2026-10-25T080407-dispatch-standalone",
   "freshnessSignal": {
     "issues": [
       {
-        "number": 4069,
-        "updatedAt": "2026-10-24T16:28:03Z",
+        "number": 4219,
+        "updatedAt": "2026-10-25T06:57:35Z",
         "state": "OPEN"
       },
       {
-        "number": 4067,
-        "updatedAt": "2026-10-24T16:32:04Z",
+        "number": 4212,
+        "updatedAt": "2026-10-25T06:57:32Z",
         "state": "OPEN"
       },
       {
-        "number": 4065,
-        "updatedAt": "2026-10-24T16:34:35Z",
+        "number": 4210,
+        "updatedAt": "2026-10-25T06:57:28Z",
         "state": "OPEN"
       },
       {
-        "number": 4063,
-        "updatedAt": "2026-10-24T17:04:10Z",
+        "number": 4199,
+        "updatedAt": "2026-10-25T06:57:24Z",
         "state": "OPEN"
       },
       {
-        "number": 4061,
-        "updatedAt": "2026-10-24T17:32:44Z",
+        "number": 4191,
+        "updatedAt": "2026-10-25T06:57:20Z",
         "state": "OPEN"
       },
       {
-        "number": 4060,
-        "updatedAt": "2026-10-24T19:07:58Z",
+        "number": 4190,
+        "updatedAt": "2026-10-25T06:57:16Z",
         "state": "OPEN"
       },
       {
-        "number": 4059,
-        "updatedAt": "2026-10-24T17:03:25Z",
+        "number": 4189,
+        "updatedAt": "2026-10-25T06:57:12Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4188,
+        "updatedAt": "2026-10-25T06:57:09Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4187,
+        "updatedAt": "2026-10-25T06:57:05Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4186,
+        "updatedAt": "2026-10-25T06:57:00Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4185,
+        "updatedAt": "2026-10-25T06:56:56Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4184,
+        "updatedAt": "2026-10-25T06:56:52Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4183,
+        "updatedAt": "2026-10-25T06:56:48Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4182,
+        "updatedAt": "2026-10-25T06:56:44Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4181,
+        "updatedAt": "2026-10-25T06:56:40Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4180,
+        "updatedAt": "2026-10-25T06:56:36Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4179,
+        "updatedAt": "2026-10-25T06:56:32Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4178,
+        "updatedAt": "2026-10-25T06:56:29Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4173,
+        "updatedAt": "2026-10-25T06:56:25Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4172,
+        "updatedAt": "2026-10-25T06:56:22Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4171,
+        "updatedAt": "2026-10-25T06:56:18Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4170,
+        "updatedAt": "2026-10-25T06:56:15Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4169,
+        "updatedAt": "2026-10-25T06:56:11Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4168,
+        "updatedAt": "2026-10-25T06:56:07Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4161,
+        "updatedAt": "2026-10-25T06:56:03Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4159,
+        "updatedAt": "2026-10-25T06:55:59Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4158,
+        "updatedAt": "2026-10-25T07:00:30Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4157,
+        "updatedAt": "2026-10-25T06:55:52Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4156,
+        "updatedAt": "2026-10-25T06:55:48Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4155,
+        "updatedAt": "2026-10-25T06:55:44Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4154,
+        "updatedAt": "2026-10-25T06:55:40Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4153,
+        "updatedAt": "2026-10-25T06:55:36Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4152,
+        "updatedAt": "2026-10-25T06:55:33Z",
         "state": "OPEN"
       },
       {
@@ -49,13 +179,8 @@
         "state": "OPEN"
       },
       {
-        "number": 4029,
-        "updatedAt": "2026-10-24T08:16:35Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4028,
-        "updatedAt": "2026-10-24T08:16:28Z",
+        "updatedAt": "2026-10-25T07:01:38Z",
         "state": "OPEN"
       },
       {
@@ -71,36 +196,6 @@
       {
         "number": 4025,
         "updatedAt": "2026-10-24T08:16:21Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4022,
-        "updatedAt": "2026-10-24T17:47:07Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4021,
-        "updatedAt": "2026-10-24T10:45:41Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4015,
-        "updatedAt": "2026-10-24T10:45:37Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4014,
-        "updatedAt": "2026-10-24T10:45:33Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4010,
-        "updatedAt": "2026-10-24T10:45:29Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4008,
-        "updatedAt": "2026-10-24T18:53:45Z",
         "state": "OPEN"
       },
       {
@@ -258,8 +353,986 @@
   "groups": [
     [
       {
-        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\ntiming.json records minutes, tokens, procedureBytes and toolRoundTrips per phase, but not what the turns were spent on, the context size per turn, the model mix, or any budget. Median procedureBytes grew ~4× in six weeks without anything noticing, and this analysis needed ad hoc scripts over 10 GB of transcripts.\n\n## Deliverables\n\n1. `phase-timing.js` adds per-phase turn-class counts (productive edit/read/explore, procedure read, bookkeeping, orientation, verify, guard refusal), context-per-turn p50/p90, model mix, and subagent count.\n2. Per-ceremony-profile budgets in policy (round trips, procedureBytes, verify minutes), checked at wrap-up; a breach stages a finding for the Review Console.\n3. A `tools/` cross-run report giving weekly medians from the archive.\n\n## Acceptance Criteria\n\n- [ ] timing.json for a fixture run carries the class breakdown, matching a hand count of that fixture.\n- [ ] A budget-breach fixture produces a staged item.\n- [ ] The cross-run report reproduces this analysis's headline medians (79 min, 407 round trips) on the current archive.\n\n## Release Note\n\nEach run reports where its turns went, and the Review Console flags runs that blow their efficiency budget.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/phase-timing.js` — turn classes + context stats\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-24T08:09:37Z",
+        "body": "Origin: dispatch firing 2026-10-24T154159-dispatch-standalone (records #4026,#4028,#4032,#4029)\n\nDefer-reason: tangential\n\n## Current State\n\n`selectGroupsForExplicitList` (`plugin/bin/lib/issues/grouping.js:572`) walks Step 2's `groups` array in pool order and pushes every group holding a requested number in that order. The order the records were named in is discarded, and `dispatch/SKILL.md` Step 3 says ranking never runs for the explicit-list form, so priority is discarded too.\n\nStep 3 then caps `selectedGroups` at `dispatch-batch-size`, so which named record is left out is decided by pool order. Observed 2026-10-24: `/claude-tweaks:dispatch #4026,#4028,#4032,#4029` at batch size 3 selected #4032, #4029, #4028 and left out #4026, the first record named and the only `priority:high` one. The left-out record was not named as deferred-by-cap in the firing's report.\n\n## Deliverables\n\n- `selectGroupsForExplicitList` returns `selectedGroups` ordered by the earliest position any member holds in `requestedNumbers`; ties keep pool order.\n\n- Dispatch's explicit-list cap truncates that ordered list, and every requested record left out by the cap is reported as deferred by `dispatch-batch-size`.\n\n- `dispatch/SKILL.md`'s explicit-list paragraph states the named-order rule.\n\n- A unit test in `tests/bin-lib/issues/grouping.test.js` pins the order with a pool order that differs from the requested order.\n\n## Acceptance Criteria\n\n- [ ] `selectGroupsForExplicitList([4026,4028,4032,4029], [[4032],[4029],[4028],[4026]])` returns `selectedGroups` `[[4026],[4028],[4032],[4029]]`.\n\n- [ ] A bundle containing requested #B and #D, where the request is `[A,B,C,D]`, sorts at #B's position.\n\n- [ ] With `dispatch-batch-size: 3`, the four-record list above dispatches #4026, #4028 and #4032, and the firing's report names #4029 as deferred by the cap.\n\n- [ ] The new ordering test fails against the current implementation (proven by running it against `git show HEAD:plugin/bin/lib/issues/grouping.js`).\n\n## Release Note\n\nNaming records in `/claude-tweaks:dispatch #A,#B,...` now builds them in the order you named them, and any left for a later firing by the batch cap are listed in the report.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/grouping.js` — selectGroupsForExplicitList orders selected groups by requested position\n- `plugin/skills/dispatch/SKILL.md` — explicit-list form: state the named-order rule and report cap-deferred records\n- `tests/bin-lib/issues/grouping.test.js` — pin named order against a differing pool order\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T06:30:01Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4219,
+        "state": "OPEN",
+        "title": "Explicit-list dispatch drops the first-named record when it caps to dispatch-batch-size",
+        "updatedAt": "2026-10-25T06:57:35Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger resolve gate (run 2026-10-24T200414-record-4015, refs #4015)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js`'s `tokenize` splits a command with the regex `/\"([^\"]*)\"|'([^']*)'|(\\S+)/g`, so a backslash-escaped quote inside a double-quoted span ends the span early. `echo \"a\\\" b>c \"` is one quoted word in bash, but the tokenizer reads `a\\` and then the bare text `b>c` and resolves the write target `c`, a false-positive deny.\n\nThe limit predates #4015, but the glued-redirect scan lets more strings reach it. Every parser that reads tokens (`gitTargets`, `fileWriteTargets`, `mkdirTargets`, `teardownTargets`) shares `tokenize`, so the fix has to keep their token values stable for every existing shape; that is why it was not folded into #4015.\n\n## Deliverables\n\n- [ ] Teach `tokenize` that a backslash escapes the next character inside a double-quoted span and outside quotes, and decide what token value an escaped quote yields (the unescaped character, matching bash).\n- [ ] Check every parser that reads `tokenize` output against the new values, and add the escaped-quote shapes to `tests/hooks-git-command.test.js` and `tests/hooks-gate-coverage.test.js`.\n\n## Acceptance Criteria\n\n`fileWriteTargets('echo \"a\\\" b>c \"', '/r')` returns no target, and `fileWriteTargets('echo foo>x', '/r')` still returns `/r/x`; both are pinned in `tests/hooks-gate-coverage.test.js` and the escaped-quote case goes red when the change is reverted.\n\nThe full `npm test` run passes with no change to the expected targets of any existing `gitTargets`, `mkdirTargets` or `teardownTargets` case.\n\n## Release Note\n\nThe hook command parser now honours a backslash-escaped quote, so a quoted string containing `\\\"` and a `>` no longer reads as a redirect.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — `tokenize` escape handling\n- `tests/hooks-git-command.test.js` — pin escaped-quote token values\n- `tests/hooks-gate-coverage.test.js` — pin the false-positive case\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "createdAt": "2026-10-24T21:01:03Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4212,
+        "state": "OPEN",
+        "title": "Make the hook tokenizer escape-aware so a backslash-escaped quote does not end a quoted span",
+        "updatedAt": "2026-10-25T06:57:32Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger resolve gate (run 2026-10-24T200414-record-4015, refs #4015)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#4015 made `plugin/bin/lib/hooks/git-command.js`'s `redirectWriteTargets` resolve a redirect glued to a preceding bare word (`echo foo>x`). The glued branch is eligible only when the whole token is unquoted, because `tokenize` carries one `singleQuoted` and one `doubleQuoted` flag per merged token. A token assembled from a quoted span plus a bare tail therefore never qualifies: `echo \"hi\">x`, `printf \"%s\\n\" \"$v\">out.txt` and `echo foo>\"x y\"` all resolve no write target, and the `worktree-always` gate lets the write through.\n\nThe same branch also excludes `(` from the word before the `>` (bash arithmetic such as `((i>0))`). That drops a redirect after a one-word subshell or a process substitution: `(ls)>out`, `$(date)>x`, `diff <(a) <(b)>out`.\n\nBoth gaps fail open, the safe direction, and #4015's final whole-branch review asked for a follow-up record. `echo \"hi\">x` is a likely agent-written shape. The fix needs a tokenizer representation change: `tokenize` has to say which merged pieces were bare, so the glued scan can run on the bare tail without trusting a quoted `>`. That change reaches every parser that reads tokens.\n\n## Deliverables\n\n- [ ] Make `tokenize` record, per merged token, which spans were bare (unquoted), and run the glued-redirect scan on a bare span that holds a `>`, so `echo \"hi\">x`, `printf \"%s\\n\" \"$v\">out.txt` and `echo foo>\"x y\"` resolve their targets.\n- [ ] Keep every quoted `>` literal: `echo \"foo>x\"`, `echo 'foo>x'`, `echo foo\">\"x` and `node -e \"x>y\"` still resolve no target.\n- [ ] Resolve a redirect after a balanced one-word subshell or process substitution (`(ls)>out`, `diff <(a) <(b)>out`) while `((i>0))` and `(( x>y ))` stay target-free.\n- [ ] Mirror the change in `plugin/bin/lib/hooks/bash-prefilter.js`'s `hasFileRedirection` (it shares the parser), add the shapes to the differential corpus in `tests/hooks-bash-prefilter.test.js`, and update the shape list in `plugin/skills/_shared/policy-schema-coverage.md` and the gaps step of `docs/journeys/write-a-glued-redirect-from-the-main-checkout-4015.md`.\n\n## Acceptance Criteria\n\n`fileWriteTargets('echo \"hi\">x', cwd)` resolves `x`, and `'echo \"foo>x\"'` and `\"echo 'foo>x'\"` resolve nothing; `tests/hooks-gate-coverage.test.js` pins both and goes red when the change is reverted.\n\n`fileWriteTargets('(ls)>out', cwd)` resolves `out` and `fileWriteTargets('((i>0))', cwd)` resolves nothing.\n\n`tests/hooks-bash-prefilter.test.js`'s differential corpus lists the quoted-word shape, and `npm run test:perf` still passes.\n\n## Release Note\n\nThe worktree-always gate now sees a redirect glued to a word that holds a quoted span (`echo \"hi\">x`), which it previously let through.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — `tokenize` per-span bare record; glued scan on a bare span\n- `plugin/bin/lib/hooks/bash-prefilter.js` — keep `hasFileRedirection` in step\n- `tests/hooks-gate-coverage.test.js` — pin the quoted-word and subshell shapes\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "createdAt": "2026-10-24T21:00:54Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4210,
+        "state": "OPEN",
+        "title": "Resolve a redirect glued to a word that holds a quoted span or a subshell in the worktree-always scan (echo \"hi\">x)",
+        "updatedAt": "2026-10-25T06:57:28Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: d36f5f6a54367f74e589527555a81ab403ba3058\n\nOrigin: merge of PR #4144 (#3997, #2724)\n\nDefer-reason: tangential\n\n## Current State\n\n- `_shared/pr-checklist-refresh.md`'s pre-merge \"Rewrite the `Fixes` block from outcomes\" step (#2686, #3136) turns a deferred-closure spec's `Fixes #N` line into `Refs #N — deferred: {reason}` so the merge leaves that record open.\n- It does not hold on GitHub. PR #4144 was created with `Fixes #2724` in its body, and the body was rewritten to `Refs #2724 — deferred: …` before merge. At merge `gh pr view 4144 --json closingIssuesReferences` still listed `[2724, 3997]`, and GitHub closed #2724 two seconds after the squash merge (closed event 2026-10-24T18:52:34Z, no commit id). The merge commit message carried only `Fixes #3997`. #2724 was reopened by hand.\n- So every bundle run whose PR is born with all `Fixes` lines (`_shared/pr-early-run-lifecycle.md` Step 3) and later defers one closure closes that record anyway.\n\n## Deliverables\n\n1. Before any pr-first merge, read `closingIssuesReferences` and compare it with the issue list the merge is meant to close. When a deferred or not-run record is still linked, unlink it, or reopen it immediately after the merge, and log either outcome. Find the mechanism that actually removes a closing link (body edit timing, the PR Development sidebar, or the GraphQL API) by probing on a throwaway PR first.\n2. Alternatively, have `_shared/pr-early-run-lifecycle.md` open a bundle PR with `Refs` lines and add `Fixes` only at the pre-merge refresh, if probing shows GitHub links only at creation.\n3. A test of the chosen check against a fake `gh` that returns a stale closing reference.\n\n## Acceptance Criteria\n\n- A bundle run that logs a deferred closure for #N merges without closing #N, verified on a probe PR.\n- When the forge still links #N at merge time, the merge step either unlinks it first or reopens it right after, and `decisions.md` records which.\n- The new test fails against the pre-change procedure.\n\n## Release Note\n\nA multi-record pipeline run no longer closes a record it deliberately left open when its PR merges.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/pr-checklist-refresh.md` — modify\n- `plugin/skills/_shared/pr-first-merge.md` — modify\n- `plugin/skills/_shared/pr-early-run-lifecycle.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T18:54:44Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4199,
+        "state": "OPEN",
+        "title": "pr-first: rewriting Fixes #N to Refs #N before merge does not stop GitHub closing #N — the closing link from the PR's creation persists",
+        "updatedAt": "2026-10-25T06:57:24Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row spec-gap\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/lib/reconcile/archive-merged.js` closes out a stuck `record-` dir whose named records are all CLOSED (`isClosedSlugStuck`, `RECORD_SLUG_RE`), but not a `spec-` dir. A state-less `spec-{n}-…` dir (has `config.yml`, no `run-state.json`) is also skipped by `isOrphanedMint`, which requires no `config.yml`. Such a dir escalates as `no-worktree` forever. Two instances were found in #2724's triage: `2026-08-17T125939-spec-783-784-781` and `2026-08-30T105718-spec-1703-1704`. They are being closed by hand there.\n\n## Deliverables\n\n1. Widen `RECORD_SLUG_RE` (or add a sibling) so `isClosedSlugStuck` also matches `spec-{n}[-{n}…]` slugs.\n2. Archive such a dir when every named record is CLOSED.\n\n## Acceptance Criteria\n\n- A fixture `spec-11-12` dir with `config.yml`, no `run-state.json`, and both records CLOSED is archived by a reconcile pass.\n- The same dir with one record OPEN is left in place.\n- The new test fails against the pre-change code.\n\n## Release Note\n\nReconcile now archives abandoned multi-spec run directories whose records are all closed.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:44Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4191,
+        "state": "OPEN",
+        "title": "reconcile: isClosedSlugStuck should also cover state-less spec-{n}-… dirs whose named records are all CLOSED",
+        "updatedAt": "2026-10-25T06:57:20Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 713\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/skills/research/source-registry.md:36` instructs `cmd > /tmp/rv-$$.out 2>&1; echo \"exit=$?\"` as one Bash call. The harness refuses a `;`-separated compound inside a worktree-isolated session (`_shared/scratch-worktree.md` §7). The other two sites #713's leftover named (`test/verification.md`, `harness-health/judge-procedure.md`) are already fixed.\n- Source: `.claude-tweaks/pipelines/2026-08-17T060448-record-713/staged/leftover-worktree-compound-audit.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Rewrite source-registry.md:36 as separate plain calls (redirect, then read the exit code from the file), citing `_shared/scratch-worktree.md` §7.\n\n## Acceptance Criteria\n\n- source-registry.md has no `; echo \"exit=$?\"` compound.\n- A prose-conformance assertion fails if a `; echo \"exit=$?\"` compound reappears under `plugin/skills/`.\n\n## Release Note\n\n`/claude-tweaks:research` source checks no longer get refused in worktree sessions.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/research/source-registry.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:41Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4190,
+        "state": "OPEN",
+        "title": "research source-registry: split the `; echo exit=$?` compound at source-registry.md:36 for worktree-isolated sessions",
+        "updatedAt": "2026-10-25T06:57:16Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 66\n\nDefer-reason: tangential\n\n## Current State\n\n- `.claude/skills/gh-api-module-pattern/SKILL.md`'s injectable-runner guidance does not warn that a real-subprocess test runner can rebuild a narrowed options object and drop the caller's options. In #2852 a fixture dropped `encoding: 'buffer'` in `claims-git-cas.js`'s tests, and a catch-all error path masked the crash as a normal failure value.\n- The staged diff no longer applies (context drifted).\n- Source: `.claude-tweaks/pipelines/2026-10-01T221644-record-2852/staged/wrap-up-skill-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Add one bullet to the injectable-runner section: a real-subprocess runner forwards the caller's options object, citing #2852.\n\n## Acceptance Criteria\n\n- The bullet exists and cites #2852.\n- `tests/github-rate-limit-conformance.test.js`, which reads this skill, still passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `.claude/skills/gh-api-module-pattern/SKILL.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:37Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4189,
+        "state": "OPEN",
+        "title": "gh-api-module-pattern skill: real-subprocess test runners must forward the caller's options (#2852 encoding drop)",
+        "updatedAt": "2026-10-25T06:57:12Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 65\n\nDefer-reason: tangential\n\n## Current State\n\n- `.claude/skills/code-health-focus-vertical/SKILL.md`'s frontmatter `description` triggers only on adding a candidate generator. A build that adds new kinds to a shipped vertical (#2657/#2663/#2666 did this to `security-hardening`) never loads the skill, and that run missed two enumeration sites.\n- The staged diff no longer applies (the description was reworded since).\n- Source: `.claude-tweaks/pipelines/2026-10-02T160425-record-2666-2663-2657/staged/wrap-up-skill-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Reword the description to trigger on both adding a vertical and adding a candidate kind to an existing one.\n\n## Acceptance Criteria\n\n- The description names both triggers and stays within the frontmatter description conventions in `docs/skill-authoring.md`.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `.claude/skills/code-health-focus-vertical/SKILL.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:34Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4188,
+        "state": "OPEN",
+        "title": "code-health-focus-vertical skill: trigger description should also cover adding a kind to an existing vertical",
+        "updatedAt": "2026-10-25T06:57:09Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 64\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/lib/dispatch/ceremony-derive.js:24`'s `isDocsPath` is `/\\.md$/i.test(path) && !isPromptProsePath(path)`. A `docs/plans/*.html` diagram, which `/claude-tweaks:visualize` persists as a documentation deliverable, counts as an implementation file, so a docs-only record never derives `fast-lane` (#2689).\n- Source: `.claude-tweaks/pipelines/2026-10-03T173920-record-2689/staged/reflect-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Treat `docs/plans/*.html` (the visualize output path) as docs in `isDocsPath`.\n2. Add a test with a docs-only diff that includes one `docs/plans/*.html` file.\n\n## Acceptance Criteria\n\n- A diff of only `.md` docs plus one `docs/plans/x.html` derives `lowSurface: true`.\n- An `.html` file outside `docs/plans/` still counts as implementation.\n- The new test fails against the pre-change code.\n\n## Release Note\n\nRecords that only add docs and a diagram now get the lighter wrap-up ceremony.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/dispatch/ceremony-derive.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:31Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4187,
+        "state": "OPEN",
+        "title": "ceremony-derive isDocsPath: treat docs/plans/*.html diagram artifacts as docs so fast-lane can derive",
+        "updatedAt": "2026-10-25T06:57:05Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 60\n\nDefer-reason: tangential\n\n## Current State\n\n- #1337 tags test-produced `gate-denial` events with `test: true`, and `plugin/bin/friction-events.js` drops them. `plugin/skills/wrap-up/review-console.md`'s read-inputs step reads `events.jsonl` directly and still shows every `gate-denial`, so test-suite denials reach the console as operator friction. `plugin/bin/calibration-report.js` also counts event kinds unfiltered.\n- Source: `.claude-tweaks/pipelines/2026-08-27T083426-record-1337/staged/wrap-up-skill-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Route the console's events read through `friction-events.js`, or state the same `test: true` exclusion there.\n2. Apply the same exclusion in `calibration-report.js`.\n\n## Acceptance Criteria\n\n- A run dir whose `events.jsonl` holds one `test: true` gate-denial and one real one shows only the real one at the console and in `calibration-report.js`'s count (test with a fixture).\n\n## Release Note\n\nThe wrap-up Review Console no longer reports test-suite hook denials as your own friction.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/review-console.md` — modify\n- `plugin/bin/calibration-report.js` — modify\n- `plugin/bin/friction-events.js` — read\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:27Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4186,
+        "state": "OPEN",
+        "title": "wrap-up review-console: skip test:true gate-denial events when reading events.jsonl",
+        "updatedAt": "2026-10-25T06:57:00Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 52\n\nDefer-reason: tangential\n\n## Current State\n\n- `.claude/skills/skill-prose-conformance-tests/SKILL.md` never mentions the roster-coverage pin pattern, although `tests/ceremony-profile-roster.test.js` and `tests/timing-nested-parent-roster.test.js` both use it (#2030).\n- The staged diff no longer applies (its context drifted).\n- Source: `.claude-tweaks/pipelines/2026-09-11T193938-record-2030/staged/wrap-up-skill-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Add a Decision Framework row for the roster-coverage pin: a forward sweep that every live site is listed, plus a reverse check that every listed site still exists.\n2. Name both tests as instances in the Reference section.\n\n## Acceptance Criteria\n\n- The skill names the pattern and cites both test files by path.\n- Both cited paths exist (checked by a test or by the skill's existing path-citation conformance).\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `.claude/skills/skill-prose-conformance-tests/SKILL.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:24Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4185,
+        "state": "OPEN",
+        "title": "skill-prose-conformance-tests skill: add the roster-coverage pin pattern (forward sweep plus reverse staleness)",
+        "updatedAt": "2026-10-25T06:56:56Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 45\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/skills/stories/refine.md` step 5a.2a opens `<story.url>` raw. `plugin/skills/test/qa-prompts.md` rewrites a story's absolute origin to the run's `APP_URL` (`resolved_url`, #2283), but refine does not. Refine's update mode revalidates stories carried over from earlier runs and worktrees, which is exactly when the recorded origin goes stale.\n- The staged patch's oldString no longer matches, because the file now uses playwright-cli.\n- Source: `.claude-tweaks/pipelines/2026-09-14T000308-record-2283-2338/staged/wrap-up-skill-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Give `stories/refine.md` 5a the same `resolved_url` rewrite `qa-prompts.md` uses, citing it rather than restating it.\n\n## Acceptance Criteria\n\n- `stories/refine.md` 5a opens `resolved_url`, never a raw `<story.url>`.\n- A prose-conformance assertion pins that refine and qa-prompts name the same rewrite.\n\n## Release Note\n\n`/claude-tweaks:stories` refine now validates stories against the current run's app URL instead of an origin left over from an earlier run.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/stories/refine.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:20Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4184,
+        "state": "OPEN",
+        "title": "stories/refine.md 5a: resolve story URL against the run APP_URL like qa-prompts.md resolved_url",
+        "updatedAt": "2026-10-25T06:56:52Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 44\n\nDefer-reason: tangential\n\n## Current State\n\n- `docs/journeys/act-on-a-contested-claim.md` step 3c still says claim-targets.js \"never releases the target itself\", the pre-#2329 behavior. `plugin/bin/lib/claim-targets/claim-targets.js` now retries the contents-API read-back and releases the unverified target's own write on abort (`releaseThisIssue`). Step 3c's red flags even list that new behavior as a failure.\n- The staged diff for this no longer applies (a changelog hunk shifted by #3131).\n- Source: `.claude-tweaks/pipelines/2026-09-14T040051-record-2329/staged/journey-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Rewrite step 3c's Should-understand and Red-flags lines to describe the bounded read-back retry and the release-on-abort.\n2. Re-anchor the journey's changelog entry against the current file.\n\n## Acceptance Criteria\n\n- Step 3c no longer says the target is never released, and its red flags no longer flag the release-on-abort.\n- The journey passes `_shared/journey-self-review.md`'s structural check.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/journeys/act-on-a-contested-claim.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:17Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4183,
+        "state": "OPEN",
+        "title": "Update act-on-a-contested-claim.md step 3c for #2329 read-back retry and release-on-abort",
+        "updatedAt": "2026-10-25T06:56:48Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 38\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/lib/health-core/digest.js`'s `parseDigestFingerprints` and `materiality-digest.js`'s `parseMaterialityFingerprints` are the same `<!-- {prefix}: (\\S+?) -->` global exec loop; only the prefix differs.\n- Source: `.claude-tweaks/pipelines/2026-09-04T143635-record-1279/staged/reflect-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Add `parseMarkerFingerprints(text, prefix)` to `plugin/bin/lib/health-core/fingerprint.js`.\n2. Have both modules call it; keep their exported names as thin wrappers.\n\n## Acceptance Criteria\n\n- Both modules return the same fingerprints as before on the existing fixtures (existing suites pass).\n- A unit test pins `parseMarkerFingerprints` for both prefixes, including a body with no marker (returns []).\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/health-core/fingerprint.js` — modify\n- `plugin/bin/lib/health-core/digest.js` — modify\n- `plugin/bin/lib/health-core/materiality-digest.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:13Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4182,
+        "state": "OPEN",
+        "title": "Share one marker-fingerprint parser between health-core/digest.js and materiality-digest.js",
+        "updatedAt": "2026-10-25T06:56:44Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 52e6448cc77e857e4794f4ff57d745bbac29f799\n\nOrigin: #2724 triage row 14\n\nDefer-reason: tangential\n\n## Current State\n\n- `plugin/bin/hooks.js` keeps `USAGE` and 21 hand-written `if (cmd === '...')` branches in `main()` as two separately maintained lists (there were 14 when #1143 staged this). Only a structural test (commit 1256df98a, #1143) proves their membership matches.\n- Source: `.claude-tweaks/pipelines/2026-08-27T172628-record-1143/staged/reflect-1.md` in the main checkout (triaged by #2724, PR #4144; the file is cleared from `staged/` once this record exists).\n\n## Deliverables\n\n1. Replace the `if (cmd === ...)` chain with one verb table whose keys are the dispatch keys and whose entries carry each verb's usage line and handler.\n2. Derive `USAGE` output from that table.\n3. Drop or simplify the structural USAGE-membership test once the table makes drift impossible.\n\n## Acceptance Criteria\n\n- Every existing `hooks.js` verb still dispatches with unchanged argv handling (the existing hooks suites pass).\n- An unknown verb prints the usage text derived from the table.\n- Adding a verb needs exactly one table entry: a test asserts every table key appears in the usage output.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:10Z",
         "labels": [
           {
             "id": "LA_kwDORUwzVM8AAAACruyqXw",
@@ -280,16 +1353,1006 @@
             "color": "8B5CF6"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
             "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4181,
+        "state": "OPEN",
+        "title": "hooks.js: table-driven verb dispatch so USAGE keys double as dispatch keys",
+        "updatedAt": "2026-10-25T06:56:40Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 9c5fa55f1b8eaf692656edfd07e42dc8c7fa6c6c\n\nOrigin: ledger row 11 from #2724\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n- `reconcile --dry-run` still writes on the non-exempt path. `trackResidue` (`plugin/bin/lib/reconcile/cache.js:243`) bumps failure counts and can call `escalateResidue`, which files, appends to or reopens GitHub issues. `commitCacheBatch` (`cache.js:152`) then writes the cache regardless of `dryRun`. Only #2724's new exempt clear (`trackStuckSkip` → `clearResidue`) and `pruneResidueFailures` (`archive-merged.js:2331`) check `dryRun`.\n- Failures are swallowed across the family. `trackResidue`'s escalate catch, `pruneResidueFailures`'s resolve, and `trackStuckSkip`'s `clearResidue` call all drop a failed escalate or resolve result. `clearResidue` keeps an escalated entry on `resolution-failed` but records no reason, so a stuck resolve retries every pass with nothing to show why (ledger row 22 of run 2026-10-24T153132-spec-3997-2724).\n\n## Deliverables\n\n1. Thread `dryRun` through every `trackStuckSkip`/`trackArchiveResult` escalate path, `trackResidue`, and `commitCacheBatch`, so a dry run writes neither the cache nor GitHub. Report what it would have done instead.\n2. Give the family one channel for swallowed escalate/resolve failures: record the failure reason on the cache entry (for example `lastResolveError`) and surface it in reconcile's JSON output and residue summary.\n3. Tests for both, each red on the pre-change code.\n\n## Acceptance Criteria\n\n- `reconcile --dry-run` over a fixture with a past-threshold stuck path makes zero `gh` calls and leaves `reconcile-cache.json` byte-identical.\n- A resolve that returns `resolution-failed` leaves its reason on the cache entry, and the reason appears in reconcile's JSON output.\n- Non-dry-run behavior is unchanged: the existing reconcile suites pass.\n\n## Release Note\n\n`reconcile --dry-run` no longer writes the cache or GitHub, and failed escalations now say why.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/cache.js` — modify\n- `plugin/bin/lib/reconcile/archive-merged.js` — modify\n- `plugin/bin/lib/reconcile/escalate-residue.js` — read\n\n_Filed by `ledger` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:06Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4180,
+        "state": "OPEN",
+        "title": "reconcile: make --dry-run write nothing, and record why an escalate or resolve failed",
+        "updatedAt": "2026-10-25T06:56:36Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 9c5fa55f1b8eaf692656edfd07e42dc8c7fa6c6c\n\nOrigin: ledger row 9 from #2724\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n- `stampAdHocRunDirForDenial` (`plugin/bin/lib/hooks/context.js`) mints an `-adhoc-standalone` run dir on a denial in the main checkout, keyed on the main checkout's own path. The `adhoc-superseded` sweep (`isAdHocStandaloneSuperseded`, `plugin/bin/lib/reconcile/archive-merged.js`) archives an ad-hoc dir only once its recorded worktree is no longer registered. The main checkout is always registered, so these dirs are never swept.\n- Scale on 2026-10-24: 29 such dirs on disk in the main checkout's `.claude-tweaks/pipelines/`, 5 minted that day alone.\n- Past the 7-day stuck TTL they escalate into the consolidated structurally-stuck record at `no-pr`/`no-branch`. #2724 (PR #4144) exempts linked-worktree ad-hoc dirs from that escalation, and deliberately not main-checkout ones, because nothing else would ever clean those up. Ledger row 8 of run 2026-10-24T153132-spec-3997-2724 closes two of them by hand.\n\n## Deliverables\n\n1. Sweep a main-checkout ad-hoc dir by session liveness instead of worktree registration: archive it once `plugin/bin/lib/run-liveness` reports its stamped session ended and a grace period has passed. Leave the 30-day TTL path for linked-worktree dirs unchanged.\n2. Once (1) lands, extend `isAdHocIntrinsicSkip`'s exemption to main-checkout ad-hoc dirs, so they stop escalating into the consolidated record.\n3. Until then, add one remedy line for a main-checkout ad-hoc dir to `structurallyStuckBody` (`plugin/bin/lib/reconcile/escalate-residue.js`) telling the reader how to close and archive it.\n4. Update `docs/reconcile-checks.md`'s exemption paragraph to match.\n\n## Acceptance Criteria\n\n- A main-checkout ad-hoc dir whose stamped session is dead and past the grace period is archived by a reconcile pass (test with a fixture dir and a stubbed liveness probe).\n- A main-checkout ad-hoc dir whose session is still live is left in place.\n- A main-checkout ad-hoc dir no longer escalates at `no-branch`/`no-worktree`/`no-pr`; its escalated entry is resolved off the record the same way #2724 resolves linked-worktree ones.\n- The new sweep test fails against the pre-change code.\n\n## Release Note\n\nReconcile now cleans up the ad-hoc session directories a denial leaves in the main checkout, instead of escalating them as stuck runs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — modify\n- `plugin/bin/lib/hooks/context.js` — read\n- `plugin/bin/lib/run-liveness/index.js` — read\n- `plugin/bin/lib/reconcile/escalate-residue.js` — modify\n- `docs/reconcile-checks.md` — modify\n\n_Filed by `ledger` via specShapedBody._",
+        "createdAt": "2026-10-24T17:26:03Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4179,
+        "state": "OPEN",
+        "title": "reconcile: sweep main-checkout ad-hoc session dirs by session liveness instead of escalating them as stuck",
+        "updatedAt": "2026-10-25T06:56:32Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 0471186cfdde31d7ad6cb7b680843db1bbd73294\n\nOrigin: reflect full (batch) from #3997,#2724\n\nDefer-reason: tangential\n\n## Current State\n\n- A background reconcile pass committed `24ef60e0b` (`[reconcile] archive run 2026-10-24T105021-spec-4045`, a 100% rename of `work/4045-spec.md` into `archive/`, 2026-10-24 17:31) onto the linked worktree branch `worktree-flow+spec-3997-2724`, not onto `main`. `git branch --contains 24ef60e0b --all` lists only that branch and its remote; origin/main still holds the unarchived path.\n- `archive-merged.js:1370-1379` says the archival commit is meant for \"the shared main checkout's index\", and the reconcile entry resolves `root` via `mainCheckoutRoot(start)` (`archive-merged.js:1981`, `hooks/worktree-detect.js:50`). Some path still reached a linked worktree's index, and the code that ran was the installed 6.145.0 copy, not this branch.\n- Effect: an unrelated archival rides in whichever feature PR the hosting session has open (here PR #4144), and on a PR that is later closed unmerged the archival is lost from main.\n\n## Deliverables\n\n1. Find the call path that committed `[reconcile] archive run …` into a linked worktree: check every caller of the archive-run commit (`archive-merged.js:1379` and any other `commitGit` site with that subject) for a `root` taken from cwd or the run dir's checkout rather than `mainCheckoutRoot`.\n2. Route that path's commit to the main checkout, or refuse to commit when the resolved root is a linked worktree, logging the skip so the next pass in the main checkout archives it.\n3. A test that runs the archival with cwd inside a linked worktree and asserts the worktree branch gains no commit.\n\n## Acceptance Criteria\n\n- Archival run from a session whose cwd is a linked worktree leaves that worktree's branch HEAD unchanged (test asserts `git rev-parse HEAD` before == after).\n- The same archival either lands on the main checkout's branch or is skipped with a logged reason; it is never silently dropped.\n- The new test fails against the pre-fix code.\n\n## Release Note\n\nBackground reconcile no longer commits run-dir archival into a feature branch's worktree.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — modify\n- `plugin/bin/lib/hooks/worktree-detect.js` — read\n\nRelated: #3396 (unpushed reconcile archive commits stranded on the main checkout's local `main` — a different symptom of where these commits land).\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-24T17:25:59Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACYw9-DQ",
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4178,
+        "state": "OPEN",
+        "title": "reconcile: background archive-run commit lands on a linked worktree's feature branch instead of main",
+        "updatedAt": "2026-10-25T06:56:29Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger resolve gate (wrap-up of #4065)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/_shared/pr-first-merge.md` (Step 2.5's red path, the park comment, lines 253-254) composes the `Parked by merge-verification` comment body to a fixed shared `/tmp/park-comment-{n}.md` and posts it with `--body-file` on that path. `_shared/session-tmp-root.md` forbids fixed shared `/tmp` names: two sessions parking records that share an `{n}` clobber each other's body, so one record can receive the other's comment. The same hazard in `_shared/pr-run-comments.md` was fixed by #4065 (PR #4165), which resolves the paths through `bin/session-tmp-resolve.js` and substitutes the printed literals.\n\n## Deliverables\n\n- [ ] Resolve the park-comment body path through `node \"${CLAUDE_PLUGIN_ROOT}/bin/session-tmp-resolve.js\" PARK_COMMENT=park-comment-{n}.md` in `_shared/pr-first-merge.md` Step 2.5's red path, and use the printed literal path in both the `printf` redirect and the `--body-file` argument (a worktree session refuses a runtime variable path, `_shared/scratch-worktree.md` section 7).\n- [ ] Add `_shared/pr-first-merge.md` to `tests/session-tmp-root-migration.test.js`'s `MIGRATED_FILES` and extend `_shared/session-tmp-root.md`'s consumer list; add a pin test that the park step names no literal `/tmp/park-comment-` path.\n\n## Acceptance Criteria\n\n- `plugin/skills/_shared/pr-first-merge.md` contains no literal `/tmp/park-comment-` path.\n- The new pin asserts the session-scoped form and goes red against the old fixed path.\n- `npm test` passes.\n\n## Release Note\n\nConcurrent sessions parking records no longer overwrite each other's park-comment scratch file.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/pr-first-merge.md` — session-scope the park-comment body path\n- `tests/session-tmp-root-migration.test.js` — register the file as a migrated consumer\n\n_Filed by `ledger resolve gate` via specShapedBody._",
+        "createdAt": "2026-10-24T17:00:33Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4173,
+        "state": "OPEN",
+        "title": "_shared/pr-first-merge.md park comment writes its body to a fixed shared /tmp path",
+        "updatedAt": "2026-10-25T06:56:25Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: build final fix-wave re-review of #3949 (out-of-scope observation)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3949 added `--filing-failed` to `node plugin/bin/hooks.js resolve-console` (`plugin/bin/lib/reconcile/console-execute.js`): a ticked PR-console finding row whose filing failed records `filing-failed`, not `executed`, and Resolve stays unticked.\n\n`plugin/bin/lib/reconcile/archive-merged.js` `readConsoleState` (~line 447) treats a non-empty `executedAt` alone as resolved, and PR item outcomes never feed `plugin/bin/lib/console/residue.js`'s `readRunResidue`. So once the PR console is executed, a `filing-failed` row archives with the run and survives only in the PR reply comment and `decisions.md`. `reverse-failed` already behaves this way. Related: #3946's staged review-followup-1 (a failed Queue-write execution on the live-session console keeps `apply`).\n\n## Deliverables\n\n- [ ] A PR console whose items include `filing-failed` (or `reverse-failed`) reads as residue: archival refuses with `console-residue` until acknowledged, and the SessionStart banner lists it.\n\n## Acceptance Criteria\n\n1. An executed PR console.json holding a `filing-failed` item refuses archival (archive-run verb and reconcile sweep) with a reason naming the item, and `console-residue.js --ack` clears it.\n2. An executed PR console with only `executed`/`dropped` items still archives.\n3. `npm test` passes.\n\n## Release Note\n\nA review finding whose filing failed on a PR-rendered console now blocks archival until someone handles it.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — readConsoleState reads PR item outcomes\n- `plugin/bin/lib/console/residue.js` — count failed PR outcomes as residue\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3949/staged/build-followup-2.md`; filed at that run's close-out.\n",
+        "createdAt": "2026-10-24T17:00:17Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 4172,
+        "state": "OPEN",
+        "title": "Keep a PR-rendered console with a failed finding filing out of archival until a human resolves it",
+        "updatedAt": "2026-10-25T06:56:22Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: build final whole-branch review of #3949 (declined to judge: pre-existing, outside the spec)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nThe wrap-up auto-merge short-circuit (`plugin/skills/wrap-up/auto-merge-short-circuit.md`, and the manifesto-authorized variant) merges without rendering a Review Console and writes no `console.json`; its FYI omits the Low-confidence and Contested sections.\n\n#3949 made every can't-tell tiebreak finding a console item (`tiebreak:{id}` in `plugin/bin/lib/console/resolve.js`, filed at `unattended` by `plugin/bin/console-filings.js`). On the short-circuit path no console runs, so a can't-tell finding with no staged file is never filed, and `plugin/bin/lib/reconcile/archive-merged.js` archives the run (console state `none`, nothing in `staged/`). The finding then survives only in an archived `decisions.md`. Legacy coordination items had the same exposure before #3949.\n\n## Deliverables\n\n- [ ] The auto-merge short-circuit resolves the run's finding items the same way the console does: it runs `console-filings.js` (dedup against `--state all`) and files each can't-tell finding through the queue-write path, or refuses the short-circuit while a can't-tell finding exists.\n- [ ] The short-circuit's FYI lists the Low-confidence / Contested findings and the \"Dropped by tiebreak\" block.\n\n## Acceptance Criteria\n\n1. A fast-lane run whose decisions.md holds a tiebreak `console` verdict and no staged file never archives with that finding unfiled: either a record exists for it (fingerprint-deduplicated) or the run is refused archival with a named reason.\n2. The short-circuit's FYI names every can't-tell finding.\n3. `npm test` passes.\n\n## Release Note\n\nCan't-tell review findings are no longer lost when a run merges through the fast-lane auto-merge path.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/auto-merge-short-circuit.md` — resolve finding items before merging\n- `plugin/bin/lib/reconcile/archive-merged.js` — guard the none-console archive path\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3949/staged/build-followup-1.md`; filed at that run's close-out.\n",
+        "createdAt": "2026-10-24T17:00:14Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 4171,
+        "state": "OPEN",
+        "title": "Surface can't-tell tiebreak findings on the fast-lane auto-merge path, which renders no Review Console",
+        "updatedAt": "2026-10-25T06:56:18Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: spec #3946 review (lens 3c, tiebreak-confirmed), refs #3946\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nUnder `unattended`, `plugin/bin/console-resolve.js` resolves every Queue-writes item to `apply` (`SECTION_STANCES` in `plugin/bin/lib/console/resolve.js`) and writes that resolution to `{run-dir}/console.json` before `plugin/skills/wrap-up/review-console.md`'s \"On approval\" step 7 executes it. When execution then fails, nothing rewrites the item's recorded resolution:\n\n- #3946's `.shadow-dup` path: a non-zero `shadow-dup-proposal.js` exit logs one Degrade-trace `SKIP` (\"copy stays in staged/, not filed this run\") and the item is not filed.\n- Every Queue write: a failed `gh issue create` \"renders in Queue writes as today\" (`plugin/skills/wrap-up/refused-proposals.md`).\n- #3949's can't-tell filings (folded in from #3949's review, lens 3c, tiebreak-confirmed): `plugin/bin/console-resolve.js` writes each can't-tell item `filed` (plus a `filings` summary) to `console.json` before `plugin/bin/console-filings.js` and the record creates run. A session that dies between that write and the creates leaves no record and no residue, and the needs-human re-run line `review-console.md` carries is never sent. The re-run (`console-filings.js --only`, deduplicated by fingerprint) would work, but nothing points to it.\n\n`plugin/bin/lib/console/residue.js`'s `UNRESOLVED_RESOLUTIONS` holds only `pending` and `keep-staged`, and reconcile's `console-never-rendered-staged-pending` check (`plugin/bin/lib/reconcile/escalate-residue.js`) fires only when no console rendered, so an unfiled item is archived with the run and never shown to a human again. The `SKIP` line in `decisions.md` is its only trace.\n\n## Deliverables\n\n- [ ] A sanctioned way to rewrite one `console.json` item's resolution after execution (e.g. a `console-resolve.js` verb or a `console-residue.js` flag), anchored and locked like the other run-dir writers.\n- [ ] `review-console.md` step 7 (shadow-dup compose failure and failed create) and `refused-proposals.md`'s failed-create line use it to record a re-surfaceable resolution (`keep-staged`) with the failure as its reason.\n- [ ] A can't-tell filing reads as residue from the moment `console-resolve.js` plans it until its record exists (or is deduplicated): either `console.json` records it in a pending-filing state the residue reader counts, rewritten to `filed` after the create, or the residue reader checks `filings` against created records.\n- [ ] `console-residue.js`'s Needs-a-human block and the session-start residue notice list such an item with its paste-ready `cat` line.\n\n## Acceptance Criteria\n\n1. A console-auto fixture whose Queue-writes item fails execution ends with that item `keep-staged` in `console.json`, and `readRunResidue` reports it.\n2. A shadow-dup compose failure (`shadow-dup-proposal.js` exit 2 or 3) takes the same path, and its `SKIP` line still appears.\n3. An unattended console whose can't-tell filings never ran (the session stopped after `console-resolve.js`) is reported by `readRunResidue` and refuses archival, naming the re-run `console-filings.js --only` command.\n4. A successful Queue write keeps `apply`, and a filed or deduplicated can't-tell item reads resolved; `npm test` passes.\n\n## Release Note\n\nA queued record the Review Console could not file now comes back as unreviewed residue instead of disappearing with the run.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/console-resolve.js` / `plugin/bin/lib/console/resolve.js` — post-execution resolution rewrite\n- `plugin/bin/lib/console/residue.js` — residue predicate\n- `plugin/skills/wrap-up/review-console.md` — step 7 failure paths\n- `plugin/skills/wrap-up/refused-proposals.md` — failed-create line\n- `plugin/bin/console-filings.js` — the can't-tell filing executor whose completion the rewrite records\n\n_Filed by `review` via specShapedBody._\n\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3946/staged/review-followup-1.md`; filed at that run's close-out.\n",
+        "createdAt": "2026-10-24T17:00:10Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 4170,
+        "state": "OPEN",
+        "title": "Re-surface a Queue-writes item whose execution failed after the unattended console resolved it apply",
+        "updatedAt": "2026-10-25T06:56:15Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: build final whole-branch review of #3946 (Task 4 review finding)\n\nDefer-reason: tangential\n\n## Current State\n\nThe shared section parsers `extractSection` (`plugin/bin/lib/issues/record.js`) and `sectionText` (`plugin/bin/lib/issues/materialize-format.js`) find `## Heading` lines without skipping fenced code blocks. A record body that quotes markdown inside a fence therefore has its quoted headings read as the record's own sections.\n\n#3946 made this reachable routinely: `plugin/bin/shadow-dup-proposal.js` files a divergent or collision `.shadow-dup` staged copy as a `needs:definition` record whose `## Current State` quotes the copy verbatim in a fence, and staged `leftover-*.md` copies are themselves spec-shaped. A review probe of a leftover-shaped copy found `extractSection(body, 'Deliverables')` returning the copy's deliverable, `extractSection(body, 'Acceptance Criteria')` returning the copy's AC (a heading the record does not have), `Current State` cut off at the copy's first heading, and `shapeGate(body)` returning `{\"ok\":true}` — the shape gate passing an Open-Question record on the copy's Acceptance Criteria. No consumer parses such a record before `/claude-tweaks:specify` rewrites it today, so nothing misfires yet.\n\n## Deliverables\n\n- [ ] `extractSection` and `sectionText` skip headings inside fenced code blocks (backtick and tilde fences of any length, matching the fence-length rule `fenceFor` writes), reusing the fence detection `stripCodeSpans` already has where it fits.\n- [ ] Tests with a body that quotes a spec-shaped markdown document inside a fence: the record's own sections are extracted, the quoted ones are not, and `shapeGate` judges the record's own shape.\n\n## Acceptance Criteria\n\n1. For a body whose `## Current State` contains a fenced block holding `## Deliverables` and `## Acceptance Criteria` headings, `extractSection(body, 'Acceptance Criteria')` returns null/empty when the record itself has no such section, and `extractSection(body, 'Current State')` returns the whole section including the fenced block.\n2. `shapeGate` on a `shadow-dup-proposal.js` proposal for a spec-shaped copy reports the record's own shape (Open Question, not Acceptance Criteria).\n3. Every existing caller's tests still pass (`npm test`).\n\n## Release Note\n\nRecords that quote a markdown document no longer have the quoted headings mistaken for their own sections.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/record.js` — extractSection skips fenced regions\n- `plugin/bin/lib/issues/materialize-format.js` — sectionText skips fenced regions\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3946/staged/build-followup-2.md`; filed at that run's close-out.\n",
+        "createdAt": "2026-10-24T17:00:06Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 4169,
+        "state": "OPEN",
+        "title": "Skip fenced code blocks when the shared section parsers look for record headings",
+        "updatedAt": "2026-10-25T06:56:11Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: build split from #3946 (Deliverable 3 split clause)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nReflect stages `convention` and `observation` findings to `staged/reflect-{n}.md` (`plugin/skills/reflect/SKILL.md` Step 3). `classifyStagedItem` (`plugin/bin/lib/console/resolve.js`) reroutes any such file whose `**Category:**` is not `tangential` to Pending review with reason `non-tangential-category:{category}` (#2473), where nothing processes it, so every one stays `pending` and blocks archive (149 reflect items in the 2026-10-22 residue count).\n\n#3946 was to route `observation`/`convention` items to the Skill-updates section. Its build found the Skill-updates consumer cannot apply them: `review-console.md` \"On approval\" step 2 applies Skills-curation proposals (`staged/wrap-up-skill-{N}.md` carrying an Update Mode patch, `skill-curation.md` 7.6), while a reflect file carries only `## Finding` and an optional `## Suggested resolution`, naming no target skill and no destination. No \"On approval\" step is mechanized (`console-resolve.js` computes resolutions, never executes them), and step 10 (Reflection insights), the nearest precedent, is prose. Per #3946 Deliverable 3's split clause, this record carries that consumer and the reroute behind it.\n\n## Deliverables\n\n- [ ] A destination line in reflect's `observation`/`convention` stage-file format (one of: edit a named skill or CLAUDE.md now, create a backlog record with a `Defer-reason:`, or record a decline), written by `plugin/skills/reflect/SKILL.md` Step 3.\n- [ ] An applier CLI under `plugin/bin/` that carries a `reflect-{n}.md` file to its destination through injectable deps: the record write (gh and MCP transports, after `refused-proposals.md`'s Defer-reason check) and the decline write (`recordDecline`); an edit destination stays a prose step the console session performs.\n- [ ] A new or extended \"On approval\" step in `plugin/skills/wrap-up/review-console.md` plus its `review-console-appendix.md` Resolution-to-step mapping row, and the console-template, interactive and multi-spec render sites (walk `.claude/skills/review-console-section-addition`'s registration table).\n- [ ] `classifyStagedItem`: reflect `observation`/`convention` files route to Skill updates (stance `approve`) instead of Pending review; other non-tangential categories keep today's reroute.\n- [ ] A rule for legacy reflect files that carry no destination line (the existing residue), consumed by #3950's backlog settle.\n\n## Acceptance Criteria\n\n1. A reflect staged file with `**Category:** observation` and one with `**Category:** convention` no longer classify to Pending review / `pending`; they resolve through the Skill-updates stance (`approve`); a `**Category:** tangential` file still classifies as Queue writes, and a file with no `**Category:**` line classifies exactly as before.\n2. In a console-auto fixture holding one reflect observation and one reflect convention (each with a destination line), the consumer applies each to its destination and the run ends with zero `pending` items; the test asserts the applied effect (the record write or the decline write through the injected deps), not only the absence of `pending`.\n3. A legacy reflect file with no destination line reaches a final outcome under the stated rule, with a test.\n4. `npm test` passes.\n\n## Release Note\n\nReflect observations and conventions now resolve at the Review Console instead of waiting for a human in Pending review.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/console/resolve.js` — route observation/convention reflect files to Skill updates\n- `plugin/skills/reflect/SKILL.md` — destination line in the stage-file format\n- `plugin/skills/wrap-up/review-console.md` — On-approval consumer step for reflect files\n- `plugin/skills/wrap-up/review-console-appendix.md` — Resolution-to-step mapping row\n- `tests/bin-lib/console/resolve.test.js` — classification tests\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3946/staged/build-followup-1.md`; filed at that run's close-out.\n",
+        "createdAt": "2026-10-24T17:00:01Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
+            "name": "ceremony:standard",
+            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
+            "color": "FEF2C0"
+          }
+        ],
+        "number": 4168,
+        "state": "OPEN",
+        "title": "Apply reflect observation and convention findings at the Review Console instead of leaving them in Pending review",
+        "updatedAt": "2026-10-25T06:56:07Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": "standard",
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger resolve gate (acknowledged)\n\nDefer-reason: blocked-external\n\n## Current State\n\nPR #4148 (record #4067) adds `.github/workflows/test-perf.yml`, which runs `npm run test:perf` daily on a schedule and on `workflow_dispatch`, never on pull_request or push. GitHub only fires `schedule` and `workflow_dispatch` from a workflow file on the default branch, so the workflow could not be run on a real runner before merge. Its first real execution is therefore still outstanding after merge, and the budgets in `perf/` have never been observed passing on a ubuntu runner under Node 20.\n\n## Deliverables\n\n1. After PR #4148 merges, start the workflow once with `gh workflow run test-perf.yml` and watch the run to completion.\n2. If a `perf/*.test.js` budget fails on the runner, decide per budget whether it is a real regression or a runner-speed assumption (never loosen a bound to get green), and file or fix accordingly.\n\n## Acceptance Criteria\n\n- `gh run list --workflow test-perf.yml --limit 1` shows a completed `success` run on `main` for a `workflow_dispatch` event.\n- Any red budget has either been fixed or has its own backlog record.\n\n## Release Note\n\nMaintainer-facing: the scheduled perf workflow has been proven on a real runner.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "createdAt": "2026-10-24T16:30:42Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
           },
           {
             "id": "LA_kwDORUwzVM8AAAACry2pJg",
             "name": "type:task",
             "description": "Type: maintenance, refactor, docs, or chore work",
             "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4161,
+        "state": "OPEN",
+        "title": "Run the test-perf workflow once on main and confirm it goes green",
+        "updatedAt": "2026-10-25T06:56:03Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 0ecde186ccb4a2d176d86f359699b006014852e6\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-24.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nIn `tools/run-tests.js:140`, the subset lane's `acquireSlot` calls `ensureOwnDir` only on `<tmpdir>/ct-test-suite-slots/subset`, never on the parent `ct-test-suite-slots`, which another user can pre-create on a shared /tmp. The hardening that lines 288-291 promise is skipped for this lane.\n\n## Deliverables\n\n1. `ensureOwnDir(baseDir)` before ensuring the subset leaf.\n2. A test in `tests/run-tests-isolation.test.js` with a pre-created parent that fails the ownership check, asserting the subset lane refuses it.\n\n## Acceptance Criteria\n\n- The subset lane ownership-checks both the parent and the leaf.\n- The new test goes red against the current code.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: the test runner's subset lane hardens its shared temp directory the same way the full lane does.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/run-tests.js` — check the slot parent\n- `tests/run-tests-isolation.test.js` — pre-created parent case\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:43Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4159,
+        "state": "OPEN",
+        "title": "run-tests --files-from subset lane skips the ownership check on its fixed-name slot parent directory",
+        "updatedAt": "2026-10-25T06:55:59Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4130, #4133\n\nVerified-as-of: 0ecde186ccb4a2d176d86f359699b006014852e6\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-18.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nIn `tools/test-impact/tracer.js:141`, `appendFileSync` errors (EMFILE/ENOSPC) are swallowed, and `failClosed` emits through the same failing emit, so it cannot cover a failed write. A lost read leaves the test under-recorded, and `build-map` can still stamp exitCode 0, so `verify --scope` may later deselect a test that reads the changed file. Found by both lens-3c agents in the v6.153.0 release delta review. Related, not the same: #4130 (header-less trace files), #4133 (module resolution and shell parsing).\n\n## Deliverables\n\n1. When a trace write fails, record the failure through a channel that does not depend on that write (for example a process-exit flag that makes `trace` refuse the map, or a non-zero exit).\n2. A test that injects a failing `appendFileSync` and asserts the map is refused or the test is marked unsafe.\n\n## Acceptance Criteria\n\n- A trace run in which any read could not be written produces no map with exitCode 0.\n- The new test goes red against the current swallow.\n- `npm test` passes.\n\n## Release Note\n\nImpact-selected test runs no longer skip a test whose file reads could not be recorded while the map was built.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/test-impact/tracer.js` — fail closed on write failure\n- `tests/test-impact-cli.test.js` — failing-write case\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:40Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4158,
+        "state": "OPEN",
+        "title": "test-impact tracer drops a read whose trace write fails, with no fail-closed record",
+        "updatedAt": "2026-10-25T07:00:30Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-13.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nThe fence at `plugin/skills/release/SKILL.md:157-160` compares `HEAD` with the symbolic `origin/{branch}`; :183 then reads `{tip-sha}` with a separate `rev-parse`. A sibling session's fetch in the shared `$RUN_ROOT` between the two records a tip whose tree the test gate never ran on, and Step 5 then sees no move. `execute.md:190` already fixes this class by resolving the sha once; `execute.md:228` copies Step 3's pattern too.\n\n## Deliverables\n\n1. Resolve `{tip-sha}` once, as a full sha, before the tree check; compare `HEAD` to that literal and record the same literal.\n2. Same change in `execute.md`'s step 5 (:228).\n3. Pin both in the release conformance test.\n\n## Acceptance Criteria\n\n- Neither Step 3 nor execute.md step 5 reads `origin/{branch}` a second time after the tree check.\n- The conformance test asserts the single-resolution wording.\n- `npm test` passes.\n\n## Release Note\n\nA release can no longer record a reviewed tip that differs from the tree its test gate ran on.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/release/SKILL.md` — single tip resolution\n- `plugin/skills/release/execute.md` — same in step 5\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:36Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4157,
+        "state": "OPEN",
+        "title": "release Step 3 records the reviewed tip with a second rev-parse after the tree check (sibling-fetch race)",
+        "updatedAt": "2026-10-25T06:55:52Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-12.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/release/disposition.md:19-23` hand-enumerates `review-{n}`, `review-unconfirmed-`, `review-contested-`, `review-debate-`, `reflect-*`, `simplify-*`, `deepen-*`, and :25 fails closed on anything else. `review/code-mode-steps.md:341` lets Step 6.5 stage `staged/design-decision-*.md`, which is not in the list, so any release whose reviewed range touches UI fails closed on archival. `tests/release-run-dir-lifecycle-conformance.test.js:364-391` pins only the prose. `console/resolve.js#CANONICAL_PREFIXES` is not a drop-in source (it covers all pipelines and has no `review-{n}`); a review-producer roster is needed.\n\n## Deliverables\n\n1. Add `design-decision-*` to the Inventory and Routing table (same Defer path as `reflect-*`).\n2. Derive the list from one roster of the review's staging producers, so a new producer cannot silently fall through.\n3. Test that every prefix the review stages has a disposition route.\n\n## Acceptance Criteria\n\n- A `staged/design-decision-1.md` gets a disposition route, not the unrecognised-file failure.\n- A roster-vs-routing test goes red when a review staging prefix has no route.\n- `npm test` passes.\n\n## Release Note\n\nReleases whose review staged a design decision now archive normally instead of leaving the run open.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/release/disposition.md` — design-decision route\n- `tests/release-run-dir-lifecycle-conformance.test.js` — roster test\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:33Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
           },
           {
             "id": "LA_kwDORUwzVM8AAAACrzEqFA",
@@ -304,14 +2367,14 @@
             "color": "0052CC"
           }
         ],
-        "number": 4029,
+        "number": 4156,
         "state": "OPEN",
-        "title": "Track turn classes, context size and ceremony share per run, and flag budget regressions",
-        "updatedAt": "2026-10-24T08:16:35Z",
+        "title": "release disposition has no route for design-decision-* staged files, so a release whose range touches UI never archives",
+        "updatedAt": "2026-10-25T06:55:48Z",
         "facets": {
-          "origin": "capture",
+          "origin": null,
           "risk": "low",
-          "size": "medium",
+          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -336,8 +2399,158 @@
     ],
     [
       {
-        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nIn 14 days, 4,990 Bash and 94 Write tool calls (~34 per pipeline) were refused by Claude Code's worktree-isolation guard: \"this command is too complex to verify that it stays inside the worktree\" and \"this command names git in a form too complex to verify\". Each refusal wastes a model turn at p50 276k context, plus a retry turn.\n\nObserved shapes include compound `cd … &&`, `eval \"$(…)\"` (#3190), heredoc input to `node-eval-file.js` (seen in #3968's build), and `P=…; node $P/...` prefixes. Related: #3822, #3819, #3190.\n\n## Deliverables\n\n1. A `tools/` script that classifies refusals from transcripts by command shape and, where traceable, by the skill fence the command came from.\n2. Rewrite each refusing fenced snippet under `plugin/skills/**` into a guard-accepted form (single plain command, absolute paths, scratchpad node script for multi-step work), per `_shared/scratch-worktree.md`.\n3. A conformance scan over fenced bash blocks in `plugin/skills/**` that rejects the known-refused shapes.\n4. A recorded premise probe: does a plugin PreToolUse `updatedInput` rewrite run before the harness isolation check? If yes, add rewrites for the residual model-composed shapes; if no, record the observed behavior.\n\n## Acceptance Criteria\n\n- [ ] Guard refusals per pipeline fall by at least 90% from the ~34 baseline over 10 runs.\n- [ ] The conformance scan fails on a fixture containing each banned shape and passes on the migrated corpus.\n- [ ] The probe outcome is written to `docs/` with the observed behavior.\n\n## Release Note\n\nPipeline agents stop tripping the worktree guard, removing thousands of wasted retry turns.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/scratch-worktree.md` — accepted-forms table\n- `plugin/bin/lib/hooks/pre-tool-use.js` — possible updatedInput rewrite\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-24T08:07:22Z",
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-11.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/release/disposition.md:17` knows only \"absent or empty\" for `staged/`. Its Failure section (:79-87) covers filing/digest writes and unrecognised files only, so an EACCES/EIO read of `staged/` or `decisions.md` lands on the SCANNED \"no staged review findings\" path, and Step 8 archives the directory with the findings still inside. The rest of the skill fails closed on reads (`execute.md:149`, `:208`).\n\n## Deliverables\n\n1. In Inventory, treat any read error other than \"does not exist\" on `staged/` or `decisions.md` as a failure: write the FAILED line and skip archival.\n2. Pin it in `tests/release-run-dir-lifecycle-conformance.test.js`.\n\n## Acceptance Criteria\n\n- `disposition.md` names an unreadable `staged/` or `decisions.md` as a failure that blocks archival.\n- The conformance test asserts that sentence and goes red without it.\n- `npm test` passes.\n\n## Release Note\n\nA release run no longer archives review findings it could not read.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/release/disposition.md` — read-error failure\n- `tests/release-run-dir-lifecycle-conformance.test.js` — pin\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:30Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4155,
+        "state": "OPEN",
+        "title": "release disposition reads an unreadable staged/ as empty, then archives the run with its findings inside",
+        "updatedAt": "2026-10-25T06:55:44Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-8.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/run-liveness/probes.js:44` lazily requires the 2,309-line `plugin/bin/lib/reconcile/archive-merged.js` for `ownEventRecency` (archive-merged.js:265-276), a pure reader over `readEventLines`, which probes.js already imports. There is no cycle today, but open #3977 plans to consume run-liveness from reconcile, which would close archive-merged → run-liveness → archive-merged.\n\n## Deliverables\n\n1. Move `ownEventRecency` into run-liveness (or the module that owns `readEventLines`) and have `archive-merged.js` import it from there.\n2. No module under `plugin/bin/lib/run-liveness/` requires `reconcile/`.\n\n## Acceptance Criteria\n\n- `grep -rn \"reconcile/\" plugin/bin/lib/run-liveness` finds no require.\n- Existing `tests/bin-lib/run-liveness/probes.test.js` and `tests/bin-lib/reconcile/archive-merged.test.js` pass unchanged.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/run-liveness/probes.js` — local reader\n- `plugin/bin/lib/reconcile/archive-merged.js` — import the moved reader\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:27Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          }
+        ],
+        "number": 4154,
+        "state": "OPEN",
+        "title": "run-liveness/probes.js requires reconcile/archive-merged for a 12-line reader: move ownEventRecency down before #3977",
+        "updatedAt": "2026-10-25T06:55:40Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-5.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`stampedOwnerProvablyAlive` (`plugin/bin/lib/hooks/context.js:844`) treats a failed start-time probe as alive; `run-liveness/index.js#probeOwnerPid` (:73-93) returns `error/start-time-unavailable` for the same input. `isNestedSession` reads the older top-level `ownerPid`. Run state carries both `ownerPid` (#3845, restamped on resume in `session-start.js:68-85`) and `owner.pid` (#3973, restamped by `refreshOwnerBlock`); neither comment cites the other, and `docs/hooks.md` (\"beside ownerPid (#3845, unchanged)\") records no retirement condition, which CLAUDE.md requires for a deprecated parallel path. Related: #3979 consolidates other liveness copies but does not cover these two.\n\n## Deliverables\n\n1. Route `stampedOwnerProvablyAlive` through `run-liveness`'s probe so a failed start-time probe gets one verdict everywhere.\n2. Record in `docs/hooks.md` the removal condition for top-level `ownerPid` (or migrate `isNestedSession` to `owner.pid` and remove it with a recorded condition).\n3. Cross-reference comments at both stamping sites.\n\n## Acceptance Criteria\n\n- `context.js` and `run-liveness` give the same answer for a pid whose start time cannot be read (a test in `tests/hooks-context.test.js` pins it).\n- `docs/hooks.md` names when `ownerPid` is removed.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: run-owner liveness is judged one way across hooks and run cleanup.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/context.js` — route through run-liveness\n- `plugin/bin/lib/run-liveness/index.js` — shared probe\n- `docs/hooks.md` — ownerPid removal condition\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:23Z",
         "labels": [
           {
             "id": "LA_kwDORUwzVM8AAAACruyqXw",
@@ -358,10 +2571,64 @@
             "color": "8B5CF6"
           },
           {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
             "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4153,
+        "state": "OPEN",
+        "title": "Owner liveness: one judge for stampedOwnerProvablyAlive and run-liveness, and a removal condition for top-level ownerPid",
+        "updatedAt": "2026-10-25T06:55:36Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-4.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/skills/release/execute.md:167-249` has the agent read the last `at reviewed tip` sha, classify a fetch by exit code and stderr, count `moved {any-short} →` lines, compare that to `release-tip-moves`, and route the verdict: the shape `docs/donts.md:203` (IL-168, added in this release) forbids. IL-168 in `docs/incident-log.md` names the remedy (\"one release-state CLI\") as deferred, with no backing record (searches for \"release-state CLI\" and \"IL-168\" found none; #4026 is related, not the same). Line 249 also hand-derives the bump part \"exactly as the pack's own bumpPart does\" but already diverges: the prose says \"anything else is patch\", and `plugin/bin/lib/release-local/bump.js:20` returns `none`.\n\n## Deliverables\n\n1. A `plugin/bin` CLI that runs the reviewed-tip comparison end to end: read the reviewed tip from `decisions.md`, fetch and classify, the run-dir-only check, the move count against `release-tip-moves`, and the verdict route, printing one machine-readable result.\n2. Derive the bump part of arrived commits through `bumpPart`, never a prose restatement.\n3. `execute.md` calls the CLI and routes on its result.\n4. Unit tests for each branch (unmoved, run-dir-only advance, move within bound, bound exceeded, unreadable lever, no reviewed tip).\n\n## Acceptance Criteria\n\n- `execute.md` no longer instructs the agent to count log lines or classify fetch output by hand.\n- The CLI's bump part equals `bumpPart` for a chore-only range (`none`).\n- Each branch has a test.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: the release skill's pre-merge tip check now runs as tested code instead of step-by-step instructions.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/release/execute.md` — call the CLI\n- `plugin/bin/lib/release-local/bump.js` — reuse bumpPart\n- `docs/incident-log.md` — link IL-168 to this record\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-24T16:25:20Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
           },
           {
             "id": "LA_kwDORUwzVM8AAAACry2pJg",
@@ -376,20 +2643,32 @@
             "color": "F9D0C4"
           },
           {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
             "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
             "name": "priority:medium",
             "description": "Priority: dispatch picks after priority:high",
             "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
           }
         ],
-        "number": 4028,
+        "number": 4152,
         "state": "OPEN",
-        "title": "Stop worktree-isolation refusals: emit only guard-accepted command forms (~5k refused calls in 14 days)",
-        "updatedAt": "2026-10-24T08:16:28Z",
+        "title": "release Step 5 reviewed-tip comparison is a prose state machine: build the release-state CLI IL-168 deferred",
+        "updatedAt": "2026-10-25T06:55:33Z",
         "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "medium",
+          "origin": null,
+          "risk": "medium",
+          "size": "high",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
@@ -629,306 +2908,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: wrap-up leftover from #3936\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nFound during #3936 (run 2026-10-24T063852-record-3936), in a file that run's diff does not touch. `plugin/bin/compose-pr-body.js` `parseArgs` (line 32) tests `if (!(a in FLAGS))`, and `in` walks the prototype chain, so a bare token such as `constructor` or `toString` passes as a known flag: `node plugin/bin/compose-pr-body.js constructor x` gets past the unknown-argument check (it fails later on `--run-id is required`, not on `unknown argument: constructor`). `plugin/bin/find-run-comment.js`, written beside it, looks flags up with `Object.hasOwn(FLAGS, a)` and rejects the same token with `unknown argument: constructor`.\n\n## Deliverables\n\nChange `parseArgs` in `plugin/bin/compose-pr-body.js` to look flags up with `Object.hasOwn(FLAGS, a)`. Add a case to `tests/compose-pr-body-cli.test.js` that passes `constructor` and `toString` as bare tokens and expects exit 2 with `unknown argument`.\n\n## Acceptance Criteria\n\n`node plugin/bin/compose-pr-body.js constructor x` exits 2 and prints `unknown argument: constructor`.\n\nThe new test fails when the lookup is changed back to `a in FLAGS`.\n\n`npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/compose-pr-body.js` — look flags up with Object.hasOwn\n- `tests/compose-pr-body-cli.test.js` — add the inherited-key case\n\n_Filed by `wrap-up leftover routing` via specShapedBody._\n",
-        "createdAt": "2026-10-24T07:54:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4021,
-        "state": "OPEN",
-        "title": "compose-pr-body.js: parseArgs accepts inherited object keys such as constructor as known flags",
-        "updatedAt": "2026-10-24T10:45:41Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: ledger resolve gate (run 2026-10-24T061121-record-3989, refs #3989)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js`'s `REDIRECT_OP_RE` (`/^\\d*(>>|>\\||>)(.*)$/`) is anchored at the start of a token, so a redirect glued to a preceding word (`echo foo>x`, `cmd arg>file`) resolves no write target: `redirectWriteTargets` sees the single token `foo>x`, whose first character is not `>`. The `worktree-always` gate therefore does not see a write to `x`. Pre-existing since #3080; found by the #3989 build and left unchanged there (ledger item 9).\n\n`tokenize` strips quotes (`\"a>b\"` and `a>b` both become the token `a>b`) and records only a `singleQuoted` flag, so loosening the regex alone would read a quoted argument such as `node -e \"x>y\"` as a redirect, which is the false-positive class #3989 removes.\n\n## Deliverables\n\n- Make the redirect scan resolve a redirect glued to a preceding unquoted word (`echo foo>x`, `cat a.txt>b.txt`) as a write target.\n\n- Keep quoted `>` text (`\"a>b\"`, `'a>b'`) and heredoc bodies from resolving a target. This needs `tokenize` to carry a double-quoted flag beside `singleQuoted`, and every parser that reads tokens to keep working.\n\n- Mirror the change in `bash-prefilter.js`'s `hasFileRedirection`, which shares the parser.\n\n## Acceptance Criteria\n\n- `fileWriteTargets(\"echo foo>x\", cwd)` resolves `x`; the same text inside quotes (`echo \"foo>x\"`, `echo 'foo>x'`) resolves no target.\n\n- `tests/hooks-gate-coverage.test.js` pins both shapes and goes red when the change is reverted.\n\n- `tests/hooks-bash-prefilter.test.js`'s differential corpus lists the glued shape, and `npm run test:perf` still passes.\n\n## Release Note\n\nThe worktree-always gate now sees a redirect glued to a word (`echo foo>x`), which it previously let through.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — tokenize quote flag; redirect scan for glued targets\n- `plugin/bin/lib/hooks/bash-prefilter.js` — keep hasFileRedirection in step\n- `tests/hooks-gate-coverage.test.js` — pin glued and quoted shapes\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-24T07:17:30Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4015,
-        "state": "OPEN",
-        "title": "worktree-always redirect scan misses a redirect glued to a word (echo foo>x)",
-        "updatedAt": "2026-10-24T10:45:37Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: spec #2805 review (merge)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`bin/lib/compose-subject.js` reads the subject record's release note with `extractSection(body, 'Release Note')`, which runs to the next heading. A `specShapedBody` record with no `### Key Files` ends `## Release Note` with its `_Filed by … via specShapedBody._` footer and no heading in between, so the footer becomes part of the release note.\n\nObserved merging PR #2822 (refs #2805): `extractSection` returned the release-note sentence plus \"_Filed by `ledger resolve gate`. Close to resolve; label `wontfix` to suppress future reports of this finding._\", and `compose-subject.js 2805 --pr 2822` put that paragraph into the squash body after the `Release-Note:` line. It was hand-removed for that merge; every other merge composed from such a record carries it.\n\n## Deliverables\n\n- [ ] The release note compose-subject renders excludes a trailing `_Filed by …_` footer paragraph (stop the section at the footer line, in compose-subject's read or in a dedicated release-note extractor — not by changing `extractSection`'s heading-bounded contract for its other callers).\n\n- [ ] A test composing a subject from a `specShapedBody` body with no Key Files asserts the footer text is absent from the output body.\n\n## Acceptance Criteria\n\n- `compose-subject.js` on a record whose body ends `## Release Note\\n{note}\\n\\n_Filed by `x` via specShapedBody._` prints a body containing `Release-Note: {note}` and no `_Filed by` text.\n\n- Existing compose-subject and merge-subject-composer conformance tests still pass.\n\n## Release Note\n\nMerge commits composed from agent-filed records no longer include the record's \"Filed by\" footer.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/compose-subject.js` — modify\n- `tests/bin-lib/compose-subject.test.js` — modify\n\n_Filed by `review` via specShapedBody._",
-        "createdAt": "2026-10-24T07:04:21Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4014,
-        "state": "OPEN",
-        "title": "compose-subject renders the record's \"Filed by\" footer as part of the release note",
-        "updatedAt": "2026-10-24T10:45:33Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: spec #2805 review (hindsight)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nPR #2822 (refs #2805) split `plugin/bin/lib/issues/record.js` (high fan-in, ~100 import sites) into four sub-modules behind a re-export facade. Its review had to establish two things no project skill describes.\n\nThe proof that a split is a pure move: the export surface and every exported function's source compared base vs head, plus every base top-level declaration found verbatim in a new module. Neither the build nor its wrap-up ran it; the review did, from scratch scripts.\n\nThe blind spot: prose that states where code lives or what a file requires — code comments (`autonomy.js` \"record.js requires only ./facet-shape\"), pointers to non-exported internals (`record.js`'s `DEP_RE`), skill bullets, and journey `files:` frontmatter that journey-health and visual-review read. The build's docs curation updated only `docs/plugin-structure.md`; the review found 15 stale claims across 16 files (fix commit 31cf39c0e).\n\n## Deliverables\n\n- [ ] A project skill `.claude/skills/lib-module-split/SKILL.md` covering: when a facade is preferred over migrating call sites; the pure-move proof (export-surface + function-source identity, verbatim top-level-declaration check, require-cycle check); the stale-location sweep (grep `{file}'s {symbol}`, \"in {file}\", \"requires only\", and journey `files:` entries naming the split file — keeping references that name the still-valid public import path); and updating `docs/plugin-structure.md`.\n\n## Acceptance Criteria\n\n- The skill names the three proof checks and the four stale-claim shapes above, each with the command or grep that finds it.\n\n- The skill distinguishes an import-path reference (still correct after a facade split) from a definition-location claim (stale), with one example of each from #2805.\n\n## Release Note\n\nMaintainer-only: a project skill for splitting a shared lib module without leaving stale location claims behind.\n\n## Technical Approach\n\n### Key Files\n\n- `.claude/skills/lib-module-split/SKILL.md` — create\n\n_Filed by `review` via specShapedBody._",
-        "createdAt": "2026-10-24T06:54:17Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4010,
-        "state": "OPEN",
-        "title": "Add a lib-module-split project skill — pure-move proof and stale-location sweep",
-        "updatedAt": "2026-10-24T10:45:29Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
