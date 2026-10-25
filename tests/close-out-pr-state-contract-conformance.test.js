@@ -330,6 +330,29 @@ test('go-red control: pr-first-merge Step 3 without the expected-head sentence f
   assert.throws(() => assertExpectedHeadSentence(MERGE.replace(from, 'merge as usual')), /--match-head-commit/);
 });
 
+// close-out.md's Reporting list names every `update failed` reason close-out-update.md can stop with.
+function assertUpdateFailedReasonsReported(update, closeOut) {
+  const reasons = [...update.matchAll(/`stopped: update failed — ([^`)]+)`/g)].map((m) => m[1]);
+  assert.ok(reasons.length >= 5, 'close-out-update.md names its update-failed stop reasons');
+  const reporting = closeOut.slice(closeOut.indexOf('## Reporting'));
+  const listed = reporting.match(/`stopped: update failed — \{([^}]+)\}`/);
+  assert.ok(listed, 'close-out.md Reporting lists the update-failed reasons');
+  const names = listed[1].split('|').map((n) => n.trim());
+  for (const r of new Set(reasons)) {
+    assert.ok(names.includes(r), `close-out.md Reporting lists the update-failed reason "${r}"`);
+  }
+}
+
+test('close-out.md Reporting lists every update-failed stop reason close-out-update.md names', () => {
+  assertUpdateFailedReasonsReported(UPDATE, CLOSE_OUT);
+});
+
+test('go-red control: a close-out-update.md stop reason missing from close-out.md Reporting fails', () => {
+  const from = ' | command failed}`';
+  assertOccursOnce(CLOSE_OUT, from, 'the last reporting reason occurs exactly once');
+  assert.throws(() => assertUpdateFailedReasonsReported(UPDATE, CLOSE_OUT.replace(from, '}`')), /lists the update-failed reason "command failed"/);
+});
+
 const CONFIRM = readSkillFile('dispatch', 'close-out-confirmation.md');
 
 const CLAUSE_VALUES = ['{update-method}', '{conflicted-files}', '{resolution-commit}'];
