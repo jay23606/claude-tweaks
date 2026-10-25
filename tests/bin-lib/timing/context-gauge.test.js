@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords } = require('../../../plugin/bin/lib/timing/context-gauge');
+const {
+  CONTEXT_CAP_TOKENS, CALLER_TAIL_BYTES, findAgentTranscript, hasInFlightGaugeCall, gauge, resolveTargetRecords,
+} = require('../../../plugin/bin/lib/timing/context-gauge');
 const { slugForCwd } = require('../../../plugin/bin/lib/timing/transcript');
 const { run } = require('../../../plugin/bin/context-gauge');
 const { gitRepo, harnessWorktreeOf } = require('../../helpers/git-fixtures');
@@ -18,6 +20,10 @@ delete process.env.CLAUDE_CONFIG_DIR;
 // user message plus the last 3 assistant turns and the tool_result lines
 // between them, every text field redacted, cwd/gitBranch replaced. Its run id
 // survives in the redacted prompt so identification can be probed on it too.
+// Line 1 is one of the same file's api-request-blob user lines (message.role
+// user, no timestamp), redacted and moved to the top — in the real file it
+// comes later — so the timestamp filter decides which line is the first user
+// message.
 const REAL = path.join(__dirname, '..', '..', 'fixtures', 'context-gauge', 'dispatched-call-real.jsonl');
 const REAL_RUN_ID = '2026-10-25T144531-record-4151';
 
@@ -68,6 +74,24 @@ function agent(subagents, id, firstUser, mtimeSec, usage = { cacheRead: 1000 }) 
 }
 
 const dispatchPrompt = (runId) => `Task scope: build+test.\nPIPELINE_RUN_DIR="/m/.claude-tweaks/pipelines/${runId}" /claude-tweaks:flow #4027 build,test auto`;
+
+// The caller's in-flight call as Claude Code writes it before the tool runs:
+// an assistant line with a Bash tool_use (shape from this session's own
+// transcripts, 2026-10-25), and — once it completes — a user tool_result line.
+const gaugeCommand = (runId) => `node "/p/bin/context-gauge.js" --run "/m/.claude-tweaks/pipelines/${runId}" --next-steps review,polish,wrap-up`;
+const toolUseLine = (msgId, toolId, command, ts = '2026-10-25T17:05:00.000Z') => JSON.stringify({
+  type: 'assistant', timestamp: ts, isSidechain: false,
+  message: { id: msgId, role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'tool_use', id: toolId, name: 'Bash', input: { command, description: 'Measure context' } }], stop_reason: 'tool_use', usage: { input_tokens: 2, cache_read_input_tokens: 240000, cache_creation_input_tokens: 998, output_tokens: 90 } },
+});
+const toolResultLine = (toolId, ts = '2026-10-25T17:05:02.000Z') => JSON.stringify({ type: 'user', timestamp: ts, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolId, content: '{}' }] } });
+const attachmentLine = () => JSON.stringify({ type: 'attachment', timestamp: '2026-10-25T17:05:00.100Z', attachment: { type: 'hook_additional_context', content: ['x'] } });
+
+// A transcript (main or agent) whose tail holds an in-flight gauge call.
+function writeInFlight(p, firstUser, mtimeSec, { runId = RUN_ID, extra = [] } = {}) {
+  fs.writeFileSync(p, transcriptText([userLine(firstUser), ...turnLines('msg_a', { cacheRead: 5000 }), toolUseLine('msg_b', 'toolu_gauge', gaugeCommand(runId)), ...extra]));
+  if (mtimeSec !== undefined) fs.utimesSync(p, mtimeSec, mtimeSec);
+  return p;
+}
 const find = (s, over = {}) => findAgentTranscript({ runId: RUN_ID, sessionId: SID, cwd: CWD, configDir: s.configDir, ...over });
 
 test('CONTEXT_CAP_TOKENS is the 200k midpoint of #4027\'s measured curve', () => {
@@ -78,29 +102,29 @@ test('findAgentTranscript: of two agent transcripts, the newer whose first user 
   const s = store();
   agent(s.subagents, 'aold', 'an unrelated reviewer prompt', 1000);
   const newer = agent(s.subagents, 'anew', dispatchPrompt(RUN_ID), 2000);
-  assert.deepStrictEqual(find(s), { path: newer, kind: 'subagent' });
+  assert.deepStrictEqual(find(s), { path: newer, kind: 'subagent', identified: 'first-message' });
 });
 
 test('findAgentTranscript: the run id decides before recency, and recency decides between two matches', () => {
   const s = store();
   const older = agent(s.subagents, 'aold', dispatchPrompt(RUN_ID), 1000);
   agent(s.subagents, 'anew', 'an unrelated reviewer prompt', 2000);
-  assert.deepStrictEqual(find(s), { path: older, kind: 'subagent' }, 'a newer non-match never wins');
+  assert.deepStrictEqual(find(s), { path: older, kind: 'subagent', identified: 'first-message' }, 'a newer non-match never wins');
   const newest = agent(s.subagents, 'anewest', [{ type: 'text', text: dispatchPrompt(RUN_ID) }], 3000);
-  assert.deepStrictEqual(find(s), { path: newest, kind: 'subagent' }, 'array-of-text-blocks content counts too');
+  assert.deepStrictEqual(find(s), { path: newest, kind: 'subagent', identified: 'first-message' }, 'array-of-text-blocks content counts too');
 });
 
 test('findAgentTranscript: only the FIRST user message counts — a later mention of the run id is not a match', () => {
   const s = store();
   const p = path.join(s.subagents, 'agent-alater.jsonl');
   fs.writeFileSync(p, transcriptText([userLine('an unrelated prompt'), ...turnLines('msg_x', {}), userLine(`later: ${RUN_ID}`)]));
-  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main' });
+  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main', identified: 'main' });
 });
 
 test('findAgentTranscript: no matching agent falls back to the main transcript; neither -> null', () => {
   const s = store();
   agent(s.subagents, 'aother', dispatchPrompt('2026-10-24T090000-record-1'), 1000);
-  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main' });
+  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main', identified: 'main' });
   const bare = store({ main: false });
   agent(bare.subagents, 'aother', 'unrelated', 1000);
   assert.strictEqual(find(bare), null);
@@ -111,7 +135,7 @@ test('findAgentTranscript: no matching agent falls back to the main transcript; 
 test('findAgentTranscript: the main transcript is found by file name when the cwd slug differs', () => {
   const s = store();
   const p = agent(s.subagents, 'anew', dispatchPrompt(RUN_ID), 2000);
-  assert.deepStrictEqual(find(s, { cwd: '/somewhere/else' }), { path: p, kind: 'subagent' });
+  assert.deepStrictEqual(find(s, { cwd: '/somewhere/else' }), { path: p, kind: 'subagent', identified: 'first-message' });
 });
 
 test('findAgentTranscript: a symlinked agent transcript is never followed', { skip: process.platform === 'win32' }, () => {
@@ -120,7 +144,88 @@ test('findAgentTranscript: a symlinked agent transcript is never followed', { sk
   const target = path.join(outside, 'agent-evil.jsonl');
   fs.writeFileSync(target, transcriptText([userLine(dispatchPrompt(RUN_ID)), ...turnLines('msg_evil', {})]));
   fs.symlinkSync(target, path.join(s.subagents, 'agent-evil.jsonl'));
-  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main' });
+  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main', identified: 'main' });
+});
+
+test('caller identification: a top-level run whose main transcript holds the in-flight gauge call is measured, not a newer lens child naming the run id', () => {
+  const s = store();
+  writeInFlight(s.mainPath, 'top-level prompt', 1000);
+  agent(s.subagents, 'alens', `Review lens 3a for run dir /m/.claude-tweaks/pipelines/${RUN_ID}`, 2000);
+  assert.deepStrictEqual(find(s), { path: s.mainPath, kind: 'main', identified: 'in-flight' });
+});
+
+test('caller identification: a dispatched call is measured over its still-writing child that names the run id', () => {
+  const s = store();
+  const caller = writeInFlight(path.join(s.subagents, 'agent-acaller.jsonl'), dispatchPrompt(RUN_ID), 1000);
+  // The child is newer and mid-turn (its own unanswered tool_use is not a gauge call).
+  const child = path.join(s.subagents, 'agent-achild.jsonl');
+  fs.writeFileSync(child, transcriptText([userLine(`Implement task 2 for ${RUN_ID}`), toolUseLine('msg_c', 'toolu_c', 'npm test > out.txt 2>&1')]));
+  fs.utimesSync(child, 3000, 3000);
+  fs.utimesSync(s.mainPath, 500, 500);
+  assert.deepStrictEqual(find(s), { path: caller, kind: 'subagent', identified: 'in-flight' });
+});
+
+test('caller identification: nothing in flight falls back to the first-message match, and the CLI names the fallback in reason', async () => {
+  const s = store();
+  const answered = writeInFlight(path.join(s.subagents, 'agent-adone.jsonl'), dispatchPrompt(RUN_ID), 2000, { extra: [toolResultLine('toolu_gauge')] });
+  assert.deepStrictEqual(find(s), { path: answered, kind: 'subagent', identified: 'first-message' });
+  const fx = runFixture();
+  const c = cli(fx, { env: { CLAUDE_CODE_SESSION_ID: SID, CLAUDE_CONFIG_DIR: s.configDir } });
+  assert.strictEqual(await run(['--run', fx.runDir], c.deps), 0);
+  assert.strictEqual(c.json().transcript, answered);
+  assert.strictEqual(c.json().reason, 'caller-not-identified: fell back to first-message match');
+  const bare = store();
+  const m = cli(fx, { env: { CLAUDE_CODE_SESSION_ID: SID, CLAUDE_CONFIG_DIR: bare.configDir } });
+  assert.strictEqual(await run(['--run', fx.runDir], m.deps), 0);
+  assert.strictEqual(m.json().transcript, bare.mainPath);
+  assert.strictEqual(m.json().reason, 'caller-not-identified: fell back to the main transcript');
+});
+
+test('caller identification: the CLI reports no reason when the caller is identified', async () => {
+  const s = store();
+  const caller = writeInFlight(path.join(s.subagents, 'agent-acaller.jsonl'), 'a prompt that does not name the run', 1000);
+  const fx = runFixture();
+  const c = cli(fx, { env: { CLAUDE_CODE_SESSION_ID: SID, CLAUDE_CONFIG_DIR: s.configDir } });
+  assert.strictEqual(await run(['--run', fx.runDir], c.deps), 0);
+  assert.deepStrictEqual(c.json(), { contextTokens: 240000 + 2 + 998, cap: 200000, over: true, transcript: caller, handoff: null, reason: null });
+});
+
+test('hasInFlightGaugeCall: answered, superseded, other-run and non-Bash calls do not count; hook lines and a parallel sibling\'s result after it do', () => {
+  const dir = tmp('ct-gauge-flight-');
+  const at = (name, lines) => { const p = path.join(dir, name); fs.writeFileSync(p, transcriptText(lines)); return p; };
+  const head = [userLine('x')];
+  const call = toolUseLine('msg_b', 'toolu_gauge', gaugeCommand(RUN_ID));
+  assert.strictEqual(hasInFlightGaugeCall(at('plain', [...head, call]), RUN_ID), true);
+  assert.strictEqual(hasInFlightGaugeCall(at('hook', [...head, call, attachmentLine()]), RUN_ID), true, 'a hook attachment after it');
+  const sibling = toolUseLine('msg_b', 'toolu_sib', 'git status');
+  assert.strictEqual(hasInFlightGaugeCall(at('parallel', [...head, call, sibling, toolResultLine('toolu_sib')]), RUN_ID), true, 'a sibling call of the same turn finished first');
+  assert.strictEqual(hasInFlightGaugeCall(at('answered', [...head, call, toolResultLine('toolu_gauge')]), RUN_ID), false);
+  assert.strictEqual(hasInFlightGaugeCall(at('moved-on', [...head, call, ...turnLines('msg_later', {})]), RUN_ID), false, 'a later turn means it already returned');
+  assert.strictEqual(hasInFlightGaugeCall(at('other-run', [...head, toolUseLine('msg_b', 'toolu_gauge', gaugeCommand('2026-10-24T090000-record-1'))]), RUN_ID), false);
+  assert.strictEqual(hasInFlightGaugeCall(at('not-gauge', [...head, toolUseLine('msg_b', 'toolu_x', `cat /m/.claude-tweaks/pipelines/${RUN_ID}/decisions.md`)]), RUN_ID), false);
+  const blobEcho = JSON.stringify({ type: 'api-request-blob', message: JSON.parse(call).message });
+  assert.strictEqual(hasInFlightGaugeCall(at('blob', [...head, blobEcho]), RUN_ID), false, 'an untimestamped api-request-blob echo is not a call');
+});
+
+test('hasInFlightGaugeCall reads only a bounded tail, never the whole file', () => {
+  const dir = tmp('ct-gauge-tail-');
+  const p = path.join(dir, 'big.jsonl');
+  const pad = userLine('p'.repeat(4096));
+  fs.writeFileSync(p, transcriptText([userLine('x'), ...Array(1024).fill(pad), toolUseLine('msg_b', 'toolu_gauge', gaugeCommand(RUN_ID))]));
+  assert.ok(fs.statSync(p).size > 8 * CALLER_TAIL_BYTES);
+  let read = 0;
+  const spy = { ...fs, readSync: (...a) => { const n = fs.readSync(...a); read += n; return n; } };
+  assert.strictEqual(hasInFlightGaugeCall(p, RUN_ID, { fsImpl: spy }), true);
+  assert.ok(read <= CALLER_TAIL_BYTES, `read ${read} bytes`);
+  // A call cut by the tail's start is not misread from a partial line.
+  assert.strictEqual(hasInFlightGaugeCall(p, RUN_ID, { tailBytes: 200 }), false);
+});
+
+test('caller identification: two in-flight candidates resolve to the newest mtime', () => {
+  const s = store();
+  writeInFlight(s.mainPath, 'top-level prompt', 1000);
+  const newer = writeInFlight(path.join(s.subagents, 'agent-anew.jsonl'), 'x', 2000);
+  assert.deepStrictEqual(find(s), { path: newer, kind: 'subagent', identified: 'in-flight' });
 });
 
 test('gauge: contextTokens is the last turn\'s input + cache_read + cache_creation', async () => {
@@ -142,17 +247,21 @@ test('real-input probe: a trimmed real dispatched-call transcript measures the h
   const copy = path.join(s.subagents, 'agent-ad659849552e32806.jsonl');
   fs.copyFileSync(REAL, copy);
   fs.utimesSync(copy, 2000, 2000);
-  assert.deepStrictEqual(findAgentTranscript({ runId: REAL_RUN_ID, sessionId: SID, cwd: CWD, configDir: s.configDir }), { path: copy, kind: 'subagent' });
+  assert.deepStrictEqual(findAgentTranscript({ runId: REAL_RUN_ID, sessionId: SID, cwd: CWD, configDir: s.configDir }), { path: copy, kind: 'subagent', identified: 'first-message' });
 });
 
 // A run dir under a real git main checkout, with its worktree recorded in
 // run-state.json and the materialized spec committed inside that worktree at
 // the run dir's relative path — the single-record layout /flow produces.
-function runFixture({ spec = 'worktree', specDirs = [], worktree = true } = {}) {
+// config.yml is the shape /flow's Manifesto writes (this run's own, 2026-10-25); mode: null omits it.
+const configYml = (mode) => `mode: ${mode}\nscope-creep: add-to-plan\noverlap: companion\nmerge-authorization: ask\nspec: 4027\ncreated: 2026-10-25T162129\n`;
+
+function runFixture({ spec = 'worktree', specDirs = [], worktree = true, mode = 'auto' } = {}) {
   const root = gitRepo();
   created.push(root);
   const runDir = path.join(root, '.claude-tweaks', 'pipelines', RUN_ID);
   fs.mkdirSync(runDir, { recursive: true });
+  if (mode !== null) fs.writeFileSync(path.join(runDir, 'config.yml'), configYml(mode));
   let wt = null;
   if (worktree) {
     wt = harnessWorktreeOf(root);
@@ -199,7 +308,7 @@ test('CLI: 250000 tokens is over the cap — handoff.json is written with nextSt
   const handoffPath = path.join(fx.runDir, 'handoff.json');
   assert.deepStrictEqual(c.json(), { contextTokens: 250000, cap: 200000, over: true, transcript: t, handoff: handoffPath, reason: null });
   assert.deepStrictEqual(JSON.parse(fs.readFileSync(handoffPath, 'utf8')), {
-    nextSteps: ['test'], contextTokens: 250000, cap: 200000, writtenAt: '2026-10-25T18:00:00.000Z',
+    nextSteps: ['test'], contextTokens: 250000, cap: 200000, mode: 'auto', writtenAt: '2026-10-25T18:00:00.000Z',
     resume: RESUME(fx.runDir, '#4027', 'test'),
   });
   assert.strictEqual(c.out.join('').split('\n').filter(Boolean).length, 1, 'one JSON line');
@@ -321,6 +430,36 @@ test('CLI: target records — the run dir\'s work/ when no worktree is recorded;
   assert.strictEqual(c.json().handoff, null);
   assert.match(c.json().reason, /^handoff\.json not written: no target records/);
   assert.ok(!fs.readdirSync(none.runDir).includes('handoff.json'));
+});
+
+test('CLI: resume carries the run\'s mode — auto/confirm/hybrid resume as auto, interactive or no config.yml carry no mode token', async () => {
+  const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
+  const cases = [
+    ['auto', ' auto'], ['confirm', ' auto'], ['hybrid', ' auto'], ['interactive', ''], [null, ''],
+  ];
+  for (const [mode, token] of cases) {
+    const fx = runFixture({ mode });
+    const c = cli(fx);
+    assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'review,wrap-up'], c.deps), 0, c.err.join(''));
+    const h = JSON.parse(fs.readFileSync(path.join(fx.runDir, 'handoff.json'), 'utf8'));
+    assert.strictEqual(h.mode, mode, String(mode));
+    assert.strictEqual(h.resume, `PIPELINE_RUN_DIR="${fx.runDir}" /claude-tweaks:flow "#4027" review,wrap-up${token}`, String(mode));
+  }
+});
+
+// Trimmed from a real multi-spec run's manifest.yml
+// (archive/2026-10-22T110840-spec-3926-3817-3945-3947, phases dropped).
+const MANIFEST = (runId, ids) => `multispec:\n  parent: .claude-tweaks/pipelines/${runId}/\n  specs:\n${ids.map((id) => `    - id: ${id}\n      status: pending\n      subdir: spec-${id}/\n`).join('')}`;
+
+test('CLI: a multi-spec run with manifest.yml orders its targets by the manifest\'s specs; a spec dir it does not list goes after, ascending', async () => {
+  const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
+  const fx = runFixture({ spec: 'none', specDirs: [3817, 3926, 3945, 12, 7] });
+  fs.writeFileSync(path.join(fx.runDir, 'manifest.yml'), MANIFEST(RUN_ID, [3926, 3817, 3945]));
+  const c = cli(fx);
+  assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'test'], c.deps), 0);
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(fx.runDir, 'handoff.json'), 'utf8')).resume, RESUME(fx.runDir, '#3926,#3817,#3945,#7,#12', 'test'));
+  // A manifest entry with no spec dir is not a target.
+  assert.deepStrictEqual(resolveTargetRecords({ runDir: fx.runDir, manifest: { multispec: { parent: 'x', specs: [{ id: 99 }, { id: 3945 }] } } }), ['#3945', '#7', '#12', '#3817', '#3926']);
 });
 
 test('resolveTargetRecords: worktree copy first, then the run dir; spec-{N}/ wins over work/', () => {

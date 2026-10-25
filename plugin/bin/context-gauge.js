@@ -9,24 +9,32 @@
 //
 // The transcript is --transcript when given, else found from
 // CLAUDE_CODE_SESSION_ID (the parent session's id inside a subagent) under
-// $CLAUDE_CONFIG_DIR (else ~/.claude): the newest subagent transcript whose
-// first user message names the run dir's basename, else the session's main
-// transcript (lib/timing/context-gauge.js's findAgentTranscript). --cap
-// overrides CONTEXT_CAP_TOKENS (200000). --next-steps is the steps still to
-// run, each one of /flow's step names (claim-targets' FLOW_STEPS).
+// $CLAUDE_CONFIG_DIR (else ~/.claude) by lib/timing/context-gauge.js's
+// findAgentTranscript: the session transcript (main or subagent) whose tail
+// holds this very call — an unanswered Bash tool_use whose command names
+// context-gauge and the run dir's basename, so the caller must pass the run
+// dir as a literal path, not a shell variable. Failing that it falls back to
+// the newest subagent transcript whose first user message names the run id,
+// then the main transcript, and `reason` names the fallback
+// (`caller-not-identified: …`). --cap overrides CONTEXT_CAP_TOKENS (200000).
+// --next-steps is the steps still to run, each one of /flow's step names
+// (claim-targets' FLOW_STEPS).
 //
 // Stdout: one JSON line, {contextTokens, cap, over, transcript, handoff, reason}.
 // over is contextTokens > cap. When over and --next-steps was given,
-// {run}/handoff.json = {nextSteps, contextTokens, cap, writtenAt, resume} is
-// written atomically and `handoff` is its path; `resume` is
-// `PIPELINE_RUN_DIR="{run}" /claude-tweaks:flow "{target}" {next-steps} auto`,
-// {target} the run's records (#N[,#M]) from its spec-{N}/ subdirs or its
-// work/{n}-spec.md names (lib's resolveTargetRecords).
+// {run}/handoff.json = {nextSteps, contextTokens, cap, mode, writtenAt, resume}
+// is written atomically and `handoff` is its path; `resume` is
+// `PIPELINE_RUN_DIR="{run}" /claude-tweaks:flow "{target}" {next-steps}[ auto]`,
+// {target} the run's records (#N[,#M]) from its spec-{N}/ subdirs (in
+// manifest.yml's order) or its work/{n}-spec.md names (lib's
+// resolveTargetRecords). `mode` is config.yml's mode (null without one); the
+// ` auto` token is emitted for auto, confirm and hybrid (all run as auto past
+// the Manifesto) and omitted for interactive or no recorded mode.
 // Fail-open: a missing or unreadable transcript, one with no assistant turn,
 // or any other measurement failure prints over: false, contextTokens: null and
 // a `reason`; a handoff that cannot be written (no target records, a failed
 // write) prints over: true, handoff: null and a `reason`. Neither ever stops
-// a run.
+// a run. Several reasons are joined with "; ".
 // Exit 0 in every measured state — status is data, the JSON is the answer
 //        (bin/verify.js --stamp-status's posture).
 //      2 malformed invocation: an unknown flag, a value-less flag, a --cap that
@@ -46,7 +54,7 @@ const { resolveTarget, findGitRoot } = require('./lib/stage-item/write');
 const ctxLib = require('./lib/hooks/context');
 const { FLOW_STEPS } = require('./lib/claim-targets/claim-targets');
 const {
-  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, buildHandoff,
+  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, readRunMode, buildHandoff,
 } = require('./lib/timing/context-gauge');
 
 const USAGE = 'usage: context-gauge.js --run <run-dir> [--transcript <path>] [--cap <n>] [--next-steps <step,...>] [--help]\n'
@@ -93,6 +101,7 @@ const realDeps = {
   findAgentTranscript,
   gauge,
   resolveTargetRecords,
+  readRunMode: (runDir) => readRunMode(runDir),
   writeFile: (p, text) => writeFileAtomic(p, text),
   now: () => Date.now(),
   stdout: (s) => process.stdout.write(s),
@@ -103,44 +112,50 @@ function errText(e) {
   return (e && e.message) || String(e);
 }
 
+// The reason findAgentTranscript's fallback rungs carry (the in-flight rung
+// identified the caller and carries none).
+const FALLBACK_REASONS = {
+  'first-message': 'caller-not-identified: fell back to first-message match',
+  main: 'caller-not-identified: fell back to the main transcript',
+};
+
 // Measure, and write the handoff when over. Never throws: every failure is a
-// `reason` on the result (the fail-open contract).
+// `reason` on the result (the fail-open contract); several join with '; '.
 async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, deps) {
   const result = { contextTokens: null, cap, over: false, transcript: null, handoff: null, reason: null };
+  const reasons = [];
+  const done = (why) => {
+    if (why) reasons.push(why);
+    result.reason = reasons.length ? reasons.join('; ') : null;
+    return result;
+  };
   try {
     let found;
     if (transcriptArg) {
-      found = { path: path.resolve(cwd, transcriptArg), kind: 'explicit' };
+      found = { path: path.resolve(cwd, transcriptArg), kind: 'explicit', identified: 'explicit' };
     } else {
       const sessionId = deps.env.CLAUDE_CODE_SESSION_ID;
-      if (!sessionId) {
-        result.reason = 'no transcript found: CLAUDE_CODE_SESSION_ID is not set (pass --transcript <path>)';
-        return result;
-      }
+      if (!sessionId) return done('no transcript found: CLAUDE_CODE_SESSION_ID is not set (pass --transcript <path>)');
       found = deps.findAgentTranscript({ runId, sessionId, cwd, configDir: deps.env.CLAUDE_CONFIG_DIR || undefined });
-      if (!found) {
-        result.reason = `no transcript found for session ${sessionId} (no subagent transcript names run ${runId}, and no main transcript)`;
-        return result;
-      }
+      if (!found) return done(`no transcript found for session ${sessionId} (no main transcript under the config dir's projects/)`);
+      if (FALLBACK_REASONS[found.identified]) reasons.push(FALLBACK_REASONS[found.identified]);
     }
     result.transcript = found.path;
     let measured;
     try {
       measured = await deps.gauge({ transcript: found.path });
     } catch (e) {
-      result.reason = `transcript not readable (${(e && e.code) || 'EUNKNOWN'}): ${found.path}`;
-      return result;
+      return done(`transcript not readable (${(e && e.code) || 'EUNKNOWN'}): ${found.path}`);
     }
-    if (!measured || !Number.isFinite(measured.contextTokens)) {
-      result.reason = `transcript has no assistant turn: ${found.path}`;
-      return result;
-    }
+    if (!measured || !Number.isFinite(measured.contextTokens)) return done(`transcript has no assistant turn: ${found.path}`);
     result.contextTokens = measured.contextTokens;
     result.over = measured.contextTokens > cap;
   } catch (e) {
-    return { ...result, contextTokens: null, over: false, reason: `measurement failed: ${errText(e)}` };
+    result.contextTokens = null;
+    result.over = false;
+    return done(`measurement failed: ${errText(e)}`);
   }
-  if (!result.over || !nextSteps) return result;
+  if (!result.over || !nextSteps) return done();
 
   try {
     let state = null;
@@ -148,17 +163,17 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
     const worktree = state && typeof state.worktree === 'string' ? state.worktree : null;
     const targets = deps.resolveTargetRecords({ runDir, worktree, gitRoot: deps.gitRootOf(runDir) });
     if (!targets || targets.length === 0) {
-      result.reason = `handoff.json not written: no target records (no spec-{N}/ dir, no work/{n}-spec.md in ${runDir}${worktree ? ' or its worktree copy' : ''})`;
-      return result;
+      return done(`handoff.json not written: no target records (no spec-{N}/ dir, no work/{n}-spec.md in ${runDir}${worktree ? ' or its worktree copy' : ''})`);
     }
     const handoffPath = path.join(runDir, 'handoff.json');
-    const handoff = buildHandoff({ runDir, nextSteps, contextTokens: result.contextTokens, cap, targets, now: deps.now() });
+    const mode = deps.readRunMode(runDir);
+    const handoff = buildHandoff({ runDir, nextSteps, contextTokens: result.contextTokens, cap, targets, mode, now: deps.now() });
     deps.writeFile(handoffPath, `${JSON.stringify(handoff, null, 2)}\n`);
     result.handoff = handoffPath;
   } catch (e) {
-    result.reason = `handoff.json not written: ${errText(e)}`;
+    return done(`handoff.json not written: ${errText(e)}`);
   }
-  return result;
+  return done();
 }
 
 async function run(argv, overrides = {}) {
