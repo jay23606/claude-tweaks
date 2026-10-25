@@ -264,6 +264,7 @@ test('staged finding file parses lens, path, line and claim', () => {
   assert.strictEqual(item.kind, 'finding');
   assert.deepStrictEqual(item.finding, { lens: '3c', path: 'tests/bin-lib/preflight-records/preflight-records.test.js', line: null, reporterSeverity: 'low', kind: 'unconfirmed' });
   assert.strictEqual(item.claimText, 'no test pins the degraded-field envelope for an empty records list');
+  assert.deepStrictEqual(item.stagedFinding, { title: null, body: text.trim(), severity: 'low' });
   assert.deepStrictEqual(item.storedIndices, [0]);
 });
 
@@ -681,11 +682,15 @@ test('R17b: a staged file with no Finding: line takes its claim from the digest 
   assert.ok(stagedClaim('review-unconfirmed-1.md', R17B_TITLE).claimText.startsWith('Reproduction pairs at review-effort'));
   assert.ok(stagedClaim('review-unconfirmed-2.md', R17B_CATEGORY).claimText.startsWith('At high effort, Cross-Lens Debate'));
   assert.ok(stagedClaim('review-unconfirmed-3.md', R17B_TABLE).claimText.startsWith('medium — tests/skill-size-single-source.test.js:94'));
+  assert.strictEqual(stagedClaim('review-unconfirmed-2.md', R17B_CATEGORY).stagedFinding.title, null);
+  assert.ok(stagedClaim('review-unconfirmed-2.md', R17B_CATEGORY).stagedFinding.body.startsWith('# Review — debate deviation'));
 });
 
 test('R17b: the Finding: line still wins, the joined text is the fallback, and the id follows the file name', () => {
   const withFinding = stagedClaim('review-unconfirmed-4.md', `Title: x\nKind: y\n\nFinding: the guard reads a stale value\nTarget: plugin/x.js:3\n`);
   assert.strictEqual(withFinding.claimText, 'the guard reads a stale value');
+  assert.deepStrictEqual(withFinding.stagedFinding, { title: 'x', body: 'Finding: the guard reads a stale value\nTarget: plugin/x.js:3', severity: null });
+  assert.strictEqual(stagedClaim('review-unconfirmed-8.md', 'Finding: the guard reads a stale value\nTarget: plugin/y.js:9\n').stagedFinding.body, '');
   // digestTextOf yields nothing for a file of headings only: the joined text path is unchanged (here, empty -> claim-empty).
   const headingsOnly = stagedClaim('review-unconfirmed-5.md', '# plugin/x.js:3\n# more\n');
   assert.strictEqual(headingsOnly.kind, 'no-claim');
