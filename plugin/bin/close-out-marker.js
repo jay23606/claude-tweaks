@@ -63,11 +63,9 @@
 'use strict';
 
 const fs = require('fs');
-const { findRunComments } = require('./find-run-comment');
-const { isTrustedComment } = require('./lib/issues/comment-trust');
+const { findRunComments, firstTrustedMarkerComment } = require('./find-run-comment');
 const { writeFileAtomic } = require('./lib/atomic-write');
 const {
-  MARKER_LINE,
   UPDATE_METHODS,
   SHA_RE,
   parseMarker,
@@ -186,10 +184,10 @@ function readPathsFile(file, deps) {
   const files = String(text).split('\n').map((l) => l.trimEnd()).filter((l) => l !== '');
   if (files.length === 0) return { error: `--conflicted-files-file ${file} holds no paths` };
   const bad = files.find((f) => f.includes(','));
-  if (bad !== undefined) return { error: `--conflicted-files-file ${file} holds a path with a comma, which the marker cannot carry: ${bad}` };
+  if (bad !== undefined) return { error: `--conflicted-files-file ${file} holds a path with a comma, which the marker cannot carry: ${bad}; record this update with --conflicted-files unknown instead` };
   if (files.some((f) => /\r/.test(f))) return { error: `--conflicted-files-file ${file} holds a path with a line break` };
   const reserved = files.find((f) => f === 'none' || f === 'unknown');
-  if (reserved !== undefined) return { error: `--conflicted-files-file ${file} holds a path named ${reserved}, which the marker reads back as a sentinel, not a path` };
+  if (reserved !== undefined) return { error: `--conflicted-files-file ${file} holds a path named ${reserved}, which the marker reads back as a sentinel, not a path; record this update with --conflicted-files unknown instead` };
   return { files };
 }
 
@@ -218,17 +216,10 @@ function run(argv, deps = realDeps) {
   const found = findRunComments(payload, KIND);
   if (found === null) return fail(1, `--comments-file ${o.commentsFile} is not a comments list`);
 
-  // The trusted comment findRunComments chose: the first trusted marker comment
-  // carrying that id.
-  let existing = null;
-  let rawBody = null;
-  if (found.id !== null) {
-    const comments = Array.isArray(payload) ? payload : payload.comments;
-    const hit = comments.find((c) => c !== null && typeof c === 'object' && typeof c.body === 'string'
-      && c.body.startsWith(MARKER_LINE) && isTrustedComment(c) && String(c.id) === found.id);
-    rawBody = hit.body;
-    existing = parseMarker(rawBody);
-  }
+  // The trusted comment findRunComments chose, taken from the same module so the selection rule lives once.
+  const hit = firstTrustedMarkerComment(payload, KIND);
+  const rawBody = hit === null ? null : hit.body;
+  const existing = hit === null ? null : parseMarker(rawBody);
 
   if (o.verb === 'read') {
     let bodyWritten = null;

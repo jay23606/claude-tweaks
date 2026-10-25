@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
 const { serializeMarker } = require('../plugin/bin/lib/dispatch/close-out-marker.js');
+const { parseArgs: parseMarkerArgs } = require('../plugin/bin/close-out-marker.js');
 
 function readSkillFile(...segments) {
   return readText(path.join(__dirname, '..', 'plugin', 'skills', ...segments));
@@ -115,6 +116,8 @@ const UPDATE_PINS = [
     && s.includes('The Read that precedes each pending write passes `--body-out "{prior-body-path}"`')],
   ['marker-restore-verbatim', 0, (s) => s.includes('A restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed')],
   ['marker-clear-saved-body', 0, (s) => s.includes('the found comment\'s body, which a `read --body-out` run just before the clear saved')],
+  ['marker-unrepresentable-paths', 0, (s) => s.includes('A path holding a comma, or named exactly `none` or `unknown`, cannot be recorded by name')
+    && s.includes('pass `--conflicted-files unknown` for that update')],
   ['offer-options', 1, (s) => s.includes('`DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`')
     && s.includes('`BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`')
     && s.includes('`DIRTY` then stops the candidate (`stopped: mergeStateStatus DIRTY — update declined`)')],
@@ -159,6 +162,8 @@ const UPDATE_PINS = [
   ['resume-pre-update-head-field', 2, (s) => s.includes('`{pre-update-head}` being the Read\'s `preUpdateHead`')],
   ['resume-pending-unknown-no-stop', 2, (s) => s.includes('or a `rev-list` that exits non-zero: `unknown`, never a stop')],
   ['merge-base-in', 3, (s) => s.includes('`git -C {wt} fetch origin {base}`') && s.includes('Then `git -C {wt} merge --no-edit origin/{base}`')],
+  ['merge-stage-no-path-list', 3, (s) => s.includes('Then `git -C {wt} add -u` (every conflicted path is tracked, and a path list would put attacker-nameable names into a shell argument)')
+    && !s.includes('add {paths}')],
   ['nothing-new-stops', 3, (s) => /brings in nothing[\s\S]{0,200}stop-set status stops the candidate \(`stopped: mergeStateStatus \{status\} after update`\)/.test(s)],
   // #4317 — step 3
   ['base-fetch-checked', 3, (s) => /require `git -C \{wt\} rev-parse origin\/\{base\}` to equal the first field of `git -C \{wt\} ls-remote origin refs\/heads\/\{base\}`[\s\S]{0,260}\(`stopped: update failed — base not fetched`\), nothing merged/.test(s)
@@ -322,6 +327,7 @@ const UPDATE_MUTATIONS = [
   ['reread-spaced', ', a few seconds apart, each its own plain command — for a sha', ' — for a sha'],
   ['behind-post-update-checkout', '; pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`.', '.'],
   ['merge-base-in', 'Then `git -C {wt} merge --no-edit origin/{base}`.', 'Then merge.'],
+  ['merge-stage-no-path-list', 'Then `git -C {wt} add -u` (every conflicted path is tracked, and a path list would put attacker-nameable names into a shell argument)', 'Then `git -C {wt} add {paths}`'],
   ['nothing-new-stops', 'a stop-set status stops the candidate (`stopped: mergeStateStatus {status} after update`); otherwise hand', 'then hand'],
   ['cd-into-wt', 'so a standalone `cd {wt}` (never chained) comes first.', 'so run it there.'],
   ['lockfile', 'When the project has a lockfile, run its install command there (the mapping is `_shared/worktree-adopt-freshness.md` step 4) — after the merge, which may change it.\n', ''],
@@ -356,6 +362,7 @@ const UPDATE_MUTATIONS = [
   ['marker-body-out-before-write', '\nThe Read that precedes each pending write passes `--body-out "{prior-body-path}"`, saving the body that write replaces; a Clear\'s Read passes it too.', ''],
   ['marker-restore-verbatim', '\nA restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed (the re-Find overwrites `{comments-path}`, so the saved file is the only copy).', ''],
   ['marker-clear-saved-body', 'the found comment\'s body, which a `read --body-out` run just before the clear saved (an earlier Read\'s file predates any pending write since), with its second line', 'the second line'],
+  ['marker-unrepresentable-paths', '\nA path holding a comma, or named exactly `none` or `unknown`, cannot be recorded by name: `write` exits 1 on the paths file, so pass `--conflicted-files unknown` for that update.', ''],
   ['marker-conflicted-files-file-push', ' (the paths recorded at step 3 or recovered at step 2, written to `--conflicted-files-file "{paths-path}"` with the Write tool, one per line; `none` or `unknown` through `--conflicted-files`)', ''],
   ['resume-pending-unknown-no-stop', ', or a `rev-list` that exits non-zero: `unknown`, never a stop.', ': `unknown`.'],
   ['resume-pre-update-head-hex', ' (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked)', ''],
@@ -460,6 +467,36 @@ test('#4331 prose-code twin go-red control: a renamed or reordered field key in 
     assertOccursOnce(UPDATE, from, 'the field line clause occurs exactly once');
     assert.throws(() => assertExplanationTwin(UPDATE.replace(from, to)), /field-key prefixes equal serializeMarker/);
   }
+});
+
+// Every flag a close-out-marker.js command line in the doc passes is one the CLI accepts for that verb
+// (#4331): the pins above hold the prose's clauses, not that the flags it shows exist.
+function markerCliFlags(update) {
+  const found = [];
+  for (const m of update.matchAll(/bin\/close-out-marker\.js" (read|write|resolve-pending)([^\n]*)/g)) {
+    for (const f of m[2].matchAll(/(?:^| )(--[a-z][a-z-]*)/g)) found.push([m[1], f[1]]);
+  }
+  return found;
+}
+
+function assertMarkerCliFlags(update) {
+  const flags = markerCliFlags(update);
+  assert.ok(flags.length >= 11, `the doc passes at least 11 marker CLI flags (found ${flags.length})`);
+  assert.deepEqual([...new Set(flags.map(([verb]) => verb))].sort(), ['read', 'resolve-pending', 'write']);
+  for (const [verb, flag] of flags) {
+    const parsed = parseMarkerArgs([verb, flag, 'v']);
+    assert.ok(!(parsed.error && /unknown argument/.test(parsed.error)), `close-out-marker.js ${verb} accepts ${flag}`);
+  }
+}
+
+test('#4331 every flag close-out-update.md passes to close-out-marker.js is one the CLI accepts for that verb', () => {
+  assertMarkerCliFlags(UPDATE);
+});
+
+test('#4331 flag-scan go-red control: a misspelled flag in a marker command line fails', () => {
+  const from = 'read --comments-file "{comments-path}" --body-out "{prior-body-path}"';
+  assertOccursOnce(UPDATE, from, 'the read command line occurs exactly once');
+  assert.throws(() => assertMarkerCliFlags(UPDATE.replace(from, from.replace('--body-out', '--body-outt'))), /accepts --body-outt/);
 });
 
 // close-out.md step 2 clauses: [label, exact text, replacement, expected message]

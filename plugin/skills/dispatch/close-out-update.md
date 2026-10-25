@@ -50,6 +50,7 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" resolve-pending --comments-
 
 `{conflicted-files}` real paths go in as `--conflicted-files-file "{paths-path}"`: a file written with the Write tool, one path per line, from the `git -C {wt} diff --name-only --diff-filter=U` output — never composed in the shell, since a path is attacker-nameable and `posts.$slug.tsx` expands inside a double-quoted argument.
 The literals `none` and `unknown` go through `--conflicted-files` instead, in place of the file flag (exactly one of the two).
+A path holding a comma, or named exactly `none` or `unknown`, cannot be recorded by name: `write` exits 1 on the paths file, so pass `--conflicted-files unknown` for that update.
 
 Write it pending before each call that lands an update — `gh pr update-branch` in step 2, the push in step 5 — never after.
 A marker covers every update since its last clear: `write` given a payload whose marker is pending appends this update to it, so an earlier agent-made resolution stays named until a verified merge or a decline clears it.
@@ -110,7 +111,7 @@ A restore posts that saved `{prior-body-path}` file as the comment body, unchang
    Then `git -C {wt} merge --no-edit origin/{base}`.
    On a conflict, record `{conflicted-files}` with `git -C {wt} diff --name-only --diff-filter=U` and resolve per
    `_shared/git-discipline.md`'s Merge conflict resolution — both sides read, both intents kept. The human is present, so that section's
-   ask-the-user fallback applies here (unlike the `auto` catch-up). Then `git -C {wt} add {paths}` and `git -C {wt} commit --no-edit`.
+   ask-the-user fallback applies here (unlike the `auto` catch-up). Then `git -C {wt} add -u` (every conflicted path is tracked, and a path list would put attacker-nameable names into a shell argument) and `git -C {wt} commit --no-edit`.
    An unresolvable conflict: `git -C {wt} merge --abort`, stop the candidate (`stopped: update failed — conflict not resolved`), nothing pushed.
    A merge that brings in nothing (HEAD still `origin/{head}`) means the forge's state was stale: re-run step 6's mergeability read —
    a stop-set status stops the candidate (`stopped: mergeStateStatus {status} after update`); otherwise hand off nothing and continue at `close-out.md` step 3 —

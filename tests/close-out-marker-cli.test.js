@@ -126,6 +126,19 @@ test('read: a CRLF pending marker reads pending with its id (AC1.1 end to end)',
   });
 });
 
+test('read and write: a trusted marker comment with no id is no marker, since it could not be updated in place', () => {
+  const noId = P({ authorAssociation: 'MEMBER', body: markerBody(pendingFields) });
+  const readDeps = fakeDeps(noId);
+  assert.equal(run(['read', '--comments-file', 'c.json'], readDeps), 0);
+  const read = oneJsonLine(readDeps);
+  assert.equal(read.status, 'none');
+  assert.equal(read.id, null);
+  assert.deepEqual(read.ids, []);
+  const writeDeps = fakeDeps(noId);
+  assert.equal(run(WRITE_ARGV, writeDeps), 0);
+  assert.equal(oneJsonLine(writeDeps).accumulated, false);
+});
+
 test('read and write: a bare comment array (the REST/MCP shape) is read like a {comments} payload', () => {
   const bare = [comment('IC_1', markerBody(pendingFields))];
   const readDeps = fakeDeps(bare);
