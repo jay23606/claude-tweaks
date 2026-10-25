@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { run, renderManifestoFyi } = require('../../../plugin/bin/set-config');
+const { readText } = require('../../helpers/read-skill');
 
 // Same anchoring fixture shape as tests/bin-lib/stage-item/cli.test.js: a
 // fake main checkout (.git directory) holding the real run dir, plus a
@@ -353,7 +354,7 @@ test('AC3.1: --set batch logs "levers written to {path}" under /flow', () => {
 });
 
 test('AC3.1: the logged line matches auto-decision-log.md\'s worked example up to its commentary', () => {
-  const doc = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'plugin', 'skills', '_shared', 'auto-decision-log.md'), 'utf8');
+  const doc = readText(path.join(__dirname, '..', '..', '..', 'plugin', 'skills', '_shared', 'auto-decision-log.md'));
   const m = /^- AUTO (\d{2}:\d{2}:\d{2}) — Manifesto: levers written to (\S+\/config\.yml)\./m.exec(doc);
   assert.ok(m, 'auto-decision-log.md no longer carries the Manifesto worked example');
   const { main, runDir } = fixture();
