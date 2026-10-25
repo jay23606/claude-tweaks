@@ -33,12 +33,43 @@ test('flow Step 2.8 is one claim-targets.js call with --steps, and claim-targets
   assert.doesNotMatch(r, /`claim-targets\.md` for 2\.8's\./);
 });
 
+// Fix round 1: a step list with neither build nor test skips all of 2.8 before
+// any mint — otherwise a direct `/flow #N wrap-up` mints a dir and Step 3 sees
+// case 2 instead of case 5's #2398 resume check.
+test('flow Step 2.8 skips on a no-build/no-test step list before it mints a run dir', () => {
+  const r = region(read(FLOW), '- 2.8 — Claim the targets', '### Step 3:', 'flow Step 2.8');
+  const skip = r.indexOf('neither `build` nor `test`');
+  const mint = r.indexOf('mints the run dir');
+  assert.notEqual(skip, -1, 'the step-list skip condition is gone from Step 2.8');
+  assert.notEqual(mint, -1, 'the direct-invocation mint is gone from Step 2.8');
+  assert.ok(skip < mint, 'the step-list skip must come before the mint');
+  assert.match(r.slice(0, mint), /Skip all of it — no mint, no call —/);
+});
+
+test('flow Step 1 item 5 gates every record with materialize.js --check and reads materialize.md only on a non-zero exit', () => {
+  const flow = read(FLOW);
+  const r = region(flow, '5. Shape-gate every target record now', '\n6. ', 'flow Step 1 item 5');
+  assert.match(r, /bin\/materialize\.js" \{n\} --check`/);
+  assert.match(r, /Read `materialize\.md` only on a non-zero exit/);
+  assert.doesNotMatch(flow, /via `materialize\.md`'s Resolution \+ Materialization hard gate/);
+  assert.doesNotMatch(flow, /resolved, shape-gated, and materialized via `materialize\.md`/);
+  const build = region(read(BUILD), '### Spec Step 1:', '### Spec Step 2:', 'build Spec Step 1');
+  assert.match(build, /bin\/materialize\.js/);
+  assert.doesNotMatch(build, /Materialize the record into a spec-shaped build file via `skills\/flow\/materialize\.md`:/);
+});
+
 test('flow Step 3 runs manifesto-write.js for auto cases 2/5 and reads manifesto.md only for gated modes, case 1/3, or a non-zero exit', () => {
   const r = region(read(FLOW), '### Step 3:', '### Step 4:', 'flow Step 3');
   assert.match(r, /bin\/manifesto-write\.js" --run "\$PIPELINE_RUN_DIR" --mode auto --mode-source [^\n]*--ceremony /);
   assert.match(r, /`auto`, adoption case 2 or 5/);
   assert.match(r, /read `manifesto\.md`[^\n]*only for `confirm`\/`hybrid`, a case-1 or case-3 adoption, or a non-zero exit/i);
   assert.doesNotMatch(r, /For the complete Manifesto content/);
+  // Fix round 1: the #04be0dc4d guard — a fresh run never pre-writes mode alone.
+  assert.match(r, /no `config\.yml` yet[^\n]*read `manifesto\.md` directly and never pre-write `mode` alone/);
+  // Case 4, and case 5 without a 2.8 mint, create the dir before manifesto-write.js runs.
+  const create = r.indexOf('resolve-run-dir --spec-slug "{spec-slug}" --create');
+  assert.notEqual(create, -1, 'Step 3 no longer states the create step');
+  assert.ok(create < r.indexOf('bin/manifesto-write.js'), 'the create step must precede manifesto-write.js');
 });
 
 test('flow Step 4 item 2 materializes through materialize.js and reads materialize.md only on a failure or a non-null premise/drift/template field', () => {
@@ -48,7 +79,7 @@ test('flow Step 4 item 2 materializes through materialize.js and reads materiali
   assert.doesNotMatch(r, /compose, write, and commit the materialized file now/);
 });
 
-const PR_EARLY_READ = /read `_shared\/pr-early-run-lifecycle\.md` only on (its )?exit 2 \(`gh` absent → its MCP path\) or exit 1/i;
+const PR_EARLY_READ = /read `_shared\/pr-early-run-lifecycle\.md` only on (its )?exit 2 \(`gh` absent → its MCP path\), exit 1, or a `reopenRejected` result \(its "Reopen fails" paragraph\)/i;
 
 test('build Spec Step 1 names pr-early-open.js, reads the lifecycle file only on exit 2/1, and keeps the [IL-131] non-skippable rule on that call', () => {
   const r = region(read(BUILD), '### Spec Step 1:', '### Spec Step 2:', 'build Spec Step 1');
@@ -66,6 +97,30 @@ test('build/worktree-setup.md Step 6 is one pr-early-open.js call with one sente
   assert.match(r, /`reopenRejected`/);
   assert.match(r, /with the Write tool/);
   assert.doesNotMatch(r, /push-then-create/);
+  // Fix round 1: only a malformed call is fixed and re-run; a refused --run or a
+  // whitespace integration-branch value follows the remedy stderr names.
+  assert.match(r, /a malformed call: fix it and re-run/);
+  assert.match(r, /refused `--run` or an `integration-branch` value holding whitespace[^\n]*remedy (the CLI's )?stderr names/);
+});
+
+// Twin pin: the local-merge SKIP command is inlined in worktree-setup.md Step 6
+// so a local-merge run never opens the lifecycle file; both copies must stay the
+// same command, line for line (only the list-item indentation differs).
+function localMergeSkip(text, label) {
+  const start = text.indexOf('node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "$PIPELINE_RUN_DIR" --status SKIP');
+  assert.notEqual(start, -1, `${label}: local-merge SKIP command not found`);
+  const endToken = '--reversibility n/a';
+  const end = text.indexOf(endToken, start);
+  assert.notEqual(end, -1, `${label}: local-merge SKIP command has no --reversibility n/a`);
+  const cmd = text.slice(start, end + endToken.length);
+  assert.ok(cmd.includes('integration-model=local-merge'), `${label}: first SKIP command found is not the local-merge one`);
+  return cmd.split('\n').map((l) => l.replace(/^[ \t]+/, '')).join('\n');
+}
+
+test('the local-merge SKIP command is the same in worktree-setup.md Step 6 and pr-early-run-lifecycle.md', () => {
+  const step6 = region(read('plugin/skills/build/worktree-setup.md'), '6. **Open the draft PR', '\n## Cherry-pick', 'worktree-setup Step 6');
+  const lifecycle = read('plugin/skills/_shared/pr-early-run-lifecycle.md');
+  assert.strictEqual(localMergeSkip(step6, 'worktree-setup Step 6'), localMergeSkip(lifecycle, 'pr-early-run-lifecycle.md'));
 });
 
 test('the procedure files name their CLI as the entry point', () => {
