@@ -511,3 +511,12 @@ so clear it (`cleared (nothing landed)`); any other head keeps it pending.
 - [ ] **Step 5: Run.** `node --test tests/close-out-pr-state-contract-conformance.test.js tests/closing-links-prose-conformance.test.js tests/pr-first-merge.test.js` — Expected: PASS.
 
 - [ ] **Step 6: Commit** (stage the five files by explicit path) — message `Persist close-out's update state on the PR — resume marker, resume values, fetch and gh-absent stops (refs #4317)`.
+
+## Deviations from the spec (Common Step 4.5)
+
+Classified Beneficial and kept as built:
+
+1. **Marker clears on a landing that landed nothing** (`cleared (nothing landed)`), and a failed landing on an already-pending marker restores its pre-write body. Deliverable 1 names only "the verified merge or an explicit human decline". Its intent is that an unverified update on GitHub is never forgotten, and a landing that landed nothing put no update there. (0589c36f2, 7c9566ab2)
+2. **The marker accumulates across updates.** `update-method`/`resolution-commit` become oldest-first lists and `conflicted-files` is a union. The spec names single values. Without this, a second update overwrites an earlier unreviewed resolution, and the gate's update clause stops naming it (AC2). (0589c36f2)
+3. **A `BEHIND` resume offers Update/Stop only.** The spec is silent. Skipping on a resume would bring an unverified head to the merge question, or stop at step 6, every time (AC1). (7c9566ab2)
+4. **The gh-absent path is the explicit stop, not an MCP branch.** Deliverable 4 allows either. `gh pr update-branch`, `gh run list` and `gh pr checks --watch` have no MCP mapping, and neither does comment editing.
