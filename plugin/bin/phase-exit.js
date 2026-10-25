@@ -17,9 +17,11 @@
 // Prints one JSON line: {phase, route, branch, head, commit: {clean, dirty} | null,
 // bookkeeping: {worktree, pr, detail?} | null, push: {state, reason?},
 // checklist: {exit, ...pr-checklist envelope} | null,
-// mergeState: {...pr-merge-state envelope} | null, logFailures: [{status, step, text, error}]}.
+// mergeState: {exit, ...pr-merge-state envelope} | null,
+// logFailures: [{kind: 'decision', status, step, text, error} | {kind: 'event', type, data, error}]}.
 //   route        pr-first | local-merge | current-branch | null (integration-model unresolved)
-//   push.state   pushed | failed | refused | skipped
+//   push.state   pushed | failed | refused | skipped (also: pr-first with no recorded PR and
+//                no release condition of hooks/pre-tool-use.js's PR-stamp gate, [IL-131])
 //   worktree     present | backfilled | failed | n/a (current-branch)
 //   pr           present | backfilled | missing | failed | n/a (local-merge, current-branch, prExempt)
 // The CLI writes its own decisions.md lines under the phase's section; the
@@ -31,6 +33,7 @@
 //   shadow -- _shared/pipeline-run-dir.md, [IL-127]).
 'use strict';
 
+const path = require('path');
 const { resolveTarget } = require('./lib/log-decision/append');
 const { runPhaseExit, realDeps, InvalidWorktreeError, PHASE_SECTIONS } = require('./lib/phase-exit/phase-exit');
 const prChecklist = require('./pr-checklist');
@@ -88,10 +91,13 @@ function run(argv, overrides = {}) {
     return 3;
   }
 
+  // Absolute from here on: the sub-steps spawn with cwd --worktree, so a relative
+  // path would name a different directory in different sub-steps.
   let envelope;
   try {
     envelope = runPhaseExit({
-      run: o.run, phase: o.phase, worktree: o.worktree, fixes: o.fixes, remove: o.remove, summaryFile: o.summaryFile,
+      run: path.resolve(o.run), phase: o.phase, worktree: path.resolve(o.worktree),
+      fixes: o.fixes, remove: o.remove, summaryFile: o.summaryFile,
     }, deps);
   } catch (e) {
     if (e instanceof InvalidWorktreeError) return usageError(e.message);

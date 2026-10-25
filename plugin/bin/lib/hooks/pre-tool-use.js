@@ -2343,6 +2343,10 @@ module.exports = {
   checkDispatchConfigGate,
   hasLoggedPrDegrade,
   hasPrEarlyStep1LineFor,
+  // Exported for bin/lib/phase-exit/phase-exit.js (#4026), whose push applies the
+  // same pr-first no-PR release conditions as checkBookkeepingStampsGate's PR-stamp branch.
+  hasLoggedPrEarlyStep1,
+  hasNoUpstreamYet,
   // Exported for check-pr-bookkeeping.js's phase-boundary precondition check
   // (#2472) to reuse rather than reimplement — the same integration-model
   // resolution checkBookkeepingStampsGate's own PR-stamp branch already uses.

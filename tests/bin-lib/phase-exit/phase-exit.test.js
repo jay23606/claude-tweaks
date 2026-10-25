@@ -53,9 +53,10 @@ function makeDeps(main, wt, opts = {}) {
       const sub = args.slice(2).join(' ');
       if (sub === 'rev-parse --git-dir --git-common-dir') return `${gitDir}\n${currentBranch ? '.git' : path.join(main, '.git')}\n`;
       if (sub === 'rev-parse HEAD') return 'abc1234def\n';
+      if (sub === 'rev-parse --short HEAD') return 'abc1234\n';
       if (sub === 'branch --show-current') return `${branch}\n`;
       if (sub === 'symbolic-ref --quiet --short refs/remotes/origin/HEAD') return 'origin/main\n';
-      if (sub === '--no-optional-locks status --porcelain -z') return porcelain;
+      if (sub === '--no-optional-locks status --porcelain -z') return answer(porcelain);
       if (args[2] === 'push') return answer(push);
       throw new Error(`unexpected git ${sub}`);
     },
@@ -72,14 +73,20 @@ function makeDeps(main, wt, opts = {}) {
     },
     prChecklistRun: (argv, d) => {
       calls.checklist.push(argv);
+      if (checklist instanceof Error) throw checklist;
       if (checklist.out) d.stdout(`${JSON.stringify(checklist.out)}\n`);
       return checklist.exit;
     },
+    // mergeState: an envelope object (printed, exit 0), an Error (thrown), or
+    // { exit, raw } (raw stdout text printed verbatim, that exit returned).
     prMergeStateRun: (argv, d) => {
       calls.mergeState.push(argv);
+      if (mergeState instanceof Error) throw mergeState;
+      if (Object.hasOwn(mergeState, 'raw')) { if (mergeState.raw) d.stdout(mergeState.raw); return mergeState.exit; }
       d.stdout(`${JSON.stringify(mergeState)}\n`);
       return 0;
     },
+    hasNoUpstreamYet: () => false,
     now: () => new Date(2026, 9, 25, 12, 0, 0),
     stdout: (s) => out.push(s),
     stderr: (s) => err.push(s),
@@ -189,9 +196,23 @@ test('AC2.2: branch guard — detached HEAD and the integration branch are refus
     assert.equal(h.calls.mergeState.length, 0, c.label);
     assert.equal(env.mergeState, null);
     assert.equal(env.branch, c.branch || null);
+    assert.deepEqual(env.commit, { clean: true, dirty: [] }, c.label);
     const entries = entriesOf(runDir).map(stripTime);
     assert.deepEqual(entries, [`- AUTO — Phase-exit push: refused to push ${c.label} at test exit — not a run branch. Reversibility: n/a.`], c.label);
+    assert.ok(!fs.existsSync(path.join(runDir, 'events.jsonl')), c.label);
   }
+});
+
+test('branch guard — a refused branch still runs the commit check, so a dirty tree leaves its trace', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt, { branch: 'main', porcelain: ' M a.js\0' });
+  const env = runPhaseExit(opts(runDir, wt, 'review'), h.deps);
+  assert.equal(env.push.state, 'refused');
+  assert.deepEqual(env.commit, { clean: false, dirty: ['a.js'] });
+  assert.deepEqual(entriesOf(runDir).map(stripTime), [
+    '- AUTO — Phase-exit push: refused to push main at review exit — not a run branch. Reversibility: n/a.',
+    '- AUTO — Phase-exit push: 1 uncommitted path(s) at review exit not included in the push. Reversibility: n/a.',
+  ]);
 });
 
 test('branch guard — integration branch falls back to origin/HEAD, then main', () => {
@@ -223,6 +244,15 @@ test('AC2.2: commit check — a dirty tree logs the uncommitted-paths line and s
     '- AUTO — Phase-exit push: 3 uncommitted path(s) at review exit not included in the push. Reversibility: n/a.',
   ]);
   assert.match(fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8'), /^## \/review$/m);
+});
+
+test('AC2.2: commit check — a throwing git status reports commit.error, logs nothing and still pushes', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt, { porcelain: Object.assign(new Error('Command failed'), { stderr: 'fatal: index file corrupt\n' }) });
+  const env = runPhaseExit(opts(runDir, wt), h.deps);
+  assert.deepEqual(env.commit, { clean: null, dirty: [], error: 'fatal: index file corrupt' });
+  assert.equal(env.push.state, 'pushed');
+  assert.deepEqual(entriesOf(runDir), []);
 });
 
 test('commit check — a clean tree is commit.clean true with no entry', () => {
@@ -261,20 +291,59 @@ test('AC2.2: bookkeeping — missing pr with one open PR records it', () => {
   const h = makeDeps(main, wt);
   const env = runPhaseExit(opts(runDir, wt), h.deps);
   assert.equal(env.bookkeeping.pr, 'backfilled');
+  assert.equal(env.bookkeeping.detail, 'recorded open PR #42');
+  assert.equal(env.push.state, 'pushed');
   assert.deepEqual(h.calls.gh, [['pr', 'list', '--head', BRANCH, '--state', 'open', '--json', 'number,url']]);
   assert.deepEqual(h.calls.hooks, [['record-pr', '--run', runDir, '42', PR_URL]]);
   assert.deepEqual(entriesOf(runDir).map(stripTime), [
-    '- AUTO — Common Step 7 bookkeeping assertion: backfilled PR-early lifecycle (recorded open PR #42) before phase-exit push. Reversibility: high.',
+    '- AUTO — Common Step 7 bookkeeping assertion: backfilled PR-early lifecycle before phase-exit push. Reversibility: high.',
   ]);
 });
 
-test('AC2.2: bookkeeping — missing pr with no open PR reports missing and logs nothing', () => {
+// The SKIP line a pr-first push with no recorded PR (and no gate release) writes.
+const NO_PR_SKIP = `- SKIP — Phase-exit push: condition: no recorded PR for ${BRANCH} and no PR-early run lifecycle FAILED line → fallback: no phase-exit push this phase; open the PR first (_shared/pr-early-run-lifecycle.md). Reversibility: n/a.`;
+
+test('AC2.2: bookkeeping — missing pr with no open PR reports missing, and the push is skipped ([IL-131])', () => {
   const { main, runDir, wt } = fixture({ worktree: '/wt' });
   const h = makeDeps(main, wt, { prList: [] });
   const env = runPhaseExit(opts(runDir, wt), h.deps);
   assert.equal(env.bookkeeping.pr, 'missing');
   assert.equal(h.calls.hooks.length, 0);
-  assert.deepEqual(entriesOf(runDir), []);
+  assert.deepEqual(env.push, { state: 'skipped', reason: 'no recorded PR — open it first (pr-early-run-lifecycle)' });
+  assert.equal(pushCalls(h.calls).length, 0);
+  assert.equal(h.calls.mergeState.length, 0);
+  assert.equal(h.calls.checklist.length, 1);
+  assert.deepEqual(entriesOf(runDir).map(stripTime), [NO_PR_SKIP]);
+});
+
+test('[IL-131] PR precondition — a logged PR-early FAILED line, prExempt, or a first publish with its Step 1 line releases the push', () => {
+  const failedLine = '- AUTO 10:00:00 — /build: PR-early run lifecycle: push of x FAILED (network); run proceeds local-only, no PR opened. Reversibility: n/a.\n';
+  const step1Line = `- AUTO 10:00:00 — PR-early run lifecycle: no existing PR for ${BRANCH}; creating. Reversibility: n/a.\n`;
+  const cases = [
+    { name: 'FAILED degrade line', state: { worktree: '/wt' }, decisions: failedLine, over: {} },
+    { name: 'prExempt', state: { worktree: '/wt', prExempt: true }, decisions: null, over: {} },
+    { name: 'first publish + Step 1 line', state: { worktree: '/wt' }, decisions: step1Line, over: { hasNoUpstreamYet: () => true } },
+  ];
+  for (const c of cases) {
+    const { main, runDir, wt } = fixture(c.state);
+    if (c.decisions) fs.writeFileSync(path.join(runDir, 'decisions.md'), c.decisions);
+    const h = makeDeps(main, wt, { prList: [], ...c.over });
+    const env = runPhaseExit(opts(runDir, wt), h.deps);
+    assert.equal(env.push.state, 'pushed', c.name);
+    assert.equal(pushCalls(h.calls).length, 1, c.name);
+  }
+});
+
+test('[IL-131] PR precondition — a first publish without its Step 1 line, or a Step 1 line on a tracked branch, stays skipped', () => {
+  const step1Line = `- AUTO 10:00:00 — PR-early run lifecycle: no existing PR for ${BRANCH}; creating. Reversibility: n/a.\n`;
+  for (const c of [{ decisions: null, noUpstream: true }, { decisions: step1Line, noUpstream: false }]) {
+    const { main, runDir, wt } = fixture({ worktree: '/wt' });
+    if (c.decisions) fs.writeFileSync(path.join(runDir, 'decisions.md'), c.decisions);
+    const h = makeDeps(main, wt, { prList: [], hasNoUpstreamYet: () => c.noUpstream });
+    const env = runPhaseExit(opts(runDir, wt), h.deps);
+    assert.equal(env.push.state, 'skipped');
+    assert.equal(pushCalls(h.calls).length, 0);
+  }
 });
 
 test('bookkeeping — a prExempt run is pr n/a with no lookup', () => {
@@ -285,7 +354,7 @@ test('bookkeeping — a prExempt run is pr n/a with no lookup', () => {
   assert.equal(h.calls.gh.length, 0);
 });
 
-test('bookkeeping — an ambiguous, unreadable or unrecorded PR lookup reports failed and logs nothing', () => {
+test('bookkeeping — an ambiguous, unreadable or unrecorded PR lookup reports failed, logs no backfill, and skips the push', () => {
   const cases = [
     { prList: [{ number: 42, url: PR_URL }, { number: 43, url: `${PR_URL}3` }], detail: /2 open PRs/ },
     { prList: new Error('gh: network'), detail: /gh pr list failed/ },
@@ -299,8 +368,8 @@ test('bookkeeping — an ambiguous, unreadable or unrecorded PR lookup reports f
     const env = runPhaseExit(opts(runDir, wt), h.deps);
     assert.equal(env.bookkeeping.pr, 'failed');
     assert.match(env.bookkeeping.detail, c.detail);
-    assert.deepEqual(entriesOf(runDir), []);
-    assert.equal(env.push.state, 'pushed');
+    assert.deepEqual(entriesOf(runDir).map(stripTime), [NO_PR_SKIP]);
+    assert.equal(env.push.state, 'skipped');
   }
 });
 
@@ -330,7 +399,18 @@ test('bookkeeping — an archived run dir is never written: absent fields report
   assert.match(env.bookkeeping.detail, /archived/);
   assert.equal(h.calls.hooks.length, 0);
   assert.equal(h.calls.gh.length, 0);
+  assert.equal(env.push.state, 'skipped', 'no recorded PR on the archived run: the [IL-131] precondition holds');
+  assert.equal(entriesOf(runDir).length, 1);
+  assert.match(entriesOf(runDir)[0], /^- SKIP .* — Phase-exit push: condition: no recorded PR/);
+});
+
+test('bookkeeping — an archived run dir carrying both fields pushes without any write but the breadcrumb', () => {
+  const { main, runDir, wt } = fixture(undefined, { archived: true });
+  const h = makeDeps(main, wt);
+  const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
+  assert.deepEqual(env.bookkeeping, { worktree: 'present', pr: 'present' });
   assert.equal(env.push.state, 'pushed');
+  assert.equal(h.calls.hooks.length, 0);
   assert.deepEqual(entriesOf(runDir), []);
 });
 
@@ -347,9 +427,91 @@ test('AC2.2: push failure logs the FAILED line, skips merge-state, still flips t
   assert.equal(h.calls.mergeState.length, 0);
   assert.equal(env.mergeState, null);
   assert.ok(!fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8').includes('push'));
+  assert.ok(!fs.existsSync(path.join(runDir, 'events.jsonl')), 'a failed push writes no push breadcrumb');
   assert.deepEqual(entriesOf(runDir).map(stripTime), [
     `- AUTO — Phase-exit push: push of ${BRANCH} to origin FAILED at build exit (fatal: unable to access remote); the next phase exit's push retries. Reversibility: n/a.`,
   ]);
+});
+
+// ---- push breadcrumb (events.jsonl) ----
+
+const eventsOf = (runDir) => {
+  const f = path.join(runDir, 'events.jsonl');
+  if (!fs.existsSync(f)) return [];
+  return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+};
+
+test('push breadcrumb — a landed push writes exactly the post-tool-use.js push event through context.js appendEvent', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt);
+  const env = runPhaseExit(opts(runDir, wt, 'wrap-up'), h.deps);
+  assert.equal(env.push.state, 'pushed');
+  const events = eventsOf(runDir);
+  assert.equal(events.length, 1);
+  const { ts, ...rest } = events[0];
+  assert.match(ts, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(rest, { action: 'push', dir: path.resolve(wt), hash: 'abc1234', type: 'commit' });
+  assert.deepEqual(env.logFailures, []);
+});
+
+test('push breadcrumb — the timing derivation reads it as the merge phase start', () => {
+  const { derivePhases } = require('../../../plugin/bin/lib/timing/derive');
+  const { main, runDir, wt } = fixture();
+  const t0 = new Date(Date.UTC(2026, 9, 25, 12, 0, 0)).toISOString();
+  fs.writeFileSync(path.join(runDir, 'events.jsonl'), `${JSON.stringify({ ts: t0, type: 'skill_invoked', skill: 'claude-tweaks:wrap-up' })}\n`);
+  runPhaseExit(opts(runDir, wt, 'wrap-up'), makeDeps(main, wt).deps);
+  const events = eventsOf(runDir);
+  assert.equal(events.length, 2);
+  const out = derivePhases({ events, now: new Date(Date.parse(events[1].ts) + 60000) });
+  const merge = out.phases.find((p) => p.phase === 'merge');
+  assert.ok(merge, JSON.stringify(out.phases));
+  assert.equal(merge.source, 'commit');
+  assert.equal(merge.start, events[1].ts);
+  // Control: the same events without the breadcrumb derive no commit-sourced merge span.
+  const control = derivePhases({ events: [events[0]], now: new Date(Date.parse(events[1].ts) + 60000) });
+  assert.notEqual((control.phases.find((p) => p.phase === 'merge') || {}).source, 'commit');
+});
+
+test('push breadcrumb — a failed, refused, or skipped push writes none', () => {
+  const cases = [
+    { push: new Error('rejected') },
+    { branch: 'main' },
+    { model: 'local-merge' },
+    { currentBranch: true },
+  ];
+  for (const c of cases) {
+    const { main, runDir, wt } = fixture();
+    runPhaseExit(opts(runDir, wt), makeDeps(main, wt, c).deps);
+    assert.deepEqual(eventsOf(runDir), [], JSON.stringify(c));
+  }
+  const { main, runDir, wt } = fixture({ worktree: '/wt' });
+  const env = runPhaseExit(opts(runDir, wt), makeDeps(main, wt, { prList: [] }).deps);
+  assert.equal(env.push.state, 'skipped');
+  assert.deepEqual(eventsOf(runDir), []);
+});
+
+test('push breadcrumb — deduped on (action, hash, dir) against a prior push event, as post-tool-use.js does', () => {
+  const { main, runDir, wt } = fixture();
+  const prior = { action: 'push', dir: path.resolve(wt), hash: 'abc1234', ts: '2026-10-25T10:00:00.000Z', type: 'commit' };
+  fs.writeFileSync(path.join(runDir, 'events.jsonl'), `${JSON.stringify(prior)}\n`);
+  runPhaseExit(opts(runDir, wt), makeDeps(main, wt).deps);
+  assert.equal(eventsOf(runDir).length, 1);
+});
+
+test('push breadcrumb — an append failure lands in logFailures and changes nothing else', () => {
+  const { main, runDir, wt } = fixture();
+  const good = runPhaseExit(opts(runDir, wt), makeDeps(main, wt).deps);
+  const { main: m2, runDir: r2, wt: w2 } = fixture();
+  const h = makeDeps(m2, w2, { appendEvent: () => { throw new Error('EROFS'); } });
+  const env = runPhaseExit(opts(r2, w2), h.deps);
+  assert.equal(env.logFailures.length, 1);
+  assert.deepEqual(env.logFailures[0], {
+    kind: 'event', type: 'commit', data: { action: 'push', dir: path.resolve(w2), hash: 'abc1234' }, error: 'EROFS',
+  });
+  assert.match(h.err.join(''), /events\.jsonl push breadcrumb: EROFS/);
+  const strip = (e) => ({ ...e, logFailures: [] });
+  assert.deepEqual(strip(env), strip(good));
+  assert.equal(h.calls.mergeState.length, 1);
 });
 
 // ---- checklist ----
@@ -393,9 +555,38 @@ test('AC2.2: merge-state envelope is carried through after a successful push', (
   const h = makeDeps(main, wt, { mergeState: ms });
   const env = runPhaseExit(opts(runDir, wt, 'review'), h.deps);
   assert.equal(env.push.state, 'pushed');
-  assert.deepEqual(env.mergeState, ms);
+  assert.deepEqual(env.mergeState, { exit: 0, ...ms });
   assert.deepEqual(h.calls.mergeState, [['--run', runDir, '--phase', 'review']]);
   assert.deepEqual(entriesOf(runDir), [], 'phase-exit never re-logs a sub-CLI line');
+});
+
+test('AC2.2: merge state — a non-zero exit, no or garbled JSON, and a throw are reported as data, exit 0 overall', () => {
+  const cases = [
+    { mergeState: { exit: 3, raw: '' }, expected: { exit: 3 } },
+    { mergeState: { exit: 2, raw: 'pr-merge-state.js: invalid --phase\n' }, expected: { exit: 2 } },
+    { mergeState: { exit: 0, raw: '{"state": "no-conf' }, expected: { exit: 0 } },
+    { mergeState: { exit: 0, raw: '[1,2]\n' }, expected: { exit: 0 } },
+    { mergeState: new Error('resolver exploded'), expected: { exit: null, error: 'resolver exploded' } },
+  ];
+  for (const c of cases) {
+    const { main, runDir, wt } = fixture();
+    const h = makeDeps(main, wt, { mergeState: c.mergeState });
+    const env = runPhaseExit(opts(runDir, wt), h.deps);
+    assert.deepEqual(env.mergeState, c.expected, JSON.stringify(c.mergeState));
+    assert.equal(env.push.state, 'pushed');
+    assert.deepEqual(entriesOf(runDir), []);
+    assert.equal(run(['--run', runDir, '--phase', 'build', '--worktree', wt], makeDeps(main, wt, { mergeState: c.mergeState }).deps), 0);
+  }
+});
+
+test('AC2.2: checklist — a throwing pr-checklist run is reported as data and merge state still runs', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt, { checklist: new Error('gh exploded') });
+  const env = runPhaseExit(opts(runDir, wt), h.deps);
+  assert.deepEqual(env.checklist, { exit: null, error: 'gh exploded' });
+  assert.equal(env.push.state, 'pushed');
+  assert.equal(h.calls.mergeState.length, 1);
+  assert.equal(run(['--run', runDir, '--phase', 'build', '--worktree', wt], makeDeps(main, wt, { checklist: new Error('x') }).deps), 0);
 });
 
 // ---- log failures ----
@@ -445,6 +636,13 @@ test('AC3.1: phase-exit writes the same entries the prose sequence wrote', () =>
       state: { pr: { number: 42, url: PR_URL } },
       deps: {},
       expected: ['- AUTO — Common Step 7 bookkeeping assertion: backfilled worktree registration before phase-exit push. Reversibility: high.'],
+    },
+    {
+      // build/SKILL.md:309's `{worktree registration | PR-early lifecycle}` alternative.
+      name: 'missing-PR backfill',
+      state: { worktree: '/wt' },
+      deps: {},
+      expected: ['- AUTO — Common Step 7 bookkeeping assertion: backfilled PR-early lifecycle before phase-exit push. Reversibility: high.'],
     },
   ];
   for (const c of cases) {
@@ -517,6 +715,19 @@ test('CLI: unanchored or missing --run exits 3 before any probe', () => {
     assert.equal(h.out.join(''), '');
   }
   assert.ok(!fs.existsSync(path.join(shadow, 'decisions.md')));
+});
+
+test('CLI: a relative --run and --worktree reach every sub-step as one absolute path', () => {
+  const { main, runDir, wt } = fixture();
+  const h = makeDeps(main, wt);
+  const relRun = path.relative(process.cwd(), runDir);
+  const relWt = path.relative(process.cwd(), wt);
+  assert.ok(!path.isAbsolute(relRun) && !path.isAbsolute(relWt));
+  assert.equal(run(['--run', relRun, '--phase', 'build', '--worktree', relWt], h.deps), 0);
+  assert.deepEqual(h.calls.checklist, [['--run', runDir, '--phase', 'build']]);
+  assert.deepEqual(h.calls.mergeState, [['--run', runDir, '--phase', 'build']]);
+  assert.ok(h.calls.git.every((a) => a[1] === wt), JSON.stringify(h.calls.git));
+  assert.equal(eventsOf(runDir).length, 1);
 });
 
 test('CLI: an archived wrap-up run dir resolves', () => {
