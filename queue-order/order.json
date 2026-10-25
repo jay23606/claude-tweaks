@@ -1,11 +1,16 @@
 {
-  "computedAt": "2026-10-25T13:27:24.951Z",
+  "computedAt": "2026-10-25T13:53:49.136Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
+        "number": 4273,
+        "updatedAt": "2026-10-25T13:38:13Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4221,
-        "updatedAt": "2026-10-25T13:27:09Z",
+        "updatedAt": "2026-10-25T13:51:43Z",
         "state": "OPEN"
       },
       {
@@ -19,11 +24,6 @@
         "state": "OPEN"
       },
       {
-        "number": 4199,
-        "updatedAt": "2026-10-25T11:00:59Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4191,
         "updatedAt": "2026-10-25T08:22:45Z",
         "state": "OPEN"
@@ -34,48 +34,8 @@
         "state": "OPEN"
       },
       {
-        "number": 4189,
-        "updatedAt": "2026-10-25T11:42:37Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4188,
-        "updatedAt": "2026-10-25T11:47:59Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4187,
-        "updatedAt": "2026-10-25T13:27:20Z",
-        "state": "CLOSED"
-      },
-      {
         "number": 4186,
         "updatedAt": "2026-10-25T11:50:17Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4185,
-        "updatedAt": "2026-10-25T12:11:42Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4184,
-        "updatedAt": "2026-10-25T08:34:47Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4181,
-        "updatedAt": "2026-10-25T08:40:13Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4180,
-        "updatedAt": "2026-10-25T11:11:13Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4179,
-        "updatedAt": "2026-10-25T12:22:30Z",
         "state": "OPEN"
       },
       {
@@ -90,7 +50,7 @@
       },
       {
         "number": 4172,
-        "updatedAt": "2026-10-25T08:21:50Z",
+        "updatedAt": "2026-10-25T13:45:22Z",
         "state": "OPEN"
       },
       {
@@ -155,7 +115,7 @@
       },
       {
         "number": 4150,
-        "updatedAt": "2026-10-25T08:19:49Z",
+        "updatedAt": "2026-10-25T13:29:37Z",
         "state": "OPEN"
       },
       {
@@ -165,7 +125,7 @@
       },
       {
         "number": 4141,
-        "updatedAt": "2026-10-25T08:19:42Z",
+        "updatedAt": "2026-10-25T13:29:45Z",
         "state": "OPEN"
       },
       {
@@ -200,7 +160,7 @@
       },
       {
         "number": 4134,
-        "updatedAt": "2026-10-25T08:19:17Z",
+        "updatedAt": "2026-10-25T13:50:37Z",
         "state": "OPEN"
       },
       {
@@ -240,7 +200,7 @@
       },
       {
         "number": 4026,
-        "updatedAt": "2026-10-24T08:16:17Z",
+        "updatedAt": "2026-10-25T13:30:06Z",
         "state": "OPEN"
       },
       {
@@ -400,12 +360,90 @@
       },
       {
         "number": 3315,
-        "updatedAt": "2026-10-22T00:17:24Z",
+        "updatedAt": "2026-10-25T13:50:25Z",
         "state": "OPEN"
       }
     ]
   },
   "groups": [
+    [
+      {
+        "body": "Origin: dispatch close-out of #4028 (PR #4205), 2026-10-25 — user asked whether close-out never rebasing is feedback for claude-tweaks\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/dispatch/close-out.md` step 2 stops a candidate whose `mergeStateStatus` is `DIRTY` (\"rebase and re-verify first\") and its Anti-Patterns table forbids rebasing because it \"changes PR content without the author present\". That reasoning is inherited from `_shared/github-pr-scan.md` item 11, a scheduled sweep that really does run with nobody present. Close-out is human-present by construction: `close-out-confirmation.md` gates every merge on an `AskUserQuestion`, with no autonomy carve-out, and `close-out.md`'s own Reporting section says never to schedule it headless. So the premise behind the ban is false in this mode.\n\nClose-out also has no branch for `BEHIND` with no conflicts (no `gh pr update-branch` path).\n\nObserved 2026-10-25 closing out #4028 (PR #4205): close-out stopped on `DIRTY`, and the user had to ask for the update by hand. The session then merged `origin/main` into the branch. Three conflicts resolved cleanly as text, yet one test failed afterwards: `tests/pr-run-comments.test.js` AC1.1, #4065's pin that no fixed `/tmp/{kind}-comment` path remains. Only the full suite caught it; it was fixed in `80e469dcc` before the merge. The real hazard is a resolution that silently drops one side's intent, not the act of updating.\n\n## Deliverables\n\n1. `close-out.md` step 2: on `DIRTY`/`CONFLICTING`, offer an \"update from {integration-branch}\" option instead of a hard stop. The update merges `origin/{integration-branch}` into the PR branch (never a rebase or force-push), resolves conflicts, runs the full suite through `verify.js`, pushes, and re-reads CI fresh before the confirmation gate.\n2. On `BEHIND` with no conflicts, offer the same update via `gh pr update-branch`, followed by the same CI re-read.\n3. `close-out-confirmation.md`: when an update ran, the question says so and names the conflicted files and the resolution commit, so the human reviews what changed before confirming the merge.\n4. Reword the Anti-Patterns row so the ban applies to the headless item-11 sweep and to updating without a passing full suite, not to a human-present close-out. `_shared/github-pr-scan.md` item 11 stays flag-only.\n\n## Acceptance Criteria\n\n- A `DIRTY` candidate is offered an update option rather than only a stop; declining leaves the PR exactly as before.\n- A PR updated by close-out is never merged without a passing full-suite `verify.js` stamp matching the new HEAD and a green CI read on that HEAD.\n- The confirmation question names that an update ran, the conflicted files, and the resolution commit.\n- No path rebases or force-pushes the PR branch.\n- `github-pr-scan.md` item 11 remains flag-only, and the close-out conformance tests are updated to pin the new branch.\n\n## Release Note\n\nClosing out a parked PR that has fallen behind or conflicts with main can now update it in place, re-verified, instead of stopping.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/dispatch/close-out.md` — modify\n- `plugin/skills/dispatch/close-out-confirmation.md` — modify\n- `plugin/skills/_shared/github-pr-scan.md` — modify\n- `tests/close-out-pr-state-contract-conformance.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T13:29:37Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4273,
+        "state": "OPEN",
+        "title": "dispatch close-out: offer an update-from-main path for a DIRTY or BEHIND PR instead of a flag-only stop",
+        "updatedAt": "2026-10-25T13:38:13Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "Origin: reflect full from #4028\n\nDefer-reason: tangential\n\n## Current State\n\nbin/lib/review-context/build.js caps each file at 64 KB (`PER_FILE_CAP_BYTES`) but nothing bounds the bundle as a whole. On #4028's review (129 scoped files) `context.md` came to 3,153,954 bytes, 692,614 of them the diff. `review/step3-lens-dispatch.md` hands every lens agent that path, and no agent window holds about 780k tokens, so the 14 lens prompts had to tell the agents to skip the bundle and read `git diff` per path instead. `--files-from` narrows the file list but not the budget.\n\n## Deliverables\n\n- [ ] `buildContext` takes a total-size budget and, over it, replaces the largest sections with the existing one-line stub until the bundle fits; `oversizeSections` names every stubbed path.\n\n- [ ] `step3-lens-dispatch.md` says what a lens agent reads when the bundle came back over budget (per-path `git diff {base}...{branch} -- {path}`), so a dispatcher need not improvise it in each prompt.\n\n- [ ] A test builds a bundle from a fixture whose files sum above the budget.\n\n## Acceptance Criteria\n\n- [ ] For a diff whose files sum above the budget, the printed `bytes` is at or under the budget and `oversizeSections` lists every stubbed path.\n\n- [ ] The new test fails when the budget logic is removed.\n\n## Release Note\n\nReview lens agents get a context bundle they can read on large diffs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/review-context/build.js` — add a total-size budget; stub the largest sections first\n- `plugin/skills/review/step3-lens-dispatch.md` — name the per-path git diff fallback when the bundle is over budget\n\n_Filed by `reflect` via specShapedBody._\n",
@@ -539,84 +577,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: build final fix-wave re-review of #3949 (out-of-scope observation)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#3949 added `--filing-failed` to `node plugin/bin/hooks.js resolve-console` (`plugin/bin/lib/reconcile/console-execute.js`): a ticked PR-console finding row whose filing failed records `filing-failed`, not `executed`, and Resolve stays unticked.\n\n`plugin/bin/lib/reconcile/archive-merged.js` `readConsoleState` (~line 447) treats a non-empty `executedAt` alone as resolved, and PR item outcomes never feed `plugin/bin/lib/console/residue.js`'s `readRunResidue`. So once the PR console is executed, a `filing-failed` row archives with the run and survives only in the PR reply comment and `decisions.md`. `reverse-failed` already behaves this way. Related: #3946's staged review-followup-1 (a failed Queue-write execution on the live-session console keeps `apply`).\n\n## Deliverables\n\n- [ ] A PR console whose items include `filing-failed` (or `reverse-failed`) reads as residue: archival refuses with `console-residue` until acknowledged, and the SessionStart banner lists it.\n\n## Acceptance Criteria\n\n1. An executed PR console.json holding a `filing-failed` item refuses archival (archive-run verb and reconcile sweep) with a reason naming the item, and `console-residue.js --ack` clears it.\n2. An executed PR console with only `executed`/`dropped` items still archives.\n3. `npm test` passes.\n\n## Release Note\n\nA review finding whose filing failed on a PR-rendered console now blocks archival until someone handles it.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-merged.js` — readConsoleState reads PR item outcomes\n- `plugin/bin/lib/console/residue.js` — count failed PR outcomes as residue\n\n_Filed by `build` via specShapedBody._\n\nStaged in run `2026-10-23T213805-spec-3946-3949-3816-3950` (PR #3992) as `spec-3949/staged/build-followup-2.md`; filed at that run's close-out.\n",
-        "createdAt": "2026-10-24T17:00:17Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 4172,
-        "state": "OPEN",
-        "title": "Keep a PR-rendered console with a failed finding filing out of archival until a human resolves it",
-        "updatedAt": "2026-10-25T08:21:50Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -1092,78 +1052,6 @@
     ],
     [
       {
-        "body": "Verified-as-of: 1813941ecfe019b89307ea75526f2c863ffb5e1e\n\nOrigin: /claude-tweaks:release v6.153.0 release-gate review (staged/review-2.md, run 2026-10-24T152958-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/hooks.js:1830` calls `refreshOwnerBlock` on every non-session-start hook event. In `plugin/bin/lib/hooks/context.js:877` it runs `resolveOwnerPid(env)` before the `HEARTBEAT_THROTTLE_MS` check (~:896-899). Without `CLAUDE_PID`, `resolveOwnerPid` falls back to `ancestorClaudePid` (`run-liveness/process-probe.js:45-63`): up to `MAX_ANCESTOR_HOPS = 8` synchronous `ps` calls with a 2 s timeout each, on every PreToolUse/PostToolUse. When the walk finds nothing, `owner.pid` stays null and the failing walk repeats on every event.\n\n## Deliverables\n\n1. On the heartbeat branch, check the throttle window before any pid probe that cannot change the outcome.\n2. Or cache the resolved owner pid (including a negative result) per process.\n3. Test in `tests/hooks-context.test.js` that a call inside the throttle window spawns no `ps`.\n\n## Acceptance Criteria\n\n- Inside the throttle window, `refreshOwnerBlock` makes no process-probe call (asserted with an injected probe).\n- Outside the window, the owner block is still restamped.\n- The new test goes red against the current ordering.\n- `npm test` passes.\n\n## Release Note\n\nHook events no longer pay for a process-tree walk on every tool call while the run owner's heartbeat is fresh.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/context.js` — throttle before pid resolution\n- `tests/hooks-context.test.js` — no-probe-inside-window case\n\n_Filed by `release` via specShapedBody._",
-        "createdAt": "2026-10-24T16:25:13Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4150,
-        "state": "OPEN",
-        "title": "refreshOwnerBlock resolves the owner pid (up to 8 ps spawns) before checking the heartbeat throttle",
-        "updatedAt": "2026-10-25T08:19:49Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "**Related:** #1426\n\nOrigin: /claude-tweaks:specify #3997,#1426,#2724 (2026-10-24) — #1426 reached shaping mode unguarded\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:specify`'s explicit-reference shaping entries (`plugin/skills/specify/SKILL.md` Resolve-the-input case 1, the comma-list/range batch branch, and case 5's direct-shaping branch) have no guard for a `digest`-labeled issue. The only pre-shaping guard is the parent-record guard (`SKILL.md:79`), which checks `parent-issue` and a `## Leaves` heading only.\n\nCanon says a digest issue is never shaped: `plugin/skills/_shared/materiality-floor.md:128-133` (\"a digest issue is never shaped, scored, promoted, or closed as a record\"). Bare drain already honors this, excluding `digest` from its eligible set (`plugin/skills/specify/next-mode.md:148`, and the `EXCLUDE` set at `:191`).\n\nObserved on 2026-10-24: `/claude-tweaks:specify #3997,#1426,#2724` resolved #1426 (the live `digest` container) into the batch with nothing stopping it. The agent left it unshaped only because it recalled the materiality-floor canon. Shaping it would have stamped `ready`/scoring on the container and rewritten its body, exposing it to `/dispatch` and `/flow`.\n\n## Deliverables\n\n- [ ] Extend the pre-shaping guard in `plugin/skills/specify/SKILL.md` case 1 so a target carrying the `digest` label (GitHub driver) hard-stops before shaping, with no prompt, and never enters the `needs:definition` redirect. The stop message names the container and cites `_shared/materiality-floor.md`. Scope it to the same entries the parent-record guard covers: single record, comma-list/range batch, and case 5 by reference.\n\n- [ ] Batch semantics: in a comma-list/range batch, a `digest` element is refused per element and the other records still shape, unlike the all-or-nothing resolution-failure stop. Name this in the batch paragraph and add a `refused — digest container` outcome to `shaping-mode-readback.md`'s Actions Performed outcome list, which today says there is no skipped outcome.\n\n- [ ] Strip any mis-shape residue (`ready`, `risk:*`, `size:*`, `ceremony:*`, `solution:unjustified`) from a digest target in one edit, reported in the output: the same carve-out the parent-record guard already has.\n\n## Acceptance Criteria\n\n- [ ] `SKILL.md` case 1 names a `digest` refusal that runs before the `needs:definition` redirect and covers the batch/range and case-5 entries.\n\n- [ ] `shaping-mode-readback.md`'s Actions Performed outcome list includes the digest-refusal outcome, and its no-skipped-outcome sentence is reconciled with it.\n\n- [ ] A conformance test under `tests/` pins that `specify/SKILL.md`'s digest refusal and `next-mode.md`'s `EXCLUDE` set both name `digest`, so the explicit and drain entries cannot drift apart again. The test fails when the `SKILL.md` refusal text is removed.\n\n- [ ] `npm test` is green.\n\n## Release Note\n\n`/claude-tweaks:specify` now refuses to shape the digest container issue when it is passed by number, instead of treating it like an ordinary record.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/specify/SKILL.md` — digest refusal beside the parent-record guard (case 1, batch, case 5)\n- `plugin/skills/specify/shaping-mode-readback.md` — digest-refusal outcome in Actions Performed\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-24T15:30:28Z",
         "labels": [
@@ -1227,84 +1115,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #4041\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/resolve-policy.js --values` prints one scalar per requested key. For a key whose configured value fails schema validation, the resolver returns `{ value: <schema default>, invalid: true }`, and `--values` prints that default with exit 0 and nothing on stderr. The `invalid` flag is lost. #4041's review found `release-tip-moves: abc` silently read as `2` this way (`tests/release-reviewed-tip-conformance.test.js` \"the --values form prints the default with exit 0 and no sign of the invalid value\"), and fixed only that one read site by switching it to the JSON form. 61 files under `plugin/skills` and `plugin/bin` still call `--values`, so a typo in any policy key they read degrades to the default with no trace.\n\n## Deliverables\n\n`resolve-policy.js --values` writes one stderr line per requested key whose entry carries `invalid: true`, naming the key, the rejected value, and the default it fell back to. Stdout and the exit code stay unchanged, so no existing caller breaks.\n\n## Acceptance Criteria\n\nA `tests/` case runs the real `resolve-policy.js --values` against a run config holding an invalid value. It asserts stdout is the default, exit is 0, and stderr names the key and the word `invalid`.\n\nA case with only valid keys asserts stderr is empty.\n\n`npm test` passes.\n\n## Release Note\n\nAn invalid value in `.claude-tweaks/policy.yml` or a run config now produces a warning when a skill reads it, instead of silently falling back to the default.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/resolve-policy.js` — warn on stderr for each invalid key in --values mode\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-24T14:37:32Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4141,
-        "state": "OPEN",
-        "title": "resolve-policy --values: warn on stderr when a requested key's value is invalid",
-        "updatedAt": "2026-10-25T08:19:42Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -1758,7 +1568,7 @@
     ],
     [
       {
-        "body": "Origin: ledger resolve gate (#4024, ledger row 28)\nDefer-reason: genuinely-larger\n\n## Current State\n\nTracing is documented as POSIX-only in `plugin/skills/test/impact-selection.md` (Known limits): `tools/test-impact.js trace` puts the tracer's path into `NODE_OPTIONS` inside literal double quotes, and on win32 that quoting drops the path's backslashes, so the end-to-end trace test in `tests/test-impact-cli.test.js` is skipped on win32. Separately, a `--files-from` subset reaches `node --test` as an explicit file list (`tools/run-tests.js` passes root globs on win32 only for a full run, since the Windows command line cannot hold the whole list), so a large impact subset could overflow the Windows command line. CI traces on Linux, and selection reads the map on any platform, so only a developer tracing locally on Windows, or running a very large subset there, is affected.\n\n## Deliverables\n\n- Pass the tracer path to `NODE_OPTIONS` in a form win32 parses, and lift the end-to-end test's win32 skip.\n- Bound the subset on win32 (fall back to the full run past the size the command line holds, with a named reason) or pass the subset another way.\n- Remove the POSIX-only limit from the doc.\n\n## Acceptance Criteria\n\n- [ ] `node tools/test-impact.js trace` on a win32 checkout whose path holds a space produces a map naming the traced tests, and the Windows regression job runs the end-to-end test instead of skipping it.\n- [ ] A subset larger than the win32 limit runs the full suite with a named fallback reason rather than failing to spawn.\n- [ ] The Known limits section no longer lists tracing as POSIX-only.\n\n## Release Note\n\nTest-impact maps can be traced on Windows as well as on POSIX, and a large subset no longer overflows the Windows command line.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/test-impact.js` — where `NODE_OPTIONS` is composed\n- `tools/run-tests.js` — how the subset reaches `node --test` on win32\n- `tests/test-impact-cli.test.js` — the end-to-end trace test and its win32 skip\n- `plugin/skills/test/impact-selection.md` — the POSIX-only limit\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "body": "Origin: ledger resolve gate (#4024, ledger row 28)\nDefer-reason: genuinely-larger\n\n## Current State\n\nTracing is documented as POSIX-only in `plugin/skills/test/impact-selection.md` (Known limits): `tools/test-impact.js trace` puts the tracer's path into `NODE_OPTIONS` inside literal double quotes, and on win32 that quoting drops the path's backslashes, so the end-to-end trace test in `tests/test-impact-cli.test.js` is skipped on win32. Separately, a `--files-from` subset reaches `node --test` as an explicit file list (`tools/run-tests.js` passes root globs on win32 only for a full run, since the Windows command line cannot hold the whole list), so a large impact subset could overflow the Windows command line. CI traces on Linux, and selection reads the map on any platform, so only a developer tracing locally on Windows, or running a very large subset there, is affected.\n\n## Deliverables\n\n- Pass the tracer path to `NODE_OPTIONS` in a form win32 parses, and lift the end-to-end test's win32 skip.\n- Bound the subset on win32 (fall back to the full run past the size the command line holds, with a named reason) or pass the subset another way.\n- Remove the POSIX-only limit from the doc.\n\n## Acceptance Criteria\n\n- [ ] `node tools/test-impact.js trace` on a win32 checkout whose path holds a space produces a map naming the traced tests, and the Windows regression job runs the end-to-end test instead of skipping it.\n- [ ] A subset larger than the win32 limit runs the full suite with a named fallback reason rather than failing to spawn.\n- [ ] The Known limits section no longer lists tracing as POSIX-only.\n\n## Release Note\n\nTest-impact maps can be traced on Windows as well as on POSIX, and a large subset no longer overflows the Windows command line.\n\n## Technical Approach\n\n### Key Files\n\n- `tools/test-impact.js` — where `NODE_OPTIONS` is composed\n- `tools/run-tests.js` — how the subset reaches `node --test` on win32\n- `tests/test-impact-cli.test.js` — the end-to-end trace test and its win32 skip\n- `plugin/skills/test/impact-selection.md` — the POSIX-only limit\n\n## Absorbed: Windows test-impact tracer tests (from the #2767 class split)\n\nFolds in #4254. Source: windows-regression run 40169646104 (main 6a41ebe3a) for the first 18 tests, and run 40186186451 (#4254) for `:254` and `:265`.\n\n### Current State\n\n`tests/test-impact-tracer.test.js` builds NODE_OPTIONS with the tracer, or a fixture preload, inside literal double quotes holding a native path:\n\n- line 39: `` const req = `--require \"${TRACER}\"` ``, used by every traced run\n- line 202: `` `--require \"${path.join(root, 'freeze-readdir.js')}\" ${env.NODE_OPTIONS}` ``\n- line 250: `` `--require \"${path.join(root, 'fail-trace-append.js')}\" ${env.NODE_OPTIONS}` ``\n\n`tools/test-impact.js:145` composes the same `--require \"<path.join(root, 'tools', 'test-impact', 'tracer.js')>\"` shape, as #4134's Current State describes. Node's NODE_OPTIONS parser treats `\\` inside double quotes as an escape, so on win32 the path loses its backslashes. Examples: `Cannot find module 'D:aclaude-tweaksclaude-tweakstoolstest-impacttracer.js'` and, from #4254, `Cannot find module 'D:a_tempct-test-runs…fixture rootfail-trace-append.js'`.\n\n20 failing tests in 1 file:\n\n- `tests/test-impact-tracer.test.js:95` — module loads and reads are attributed\n- `tests/test-impact-tracer.test.js:104` — readdir records a d entry\n- `tests/test-impact-tracer.test.js:108` — a recursive directory copy records a c prefix, so a file inside the copied tree selects the test\n- `tests/test-impact-tracer.test.js:115` — existsSync records s\n- `tests/test-impact-tracer.test.js:122` — statSync records f\n- `tests/test-impact-tracer.test.js:126` — child with explicit env is traced (AC2.1 spawn half)\n- `tests/test-impact-tracer.test.js:132` — fork with explicit env is traced\n- `tests/test-impact-tracer.test.js:136` — git content command in the repo records c\n- `tests/test-impact-tracer.test.js:150` — callback and fs.promises read and readdir are traced like the sync forms\n- `tests/test-impact-tracer.test.js:163` — wrapped execFile keeps promisify.custom\n- `tests/test-impact-tracer.test.js:170` — a relative require records its resolution candidates as s\n- `tests/test-impact-tracer.test.js:177` — git glob and magic pathspecs record their literal directory prefix\n- `tests/test-impact-tracer.test.js:184` — git option values are not path arguments\n- `tests/test-impact-tracer.test.js:188` — git grep: the pattern is not a pathspec; paths after -- are\n- `tests/test-impact-tracer.test.js:198` — a patch that cannot be installed fails closed with c \"\"\n- `tests/test-impact-tracer.test.js:213` — shell env prefixes and sh -c scripts are read as the command they run\n- `tests/test-impact-tracer.test.js:224` — paths with newline round-trip\n- `tests/test-impact-tracer.test.js:235` — unattributed process records nothing\n- `tests/test-impact-tracer.test.js:254` — a traced process whose trace write fails exits 1 although its own code succeeded, and leaves no loss marker\n- `tests/test-impact-tracer.test.js:265` — a read whose trace write fails leaves a .lost marker naming its test, and the process exits 0\n\n### Deliverables\n\n- One helper that builds a NODE_OPTIONS `--require \"<path>\"` entry with the path forward-slashed (`toPosix(p, pathImpl.sep)`, `pathImpl` defaulting to `path`). It keeps the double quotes for a path that contains a space. `tools/test-impact.js:145` and `tests/test-impact-tracer.test.js:39`, `:202` and `:250` all use it.\n- A Linux-runnable pin: the helper given `'D:\\\\a\\\\x y\\\\tracer.js'` and `path.win32` returns exactly `--require \"D:/a/x y/tracer.js\"`.\n\n### Acceptance Criteria\n\n- [ ] A `windows-regression.yml` dispatch on the branch shows all 20 tests above passing, with `tests/test-impact-tracer.test.js` at 0 failures, and no newly failing file.\n- [ ] The helper pin above passes on Linux, and fails if the helper stops forward-slashing.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-24T12:33:45Z",
         "labels": [
           {
@@ -1801,7 +1611,7 @@
         "number": 4134,
         "state": "OPEN",
         "title": "Make test-impact tracing work on Windows and keep a large impact subset inside the Windows command line",
-        "updatedAt": "2026-10-25T08:19:17Z",
+        "updatedAt": "2026-10-25T13:50:37Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -2255,84 +2065,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nEvery tool call is a model turn over a p50 276k-token context (p90 428k), costing ~4–12 s. Bookkeeping takes a large share of those turns: 11.4k `log-decision.js` calls in 14 days (~75 per pipeline) and ~23k run-dir CLI calls overall (8% of all tool calls, ~10% of context tokens).\n\nDeterministic CLIs already compute most decisions (`resolve-policy.js`, `flow-preflight.js`, `claim-targets.js`, `materialize.js`, `pr-checklist.js`); the model then re-narrates each one with a separate `log-decision.js` call. #3968's build agent made ~17 `log-decision.js` calls and 3 separate checklist pushes, plus individual record-worktree / record-pr / push / checklist calls at every phase exit.\n\n## Deliverables\n\n1. Every bin CLI that makes or applies a decision appends its own decisions.md entry (via `lib/log-decision/append`) when given `--run`; skills drop the matching `log-decision.js` instructions.\n2. `log-decision.js` accepts many entries in one call (an entries file), for model-judged decisions batched at phase end.\n3. A `phase-exit` CLI — commit check, explicit `git -C` push, PR checklist flip, record-pr / record-worktree, post-push merge-state check, and the decision entry — in one call with one JSON result, replacing the phase-exit prose at every call site.\n4. Skill prose migration with conformance tests per `docs/skill-authoring.md`; expand-contract for any consumer of the old call shapes.\n\n## Acceptance Criteria\n\n- [ ] `log-decision.js` invocations per pipeline fall from ~75 to 10 or fewer, measured over 10 runs.\n- [ ] Each phase exit is one tool call; the phase-exit CLI has a test for each sub-step's failure branch.\n- [ ] decisions.md parity: a fixture pipeline produces the same entries (ignoring timestamps) before and after.\n- [ ] Median tool round trips per pipeline (timing.json) fall by at least 25% across 10 runs (baseline 407).\n\n## Release Note\n\nPipelines spend far fewer turns on bookkeeping: tools log the decisions they make, and each phase exit is a single step.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/log-decision.js` — multi-entry input\n- `plugin/bin/pr-checklist.js` — called from phase-exit\n- `plugin/skills/_shared/git-discipline.md` — phase-exit cites the CLI\n- `plugin/skills/_shared/pr-checklist-refresh.md` — phase-exit cites the CLI\n- `plugin/skills/_shared/auto-decision-log.md` — self-logging CLIs\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-24T08:07:14Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
-            "name": "size:high",
-            "description": "Scoring: large change — consider decomposition before building",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4026,
-        "state": "OPEN",
-        "title": "Collapse per-step bookkeeping into self-logging CLIs and a single phase-exit call",
-        "updatedAt": "2026-10-24T08:16:17Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "high",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
