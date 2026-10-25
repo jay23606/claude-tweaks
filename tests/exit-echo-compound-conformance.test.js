@@ -23,8 +23,9 @@ const EXEMPT = new Set(['_shared/scratch-worktree.md']);
 //   - a compound split across a line break is two lines, and neither line carries both halves;
 //   - a backtick before the separator (`npm test` ; echo exit=$?) breaks the `[^`\n]*` run, so the
 //     span is not read as one command;
-//   - a span whose first non-space text is the separator itself (the description form
-//     `(`; echo exit=$?`)`) has no command before `;`, so it is not flagged, by design.
+//   - a span whose text opens with the separator itself (the description forms
+//     `(`; echo exit=$?`)` and `(`&& echo exit=$?`)`) has no command before `;` or `&&`, so it is
+//     not flagged, by design.
 const COMPOUND_PATTERN = /[^\s`;&][^`\n]*(?:;|&&)\s*echo\s+["']?exit=\$\?/;
 
 function findAllMdFiles(dir) {
@@ -41,8 +42,8 @@ function relSkillPath(file) {
   return path.relative(SKILLS_DIR, file).split(path.sep).join('/');
 }
 
-// Returns [{ lineNumber, line }] for every line carrying a command, `;` or `&&`, then an exit-status echo.
-// A span that opens with `;` (a description such as (`; echo exit=$?`)) does not match.
+// Returns [{ lineNumber, line }] for every line carrying a command, `;` or `&&`, then an exit-status
+// echo. A span that opens with `;` or `&&` (a description such as (`; echo exit=$?`)) does not match.
 function findCompoundSites(text) {
   const lines = text.split('\n');
   const sites = [];
