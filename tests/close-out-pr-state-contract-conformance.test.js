@@ -524,7 +524,8 @@ test('#4317 AC2.1 go-red control: an update clause keyed on the update having ru
 function assertDeclineClearsMarker(confirm) {
   const start = confirm.indexOf('Declining (Option 2) stops here');
   assert.ok(start >= 0, 'decline paragraph found');
-  const para = confirm.slice(start, confirm.indexOf('\n\n', start) < 0 ? undefined : confirm.indexOf('\n\n', start));
+  const end = confirm.indexOf('\n\n', start);
+  const para = confirm.slice(start, end < 0 ? undefined : end);
   assert.match(para, /When `close-out-update\.md` handed off a `\{verified-sha\}`, first clear its marker\s+\(`cleared \(declined at confirmation gate\)`/, 'a decline clears the update marker');
 }
 
