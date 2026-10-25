@@ -12,6 +12,7 @@ const { classifyDecisions } = require('../log-decision/claim-log');
 const { canonicalRealpath } = require('../path-guard');
 const processProbe = require('../run-liveness/process-probe');
 const { HEARTBEAT_THROTTLE_MS } = require('../run-liveness/constants');
+const { probeOwnerPid } = require('../run-liveness/owner-pid-probe');
 const { claudePid } = processProbe;
 
 function readStdin() {
@@ -837,20 +838,16 @@ function patchWithOwnerBlock(patch, sessionId, { replacesSessionId = false } = {
   return (current) => ({ ...patch, ...ownerStampPatch(current, sessionId, block, { replacesSessionId }) });
 }
 
-// Whether the process an owner block stamped is provably still running here. A failed
-// start-time probe (null) is unknown, never dead: only a probed start time that differs
-// from the stamped one is pid reuse. A probe that throws reads as alive (fail safe: never
-// take the block over on a question that could not be asked).
+// Whether the process an owner block stamped may still be running here — the takeover
+// gate. The verdict is run-liveness's owner-pid probe, the one judge runLiveness reports
+// too (#4153). Only a negative that rules the stamped process out (`other-host`, `no-pid`,
+// `gone`, `pid-reused`) allows takeover; `positive`, `alive-no-start-time`, and every
+// `error` (`start-time-unavailable`, `invalid-start-time`, a probe that threw) keep the
+// block — the `error` cases are what runLiveness reads as `unknown`, and a question that
+// could not be answered never takes a block over.
 function stampedOwnerProvablyAlive(owner, { hostname, aliveFn, startFn }) {
-  try {
-    const sameHostAlive = owner.host === hostname() && Number.isInteger(owner.pid) && aliveFn(owner.pid);
-    if (!sameHostAlive) return false;
-    if (owner.pidStartedAt == null) return true;
-    const startedAt = startFn(owner.pid);
-    return startedAt === null || startedAt === undefined || startedAt === owner.pidStartedAt;
-  } catch {
-    return true;
-  }
+  const { result, detail } = probeOwnerPid(owner, { hostname, pidAlive: aliveFn, pidStartTime: startFn });
+  return result !== 'negative' || detail === 'alive-no-start-time';
 }
 
 // #3973: the owner's own hooks keep the owner block fresh. Same pid as stamped: a
