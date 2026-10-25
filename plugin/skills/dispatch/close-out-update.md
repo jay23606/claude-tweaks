@@ -20,7 +20,7 @@ When `command -v gh` exits non-zero, stop before step 1 offers anything (`stoppe
 
 **Update marker.** An update on GitHub is unverified until step 4's stamp and step 6's CI read pass on its head, and `{wt}` lives in one checkout,
 so the pending state is kept on the PR: a `close-out-update` run comment (`_shared/pr-run-comments.md`'s Comment kinds), found, written and rewritten
-by that file's Post-or-update procedure with `{kind}` = `close-out-update` and `{pr-number}` = `{number}`. Its body, marker first, is composed only by `bin/close-out-marker.js` (rules in `bin/lib/dispatch/close-out-marker.js`), never by hand:
+by that file's Post-or-update procedure with `{kind}` = `close-out-update` and `{pr-number}` = `{number}`. Its body, marker first — a pending body is composed only by `bin/close-out-marker.js`'s `write` and `resolve-pending` (rules in `bin/lib/dispatch/close-out-marker.js`), never by hand:
 
 ```text
 <!-- run-comment: close-out-update -->
@@ -95,7 +95,7 @@ before this run's write — or, when step 2 found no pending marker, clear it (`
    `git -C {wt} merge-tree --write-tree --name-only --no-messages {merge}^1 {merge}^2` lists its conflicted paths after the tree line (exit 1: it conflicted; exit 0: `none`; any other exit — git older than 2.38, an unresolvable ref — `unknown`);
    no merge commit is a `BEHIND` update: `none`.
    **Fresh.** Otherwise pin, then `git worktree add --detach {wt} origin/{head}` before anything touches the PR — detached because the run's own worktree
-   may still hold `{head}` checked out, and never the main checkout. `BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`)
+   may still hold `{head}` checked out, and never the main checkout. `BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`, and `--pre-update-head` set to the values line's `headRefOid`)
    and runs `gh pr update-branch {number}` (a merge — never the rebase variant); a failure stops the candidate (`stopped: update failed — update-branch rejected`).
    The call can return before GitHub's merge has landed, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads, a few seconds apart, each its own plain command — for a sha that differs from the pre-update one
    (none appearing: `stopped: update failed — head moved`); pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`.
@@ -119,7 +119,7 @@ before this run's write — or, when step 2 found no pending marker, clear it (`
    `/claude-tweaks:dispatch close-out #{record}` (`{record}` = a `Fixes` record of the PR), which resumes here (step 2). On `BEHIND` the update is
    already on GitHub, so that resume — never a later merge on CI alone — is what clears it.
 5. **Push.** Only when `{wt}` holds commits the PR lacks (`git -C {wt} merge-base --is-ancestor HEAD origin/{head}` exits non-zero — a `DIRTY` resolution or a resumed fix).
-   First write the pending marker with `write`, passing this update's `update-method`, `conflicted-files` and resolution commit (in full) — `write` appends it to a pending one, per the Update marker above;
+   First write the pending marker with `write`, passing this update's `update-method`, `conflicted-files`, the pre-update head and resolution commit (in full) — `write` appends it to a pending one, per the Update marker above;
    a resume that went straight to step 4 and found one pending keeps it as it is, since a fix commit is not the update. Then
    `git -C {wt} push origin HEAD:{head}` — plain. A rejection is reported and stops the candidate
    (`stopped: update failed — push rejected`); it is never retried as a force-push.

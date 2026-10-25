@@ -363,7 +363,7 @@ const UPDATE_MUTATIONS = [
   ['resume-values-marker', 'A pending marker supplies `{update-method}`, `{conflicted-files}` and `{resolution-commit}`', '`{wt}` supplies the values'],
   ['resume-pending-resolution', 'is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge', 'stays `pending`'],
   ['resume-no-marker-local', 'With no pending marker nothing was pushed, since the marker precedes every landing call, so recover', 'Otherwise recover'],
-  ['marker-before-update-branch', '`BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`)\n   and runs `gh pr update-branch {number}`', '`BEHIND` then runs `gh pr update-branch {number}`'],
+  ['marker-before-update-branch', '`BEHIND` then writes the pending marker (`write` with `--update-method "gh pr update-branch" --conflicted-files none --resolution-commit pending`, and `--pre-update-head` set to the values line\'s `headRefOid`)\n   and runs `gh pr update-branch {number}`', '`BEHIND` then runs `gh pr update-branch {number}`'],
   ['marker-post-update-sha', '\n   Then rewrite the marker\'s `pending` `resolution-commit` entry to that sha with `resolve-pending`.', ''],
   ['pin-retry-after-exit0', 'after an exit-0 fetch, a ref missing', 'a ref missing'],
   ['base-moved-no-wt', ' — the one just added for a pending marker included —', ''],
