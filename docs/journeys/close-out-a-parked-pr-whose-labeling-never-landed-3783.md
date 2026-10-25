@@ -60,4 +60,5 @@ files:
 ## Origin
 - Updated during build of #4039 (step 3 now names where a close-out labeling run's screenshot evidence lands).
 - Created during build of #3783 (verify.json acceptance guard). Observed on #3712's run (PR #3749): wrap-up skipped acceptance labeling and Verify execution, the unattended console resolved `leave-open`, and close-out's step 3 assumed a `pending-review` PR implied labeling had run.
+- Updated during build of #4273: step 2's `DIRTY` case now first gets close-out's re-verified update offer (`update-a-conflicting-parked-pr-at-close-out-4273.md`) instead of a stop.
 - Updated during build of #4045: the landed rule now lives in _shared/acceptance-labeling-landed.md, cited by pr-first-merge Step 1, close-out step 3 and tidy.
