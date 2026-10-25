@@ -661,6 +661,8 @@ test('pending and stale log their caveat lines', () => {
   const cases = [
     ['pending', { gh: viewGh({ headRefOid: HEAD, statusCheckRollup: [RUNNING, { ...RUNNING, name: 'lint' }] }) }, '— PR-check gate: PR #7 checks pending at ccccccc (test, lint) — passed with caveat. Reversibility: high.'],
     ['stale', STATE_OVERRIDES.stale(), '— PR-check gate: PR #7 checks stale at ddddddd (HEAD not yet pushed) — passed with caveat. Reversibility: high.'],
+    // An empty rollup on a PR whose CI should report reads pending with no names: HEAD is pushed, no check has reported yet.
+    ['pending', { gh: viewGh({ headRefOid: HEAD, statusCheckRollup: [] }) }, '— PR-check gate: PR #7 checks pending at ccccccc (no check reported yet) — passed with caveat. Reversibility: high.'],
   ];
   for (const [state, over, line] of cases) {
     const { main, runDir } = fixture({ pr: { number: 7 } });

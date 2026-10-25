@@ -146,7 +146,7 @@ function gateEntry(out) {
     return { status: 'AUTO', reversibility: 'high', text: `PR #${pr} checks red at ${short(out.headRefOid)}, but every failing check (${out.failing.map((f) => f.name).join(', ')}) is also failing on ${out.baseBranch} at ${short(out.baseSha)} — inherited, passed with caveat` };
   }
   if (state === 'pending' || state === 'stale') {
-    return { status: 'AUTO', reversibility: 'high', text: `PR #${pr} checks ${state} at ${short(out.headRefOid)} (${out.pending.length ? out.pending.join(', ') : 'HEAD not yet pushed'}) — passed with caveat` };
+    return { status: 'AUTO', reversibility: 'high', text: `PR #${pr} checks ${state} at ${short(out.headRefOid)} (${out.pending.length ? out.pending.join(', ') : (state === 'stale' ? 'HEAD not yet pushed' : 'no check reported yet')}) — passed with caveat` };
   }
   if (DEGRADED.includes(state)) {
     return { status: 'SKIP', reversibility: 'n/a', text: `condition: pr-checks.js ${state}${out.reason ? `: ${out.reason}` : ''} → fallback: local verification only` };
