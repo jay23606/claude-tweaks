@@ -8,3 +8,4 @@
 | 4 | build | SKILL.md new #4314 sentence was one unwrapped long line | fixed | ac6b46b82 — paragraph re-wrapped (one residual tail line, see #6) |
 | 5 | build | SDD ruling — accepted the 3-line re-wrap of the #4314 queue-pull comment over the plan's 2-line split (plan split broke the pinned phrase): ratify or reverse at the Review Console (staged/sdd-ruling-1.md) | open | — |
 | 6 | build | Final review parked — SKILL.md False-positive paragraph keeps one ~125-col line (unchanged tail) after the fix-wave re-wrap | observation | Cosmetic only; no reader or test pin affected; no second fix wave per SDD |
+| 7 | build/skill | skill-prose-conformance-tests (enrichment): a single-line regex pin over prose inside a hard-wrapped `#`-comment or paragraph fails when the authored wrap splits the phrase — plans should keep a pinned phrase on one line (#4314 Task 3 hit this) | observation | Seeded for wrap-up's Skills curation row |

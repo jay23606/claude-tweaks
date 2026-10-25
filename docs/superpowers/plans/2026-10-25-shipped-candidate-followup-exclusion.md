@@ -194,3 +194,9 @@ git commit -m "State the opened-before-created shipped-candidate exclusion in di
 | AC2.1, AC2.2 | Task 2 |
 | AC3.1 | Task 1 |
 | AC4.1 | Task 3 Step 4 (prose test); full `npm test` runs at `/build` Common Step 5 |
+
+## Build deviations (Common Step 4.5 — classified Beneficial)
+
+1. **Test files beyond the spec's Key Files.** `tests/bin-lib/issues/record.test.js` (pins the query selection, Deliverable 1) and `tests/dispatch-shipped-candidate-prose.test.js` (pins the prose, Deliverable 3) were extended though the spec's `### Key Files` names neither — each is the existing pin file for its deliverable, so the deliverable stays guarded.
+2. **Adjacent prose accuracy, from the whole-branch review fix wave (ac6b46b82).** Beyond stating the exclusion, the queue-pull `# #1984:` comment now says the pass runs after both the #1224 open-PR and #1983 target-missing exclusions, and SKILL.md's residual-false-negative sentence names the new accepted false negative (a PR already open at filing that only says "refs #N"). Both keep the edited paragraphs truthful about the behavior this record changed.
+3. **Task 3 comment layout.** The plan's two-line `# #4314:` comment split the pinned phrase across a line break; the shipped comment keeps the same wording with the phrase on one line (SDD ruling, staged as `staged/sdd-ruling-1.md`).
