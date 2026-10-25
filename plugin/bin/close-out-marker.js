@@ -69,6 +69,7 @@ const { writeFileAtomic } = require('./lib/atomic-write');
 const {
   MARKER_LINE,
   UPDATE_METHODS,
+  SHA_RE,
   parseMarker,
   serializeMarker,
   appendUpdate,
@@ -76,7 +77,6 @@ const {
 } = require('./lib/dispatch/close-out-marker');
 
 const KIND = 'close-out-update';
-const SHA_RE = /^[0-9a-f]{40}$/i;
 
 // What `read` reports when no trusted marker comment exists.
 const NO_MARKER = Object.freeze({

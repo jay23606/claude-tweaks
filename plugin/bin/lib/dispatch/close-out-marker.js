@@ -153,6 +153,7 @@ function resolvePendingCommit(fields, sha) {
 module.exports = {
   MARKER_LINE,
   UPDATE_METHODS,
+  SHA_RE,
   parseMarker,
   serializeMarker,
   appendUpdate,
