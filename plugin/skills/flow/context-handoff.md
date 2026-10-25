@@ -1,0 +1,120 @@
+# Flow — Context Handoff
+
+Loaded by `/claude-tweaks:flow` Step 4's context cap check only when `bin/context-gauge.js` printed `over: true` with a `handoff` path: this agent's context crossed the cap, so the next phase starts in a fresh agent from `{run}/handoff.json` instead of growing this one (#4027). Every other gauge result continues in this agent and never needs this file.
+
+## The check
+
+The gauge runs only where a fresh agent can take over cleanly:
+
+- **A single-spec run.** Never a multi-spec run: `--next-steps` names one spec's remaining steps, but the handoff's `resume` command re-targets every record in the run dir, so a resumed sequential run would skip the later specs' earlier steps. A `MULTISPEC_PARALLEL_WAVE=1` wave member runs `/build` and `/test` directly and never reaches this step.
+- **Not under `interactive`.** That mode exists for in-flow questions, and a fresh `Agent` cannot ask the user any. `auto`, `confirm` and `hybrid` all run as `auto` past the Manifesto, and their `resume` line carries ` auto`.
+- **At a boundary with a step left.** After a step's gate passes, with at least one step still to run. `build` with its automatic `stories`, and `polish` with its re-verify, are each one unit: never gauge between them.
+
+One call, its own Bash call, with the run dir spelled out as a literal absolute path:
+
+`node "${CLAUDE_PLUGIN_ROOT}/bin/context-gauge.js" --run "/abs/path/.claude-tweaks/pipelines/{run-id}" --next-steps {remaining steps, comma-joined}`
+
+Never `--run "$PIPELINE_RUN_DIR"`. The gauge finds its caller's transcript by an unanswered Bash call whose command text names `context-gauge` and the run id. A shell variable hides the run id, so the gauge falls back to a weaker match and its `reason` starts `caller-not-identified`.
+
+## Reading the result
+
+The gauge prints one JSON line, `{contextTokens, cap, over, transcript, handoff, reason}`.
+
+- `over: false` means continue in this agent, whatever `reason` says: a missing or unreadable transcript fails open to `over: false`.
+- `over: true` with `handoff: null` also continues in this agent: `{run}/handoff.json` could not be written, and `reason` says why.
+- Exit 2 (a malformed call, a refused `--run`) or any non-JSON output: continue in this agent.
+
+A gauge failure never stops the run. Only `over: true` with `handoff` set hands off. Log it first, as its own Bash call:
+
+`node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "{run}" --status AUTO --step "Step 4 context cap" --text "context {contextTokens} tokens over cap {cap}; steps {next-steps} handed to a fresh agent from handoff.json" --reversibility n/a`
+
+Then take the branch that matches the run. Read `dispatched` with `SKILL.md` Step 1 rung 2's fail-open one-liner, which prints `dispatched` or nothing.
+
+## Dispatched call
+
+A `/claude-tweaks:dispatch` Task call (`run-state.json` `dispatched: true`) stops before the next step and hands the rest back to its dispatcher, which continues it in a fresh call (`dispatch/two-call-gate.md`).
+
+1. **Push first.** Under `integration-model: pr-first`, the phase that just ended pushed its branch (`_shared/git-discipline.md`'s Phase-exit push section). If that push failed or did not run, run it now as its own Bash call: `git -C "{worktree}" push origin {branch}`. Under `local-merge` or `current-branch` there is nothing to push, because the continuation inherits this worktree.
+2. **Stop** before the next step. Do not settle or release the claim and do not tear anything down: the continuation needs the claim, the worktree and the run dir as they are. The template's checks before `build-test-ok` (the pass-stamp confirmation, the bookends) belong to the call that finishes the steps.
+3. **Render** `steps-and-gates.md`'s handed-off note (its Partial step lists section).
+4. **Report** the call's normal OUTPUT FORMAT with `OUTCOME: handoff`, then one line right after `OUTCOME`: `NEXT_STEPS: {comma-joined remaining steps}`. That is the same list as the gauge's `--next-steps` and handoff.json's `nextSteps`. End with `STATUS: DONE`. No `ISSUE #{n}: failed:{gate}` line goes with it, since a handoff happens only after a passing gate.
+
+## Top-level run
+
+A run not bound `dispatched: true` (a human-typed `/flow`, a Routine, or an earlier handoff's child) hands the remaining steps to one fresh `Agent` and relays its report. Use a fresh agent, never `fork`: a fork inherits this context, which is the thing being shed.
+
+1. **Render** `steps-and-gates.md`'s handed-off note.
+2. **Resolve** the substitutions. `{run}` is the literal run dir. `{worktree}` is what `git rev-parse --show-toplevel` prints, run as its own call. `{plugin-root}` is this session's `$CLAUDE_PLUGIN_ROOT` as a literal path. The model comes from `node "{plugin-root}/bin/resolve-profile.js" capable` (the profile dispatch's first call uses), passed as `model` on the `Agent` call.
+3. **Dispatch** one `Agent` with the template below inlined verbatim and the substitutions filled in. This is a dispatch site under `_shared/subagent-output-contract.md`.
+4. **Wait** for the child within this turn, using the same bounded foreground waits the template's async-wait rule gives the child (the rule binds this agent too). Never end the turn with the child outstanding. A child still silent at the bound may still be writing, so never redo its steps in this session: report it as blocked and give `{run}/handoff.json`'s `resume` line, on its own line, for a person to run.
+5. **Relay** the child's final report, unchanged, as this run's result, and stop. The child's own Step 5 runs the gate, the surveys and the summary.
+
+The child may cross the cap and hand off in turn. Every hop finishes at least one step first, so the chain ends.
+
+```
+Task scope: continue a /claude-tweaks:flow run in a fresh context. The previous agent
+finished some of this run's steps and handed the rest to you because its context crossed
+the cap. Your first act: Read `{run}/handoff.json`. It holds `nextSteps` (the steps still to
+run), the measured `contextTokens` and `cap`, and `resume` -- the exact command that continues
+this run. Then run that `resume` command as written, as a literal `Skill`-tool invocation of
+/claude-tweaks:flow with its `PIPELINE_RUN_DIR` prefix -- the prefix is what makes /flow adopt
+this run directory instead of starting a new one. Never re-run a step that is not in
+`nextSteps`. You need no other input about what the earlier steps did.
+
+Working directory: you inherit this run's checkout, {worktree}. Do NOT create, enter, or
+switch worktrees. Run `pwd` and `git rev-parse --show-toplevel` before any commit and verify
+both resolve to {worktree}; if either does not, STOP and report BLOCKED rather than committing.
+
+Plugin root: {plugin-root} -- use this literal path wherever an instruction names
+${CLAUDE_PLUGIN_ROOT}; your shell may not carry that variable.
+
+Async-wait discipline (required): you are a subagent, not a top-level session. Once your turn ends you
+cannot count on being re-woken: a reply that ends without a tool call ends your turn, whatever is
+still in flight, so a progress note rides alongside a tool call or is skipped (#3266). Run a long
+command (e.g. the full test suite) as a normal foreground call with a large explicit timeout
+(#1965). A nested `Agent` call launches async, and its completion notification reaches you only
+while your turn is alive (when the call instead returns the child's own reply, that child has
+reported and needs no wait): keep your turn alive with bounded foreground waits — repeated
+`sleep 20` Bash calls, at most 60 (20 minutes) per wave of children (the set launched
+together), each wait logged as one line (what you wait on, the iteration against the bound, how
+many children are still pending), stopping as soon as every child's `<task-notification>` has
+arrived, never reading or tailing a running child's `output_file` — until every child you
+launched has reported, and never end your turn with one outstanding. With no `Agent` tool
+(`ToolSearch` finds none, deferred or otherwise), or a child still silent when the bound
+expires, judge that unit yourself, log the downgrade, and mark its findings `unconfirmed`; that
+child is abandoned and no longer counts as outstanding, so your final reply still ends with
+`STATUS: {WORD}`. For a `/claude-tweaks:review` lens unit, log that downgrade as the single-read
+coverage line, and carry its caveat, from `review/step3-lens-dispatch.md`'s partner-died
+paragraph. Ignore a late result; if a late notification re-wakes you after your final
+reply, repeat your whole final reply unchanged — the dispatcher keeps only your latest reply, so
+a bare `STATUS:` line would replace the report. A child that reports a failure (a `failed`
+notification, an API error, a `BLOCKED`/`NEEDS_CONTEXT` reply) has reported, so it is not
+outstanding: handle it per the dispatching skill's own status handling where one exists
+(`superpowers:subagent-driven-development`'s BLOCKED handling), otherwise judge that unit
+yourself. Self-judging is for a read-only unit (a lens, a single read, a judge); a
+write-capable child (one that edits files) still silent at the bound is never redone in-session,
+because an abandoned child keeps running and may still write — stop, and end with
+`STATUS: BLOCKED` naming that child and its unit. A wait call that is blocked or fails is not a
+wait and never counts toward the bound; never retry it in another form (a longer, wrapped or
+backgrounded sleep): treat every child still outstanding as silent at the bound. The full rule is
+in `subagent-dispatch-core.md`'s Foreground Execution Discipline section. Give any agent you
+dispatch this same instruction, whether it is a nested Task/Agent call or a
+`superpowers:subagent-driven-development` or review-lens fan-out. **Mark every interim reply
+(#2714):** if a turn ends anyway while a keep-alive wait is still in progress, with a child
+outstanding — the keep-alive rule's failure path — make that reply's last non-empty line
+`INTERIM_STATUS: {one-line progress note}`, never `STATUS: {WORD}`, which is reserved for your
+genuine final reply (an abandoned child is not outstanding; that reply is final and ends with
+`STATUS: {WORD}`). An unmarked interim reply is graded by the `SubagentStop` hook as a final
+reply missing its status line and logged as a false-positive `contract-violation`, unless your
+own async `Agent` launches are still pending in your transcript (#3015) — the marker stays
+required, since that exemption covers only pending launches. Forward this marker rule, with the
+rest of this item, to any nested dispatch that itself dispatches.
+
+OUTPUT FORMAT (required) -- reply with your /claude-tweaks:flow run's final rendered output
+(its Pipeline Summary, its Steps Complete note, or its failure card), unchanged, then one line:
+HANDOFF: {run}/handoff.json
+
+Status line (required): on its own trailing line, after everything above -- the reply's last
+non-empty line -- write exactly `STATUS: {WORD}`, where {WORD} is one of: DONE /
+DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED.
+```

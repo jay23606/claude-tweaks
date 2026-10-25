@@ -169,7 +169,10 @@ For each step in order:
    `node "${CLAUDE_PLUGIN_ROOT}/bin/materialize.js" {n} --run-dir "{worktree-local run dir}" [--ceremony {verdict}]`
    Exit 0 → commit `work/{n}-spec.md`. Read `materialize.md` only on a non-zero exit, a `premise`/`drift`/`template` envelope field that is non-null, or under `work-backend: local-files`. Then invoke `/claude-tweaks:build #{n}[,#{m}...]`, which reads that file as its spec. **This must be a literal `Skill`-tool invocation of `/claude-tweaks:build`, not a hand-rolled equivalent** (e.g. a bare `EnterWorktree` + `Agent` dispatch): under `pr-first` (`_shared/integration-model.md`), `/build`'s Spec Step 1 opens the draft PR right after the materialize commit (`build/worktree-setup.md` Step 6, `bin/pr-early-open.js`) — non-skippable; a hand-rolled run skips it until the bookkeeping-stamps hook (`docs/hooks.md`, `[IL-131]`) blocks the first edit. Hand-executing anyway? Run that Step 6 yourself first, before any implementation code.
 3. **Check the gate** — if the step fails its gate, stop the pipeline
-4. **Pass context forward** — each step's output feeds into the next:
+4. **Check the context cap** — single-spec runs outside `interactive` only (so never a `MULTISPEC_PARALLEL_WAVE=1` wave member), after a passing gate with at least one step still to run (`build`'s automatic `stories` and `polish`'s re-verify go with their step):
+   `node "${CLAUDE_PLUGIN_ROOT}/bin/context-gauge.js" --run "/abs/path/.claude-tweaks/pipelines/{run-id}" --next-steps {remaining steps, comma-joined}`
+   The run dir is a literal absolute path, never `$PIPELINE_RUN_DIR`: the gauge finds its caller by the run id in the command text. Only `over: true` with a `handoff` path hands off — then read `context-handoff.md` in this skill's directory; anything else (`over: false`, `handoff: null`, exit 2, non-JSON output) means continue in this agent.
+5. **Pass context forward** — each step's output feeds into the next:
    - Step 2.5 → `build` receives `MERGE_CHECK_PASSED=true UPSTREAM_SHA={sha}` when Step 2.5 ran (worktree strategy + `branch-divergence-check: true` — see `validation.md`'s "Memo stamp" note). `build/worktree-setup.md`'s own pre-flight check consults this and skips its otherwise-duplicate fetch-and-compare when the stamped upstream sha still matches. Absent (standalone `/build`, `current-branch` mode, or `branch-divergence-check: false`) → `/build` runs its own check, fail-open.
    - `build` → check output for UI file changes and, if applicable, run `stories` — see "Automatic story generation" above for the full detection/dev-URL/invocation rule (not restated here).
    - `stories` → `test` receives the stories directory
@@ -182,7 +185,7 @@ For each step in order:
    - `review` → `polish` (when `no-polish` not set and `ceremony-profile` is not `fast-lane` — roster tag `polish`, `_shared/ceremony-profile.md`) — invoke `/claude-tweaks:design-wrapper polish <spec>` via the Skill tool. See "Polish phase execution" below for the dispatch logic.
    - `polish` → `re-verify` (only when polish modified code) — invoke `/claude-tweaks:test skip-qa`. See "Re-verify execution" below.
    - `polish` (or `re-verify`) → `wrap-up` receives the review summary, polish results, and verdict. Skill observations (`build/skill` and `review/skill` ledger entries) carry forward via the ledger file for wrap-up's Skills curation row.
-5. **Ledger carries forward** — each step reads and appends to the open items ledger (see `/claude-tweaks:ledger` for all operations). Unlike conversation context (which may be compressed), the ledger is a file — it survives context window limits.
+6. **Ledger carries forward** — each step reads and appends to the open items ledger (see `/claude-tweaks:ledger` for all operations). Unlike conversation context (which may be compressed), the ledger is a file — it survives context window limits.
 
 #### Polish + re-verify execution
 
