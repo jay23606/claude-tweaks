@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // bin/close-out-marker.js — read, write and resolve the `close-out-update` PR
 // run comment's update marker (#4331).
-//   node bin/close-out-marker.js read --comments-file <file> [--help]
+//   node bin/close-out-marker.js read --comments-file <file> [--body-out <file>] [--help]
 //   node bin/close-out-marker.js write --comments-file <file> --update-method <m>
-//        --conflicted-files <list|none|unknown> --pre-update-head <40-hex>
-//        --resolution-commit <40-hex|pending> --out <file>
+//        (--conflicted-files-file <file> | --conflicted-files <none|unknown>)
+//        --pre-update-head <40-hex> --resolution-commit <40-hex|pending> --out <file>
 //   node bin/close-out-marker.js resolve-pending --comments-file <file> --sha <40-hex> --out <file>
 // The parsing, validation and accumulation rules live in
 // bin/lib/dispatch/close-out-marker.js; this CLI is the file/argv seam over them
@@ -14,11 +14,18 @@
 //
 // Input: a gh `{comments: [...]}` payload, or a bare REST/MCP comment array.
 // Stdout (exit 0), one JSON line:
-//   read:  {status, id, updateMethod, conflictedFiles, preUpdateHead,
-//           resolutionCommits, skipped}. status is `none` (no trusted marker; the
-//           four fields are null), `pending`, `cleared` or `unreadable` (the
-//           fields then read 'unknown'). An unreadable marker is still exit 0:
-//           the status is data.
+//   read:  {status, id, ids, updateMethod, conflictedFiles, preUpdateHead,
+//           resolutionCommits, skipped, bodyWritten}. status is `none` (no trusted
+//           marker; the four fields are null), `pending`, `cleared` or `unreadable`
+//           (the fields then read 'unknown'). An unreadable marker is still exit 0:
+//           the status is data. `id` is the comment to update in place and `ids` every
+//           trusted match (Find's list), so a caller can log more than one.
+//           `--body-out` saves the trusted comment's exact raw body, byte for byte
+//           (CRLF included), to that path, written atomically like --out; no trusted
+//           marker writes nothing. `bodyWritten` is that path, or null when the flag is
+//           not given or no file was written. This is how a caller keeps the body a
+//           marker had before a `write`, to post it back unchanged if the landing call
+//           fails and nothing landed: the CLI saved it, so nothing composes it by hand.
 //   write / resolve-pending: {written, accumulated, marker}. `written` is the
 //           path written (the --out value, as given, the sanctioned writers'
 //           echoed-path convention), `marker` is the written body parsed back
@@ -31,21 +38,27 @@
 // a fresh marker from the flags; over an `unreadable` one it refuses.
 //
 // Every flag value is validated here, before the file is read: the module's
-// appendUpdate/resolvePendingCommit do not validate. `--conflicted-files` is
-// `none` ([]), `unknown`, or a comma list whose entries are trimmed; an empty
-// entry is a usage error, and so is any flag value containing a line break (a
-// newline in a path would add a line to the marker body). Path entries are
-// otherwise passed through as-is: they
-// are untrusted text (a conflicted path is attacker-nameable), so a caller quotes
-// them and never pastes one into a command unquoted.
+// appendUpdate/resolvePendingCommit do not validate, and any flag value containing a
+// line break is a usage error. Conflicted paths are untrusted text (a path is
+// attacker-nameable, and `posts.$slug.tsx` expands inside a double-quoted shell
+// argument), so they never travel on the command line: exactly one of
+// `--conflicted-files-file <file>` (the caller writes it with a file-writing tool,
+// one path per line; each line is trimEnd-ed and blank lines are ignored) and
+// `--conflicted-files`, which takes only the literals `none` ([]) and `unknown`, is
+// required — both or neither is exit 2, and any other `--conflicted-files` value
+// is exit 2 naming the file flag. A paths file that is unreadable, holds no paths,
+// or holds a path with a comma (the marker's comma-joined format cannot carry it)
+// or a bare carriage return is exit 1 (payload), read through deps.readFile after
+// the comments file.
 //
 // Exit vocabulary is the Payload-1/Invocation-2 family of find-run-comment.js and
 // wrap-up-engine.js: 0 = answered; 1 = Payload failure, the --comments-file
 // unreadable, unparseable or not a comments list, or (write / resolve-pending) a
-// marker that cannot be used (unreadable; no pending entry to resolve);
-// 2 = Invocation failure, a malformed argv; 3 = the --out could not be written
-// (qa-report.js's precedent: --out is a caller-named artifact, written
-// atomically with no lock and no run-dir anchoring).
+// marker that cannot be used (unreadable; no pending entry to resolve), or (write)
+// a --conflicted-files-file payload that cannot be used;
+// 2 = Invocation failure, a malformed argv; 3 = the --out (or read's --body-out)
+// could not be written (qa-report.js's precedent: --out is a caller-named
+// artifact, written atomically with no lock and no run-dir anchoring).
 'use strict';
 
 const fs = require('fs');
@@ -53,6 +66,7 @@ const { findRunComments } = require('./find-run-comment');
 const { isTrustedComment } = require('./lib/issues/comment-trust');
 const { writeFileAtomic } = require('./lib/atomic-write');
 const {
+  MARKER_LINE,
   UPDATE_METHODS,
   parseMarker,
   serializeMarker,
@@ -63,19 +77,22 @@ const {
 const KIND = 'close-out-update';
 const SHA_RE = /^[0-9a-f]{40}$/i;
 
-const USAGE = 'usage: close-out-marker.js read --comments-file <file> [--help]\n'
+const USAGE = 'usage: close-out-marker.js read --comments-file <file> [--body-out <file>] [--help]\n'
   + '       close-out-marker.js write --comments-file <file> --update-method <merge|gh pr update-branch>\n'
-  + '           --conflicted-files <a,b|none|unknown> --pre-update-head <40-hex> --resolution-commit <40-hex|pending> --out <file>\n'
+  + '           (--conflicted-files-file <file> | --conflicted-files <none|unknown>)\n'
+  + '           --pre-update-head <40-hex> --resolution-commit <40-hex|pending> --out <file>\n'
   + '       close-out-marker.js resolve-pending --comments-file <file> --sha <40-hex> --out <file>\n'
-  + '  exit 0 answered, 1 comments payload or marker unusable, 2 malformed invocation, 3 --out unwritable\n';
+  + '  exit 0 answered, 1 comments payload, paths file or marker unusable, 2 malformed invocation, 3 --out or --body-out unwritable\n';
 
-// Per verb: the flags it takes (all required) and the key each is stored under.
+// Per verb: the flags it takes and the key each is stored under. All are required
+// except the keys OPTIONAL names.
 const VERBS = {
-  read: { '--comments-file': 'commentsFile' },
+  read: { '--comments-file': 'commentsFile', '--body-out': 'bodyOut' },
   write: {
     '--comments-file': 'commentsFile',
     '--update-method': 'updateMethod',
     '--conflicted-files': 'conflictedFiles',
+    '--conflicted-files-file': 'conflictedFilesFile',
     '--pre-update-head': 'preUpdateHead',
     '--resolution-commit': 'resolutionCommit',
     '--out': 'out',
@@ -86,6 +103,8 @@ const VERBS = {
     '--out': 'out',
   },
 };
+// write's two conflicted-files keys are checked as an exclusive pair in validate.
+const OPTIONAL = { read: ['bodyOut'], write: ['conflictedFiles', 'conflictedFilesFile'] };
 
 function parseArgs(argv) {
   const o = { help: false, verb: null };
@@ -115,8 +134,9 @@ function parseArgs(argv) {
 // an error string, or null when the invocation is well-formed. Normalises the
 // parsed values in place (hex lowercased, the conflicted-files list split).
 function validate(o) {
+  const optional = Object.hasOwn(OPTIONAL, o.verb) ? OPTIONAL[o.verb] : [];
   for (const [flag, key] of Object.entries(VERBS[o.verb])) {
-    if (!Object.hasOwn(o, key)) return `${flag} is required`;
+    if (!Object.hasOwn(o, key) && !optional.includes(key)) return `${flag} is required`;
   }
   if (o.verb === 'read') return null;
   if (o.verb === 'resolve-pending') {
@@ -133,13 +153,32 @@ function validate(o) {
     if (!SHA_RE.test(o.resolutionCommit)) return `--resolution-commit must be 40 hex characters or pending, got: ${o.resolutionCommit}`;
     o.resolutionCommit = o.resolutionCommit.toLowerCase();
   }
-  if (o.conflictedFiles === 'none') o.conflictedFiles = [];
-  else if (o.conflictedFiles !== 'unknown') {
-    const entries = o.conflictedFiles.split(',').map((s) => s.trim());
-    if (entries.some((e) => e === '')) return `--conflicted-files has an empty entry: ${o.conflictedFiles}`;
-    o.conflictedFiles = entries;
+  const hasList = Object.hasOwn(o, 'conflictedFiles');
+  const hasFile = Object.hasOwn(o, 'conflictedFilesFile');
+  if (hasList === hasFile) return 'exactly one of --conflicted-files-file <file> and --conflicted-files <none|unknown> is required';
+  if (hasList) {
+    if (o.conflictedFiles === 'none') o.conflictedFiles = [];
+    else if (o.conflictedFiles !== 'unknown') {
+      return `--conflicted-files takes only none or unknown; pass paths with --conflicted-files-file <file>, got: ${o.conflictedFiles}`;
+    }
   }
   return null;
+}
+
+// The conflicted paths a --conflicted-files-file holds: one per line, each trimEnd-ed, blank
+// lines ignored. Returns {files} or {error}; the file is untrusted text, so a path the marker's
+// comma-joined, line-oriented format cannot carry is refused rather than altered.
+function readPathsFile(file, deps) {
+  let text;
+  try { text = deps.readFile(file); } catch (e) {
+    return { error: `could not read --conflicted-files-file: ${file} (${errMsg(e)})` };
+  }
+  const files = String(text).split('\n').map((l) => l.trimEnd()).filter((l) => l !== '');
+  if (files.length === 0) return { error: `--conflicted-files-file ${file} holds no paths` };
+  const bad = files.find((f) => f.includes(','));
+  if (bad !== undefined) return { error: `--conflicted-files-file ${file} holds a path with a comma, which the marker cannot carry: ${bad}` };
+  if (files.some((f) => /\r/.test(f))) return { error: `--conflicted-files-file ${file} holds a path with a line break` };
+  return { files };
 }
 
 const realDeps = {
@@ -170,25 +209,41 @@ function run(argv, deps = realDeps) {
   // The trusted comment findRunComments chose: the first trusted marker comment
   // carrying that id.
   let existing = null;
+  let rawBody = null;
   if (found.id !== null) {
     const comments = Array.isArray(payload) ? payload : payload.comments;
-    const marker = `<!-- run-comment: ${KIND} -->`;
     const hit = comments.find((c) => c !== null && typeof c === 'object' && typeof c.body === 'string'
-      && c.body.startsWith(marker) && isTrustedComment(c) && String(c.id) === found.id);
-    existing = parseMarker(hit.body);
+      && c.body.startsWith(MARKER_LINE) && isTrustedComment(c) && String(c.id) === found.id);
+    rawBody = hit.body;
+    existing = parseMarker(rawBody);
   }
 
   if (o.verb === 'read') {
+    let bodyWritten = null;
+    if (Object.hasOwn(o, 'bodyOut') && rawBody !== null) {
+      try { deps.writeFile(o.bodyOut, rawBody); } catch (e) {
+        return fail(3, `out-unwritable: ${o.bodyOut} (${errMsg(e)})`);
+      }
+      bodyWritten = o.bodyOut;
+    }
     deps.stdout(`${JSON.stringify({
       status: existing === null ? 'none' : existing.status,
       id: found.id,
+      ids: found.ids,
       updateMethod: existing === null ? null : existing.updateMethod,
       conflictedFiles: existing === null ? null : existing.conflictedFiles,
       preUpdateHead: existing === null ? null : existing.preUpdateHead,
       resolutionCommits: existing === null ? null : existing.resolutionCommits,
       skipped: found.skipped,
+      bodyWritten,
     })}\n`);
     return 0;
+  }
+
+  if (o.verb === 'write' && Object.hasOwn(o, 'conflictedFilesFile')) {
+    const paths = readPathsFile(o.conflictedFilesFile, deps);
+    if (paths.error) return fail(1, paths.error);
+    o.conflictedFiles = paths.files;
   }
 
   let next;

@@ -104,9 +104,17 @@ const UPDATE_PINS = [
   ['marker-nothing-landed', 0, (s) => /When a landing call fails,[\s\S]{0,120}re-read `gh pr view \{number\} --json headRefOid`[\s\S]{0,360}\(`cleared \(nothing landed\)`\); any other head on any read keeps it pending/.test(s)],
   ['marker-landing-rereads', 0, (s) => s.includes('a call GitHub accepted can still land after it errors, so re-read')
     && s.includes('up to 3 reads, a few seconds apart, each its own plain command:\nthe pre-update head on every read means nothing landed')],
-  ['marker-failed-landing-restores', 0, (s) => /so rewrite the marker to the body it had\s+before this run's write/.test(s)],
+  ['marker-failed-landing-restores', 0, (s) => s.includes('so restore the marker to the body `read --body-out` saved before this run\'s write')],
   ['marker-clear-noop', 0, (s) => s.includes('a no-op when Find returns none (a `{wt}` from before the marker existed)')],
   ['marker-read-every-candidate', 0, (s) => s.includes('except its **Update marker** section, which `close-out.md` step 2 reads for every candidate')],
+  // #4331 fix wave — conflicted paths through a file, the prior body through --body-out
+  ['marker-conflicted-files-file', 0, (s) => s.includes('write --comments-file "{comments-path}" --update-method "{merge | gh pr update-branch}" --conflicted-files-file "{paths-path}"')
+    && s.includes('`--conflicted-files-file "{paths-path}"`: a file written with the Write tool, one path per line')
+    && s.includes('never composed in the shell')],
+  ['marker-body-out-before-write', 0, (s) => s.includes('read --comments-file "{comments-path}" --body-out "{prior-body-path}"')
+    && s.includes('The Read that precedes each pending write passes `--body-out "{prior-body-path}"`')],
+  ['marker-restore-verbatim', 0, (s) => s.includes('A restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed')],
+  ['marker-clear-saved-body', 0, (s) => s.includes('the found comment\'s body, which a `read --body-out` run just before the clear saved')],
   ['offer-options', 1, (s) => s.includes('`DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`')
     && s.includes('`BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`')
     && s.includes('`DIRTY` then stops the candidate (`stopped: mergeStateStatus DIRTY — update declined`)')],
@@ -167,6 +175,7 @@ const UPDATE_PINS = [
   ['plain-push', 5, (s) => s.includes('`git -C {wt} push origin HEAD:{head}` — plain')
     && [...s.matchAll(/force[- ]push/gi)].every((m) => s.slice(Math.max(0, m.index - 30), m.index).includes('never'))],
   // #4317 — step 5
+  ['marker-conflicted-files-file-push', 5, (s) => s.includes('written to `--conflicted-files-file "{paths-path}"` with the Write tool, one per line; `none` or `unknown` through `--conflicted-files`')],
   ['marker-before-push', 5, (s) => before(s, 'First write the pending marker', '`git -C {wt} push origin HEAD:{head}`')],
   ['marker-resume-fix-keeps', 5, (s) => s.includes('a resume that went straight to step 4 and found one pending keeps it as it is, since a fix commit is not the update')],
   ['head-before-ci', 6, (s) => before(s, 'Confirm `gh pr view {number} --json headRefOid` equals `{verified-sha}`', '--watch`')],
@@ -267,7 +276,7 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
 
 const PINS_4317 = {
   'AC1.1': ['marker-cli', 'marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-decline-stops', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id', 'resume-offer-no-skip', 'resume-decline-not-continue', 'marker-read-every-candidate', 'marker-clear-noop', 'marker-failed-landing-restores', 'marker-read-unrecognised-stops', 'marker-landing-rereads'],
-  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field', 'handoff-conflicted-marker', 'handoff-every-entry', 'resume-pending-unknown-no-stop', 'resume-pre-update-head-hex'],
+  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field', 'handoff-conflicted-marker', 'handoff-every-entry', 'resume-pending-unknown-no-stop', 'resume-pre-update-head-hex', 'marker-conflicted-files-file', 'marker-conflicted-files-file-push', 'marker-body-out-before-write', 'marker-restore-verbatim', 'marker-clear-saved-body'],
   'AC3.1': ['fail-stops-git', 'base-fetch-checked', 'pin-retry-after-exit0', 'base-fetch-retry'],
   'AC4.1': ['gh-only'],
 };
@@ -342,7 +351,12 @@ const UPDATE_MUTATIONS = [
   ['resume-decline-not-continue', '\n   On a resume that decline is the `"Stop"` above, never this continue.', ''],
   ['marker-read-every-candidate', ', except its **Update marker** section, which `close-out.md` step 2 reads for every candidate', ''],
   ['marker-clear-noop', ' a no-op when Find returns none (a `{wt}` from before the marker existed); else', ''],
-  ['marker-failed-landing-restores', 'so rewrite the marker to the body it had\nbefore this run\'s write — or, when step 2 found no pending marker, clear it', 'so clear it'],
+  ['marker-failed-landing-restores', 'so restore the marker to the body `read --body-out` saved before this run\'s write — or, when step 2 found no pending marker, clear it', 'so clear it'],
+  ['marker-conflicted-files-file', ' — never composed in the shell, since a path is attacker-nameable and `posts.$slug.tsx` expands inside a double-quoted argument', ''],
+  ['marker-body-out-before-write', '\nThe Read that precedes each pending write passes `--body-out "{prior-body-path}"`, saving the body that write replaces; a Clear\'s Read passes it too.', ''],
+  ['marker-restore-verbatim', '\nA restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed (the re-Find overwrites `{comments-path}`, so the saved file is the only copy).', ''],
+  ['marker-clear-saved-body', 'the found comment\'s body, which a `read --body-out` run just before the clear saved (an earlier Read\'s file predates any pending write since), with its second line', 'the second line'],
+  ['marker-conflicted-files-file-push', ' (the paths recorded at step 3 or recovered at step 2, written to `--conflicted-files-file "{paths-path}"` with the Write tool, one per line; `none` or `unknown` through `--conflicted-files`)', ''],
   ['resume-pending-unknown-no-stop', ', or a `rev-list` that exits non-zero: `unknown`, never a stop.', ': `unknown`.'],
   ['resume-pre-update-head-hex', ' (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked)', ''],
   ['gh-only', '(`stopped: update failed — gh absent`) — the PR is never touched', '(`stopped: update failed — gh absent`) after the update'],
@@ -407,11 +421,21 @@ function paragraphLine(text, where) {
   return lines[0];
 }
 
+// The field-key prefixes of a marker body in order: the lines after the status line, up to the first blank line.
+function fieldKeys(body, where) {
+  const lines = body.split('\n').slice(2);
+  const keys = lines.slice(0, lines.indexOf('')).map((l) => (l.match(/^[a-z-]+:/) || [l])[0]);
+  assert.equal(keys.length, 4, `${where} has four field lines before its blank line`);
+  return keys;
+}
+
 function assertExplanationTwin(update) {
   const templates = [...update.matchAll(/```text\n([\s\S]*?)```/g)].filter((m) => m[1].startsWith('<!-- run-comment: close-out-update -->'));
   assert.equal(templates.length, 1, 'close-out-update.md has exactly one marker template fence');
   assert.equal(paragraphLine(templates[0][1], 'the marker template'), paragraphLine(serializeMarker(TWIN_SAMPLE), 'serializeMarker\'s body'),
     'the template\'s explanatory paragraph equals serializeMarker\'s');
+  assert.deepEqual(fieldKeys(templates[0][1], 'the marker template'), fieldKeys(serializeMarker(TWIN_SAMPLE), 'serializeMarker\'s body'),
+    'the template\'s field-key prefixes equal serializeMarker\'s, in order');
 }
 
 test('#4331 prose-code twin: the marker template\'s paragraph equals serializeMarker\'s', () => {
@@ -422,6 +446,20 @@ test('#4331 prose-code twin go-red control: one reworded word in the template pa
   const from = 're-verifies the head before the merge question';
   assertOccursOnce(UPDATE, from, 'the paragraph clause occurs exactly once');
   assert.throws(() => assertExplanationTwin(UPDATE.replace(from, 're-checks the head before the merge question')), /explanatory paragraph equals serializeMarker/);
+});
+
+test('#4331 prose-code twin: the template\'s field keys are update-method, conflicted-files, pre-update-head, resolution-commit', () => {
+  const template = UPDATE.match(/```text\n(<!-- run-comment: close-out-update -->[\s\S]*?)```/)[1];
+  assert.deepEqual(fieldKeys(template, 'the marker template'), ['update-method:', 'conflicted-files:', 'pre-update-head:', 'resolution-commit:']);
+});
+
+test('#4331 prose-code twin go-red control: a renamed or reordered field key in the template fails', () => {
+  const rename = ['pre-update-head: {the values line\'s headRefOid}', 'pre-update-sha: {the values line\'s headRefOid}'];
+  const reorder = ['conflicted-files: {comma-joined paths | none | unknown}\npre-update-head: {the values line\'s headRefOid}', 'pre-update-head: {the values line\'s headRefOid}\nconflicted-files: {comma-joined paths | none | unknown}'];
+  for (const [from, to] of [rename, reorder]) {
+    assertOccursOnce(UPDATE, from, 'the field line clause occurs exactly once');
+    assert.throws(() => assertExplanationTwin(UPDATE.replace(from, to)), /field-key prefixes equal serializeMarker/);
+  }
 });
 
 // close-out.md step 2 clauses: [label, exact text, replacement, expected message]

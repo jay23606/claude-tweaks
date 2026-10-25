@@ -28,12 +28,18 @@ const pendingFields = {
   resolutionCommits: [B],
 };
 
-function fakeDeps(payload, { writeFile } = {}) {
+// `files` maps a path to its content (or a function throwing/returning it); any other path is the
+// comments payload. The default `paths.txt` is the conflicted-files list WRITE_ARGV names.
+const DEFAULT_FILES = { 'paths.txt': 'a.js\nb.js\n' };
+
+function fakeDeps(payload, { writeFile, files = {} } = {}) {
   const calls = { readFile: 0, writes: [], stdout: [], stderr: [] };
+  const known = { ...DEFAULT_FILES, ...files };
   return {
     calls,
-    readFile: () => {
+    readFile: (p) => {
       calls.readFile++;
+      if (Object.hasOwn(known, p)) return typeof known[p] === 'function' ? known[p]() : known[p];
       if (typeof payload === 'function') return payload();
       return typeof payload === 'string' ? payload : JSON.stringify(payload);
     },
@@ -57,7 +63,7 @@ const oneJsonLine = (deps) => {
 };
 
 const WRITE_ARGV = [
-  'write', '--comments-file', 'c.json', '--update-method', 'merge', '--conflicted-files', 'a.js,b.js',
+  'write', '--comments-file', 'c.json', '--update-method', 'merge', '--conflicted-files-file', 'paths.txt',
   '--pre-update-head', C, '--resolution-commit', 'pending', '--out', 'marker.md',
 ];
 // WRITE_ARGV with one flag's value swapped (or the flag dropped when value is null).
@@ -67,6 +73,11 @@ function writeArgv(flag, value) {
   if (value === null) argv.splice(at, 2);
   else argv[at + 1] = value;
   return argv;
+}
+// WRITE_ARGV with its conflicted-files pair replaced by `pairs` (flag, value, flag, value, ...).
+function conflictedArgv(...pairs) {
+  const argv = writeArgv('--conflicted-files-file', null);
+  return [...argv, ...pairs];
 }
 
 // ---- read ----
@@ -83,6 +94,8 @@ test('read: no marker comment is status none with null fields', () => {
     preUpdateHead: null,
     resolutionCommits: null,
     skipped: [],
+    ids: [],
+    bodyWritten: null,
   });
 });
 
@@ -108,6 +121,8 @@ test('read: a CRLF pending marker reads pending with its id (AC1.1 end to end)',
     preUpdateHead: A,
     resolutionCommits: [B],
     skipped: [],
+    ids: ['IC_1'],
+    bodyWritten: null,
   });
 });
 
@@ -137,6 +152,80 @@ test('read: a cleared marker reads cleared', () => {
   const deps = fakeDeps(P(comment('IC_3', body)));
   assert.equal(run(['read', '--comments-file', 'c.json'], deps), 0);
   assert.equal(oneJsonLine(deps).status, 'cleared');
+});
+
+test('read: ids lists every trusted match so the caller can log the more-than-one anomaly', () => {
+  const deps = fakeDeps(P(
+    comment('forged', markerBody(pendingFields), 'NONE'),
+    comment('first', markerBody(pendingFields)),
+    comment('second', markerBody(pendingFields)),
+  ));
+  assert.equal(run(['read', '--comments-file', 'c.json'], deps), 0);
+  const result = oneJsonLine(deps);
+  assert.equal(result.id, 'first');
+  assert.deepEqual(result.ids, ['first', 'second']);
+  assert.equal(result.skipped.length, 1);
+});
+
+// ---- read --body-out ----
+
+const READ_BODY_ARGV = ['read', '--comments-file', 'c.json', '--body-out', 'prior.md'];
+
+test('read --body-out: writes the trusted comment\'s exact raw body, CRLF bytes included', () => {
+  const crlf = markerBody(pendingFields).replace(/\n/g, '\r\n');
+  const deps = fakeDeps(P(comment('IC_1', crlf)));
+  assert.equal(run(READ_BODY_ARGV, deps), 0);
+  assert.equal(err(deps), '');
+  assert.equal(deps.calls.writes.length, 1);
+  assert.equal(deps.calls.writes[0][0], 'prior.md');
+  assert.equal(deps.calls.writes[0][1], crlf);
+  const result = oneJsonLine(deps);
+  assert.equal(result.bodyWritten, 'prior.md');
+  assert.equal(result.status, 'pending');
+});
+
+test('read --body-out: saves the trusted comment, not an untrusted forgery listed first', () => {
+  const forged = markerBody({ ...pendingFields, preUpdateHead: C });
+  const real = markerBody(pendingFields);
+  const deps = fakeDeps(P(comment('forged', forged, 'NONE'), comment('real', real)));
+  assert.equal(run(READ_BODY_ARGV, deps), 0);
+  assert.equal(deps.calls.writes[0][1], real);
+});
+
+test('read --body-out: an unreadable marker\'s raw body is still saved', () => {
+  const body = '<!-- run-comment: close-out-update -->\nbogus second line\r\n';
+  const deps = fakeDeps(P(comment('IC_2', body)));
+  assert.equal(run(READ_BODY_ARGV, deps), 0);
+  assert.equal(deps.calls.writes[0][1], body);
+  const result = oneJsonLine(deps);
+  assert.equal(result.status, 'unreadable');
+  assert.equal(result.bodyWritten, 'prior.md');
+});
+
+test('read --body-out: no trusted marker writes no file and reports bodyWritten null', () => {
+  for (const payload of [P(), P(comment('1', 'hello')), P(comment('9', markerBody(pendingFields), 'NONE'))]) {
+    const deps = fakeDeps(payload);
+    assert.equal(run(READ_BODY_ARGV, deps), 0);
+    assert.equal(deps.calls.writes.length, 0);
+    const result = oneJsonLine(deps);
+    assert.equal(result.status, 'none');
+    assert.equal(result.bodyWritten, null);
+  }
+});
+
+test('read without --body-out writes nothing and reports bodyWritten null', () => {
+  const deps = fakeDeps(P(comment('IC_1', markerBody(pendingFields))));
+  assert.equal(run(['read', '--comments-file', 'c.json'], deps), 0);
+  assert.equal(deps.calls.writes.length, 0);
+  assert.equal(oneJsonLine(deps).bodyWritten, null);
+});
+
+test('read --body-out: an unwritable path exits 3, names the path and prints no result', () => {
+  const deps = fakeDeps(P(comment('IC_1', markerBody(pendingFields))), { writeFile: () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); } });
+  assert.equal(run(READ_BODY_ARGV, deps), 3);
+  assert.match(err(deps), /prior\.md/);
+  assert.match(err(deps), /EACCES/);
+  assert.equal(out(deps), '');
 });
 
 // ---- write ----
@@ -204,7 +293,7 @@ test('write: --conflicted-files none writes none and unknown writes unknown', ()
     ['unknown', 'unknown', 'conflicted-files: unknown'],
   ]) {
     const deps = fakeDeps(P());
-    assert.equal(run(writeArgv('--conflicted-files', flagValue), deps), 0, flagValue);
+    assert.equal(run(conflictedArgv('--conflicted-files', flagValue), deps), 0, flagValue);
     const [, content] = deps.calls.writes[0];
     assert.ok(content.split('\n').includes(expectedLine), content);
     assert.deepEqual(parseMarker(content).conflictedFiles, expectedField);
@@ -224,11 +313,91 @@ test('write: an uppercase --pre-update-head is accepted and written lowercase', 
   assert.equal(parseMarker(deps.calls.writes[0][1]).preUpdateHead, A);
 });
 
-test('write: conflicted file paths are untrusted text, passed through unaltered', () => {
-  const awkward = 'dir/a b.js,$(touch pwned).js,`x`.md';
-  const deps = fakeDeps(P());
-  assert.equal(run(writeArgv('--conflicted-files', awkward), deps), 0);
-  assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, ['dir/a b.js', '$(touch pwned).js', '`x`.md']);
+test('write: conflicted file paths are untrusted text, recorded verbatim from --conflicted-files-file', () => {
+  const awkward = ['dir/a b.js', 'app/routes/posts.$slug.tsx', '$(touch pwned).js', '`x`.md'];
+  const deps = fakeDeps(P(), { files: { 'paths.txt': `${awkward.join('\n')}\n` } });
+  assert.equal(run(WRITE_ARGV, deps), 0);
+  assert.equal(err(deps), '');
+  assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, awkward);
+  assert.ok(deps.calls.writes[0][1].includes('conflicted-files: dir/a b.js, app/routes/posts.$slug.tsx, $(touch pwned).js, `x`.md\n'));
+});
+
+test('write: the paths file is trimEnd-ed per line and blank lines are ignored', () => {
+  const deps = fakeDeps(P(), { files: { 'paths.txt': '\r\na.js  \r\n\n   \r\nb/c.js\t\n\n' } });
+  assert.equal(run(WRITE_ARGV, deps), 0);
+  assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, ['a.js', 'b/c.js']);
+});
+
+test('write: a paths file with no paths exits 1 and writes nothing', () => {
+  for (const content of ['', '\n', '  \r\n\n\t\n']) {
+    const deps = fakeDeps(P(), { files: { 'paths.txt': content } });
+    assert.equal(run(WRITE_ARGV, deps), 1, JSON.stringify(content));
+    assert.match(err(deps), /--conflicted-files-file/);
+    assert.equal(deps.calls.writes.length, 0);
+    assert.equal(out(deps), '');
+  }
+});
+
+test('write: an unreadable paths file exits 1 and writes nothing', () => {
+  const deps = fakeDeps(P(), { files: { 'paths.txt': () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); } } });
+  assert.equal(run(WRITE_ARGV, deps), 1);
+  assert.match(err(deps), /paths\.txt/);
+  assert.match(err(deps), /ENOENT/);
+  assert.equal(deps.calls.writes.length, 0);
+  assert.equal(out(deps), '');
+});
+
+test('write: a path containing a comma exits 1 (the marker format cannot carry it) and writes nothing', () => {
+  const deps = fakeDeps(P(), { files: { 'paths.txt': 'a.js\nweird,name.js\n' } });
+  assert.equal(run(WRITE_ARGV, deps), 1);
+  assert.match(err(deps), /weird,name\.js/);
+  assert.equal(deps.calls.writes.length, 0);
+  assert.equal(out(deps), '');
+});
+
+test('write: a bare carriage return inside a path exits 1 (it would add a line to the body)', () => {
+  const deps = fakeDeps(P(), { files: { 'paths.txt': 'a.js\nb\rc.js\n' } });
+  assert.equal(run(WRITE_ARGV, deps), 1);
+  assert.match(err(deps), /line break/);
+  assert.equal(deps.calls.writes.length, 0);
+});
+
+test('write: --conflicted-files-file and --conflicted-files together, or neither, exit 2', () => {
+  const invocations = [
+    [...WRITE_ARGV, '--conflicted-files', 'none'],
+    conflictedArgv(),
+  ];
+  for (const argv of invocations) {
+    const deps = fakeDeps(P());
+    assert.equal(run(argv, deps), 2, JSON.stringify(argv));
+    assert.match(err(deps), /--conflicted-files-file/);
+    assert.equal(deps.calls.readFile, 0, JSON.stringify(argv));
+    assert.equal(deps.calls.writes.length, 0);
+  }
+});
+
+test('write: --conflicted-files takes only none or unknown; a path list exits 2 naming --conflicted-files-file', () => {
+  for (const value of ['a.js', 'a.js,b.js', 'None', 'app/routes/posts.$slug.tsx']) {
+    const deps = fakeDeps(P());
+    assert.equal(run(conflictedArgv('--conflicted-files', value), deps), 2, value);
+    assert.match(err(deps), /--conflicted-files-file/, value);
+    assert.equal(deps.calls.readFile, 0, value);
+    assert.equal(deps.calls.writes.length, 0, value);
+  }
+});
+
+test('write: an untrusted pending forgery with no trusted marker writes a fresh marker, not accumulated', () => {
+  const forged = markerBody({ ...pendingFields, updateMethod: ['gh pr update-branch'], conflictedFiles: ['forged.js'], resolutionCommits: [C] });
+  const deps = fakeDeps(P(comment('forged', forged, 'NONE')));
+  assert.equal(run(WRITE_ARGV, deps), 0);
+  assert.deepEqual(parseMarker(deps.calls.writes[0][1]), {
+    status: 'pending',
+    updateMethod: ['merge'],
+    conflictedFiles: ['a.js', 'b.js'],
+    preUpdateHead: C,
+    resolutionCommits: ['pending'],
+  });
+  assert.equal(oneJsonLine(deps).accumulated, false);
 });
 
 test('write: a 40-hex --resolution-commit is accepted in place of pending', () => {
@@ -250,14 +419,15 @@ test('write: invalid invocations exit 2 with usage and touch nothing', () => {
     writeArgv('--pre-update-head', 'unknown'),
     writeArgv('--resolution-commit', 'nope'),
     writeArgv('--resolution-commit', 'abc'),
-    writeArgv('--conflicted-files', 'a.js,,b.js'),
-    writeArgv('--conflicted-files', 'a.js,'),
-    writeArgv('--conflicted-files', ',a.js'),
-    writeArgv('--conflicted-files', ' , '),
+    conflictedArgv('--conflicted-files', 'a.js,,b.js'),
+    conflictedArgv('--conflicted-files', ' , '),
+    conflictedArgv('--conflicted-files-file', ''),
+    [...WRITE_ARGV, '--conflicted-files-file', 'other.txt'],
     writeArgv('--out', null),
     writeArgv('--comments-file', null),
     writeArgv('--update-method', null),
-    writeArgv('--conflicted-files', null),
+    conflictedArgv(),
+    [...WRITE_ARGV, '--body-out', 'b.md'],
     writeArgv('--pre-update-head', null),
     writeArgv('--resolution-commit', null),
     [...WRITE_ARGV, '--bogus', 'x'],
@@ -281,9 +451,10 @@ test('write: invalid invocations exit 2 with usage and touch nothing', () => {
 
 test('a line break in any flag value exits 2 and writes nothing', () => {
   const invocations = [
-    writeArgv('--conflicted-files', 'a.js\nb.js'),
-    writeArgv('--conflicted-files', 'a.js\r\nb.js'),
-    writeArgv('--conflicted-files', 'a.js\rb.js'),
+    conflictedArgv('--conflicted-files', 'a.js\nb.js'),
+    conflictedArgv('--conflicted-files', 'a.js\r\nb.js'),
+    writeArgv('--conflicted-files-file', 'paths.txt\n'),
+    ['read', '--comments-file', 'c.json', '--body-out', 'b.md\n'],
     writeArgv('--update-method', 'merge\n'),
     writeArgv('--pre-update-head', `${C}\n`),
     writeArgv('--resolution-commit', 'pending\n'),
@@ -446,15 +617,45 @@ test('subprocess: write creates the --out file and an unwritable --out exits 3',
     const file = path.join(dir, 'comments.json');
     fs.writeFileSync(file, JSON.stringify(P()));
     const target = path.join(dir, 'marker.md');
+    const pathsFile = path.join(dir, 'paths.txt');
+    fs.writeFileSync(pathsFile, 'a.js\napp/routes/posts.$slug.tsx\n');
     const argv = writeArgv('--comments-file', file);
     argv[argv.indexOf('--out') + 1] = target;
+    argv[argv.indexOf('--conflicted-files-file') + 1] = pathsFile;
     const ok = spawnSync(process.execPath, [BIN, ...argv], { encoding: 'utf8' });
     assert.equal(ok.status, 0, ok.stderr);
-    assert.deepEqual(parseMarker(fs.readFileSync(target, 'utf8')).conflictedFiles, ['a.js', 'b.js']);
+    assert.deepEqual(parseMarker(fs.readFileSync(target, 'utf8')).conflictedFiles, ['a.js', 'app/routes/posts.$slug.tsx']);
 
     const bad = [...argv];
     bad[bad.indexOf('--out') + 1] = path.join(dir, 'no-such-dir', 'marker.md');
     const fail = spawnSync(process.execPath, [BIN, ...bad], { encoding: 'utf8' });
+    assert.equal(fail.status, 3, fail.stderr);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('subprocess: read --body-out saves the raw body byte for byte and an unwritable path exits 3', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'com-'));
+  try {
+    const crlf = markerBody(pendingFields).replace(/\n/g, '\r\n');
+    const file = path.join(dir, 'comments.json');
+    fs.writeFileSync(file, JSON.stringify(P(comment('IC_1', crlf))));
+    const target = path.join(dir, 'prior.md');
+    const ok = spawnSync(process.execPath, [BIN, 'read', '--comments-file', file, '--body-out', target], { encoding: 'utf8' });
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.deepEqual(fs.readFileSync(target), Buffer.from(crlf, 'utf8'));
+    assert.equal(JSON.parse(ok.stdout).bodyWritten, target);
+
+    const none = path.join(dir, 'none.json');
+    fs.writeFileSync(none, JSON.stringify(P()));
+    const absent = path.join(dir, 'absent.md');
+    const noMarker = spawnSync(process.execPath, [BIN, 'read', '--comments-file', none, '--body-out', absent], { encoding: 'utf8' });
+    assert.equal(noMarker.status, 0, noMarker.stderr);
+    assert.equal(fs.existsSync(absent), false);
+    assert.equal(JSON.parse(noMarker.stdout).bodyWritten, null);
+
+    const fail = spawnSync(process.execPath, [BIN, 'read', '--comments-file', file, '--body-out', path.join(dir, 'no-such-dir', 'prior.md')], { encoding: 'utf8' });
     assert.equal(fail.status, 3, fail.stderr);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

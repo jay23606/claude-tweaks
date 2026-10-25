@@ -33,33 +33,38 @@ resolution-commit: {full sha | pending}[, …]
 While this reads `pending`, close-out has pushed an update to this PR whose head had not passed a full-suite verify and CI when it was written; a close-out run from any checkout re-verifies the head before the merge question.
 ```
 
-Its three verbs read the Find step's payload `{comments-path}` and write the body to `{body-path}` (both from that procedure's Find); each is one plain command — exit 1: the payload or the marker cannot be used, 2: a malformed call, 3: `--out` unwritable:
+Its three verbs read the Find step's payload `{comments-path}` and write the body to `{body-path}` (both from that procedure's Find); each is one plain command — exit 1: the payload, the paths file or the marker cannot be used, 2: a malformed call, 3: `--out` or `--body-out` unwritable.
+`{prior-body-path}` and `{paths-path}` resolve the way the Find step's paths do: add `PRIOR=close-out-update-prior-{n}.md PATHS=close-out-update-paths-{n}.txt` to its `session-tmp-resolve.js` call.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" read --comments-file "{comments-path}"
+node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" read --comments-file "{comments-path}" --body-out "{prior-body-path}"
 ```
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" write --comments-file "{comments-path}" --update-method "{merge | gh pr update-branch}" --conflicted-files "{comma-joined paths | none | unknown}" --pre-update-head "{the values line's headRefOid}" --resolution-commit "{full sha | pending}" --out "{body-path}"
+node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" write --comments-file "{comments-path}" --update-method "{merge | gh pr update-branch}" --conflicted-files-file "{paths-path}" --pre-update-head "{the values line's headRefOid}" --resolution-commit "{full sha | pending}" --out "{body-path}"
 ```
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/bin/close-out-marker.js" resolve-pending --comments-file "{comments-path}" --sha "{post-update sha}" --out "{body-path}"
 ```
 
+`{conflicted-files}` real paths go in as `--conflicted-files-file "{paths-path}"`: a file written with the Write tool, one path per line, from the `git -C {wt} diff --name-only --diff-filter=U` output — never composed in the shell, since a path is attacker-nameable and `posts.$slug.tsx` expands inside a double-quoted argument.
+The literals `none` and `unknown` go through `--conflicted-files` instead, in place of the file flag (exactly one of the two).
+
 Write it pending before each call that lands an update — `gh pr update-branch` in step 2, the push in step 5 — never after.
 A marker covers every update since its last clear: `write` given a payload whose marker is pending appends this update to it, so an earlier agent-made resolution stays named until a verified merge or a decline clears it.
 After each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.
 **Read** it with that procedure's Find fetch, then `read`: its `status` `pending` is a pending marker, and `cleared` or `none` (no trusted comment) is none;
-`unreadable` stops the candidate (`stopped: update failed — marker unreadable`), never none. `read` prints its `id` (the comment to update in place) and Find's `skipped` notes. A pending marker missing a field still routes to the resume, with that value `unknown`.
-**Clear** it — a no-op when Find returns none (a `{wt}` from before the marker existed); else the second line rewritten to `close-out-update: cleared ({reason})`, the rest kept — only after `close-out.md` step 5's `merged`, a decline at its step 4 gate,
+`unreadable` stops the candidate (`stopped: update failed — marker unreadable`), never none. `read` prints its `id` (the comment to update in place), `ids` (every trusted match, which that procedure's race check reads) and Find's `skipped` notes. A pending marker missing a field still routes to the resume, with that value `unknown`.
+The Read that precedes each pending write passes `--body-out "{prior-body-path}"`, saving the body that write replaces; a Clear's Read passes it too.
+**Clear** it — a no-op when Find returns none (a `{wt}` from before the marker existed); else the found comment's body, which a `read --body-out` run just before the clear saved (an earlier Read's file predates any pending write since), with its second line rewritten to `close-out-update: cleared ({reason})`, the rest kept — only after `close-out.md` step 5's `merged`, a decline at its step 4 gate,
 or a landing call that landed nothing (below); every other stop leaves it pending, so the next run, from any checkout, re-verifies first.
 A failed Find or read stops the candidate (`stopped: update failed — marker unreadable`), and a failed pending write stops it before the landing call
 (`stopped: update failed — marker not written`), nothing pushed — never that procedure's issue fallback, since only the PR is ever read.
 A failed clear is reported and blocks nothing: a marker left pending costs one re-verify.
 When a landing call fails, a call GitHub accepted can still land after it errors, so re-read `gh pr view {number} --json headRefOid` — up to 3 reads, a few seconds apart, each its own plain command:
-the pre-update head on every read means nothing landed, so rewrite the marker to the body it had
-before this run's write — or, when step 2 found no pending marker, clear it (`cleared (nothing landed)`); any other head on any read keeps it pending, entries included.
+the pre-update head on every read means nothing landed, so restore the marker to the body `read --body-out` saved before this run's write — or, when step 2 found no pending marker, clear it (`cleared (nothing landed)`); any other head on any read keeps it pending, entries included.
+A restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed (the re-Find overwrites `{comments-path}`, so the saved file is the only copy).
 
 1. **Offer.** Skipped on a resume (step 2) unless step 2 sends it here. `AskUserQuestion`, `header`: `"Update PR"`, `multiSelect`: `false`.
    `DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`. `BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`.
@@ -119,7 +124,7 @@ before this run's write — or, when step 2 found no pending marker, clear it (`
    `/claude-tweaks:dispatch close-out #{record}` (`{record}` = a `Fixes` record of the PR), which resumes here (step 2). On `BEHIND` the update is
    already on GitHub, so that resume — never a later merge on CI alone — is what clears it.
 5. **Push.** Only when `{wt}` holds commits the PR lacks (`git -C {wt} merge-base --is-ancestor HEAD origin/{head}` exits non-zero — a `DIRTY` resolution or a resumed fix).
-   First write the pending marker with `write`, passing this update's `update-method`, `conflicted-files`, the pre-update head and resolution commit (in full) — `write` appends it to a pending one, per the Update marker above;
+   First write the pending marker with `write`, passing this update's `update-method`, `conflicted-files` (the paths recorded at step 3 or recovered at step 2, written to `--conflicted-files-file "{paths-path}"` with the Write tool, one per line; `none` or `unknown` through `--conflicted-files`), the pre-update head and resolution commit (in full) — `write` appends it to a pending one, per the Update marker above;
    a resume that went straight to step 4 and found one pending keeps it as it is, since a fix commit is not the update. Then
    `git -C {wt} push origin HEAD:{head}` — plain. A rejection is reported and stops the candidate
    (`stopped: update failed — push rejected`); it is never retried as a force-push.

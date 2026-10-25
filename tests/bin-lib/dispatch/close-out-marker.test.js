@@ -43,6 +43,29 @@ test('AC1.1: a second line ending in \\r reads pending', () => {
   assert.equal(parsed.status, 'pending');
 });
 
+test('a second line with trailing spaces or tabs reads pending, and so does a cleared one', () => {
+  assert.equal(parseMarker(TEMPLATE('close-out-update: pending ')).status, 'pending');
+  assert.equal(parseMarker(TEMPLATE('close-out-update: pending \t ')).status, 'pending');
+  assert.equal(parseMarker(TEMPLATE('close-out-update: cleared (merged) ')).status, 'cleared');
+  // leading whitespace is not tolerated: the line is not the recognised status
+  assert.equal(parseMarker(TEMPLATE(' close-out-update: pending')).status, 'unreadable');
+});
+
+test('trailing spaces after a field value are trimmed from every field', () => {
+  const parsed = parseMarker(TEMPLATE('close-out-update: pending', {
+    'update-method': 'merge, gh pr update-branch  ',
+    'conflicted-files': 'a.js, b/c.md \t',
+    'pre-update-head': `${H} `,
+    'resolution-commit': `${H}, pending  `,
+  }));
+  assert.equal(parsed.status, 'pending');
+  assert.deepEqual(parsed.updateMethod, ['merge', 'gh pr update-branch']);
+  assert.deepEqual(parsed.conflictedFiles, ['a.js', 'b/c.md']);
+  assert.equal(parsed.preUpdateHead, H);
+  assert.deepEqual(parsed.resolutionCommits, [H, 'pending']);
+  assert.deepEqual(parseMarker(TEMPLATE('close-out-update: pending', { 'conflicted-files': 'none ' })).conflictedFiles, []);
+});
+
 test('AC1.1: a CRLF body parses every field to the LF values', () => {
   const body = TEMPLATE('close-out-update: pending', {
     'update-method': 'merge, gh pr update-branch',
