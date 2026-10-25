@@ -116,7 +116,7 @@ const UPDATE_PINS = [
     && s.includes('The Read that precedes each pending write passes `--body-out "{prior-body-path}"`')],
   ['marker-restore-verbatim', 0, (s) => s.includes('A restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed')],
   ['marker-clear-saved-body', 0, (s) => s.includes('the found comment\'s body, which a `read --body-out` run just before the clear saved')],
-  ['marker-unrepresentable-paths', 0, (s) => s.includes('A path holding a comma, or named exactly `none` or `unknown`, cannot be recorded by name')
+  ['marker-unrepresentable-paths', 0, (s) => s.includes('A path holding a comma or leading or trailing whitespace, or named exactly `none` or `unknown`, cannot be recorded by name')
     && s.includes('pass `--conflicted-files unknown` for that update')],
   ['offer-options', 1, (s) => s.includes('`DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`')
     && s.includes('`BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`')
@@ -362,7 +362,7 @@ const UPDATE_MUTATIONS = [
   ['marker-body-out-before-write', '\nThe Read that precedes each pending write passes `--body-out "{prior-body-path}"`, saving the body that write replaces; a Clear\'s Read passes it too.', ''],
   ['marker-restore-verbatim', '\nA restore posts that saved `{prior-body-path}` file as the comment body, unchanged and never recomposed (the re-Find overwrites `{comments-path}`, so the saved file is the only copy).', ''],
   ['marker-clear-saved-body', 'the found comment\'s body, which a `read --body-out` run just before the clear saved (an earlier Read\'s file predates any pending write since), with its second line', 'the second line'],
-  ['marker-unrepresentable-paths', '\nA path holding a comma, or named exactly `none` or `unknown`, cannot be recorded by name: `write` exits 1 on the paths file, so pass `--conflicted-files unknown` for that update.', ''],
+  ['marker-unrepresentable-paths', '\nA path holding a comma or leading or trailing whitespace, or named exactly `none` or `unknown`, cannot be recorded by name: `write` exits 1 on the paths file, so pass `--conflicted-files unknown` for that update.', ''],
   ['marker-conflicted-files-file-push', ' (the paths recorded at step 3 or recovered at step 2, written to `--conflicted-files-file "{paths-path}"` with the Write tool, one per line; `none` or `unknown` through `--conflicted-files`)', ''],
   ['resume-pending-unknown-no-stop', ', or a `rev-list` that exits non-zero: `unknown`, never a stop.', ': `unknown`.'],
   ['resume-pre-update-head-hex', ' (`read` accepts only a full 40-hex sha, since a comment body is never pasted into a command unchecked)', ''],

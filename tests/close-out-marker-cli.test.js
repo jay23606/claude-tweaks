@@ -349,10 +349,24 @@ test('write: conflicted file paths are untrusted text, recorded verbatim from --
   assert.ok(deps.calls.writes[0][1].includes('conflicted-files: dir/a b.js, app/routes/posts.$slug.tsx, $(touch pwned).js, `x`.md\n'));
 });
 
-test('write: the paths file is trimEnd-ed per line and blank lines are ignored', () => {
-  const deps = fakeDeps(P(), { files: { 'paths.txt': '\r\na.js  \r\n\n   \r\nb/c.js\t\n\n' } });
+test('write: the paths file may use CRLF line endings, and blank or whitespace-only lines are ignored', () => {
+  const deps = fakeDeps(P(), { files: { 'paths.txt': '\r\na.js\r\n\n   \r\nb/c.js\n\n' } });
   assert.equal(run(WRITE_ARGV, deps), 0);
   assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, ['a.js', 'b/c.js']);
+});
+
+test('write: a path with leading or trailing whitespace exits 1 (the marker would trim it) and writes nothing', () => {
+  for (const padded of ['trail ', ' lead', 'tab\t']) {
+    const deps = fakeDeps(P(), { files: { 'paths.txt': `a.js\n${padded}\n` } });
+    assert.equal(run(WRITE_ARGV, deps), 1, JSON.stringify(padded));
+    assert.match(err(deps), /leading or trailing whitespace/);
+    assert.match(err(deps), /--conflicted-files unknown/);
+    assert.equal(deps.calls.writes.length, 0);
+  }
+  // interior whitespace is part of the name and is carried
+  const deps = fakeDeps(P(), { files: { 'paths.txt': 'dir/a b.js\n' } });
+  assert.equal(run(WRITE_ARGV, deps), 0);
+  assert.deepEqual(parseMarker(deps.calls.writes[0][1]).conflictedFiles, ['dir/a b.js']);
 });
 
 test('write: a paths file with no paths exits 1 and writes nothing', () => {

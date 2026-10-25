@@ -43,13 +43,14 @@
 // attacker-nameable, and `posts.$slug.tsx` expands inside a double-quoted shell
 // argument), so they never travel on the command line: exactly one of
 // `--conflicted-files-file <file>` (the caller writes it with a file-writing tool,
-// one path per line; each line is trimEnd-ed and blank lines are ignored) and
+// one path per line, LF or CRLF; blank lines are ignored) and
 // `--conflicted-files`, which takes only the literals `none` ([]) and `unknown`, is
 // required — both or neither is exit 2, and any other `--conflicted-files` value
 // is exit 2 naming the file flag. A paths file that is unreadable, holds no paths,
 // holds a path with a comma (the marker's comma-joined format cannot carry it), holds a
-// bare carriage return, or holds a path named exactly `none` or `unknown` (the marker reads
-// those back as its sentinels, losing the path) is exit 1 (payload), read through
+// bare carriage return, holds a path with leading or trailing whitespace (the marker trims
+// it on read), or holds a path named exactly `none` or `unknown` (the marker reads those
+// back as its sentinels, losing the path) is exit 1 (payload), read through
 // deps.readFile after the comments file.
 //
 // Exit vocabulary is the Payload-1/Invocation-2 family of find-run-comment.js and
@@ -173,16 +174,19 @@ function validate(o) {
   return null;
 }
 
-// The conflicted paths a --conflicted-files-file holds: one per line, each trimEnd-ed, blank
-// lines ignored. Returns {files} or {error}; the file is untrusted text, so a path the marker's
-// comma-joined, line-oriented format cannot carry is refused rather than altered.
+// The conflicted paths a --conflicted-files-file holds: one per line (LF or CRLF), blank and
+// whitespace-only lines ignored. Returns {files} or {error}; the file is untrusted text, so a path
+// the marker's comma-joined, line-oriented, whitespace-trimmed format cannot carry is refused
+// rather than altered.
 function readPathsFile(file, deps) {
   let text;
   try { text = deps.readFile(file); } catch (e) {
     return { error: `could not read --conflicted-files-file: ${file} (${errMsg(e)})` };
   }
-  const files = String(text).split('\n').map((l) => l.trimEnd()).filter((l) => l !== '');
+  const files = String(text).split(/\r?\n/).filter((l) => l.trim() !== '');
   if (files.length === 0) return { error: `--conflicted-files-file ${file} holds no paths` };
+  const padded = files.find((f) => f !== f.trim());
+  if (padded !== undefined) return { error: `--conflicted-files-file ${file} holds a path with leading or trailing whitespace, which the marker would trim: ${JSON.stringify(padded)}; record this update with --conflicted-files unknown instead` };
   const bad = files.find((f) => f.includes(','));
   if (bad !== undefined) return { error: `--conflicted-files-file ${file} holds a path with a comma, which the marker cannot carry: ${bad}; record this update with --conflicted-files unknown instead` };
   if (files.some((f) => /\r/.test(f))) return { error: `--conflicted-files-file ${file} holds a path with a line break` };
