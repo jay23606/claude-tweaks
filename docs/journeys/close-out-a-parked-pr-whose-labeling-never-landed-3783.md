@@ -33,7 +33,7 @@ files:
 - **URL:** `/claude-tweaks:dispatch close-out #{n}` → `dispatch/close-out.md`'s per-candidate procedure, steps 1-2
 - **Action:** close-out re-reads CI and mergeability live.
 - **Should feel:** the same live re-verify as before.
-- **Should understand:** nothing about labeling is decided yet; red CI or `DIRTY` still stops the candidate first.
+- **Should understand:** nothing about labeling is decided yet; red CI still stops the candidate first, and a `DIRTY` PR is first offered close-out's re-verified update.
 - **Red flags:** a stale prior green treated as current.
 
 ### 3. Let step 3 find out whether labeling landed

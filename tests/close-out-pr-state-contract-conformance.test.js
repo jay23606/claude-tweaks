@@ -125,3 +125,16 @@ test('AC3.1: the confirmation question names that an update ran, the conflicted 
   assert.match(def, /close-out-update\.md/, 'values come from close-out-update.md, never re-derived');
   assert.match(def, /empty|omitted/i, 'no update → the clause is empty');
 });
+
+const SCAN = readText(path.join(__dirname, '..', 'plugin', 'skills', '_shared', 'github-pr-scan.md'));
+
+test('AC5.1: github-pr-scan item 11 stays flag-only and points at close-out\'s update path', () => {
+  const start = SCAN.indexOf('11. **Stale pending-review PR**');
+  const end = SCAN.indexOf('Findings and recommendations', start);
+  assert.ok(start >= 0 && end > start, 'item 11 locatable');
+  const item11 = SCAN.slice(start, end);
+  assert.ok(item11.includes('**Flag-only, never auto-rebase.**'), 'still flag-only');
+  assert.ok(item11.includes('close-out-update.md'), 'names close-out\'s update path');
+  assert.ok(!item11.includes('gh pr update-branch'), 'the sweep itself never updates');
+  assert.ok(!SCAN.includes('rebase and re-verify'), 'the [pr-stale] recommendation no longer says rebase');
+});
