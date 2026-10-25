@@ -49,7 +49,7 @@ touching shared state runs one member at a time.
    call) / `'pr-not-found'` (GitHub confirmed the queried number names no PR), or `null` for a
    missing number. Any string result (or `null`) stops this candidate — report
    it, and never read it as "not DIRTY".
-   An existing `.worktrees/close-out-{number}` or a pending update marker (`close-out-update.md`'s **Update marker**, read here — a failed read stops this candidate, `stopped: update failed — marker unreadable`)
+   An existing `.worktrees/close-out-{number}` or a pending update marker (`close-out-update.md`'s **Update marker**: read that section and run its **Read** here for every candidate, whatever its `mergeStateStatus` — a failed read stops this candidate, `stopped: update failed — marker unreadable`)
    for this candidate is a prior run's update: it
    routes to `close-out-update.md`'s resume (its step 2) regardless of `mergeStateStatus`, from whichever checkout this run is in.
    `mergeStateStatus: DIRTY` or `mergeable: CONFLICTING`: this is item 11's own finding surfacing
@@ -113,7 +113,7 @@ touching shared state runs one member at a time.
 ## Reporting
 
 One line per candidate: `#{number} — {outcome}` where `{outcome}` is one of `merged`, `armed`,
-`stopped: CI {status}`, `stopped: mergeStateStatus DIRTY — update declined`,
+`stopped: CI {status}`, `stopped: mergeStateStatus {DIRTY | BEHIND} — update declined`,
 `stopped: update failed — {conflict not resolved | verification | push rejected | update-branch rejected | head moved | base not fetched | marker unreadable | marker not written | gh absent | command failed}`,
 `stopped: CI {status} after update`, `stopped: mergeStateStatus {status} after update`,
 `stopped: acceptance labeling unverifiable — no run dir`, or `declined at confirmation gate`.

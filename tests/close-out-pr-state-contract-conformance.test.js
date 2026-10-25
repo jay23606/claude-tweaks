@@ -97,7 +97,10 @@ const UPDATE_PINS = [
   ['marker-accumulates', 0, (s) => s.includes('an update on a PR whose marker is already pending appends its `update-method` and `resolution-commit` entries (oldest first), adds its paths to `conflicted-files`, and replaces `pre-update-head`')],
   ['marker-write-trusted', 0, (s) => s.includes('After each pending write, run Find again: a written marker it does not return (the writing account is not a trusted author) counts as a failed write.')],
   ['marker-read-by-id', 0, (s) => s.includes('then the `body` of the comment in the same payload whose `id` it returned')],
-  ['marker-nothing-landed', 0, (s) => /When a landing call fails and step 2 found no pending marker, re-read `gh pr view \{number\} --json headRefOid`[\s\S]{0,160}\(`cleared \(nothing landed\)`\); any other head keeps it pending/.test(s)],
+  ['marker-nothing-landed', 0, (s) => /When a landing call fails, re-read `gh pr view \{number\} --json headRefOid`[\s\S]{0,260}\(`cleared \(nothing landed\)`\); any other head keeps it pending/.test(s)],
+  ['marker-failed-landing-restores', 0, (s) => /so rewrite the marker to the body it had\s+before this run's write/.test(s)],
+  ['marker-clear-noop', 0, (s) => s.includes('a no-op when Find returns none (a `{wt}` from before the marker existed)')],
+  ['marker-read-every-candidate', 0, (s) => s.includes('except its **Update marker** section, which `close-out.md` step 2 reads for every candidate')],
   ['offer-options', 1, (s) => s.includes('`DIRTY`: options `"Update from {base} (Recommended)"` / `"Stop"`')
     && s.includes('`BEHIND`: options `"Update from {base} (Recommended)"` / `"Skip update"`')
     && s.includes('`DIRTY` then stops the candidate (`stopped: mergeStateStatus DIRTY — update declined`)')],
@@ -106,6 +109,8 @@ const UPDATE_PINS = [
   ['approval-warning', 1, (s) => /dismiss existing approvals[\s\S]{0,120}`armed`, not `merged`/.test(s)],
   ['decline-untouched', 1, (s) => s.includes('Declining touches nothing — the PR stays exactly as it was')],
   ['behind-continues', 1, (s) => s.includes('`BEHIND` was never a stop, so a declined update continues to `close-out.md` step 3')],
+  ['resume-offer-no-skip', 1, (s) => s.includes('On a resume step 2 sends here, `BEHIND` offers the same two options as `DIRTY`, and its `"Stop"` stops the candidate (`stopped: mergeStateStatus BEHIND — update declined`)')],
+  ['resume-decline-not-continue', 1, (s) => s.includes('On a resume that decline is the `"Stop"` above, never this continue.')],
   ['resume', 2, (s) => s.includes('is a prior run\'s update: add nothing yet, pin, then compare')
     && /`git -C \{wt\} merge-base --is-ancestor origin\/\{head\} HEAD` exits 0[^\n]*: resume at step 4/.test(s)],
   ['resume-fast-forward', 2, (s) => /`git -C \{wt\} merge-base --is-ancestor HEAD origin\/\{head\}` exits 0[^\n]*: `git -C \{wt\} checkout --detach origin\/\{head\}`, then step 4/.test(s)],
@@ -124,10 +129,10 @@ const UPDATE_PINS = [
   ['reread-spaced', 2, (s) => s.includes('up to 3 reads, a few seconds apart, each its own plain command — for a sha that differs')],
   ['behind-post-update-checkout', 2, (s) => s.includes('pin again to that post-update sha, then `git -C {wt} checkout --detach origin/{head}`')],
   // #4317 — step 2
-  ['fail-stops-git', 2, (s) => s.includes('A `git worktree add`, `checkout` or `fetch` in steps 2-3 that exits non-zero stops the candidate (`stopped: update failed — command failed`) before anything else runs')],
+  ['fail-stops-git', 2, (s) => s.includes('A `git worktree add`, `checkout` or `fetch` in steps 2-3 that exits non-zero stops the candidate (`stopped: update failed — command failed`) before any later command of steps 2-6 runs (step 7\'s teardown still runs)')],
   ['resume-from-marker', 2, (s) => s.includes('No `{wt}` (a pending marker left by another checkout, or a `{wt}` since removed): add it as Fresh below does, detached at `origin/{head}`, then step 4')],
   ['base-moved-again', 2, (s) => /goes to step 1's offer instead of step 4 when `close-out\.md` step 2's read is `DIRTY`, `mergeable: CONFLICTING` or `BEHIND`/.test(s)],
-  ['base-moved-skip-verifies', 2, (s) => s.includes('`BEHIND`\'s `"Skip update"` goes to step 4 on the current head, never straight to `close-out.md` step 3')],
+  ['base-moved-decline-stops', 2, (s) => s.includes('Declining stops the candidate on either status, as step 1 says — a resume offers no `"Skip update"`')],
   ['resume-values-marker', 2, (s) => s.includes('A pending marker supplies `{update-method}`, `{conflicted-files}` and `{resolution-commit}`')],
   ['resume-pending-resolution', 2, (s) => s.includes('is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge')],
   ['resume-no-marker-local', 2, (s) => s.includes('With no pending marker nothing was pushed, since the marker precedes every landing call, so recover')],
@@ -137,6 +142,7 @@ const UPDATE_PINS = [
   ['base-moved-no-wt', 2, (s) => s.includes('— the one just added for a pending marker included — goes to step 1\'s offer')],
   ['base-moved-fresh-carries', 2, (s) => s.includes('is still a resume for step 8, which hands off the marker as Fresh\'s write leaves it')],
   ['resume-pre-update-head-field', 2, (s) => s.includes('`{pre-update-head}` being the marker\'s own field')],
+  ['resume-pending-unknown-no-stop', 2, (s) => s.includes('or a `rev-list` that exits non-zero: `unknown`, never a stop')],
   ['merge-base-in', 3, (s) => s.includes('`git -C {wt} fetch origin {base}`') && s.includes('Then `git -C {wt} merge --no-edit origin/{base}`')],
   ['nothing-new-stops', 3, (s) => /brings in nothing[\s\S]{0,200}stop-set status stops the candidate \(`stopped: mergeStateStatus \{status\} after update`\)/.test(s)],
   // #4317 — step 3
@@ -173,9 +179,11 @@ const UPDATE_PINS = [
   ['handoff-sha', 8, (s) => s.includes('`{verified-sha}` itself')],
   ['handoff-resolution-merge', 8, (s) => s.includes('else short `{merge}` when step 2 found one, since a later fix commit is not the resolution')],
   ['handoff-resume-values', 8, (s) => s.includes('`merge` when step 2 found a `{merge}`, else `gh pr update-branch`')
-    && s.includes('on a resume, as step 2 recovered them') && !s.includes('unrecorded')],
+    && s.includes('as step 2 recovered them') && !s.includes('unrecorded')],
   // #4317 — step 8
-  ['handoff-marker-values', 8, (s) => s.includes('on a resume, the pending marker\'s, else') && s.includes('on a resume, the short pending marker\'s')],
+  ['handoff-marker-values', 8, (s) => s.includes('on a resume, the pending marker\'s, else')],
+  ['handoff-conflicted-marker', 8, (s) => s.includes('on a resume, the pending marker\'s as last written, else')],
+  ['handoff-every-entry', 8, (s) => s.includes('on a resume, every entry of the pending marker\'s, shortened')],
   ['handoff-pending-kept', 8, (s) => s.includes('The marker stays pending until `close-out.md` clears it after the merge or a decline.')],
 ];
 
@@ -199,6 +207,7 @@ function assertUpdateRouting(step2, update, closeOut) {
   assert.match(wtSpan, /routes to `close-out-update\.md`'s resume[\s\S]{0,40}regardless of `mergeStateStatus`/, 'an existing update worktree routes to the resume');
   assert.match(wtSpan, /or a pending update marker \(`close-out-update\.md`'s \*\*Update marker\*\*/, '#4317 AC1.1: a pending update marker routes to the resume too');
   assert.match(wtSpan, /from whichever checkout this run is in/, '#4317 AC1.1: the marker routes a run from any checkout');
+  assert.match(wtSpan, /read that section and run its \*\*Read\*\* here for every candidate/, '#4317 AC1.1: the marker is read for every candidate');
   // AC1.2, AC2.1 — anchored per step of the update procedure
   assertUpdateSteps(update);
   // AC4.1 — no path rebases or force-pushes
@@ -248,8 +257,8 @@ test('Review Focus: isolated detached worktree, dependency install, declines', (
 });
 
 const PINS_4317 = {
-  'AC1.1': ['marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-skip-verifies', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id'],
-  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field'],
+  'AC1.1': ['marker-kind', 'marker-before-landing', 'marker-read', 'marker-clear-only', 'marker-failures-stop', 'marker-failed-clear', 'marker-nothing-landed', 'resume-from-marker', 'base-moved-again', 'base-moved-decline-stops', 'nothing-new-pending-verifies', 'teardown-on-stop', 'teardown-marker-not-wt', 'handoff-pending-kept', 'base-moved-no-wt', 'base-moved-fresh-carries', 'teardown-nothing-new-scoped', 'marker-write-trusted', 'marker-read-by-id', 'resume-offer-no-skip', 'resume-decline-not-continue', 'marker-read-every-candidate', 'marker-clear-noop', 'marker-failed-landing-restores'],
+  'AC2.1': ['resume-values-marker', 'resume-pending-resolution', 'resume-no-marker-local', 'marker-before-update-branch', 'marker-post-update-sha', 'marker-before-push', 'marker-resume-fix-keeps', 'handoff-marker-values', 'handoff-resolution-merge', 'handoff-resume-values', 'marker-accumulates', 'resume-pre-update-head-field', 'handoff-conflicted-marker', 'handoff-every-entry', 'resume-pending-unknown-no-stop'],
   'AC3.1': ['fail-stops-git', 'base-fetch-checked', 'pin-retry-after-exit0'],
   'AC4.1': ['gh-only'],
 };
@@ -317,7 +326,15 @@ const UPDATE_MUTATIONS = [
   ['teardown', 'on exit 0, `git worktree remove {wt}`', 'on exit 0, leave it'],
   ['handoff-sha', '`{verified-sha}` itself (`close-out.md` step 5 merges only that head),\n   ', ''],
   ['handoff-resolution-merge', ', else short `{merge}` when step 2 found one, since a later fix commit is not the resolution', ''],
-  ['handoff-resume-values', 'on a resume, as step 2 recovered them', '`unrecorded` on a resume'],
+  ['handoff-resume-values', 'as step 2 recovered them', '`unrecorded` on a resume'],
+  ['handoff-conflicted-marker', 'the pending marker\'s as last written, else ', ''],
+  ['handoff-every-entry', 'every entry of the pending marker\'s, shortened', 'the short pending marker\'s'],
+  ['resume-offer-no-skip', 'On a resume step 2 sends here, `BEHIND` offers the same two options as `DIRTY`', 'On a resume step 2 sends here, `BEHIND` offers `"Skip update"` too'],
+  ['resume-decline-not-continue', '\n   On a resume that decline is the `"Stop"` above, never this continue.', ''],
+  ['marker-read-every-candidate', ', except its **Update marker** section, which `close-out.md` step 2 reads for every candidate', ''],
+  ['marker-clear-noop', ' a no-op when Find returns none (a `{wt}` from before the marker existed); else', ''],
+  ['marker-failed-landing-restores', 'so rewrite the marker to the body it had\nbefore this run\'s write — or, when step 2 found no pending marker, clear it', 'so clear it'],
+  ['resume-pending-unknown-no-stop', ', a `{pre-update-head}` of `unknown`, or a `rev-list` that exits non-zero: `unknown`, never a stop.', ': `unknown`.'],
   ['gh-only', '(`stopped: update failed — gh absent`) — the PR is never touched', '(`stopped: update failed — gh absent`) after the update'],
   ['marker-kind', 'a `close-out-update` run comment (`_shared/pr-run-comments.md`\'s Comment kinds)', 'a local note'],
   ['marker-before-landing', 'Write it pending before each call that lands an update', 'Write it pending after each call that lands an update'],
@@ -326,10 +343,10 @@ const UPDATE_MUTATIONS = [
   ['marker-failures-stop', ' — never that procedure\'s issue fallback, since only the PR is ever read', ', or post it to the issue instead'],
   ['marker-failed-clear', 'A failed clear is reported and blocks nothing: a marker left pending costs one re-verify.', 'A failed clear stops the candidate.'],
   ['marker-nothing-landed', '; any other head keeps it pending', ''],
-  ['fail-stops-git', 'before anything else runs', 'unless the next step can continue'],
+  ['fail-stops-git', 'before any later command of steps 2-6 runs', 'unless the next step can continue'],
   ['resume-from-marker', 'No `{wt}` (a pending marker left by another checkout, or a `{wt}` since removed): add it as Fresh below does, detached at `origin/{head}`, then step 4', 'No `{wt}`: continue at step 3'],
   ['base-moved-again', 'goes to step 1\'s offer instead of step 4', 'goes to step 4'],
-  ['base-moved-skip-verifies', 'goes to step 4 on the current head, never straight to `close-out.md` step 3', 'continues to `close-out.md` step 3'],
+  ['base-moved-decline-stops', 'Declining stops the candidate on either status', 'Declining `BEHIND` continues to step 4'],
   ['resume-values-marker', 'A pending marker supplies `{update-method}`, `{conflicted-files}` and `{resolution-commit}`', '`{wt}` supplies the values'],
   ['resume-pending-resolution', 'is the first line of `git -C {wt} rev-list --merges --ancestry-path --reverse {pre-update-head}..origin/{head}`, GitHub\'s update merge', 'stays `pending`'],
   ['resume-no-marker-local', 'With no pending marker nothing was pushed, since the marker precedes every landing call, so recover', 'Otherwise recover'],
@@ -370,7 +387,8 @@ for (const [id, from, to] of UPDATE_MUTATIONS) {
 const STEP_2_MUTATIONS = [
   ['declining continues (M6)', 'declining continues, since\n   BEHIND was never a stop', 'BEHIND is now a stop', /declined BEHIND update continues/],
   ['existing update worktree resumes', 'routes to `close-out-update.md`\'s resume (its step 2) regardless of `mergeStateStatus`', 'is ignored', /routes to the resume/],
-  ['pending marker resumes', ' or a pending update marker (`close-out-update.md`\'s **Update marker**, read here — a failed read stops this candidate, `stopped: update failed — marker unreadable`)', '', /pending update marker routes/],
+  ['pending marker resumes', ' or a pending update marker (`close-out-update.md`\'s **Update marker**: read that section and run its **Read** here for every candidate, whatever its `mergeStateStatus` — a failed read stops this candidate, `stopped: update failed — marker unreadable`)', '', /pending update marker routes/],
+  ['every candidate reads the marker', ' read that section and run its **Read** here for every candidate, whatever its `mergeStateStatus` —', ' read here —', /read for every candidate/],
   ['any checkout', ', from whichever checkout this run is in', '', /routes a run from any checkout/],
   ['rebase recommendation, any case', 'read `close-out-update.md` in this skill\'s directory', 'Rebase and re-verify first, or read `close-out-update.md` in this skill\'s directory', /rebase recommendation is gone/],
 ];
