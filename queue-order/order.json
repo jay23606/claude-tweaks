@@ -1,11 +1,11 @@
 {
-  "computedAt": "2026-10-25T13:24:36.244Z",
-  "runId": "2026-10-25T132343-dispatch-standalone",
+  "computedAt": "2026-10-25T13:27:24.951Z",
+  "runId": null,
   "freshnessSignal": {
     "issues": [
       {
         "number": 4221,
-        "updatedAt": "2026-10-25T08:20:00Z",
+        "updatedAt": "2026-10-25T13:27:09Z",
         "state": "OPEN"
       },
       {
@@ -45,8 +45,8 @@
       },
       {
         "number": 4187,
-        "updatedAt": "2026-10-25T08:22:31Z",
-        "state": "OPEN"
+        "updatedAt": "2026-10-25T13:27:20Z",
+        "state": "CLOSED"
       },
       {
         "number": 4186,
@@ -406,78 +406,6 @@
     ]
   },
   "groups": [
-    [
-      {
-        "body": "Origin: reflect full from #4028\n\nDefer-reason: tangential\n\n## Current State\n\n`review/review-effort-derivation.md` step 2 uses the record's `risk:*`/`size:*` labels whenever both exist; the diff heuristic (step 3) runs only when they are absent. #4028 carried `risk:low` / `size:medium`, which derives `low` (lenses 3b and 3c, one agent each), while its diff was 142 files and 5,733 lines including a 728-line PreToolUse hook that rewrites commands in every worktree session. The reviewer overrode the tier to `high` by hand and logged it. The tier's own ambiguity rule says ambiguity never resolves toward less scrutiny, but a label far below the measured diff is not treated as ambiguity.\n\n## Deliverables\n\n- [ ] Step 2.5 derives the label tier and the diff-heuristic tier and uses the higher; when they differ it records both (`label low, diff heuristic high`) in Step 7's summary line.\n\n- [ ] `review-effort-derivation.md` and its tests state and pin the rule (labels never lower a tier the diff already earns).\n\n## Acceptance Criteria\n\n- [ ] With labels `risk:low` and `size:medium` and a 142-file diff, the derived tier is `high` and the summary records both inputs.\n\n- [ ] With labels and diff agreeing, the derived tier and the recorded source are unchanged.\n\n## Release Note\n\nA large change no longer gets a light review because its record was labelled small.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/review-effort-derivation.md` — derive both tiers and take the higher when they disagree\n- `plugin/skills/review/code-mode-steps.md` — record the label tier and the diff tier in the summary line\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-25T07:02:28Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4221,
-        "state": "OPEN",
-        "title": "Raise review-effort when the diff dwarfs the record's size label",
-        "updatedAt": "2026-10-25T08:20:00Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
     [
       {
         "body": "Origin: reflect full from #4028\n\nDefer-reason: tangential\n\n## Current State\n\nbin/lib/review-context/build.js caps each file at 64 KB (`PER_FILE_CAP_BYTES`) but nothing bounds the bundle as a whole. On #4028's review (129 scoped files) `context.md` came to 3,153,954 bytes, 692,614 of them the diff. `review/step3-lens-dispatch.md` hands every lens agent that path, and no agent window holds about 780k tokens, so the 14 lens prompts had to tell the agents to skip the bundle and read `git diff` per path instead. `--files-from` narrows the file list but not the budget.\n\n## Deliverables\n\n- [ ] `buildContext` takes a total-size budget and, over it, replaces the largest sections with the existing one-line stub until the bundle fits; `oversizeSections` names every stubbed path.\n\n- [ ] `step3-lens-dispatch.md` says what a lens agent reads when the bundle came back over budget (per-path `git diff {base}...{branch} -- {path}`), so a dispatcher need not improvise it in each prompt.\n\n- [ ] A test builds a bundle from a fixture whose files sum above the budget.\n\n## Acceptance Criteria\n\n- [ ] For a diff whose files sum above the budget, the printed `bytes` is at or under the budget and `oversizeSections` lists every stubbed path.\n\n- [ ] The new test fails when the budget logic is removed.\n\n## Release Note\n\nReview lens agents get a context bundle they can read on large diffs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/review-context/build.js` — add a total-size budget; stub the largest sections first\n- `plugin/skills/review/step3-lens-dispatch.md` — name the per-path git diff fallback when the bundle is over budget\n\n_Filed by `reflect` via specShapedBody._\n",
