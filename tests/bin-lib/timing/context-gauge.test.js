@@ -457,6 +457,30 @@ test('CLI: at the bound (3 earlier handoffs) nothing is written — over: true, 
   assert.strictEqual(fs.readFileSync(path.join(fx.runDir, 'handoff.json'), 'utf8'), prior);
 });
 
+// Final review fix: only an in-flight or --transcript identification hands off. A fallback
+// transcript may be another agent's context — for a dispatched call, `main` is the
+// dispatcher's own — so over the cap it is measured and reported, but never handed off.
+const NOT_IDENTIFIED_HANDOFF = 'handoff.json not written: the caller was not identified, so the measured transcript may be another agent\'s (only an in-flight or --transcript identification hands off)';
+
+test('CLI: a fallback-identified transcript over the cap writes no handoff — over as measured, handoff: null, reason names the fallback', async () => {
+  const first = store();
+  const t = agent(first.subagents, 'anew', dispatchPrompt(RUN_ID), 2000, { input: 2, cacheRead: 249000, cacheCreate: 998 });
+  const main = store();
+  fs.writeFileSync(main.mainPath, transcriptText([userLine('top-level prompt'), ...turnLines('msg_main', { input: 2, cacheRead: 249000, cacheCreate: 998 })]));
+  for (const [s, transcript, fallback] of [[first, t, 'fell back to first-message match'], [main, main.mainPath, 'fell back to the main transcript']]) {
+    const fx = runFixture();
+    const writes = [];
+    const c = cli(fx, { env: { CLAUDE_CODE_SESSION_ID: SID, CLAUDE_CONFIG_DIR: s.configDir }, writeFile: (p, text) => writes.push([p, text]) });
+    assert.strictEqual(await run(['--run', fx.runDir, '--next-steps', 'review,polish,wrap-up'], c.deps), 0, c.err.join(''));
+    assert.deepStrictEqual(c.json(), {
+      contextTokens: 250000, cap: 200000, over: true, transcript, handoff: null,
+      reason: `caller-not-identified: ${fallback}; ${NOT_IDENTIFIED_HANDOFF}`,
+    }, fallback);
+    assert.deepStrictEqual(writes, [], `${fallback}: nothing written`);
+    assert.ok(!fs.readdirSync(fx.runDir).includes('handoff.json'), `${fallback}: no handoff.json`);
+  }
+});
+
 test('CLI: target records — the run dir\'s work/ when no worktree is recorded; spec-{N}/ dirs for a multi-spec run; none found is reported', async () => {
   const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
   const own = runFixture({ spec: 'run-dir', worktree: false });

@@ -16,12 +16,14 @@
 // dir as a literal path, not a shell variable. Failing that it falls back to
 // the newest subagent transcript whose first user message names the run id,
 // then the main transcript, and `reason` names the fallback
-// (`caller-not-identified: …`). --cap overrides CONTEXT_CAP_TOKENS (200000).
+// (`caller-not-identified: …`); a fallback never hands off: over the cap it prints
+// handoff: null and a reason saying so. --cap overrides CONTEXT_CAP_TOKENS (200000).
 // --next-steps is the steps still to run, each one of /flow's step names
 // (claim-targets' FLOW_STEPS).
 //
 // Stdout: one JSON line, {contextTokens, cap, over, transcript, handoff, reason}.
-// over is contextTokens > cap. When over and --next-steps was given,
+// over is contextTokens > cap. When over, --next-steps was given and the caller was
+// identified (in-flight or --transcript),
 // {run}/handoff.json = {nextSteps, contextTokens, cap, mode, handoffCount, writtenAt, resume}
 // is written atomically and `handoff` is its path. `handoffCount` is the
 // existing handoff.json's count plus one (a missing or unreadable file counts
@@ -125,6 +127,12 @@ const FALLBACK_REASONS = {
   main: 'caller-not-identified: fell back to the main transcript',
 };
 
+// Only these identifications hand off: the in-flight rung found the caller itself, and
+// --transcript names it. A fallback (FALLBACK_REASONS) may be another agent's context — for
+// a dispatched call, `main` is the dispatcher's own — so it measures and reports, never hands off.
+const HANDS_OFF = new Set(['in-flight', 'explicit']);
+const NOT_IDENTIFIED_REASON = 'handoff.json not written: the caller was not identified, so the measured transcript may be another agent\'s (only an in-flight or --transcript identification hands off)';
+
 // Measure, and write the handoff when over. Never throws: every failure is a
 // `reason` on the result (the fail-open contract); several join with '; '.
 async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, deps) {
@@ -135,6 +143,7 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
     result.reason = reasons.length ? reasons.join('; ') : null;
     return result;
   };
+  let identified = null;
   try {
     let found;
     if (transcriptArg) {
@@ -146,6 +155,7 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
       if (!found) return done(`no transcript found for session ${sessionId} (no main transcript under the config dir's projects/)`);
       if (FALLBACK_REASONS[found.identified]) reasons.push(FALLBACK_REASONS[found.identified]);
     }
+    identified = found.identified;
     result.transcript = found.path;
     let measured;
     try {
@@ -162,6 +172,7 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
     return done(`measurement failed: ${errText(e)}`);
   }
   if (!result.over || !nextSteps) return done();
+  if (!HANDS_OFF.has(identified)) return done(NOT_IDENTIFIED_REASON);
 
   try {
     const previous = deps.readHandoffCount(runDir);
