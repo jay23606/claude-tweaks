@@ -62,6 +62,15 @@ Three conventions follow from how this repo works, and all are visible below:
 * Skip fenced code blocks when the shared section parsers… ([#4169](https://github.com/thn-inc/claude-tweaks/issues/4169)) ([8fe0d7b](https://github.com/thn-inc/claude-tweaks/commit/8fe0d7b4e1dacf64fedc367e9e2116e044694ba5))
 * Windows: worktree and write guards fail open when a Bash… ([#4281](https://github.com/thn-inc/claude-tweaks/issues/4281)) ([1961010](https://github.com/thn-inc/claude-tweaks/commit/1961010a1851e11afabfe52422651a19361586e2))
 
+### Highlights
+* Records that quote a markdown document no longer have the quoted headings mistaken for their own sections.
+* No user-visible change.
+* Pipelines spend far fewer turns on bookkeeping: tools log the decisions they make, and each phase exit is a single step.
+* Close-out's in-place PR update survives a re-run from another checkout without merging an unverified head.
+* Windows: the worktree-isolation, shadow run-dir, policy.yml and worktree-teardown guards now deny a Bash command that names a quoted native path (`"D:\…"`). Before this fix, such a command passed unchecked.
+* Dispatch no longer mistakes a follow-up record filed during a PR's build for work that PR already shipped, so those records get built instead of excluded with a false close proposal.
+* No user-visible change: run-owner liveness is judged one way across hooks and run cleanup.
+
 ## [6.155.0](https://github.com/thn-inc/claude-tweaks/compare/v6.154.1...v6.155.0) (2026-10-25)
 
 
