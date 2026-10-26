@@ -109,11 +109,11 @@
   },
   "skill:pre-tool-use-gate-exemptions": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792958962049
+    "lastAuditedMs": 1793038158011
   },
   "skill:parse-signal-discipline": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792964702204
+    "lastAuditedMs": 1793038151958
   },
   "skill:scratch-worktree": {
     "lastAuditedSha": null,
@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1793013901151
+    "lastAuditedMs": 1793038156526
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
@@ -181,7 +181,7 @@
   },
   "skill:merge-shape-landed-proof": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792926353159
+    "lastAuditedMs": 1793038155032
   },
   "skill:test": {
     "lastAuditedSha": null,
@@ -209,7 +209,7 @@
   },
   "skill:bin-source-scan-conformance": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1793016556448
+    "lastAuditedMs": 1793038153611
   },
   "skill:hooks-js-verb-registration": {
     "lastAuditedSha": null,
