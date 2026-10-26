@@ -14,11 +14,13 @@ const {
   archiveMerged, prefetchArchivePrStates, lastOwnEventMs, isAbandonedInterrupted, archiveOrphanedMint, ORPHAN_MINT_TTL_MS,
   isStructurallyStuck, trackStuckSkip, STRUCTURALLY_STUCK_TTL_MS, STRUCTURALLY_STUCK_REASONS, isStaleDir,
   isArchivedPendingTrackedMove, archivedPendingTrackedMoveCommand, compareWorkTwin, resolveIdenticalWorkTwin,
-  classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS, ADHOC_SESSION_ENDED_GRACE_MS, isMainCheckoutAdHoc,
+  classifyRunDir, isAdHocStandaloneSuperseded, ADHOC_SUPERSEDED_TTL_MS, ADHOC_SESSION_ENDED_GRACE_MS, isMainCheckoutAdHoc, recordedWorktreeIsMainCheckout,
   isClosedSlugStuck, recordNumbersFromSlug, refusal, unclosedRecords, runRecordSet, inFlightRecords,
   listStagedItems, hasStagedItems, consoleReplacedByAutoMerge, consoleResidue, consoleResidueHint, filingRerunRemedy,
-  unfiledCantTellFindings, CANT_TELL_UNFILED_HINT,
+  unfiledCantTellFindings, CANT_TELL_UNFILED_HINT, defaultRunVerdict, countOwnerlessNonClean, STALE_INTERRUPTED_TTL_MS,
 } = require('../../../plugin/bin/lib/reconcile/archive-merged');
+const { PROBE_ORDER, LIVE_PROBES, runLiveness } = require('../../../plugin/bin/lib/run-liveness');
+const { LEGACY_DEAD_MS } = require('../../../plugin/bin/lib/run-liveness/constants');
 const { unfiledCantTell } = require('../../../plugin/bin/lib/console/finding-outcomes');
 const { formatEntry } = require('../../../plugin/bin/lib/log-decision/append');
 const { RESIDUE_ESCALATE_THRESHOLD, listResidueFailures, recordResidueFailure, cachePath, beginCacheBatch, commitCacheBatch } = require('../../../plugin/bin/lib/reconcile/cache');
@@ -301,6 +303,35 @@ function fixtureAbandonedShippedRun({ runId, ownerSessionId, extraEventLines = [
   fs.writeFileSync(path.join(runDir, 'events.jsonl'), [seedEvent, ...extraEventLines].join('\n') + '\n');
 
   return { root, wt, runDir };
+}
+
+// #4421: abandoned-interrupted is decided by a run-liveness verdict
+// (`ctx.runVerdict`). These helpers inject one. The fixtures a test does not want
+// reading the real probes (a torn-down shipped run, a bare `run` dir) pass DEAD.
+const H = 60 * 60 * 1000;
+// A runVerdict fake: every entry negative unless `over[probe]` overrides it.
+const verdictOf = (verdict, over = {}) => () => ({
+  verdict, evidence: PROBE_ORDER.map((probe) => ({ probe, result: 'negative', detail: 'x', ...(over[probe] || {}) })),
+});
+const DEAD = verdictOf('dead');
+// An interrupted run dir with one own event `ageMs` before `now` (no events.jsonl
+// when ageMs is null and `lines` is absent; `lines` replaces the event wholesale).
+// Under a fake main checkout unless `root` is given. -> { root, dir, state }.
+function interruptedRun({ ageMs, now = Date.now(), root, state = {}, runId = '2026-08-01T090000-record-4421', lines } = {}) {
+  let dir;
+  if (root) {
+    dir = path.join(root, '.claude-tweaks', 'pipelines', runId);
+    fs.mkdirSync(dir, { recursive: true });
+  } else {
+    ({ root, dir } = mkAdHocRunDir({ ageMs: 0, basename: runId }));
+  }
+  const full = { status: 'interrupted', worktree: path.join(root, 'gone'), ...state };
+  fs.writeFileSync(path.join(dir, 'run-state.json'), JSON.stringify(full));
+  const events = lines || (typeof ageMs === 'number'
+    ? [JSON.stringify({ type: 'skill_invoked', ts: new Date(now - ageMs).toISOString() })]
+    : null);
+  if (events) fs.writeFileSync(path.join(dir, 'events.jsonl'), events.join('\n') + '\n');
+  return { root, dir, state: full };
 }
 
 // #593 AC: archiving a run dir with a tracked work/*-spec.md file removes the
@@ -2160,6 +2191,42 @@ test('#4179: a non-ad-hoc dir stamped with the main checkout is not adhoc-sessio
   assert.equal(classifyRunDir({ dir, kinds: ['adhoc-session-ended'], liveness: () => 'dead' }).kind, 'none');
 });
 
+test('AC4.1: recordedWorktreeIsMainCheckout is true for a non-ad-hoc run dir stamped with its main checkout, where isMainCheckoutAdHoc is false', () => {
+  const { dir } = mkAdHocRunDir({ ageMs: 0, worktree: (root) => root, basename: '2026-08-01T090000-record-4421' });
+  const state = JSON.parse(fs.readFileSync(path.join(dir, 'run-state.json'), 'utf8'));
+  assert.equal(recordedWorktreeIsMainCheckout(dir, state), true);
+  assert.equal(isMainCheckoutAdHoc(dir), false);
+});
+
+test('recordedWorktreeIsMainCheckout is false for a linked, missing or absent worktree', () => {
+  const { root, dir } = mkAdHocRunDir({ ageMs: 0, worktree: (r) => r, basename: '2026-08-01T090000-record-4421' });
+  const live = path.join(root, '.claude', 'worktrees', 'live');
+  fs.mkdirSync(live, { recursive: true });
+  assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: live }), false, 'linked worktree that exists');
+  assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: path.join(root, '.claude', 'worktrees', 'gone') }), false, 'missing worktree');
+  assert.equal(recordedWorktreeIsMainCheckout(dir, {}), false, 'no worktree key');
+  assert.equal(recordedWorktreeIsMainCheckout(dir, null), false, 'null state');
+  assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: 7 }), false, 'non-string worktree');
+  assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: '' }), false, 'empty worktree');
+  // A relative path resolves against the process cwd: from the main checkout, `.` would read as the main checkout.
+  const cwd = process.cwd();
+  try {
+    process.chdir(root);
+    assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: '.' }), false, 'relative worktree');
+  } finally {
+    process.chdir(cwd);
+  }
+});
+
+test('recordedWorktreeIsMainCheckout matches through a symlinked dir path', { skip: process.platform === 'win32' && 'win32: creating a directory symlink needs elevated rights' }, () => {
+  const real = fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-4421-real-'));
+  const alias = `${real}-alias`;
+  fs.symlinkSync(real, alias, 'dir');
+  const dir = path.join(alias, '.claude-tweaks', 'pipelines', '2026-08-01T090000-record-4421');
+  fs.mkdirSync(dir, { recursive: true });
+  assert.equal(recordedWorktreeIsMainCheckout(dir, { worktree: fs.realpathSync(real) }), true);
+});
+
 test('#4180 trackStuckSkip: dryRun on a past-threshold stuck dir neither escalates nor writes, and returns would-escalate', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-4180-'));
   const stuckDir = mkDirWithMtime(STRUCTURALLY_STUCK_TTL_MS * 2);
@@ -2679,7 +2746,7 @@ test('archiveMerged: an abandoned interrupted run whose work shipped is auto-clo
   const runId = '2026-08-01T090000-spec-1673-close';
   const { root, runDir } = fixtureAbandonedShippedRun({ runId });
 
-  const result = archiveMerged({ cwd: root, sessionId: 'this-session' });
+  const result = archiveMerged({ cwd: root, sessionId: 'this-session', runVerdict: DEAD });
 
   assert.ok(result.archived.includes(runDir), `expected ${runDir} in archived, got ${JSON.stringify(result)}`);
   const archiveDir = path.join(root, '.claude-tweaks', 'pipelines', 'archive', runId);
@@ -2702,7 +2769,7 @@ test('archiveMerged: a run owned by the calling session is never auto-closed, ev
   const runId = '2026-08-01T090000-spec-1673-live';
   const { root, runDir } = fixtureAbandonedShippedRun({ runId, ownerSessionId: 'this-session' });
 
-  const result = archiveMerged({ cwd: root, sessionId: 'this-session' });
+  const result = archiveMerged({ cwd: root, sessionId: 'this-session', runVerdict: DEAD });
 
   assert.ok(!result.archived.includes(runDir), `expected ${runDir} NOT in archived, got ${JSON.stringify(result)}`);
   const state = JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8'));
@@ -2719,7 +2786,7 @@ test('archiveMerged: recent fallback-attributed events do not block auto-close �
   });
   const { root, runDir } = fixtureAbandonedShippedRun({ runId, extraEventLines: [recentFallback] });
 
-  const result = archiveMerged({ cwd: root, sessionId: 'this-session' });
+  const result = archiveMerged({ cwd: root, sessionId: 'this-session', runVerdict: DEAD });
 
   assert.ok(
     result.archived.includes(runDir),
@@ -2743,7 +2810,7 @@ test('archiveMerged: an abandoned interrupted run whose archive move fails is re
   commitPath(root, `.claude-tweaks/pipelines/${runId}/work/1673-spec.md`, '# spec 1673\n');
   installFailingPreCommitHook(root);
 
-  const result = archiveMerged({ cwd: root, sessionId: 'this-session' });
+  const result = archiveMerged({ cwd: root, sessionId: 'this-session', runVerdict: DEAD });
 
   assert.ok(
     result.skipped.some((s) => s.runDir === runDir),
@@ -2785,12 +2852,12 @@ test('isAbandonedInterrupted: false when owner === sessionId, true when they dif
   const state = { status: 'interrupted', sessionId: 'sess-a' };
 
   assert.equal(
-    isAbandonedInterrupted(runDir, state, 'sess-a'),
+    isAbandonedInterrupted(runDir, state, 'sess-a', Date.now(), { runVerdict: DEAD }),
     false,
     'the owning session must never see its own live run as abandoned',
   );
   assert.equal(
-    isAbandonedInterrupted(runDir, state, 'sess-b'),
+    isAbandonedInterrupted(runDir, state, 'sess-b', Date.now(), { runVerdict: DEAD }),
     true,
     'a different session id, with no recent self-attributed activity, is a genuine abandoned-run candidate',
   );
@@ -2822,7 +2889,7 @@ test('#1737: isAbandonedInterrupted performs at most one read of events.jsonl pe
     return original.call(fs, p, ...rest);
   });
 
-  isAbandonedInterrupted(runDir, state, 'this-session');
+  isAbandonedInterrupted(runDir, state, 'this-session', Date.now(), { runVerdict: DEAD });
 
   assert.equal(eventsReadCount, 1, `expected exactly one events.jsonl read, got ${eventsReadCount}`);
 });
@@ -2837,10 +2904,204 @@ test('isAbandonedInterrupted: an unreadable/absent events.jsonl is UNKNOWN evide
   const state = { status: 'interrupted' }; // no owner recorded either
 
   assert.equal(
-    isAbandonedInterrupted(runDir, state, 'this-session'),
+    isAbandonedInterrupted(runDir, state, 'this-session', Date.now(), { runVerdict: DEAD }),
     false,
     'an unreadable/absent events log must never be treated as evidence of staleness',
   );
+});
+
+// --- #4421: abandoned-interrupted is decided by a run-liveness verdict past the
+// 24h floor (dead) or the 72h floor (unknown with no live positive) ---
+
+const OTHER = 'sess-b';
+// A real owner block, its heartbeat at the event time. `over` overrides a field.
+const ownerBlock = (now, ageMs, over = {}) => ({
+  sessionId: 'sess-a', host: os.hostname(), pid: 2147483646, pidSource: 'env', pidStartedAt: 'x', heartbeatAt: new Date(now - ageMs).toISOString(), ...over,
+});
+const ownerPidEntry = (result) => result.evidence.find((e) => e.probe === 'owner-pid');
+
+test('AC2.1: a live verdict, or unknown with any positive live probe, is never abandoned-interrupted', () => {
+  const now = Date.now();
+  const { dir, state } = interruptedRun({ ageMs: 100 * H, now });
+  assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: verdictOf('live') }), false);
+  for (const p of LIVE_PROBES) {
+    assert.equal(
+      isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: verdictOf('unknown', { [p]: { result: 'positive' } }) }),
+      false,
+      p,
+    );
+  }
+});
+
+test('AC2.2: a probe error, a throwing runVerdict or a missing evidence array never abandons a run, and an error never takes route (a)', () => {
+  const now = Date.now();
+  const rows = [
+    [1 * H, verdictOf('unknown', { 'owner-pid': { result: 'error' } }), 'unknown + error, 1h'],
+    [30 * H, verdictOf('dead', { 'worktree-lock': { result: 'error' } }), 'dead with an error entry, 30h'],
+    [100 * H, () => { throw new Error('probe blew up'); }, 'a throwing runVerdict'],
+    [100 * H, () => ({ verdict: 'dead' }), 'no evidence array'],
+    [100 * H, () => ({ verdict: 'unknown' }), 'unknown with no evidence array'],
+  ];
+  for (const [ageMs, runVerdict, label] of rows) {
+    const { dir, state } = interruptedRun({ ageMs, now });
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict }), false, label);
+  }
+});
+
+test('AC3.1: unknown with no positive live probe is abandoned after 72 hours of silence and not sooner', () => {
+  const now = Date.now();
+  const at = (ageMs, runVerdict) => {
+    const { dir, state } = interruptedRun({ ageMs, now });
+    return isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict });
+  };
+  assert.equal(at(71 * H, verdictOf('unknown')), false);
+  assert.equal(at(73 * H, verdictOf('unknown')), true);
+  assert.equal(at(73 * H, verdictOf('unknown', { 'owner-events': { result: 'positive' } })), true, 'owner-events is not a live probe');
+
+  // Real probes, no runVerdict injected: the rung first, then the decision.
+  for (const [ageMs, want] of [[50 * H, false], [80 * H, true]]) {
+    const { dir, state } = interruptedRun({ ageMs, now, state: { sessionId: 'sess-a', owner: ownerBlock(now, ageMs, { host: 'other-host.invalid', pid: 4242 }) } });
+    const rung = runLiveness(dir, { now });
+    assert.equal(rung.verdict, 'unknown', `other-host rung at ${ageMs / H}h`);
+    assert.equal(ownerPidEntry(rung).detail, 'other-host');
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now), want, `other-host at ${ageMs / H}h`);
+  }
+  for (const [ageMs, want] of [[50 * H, false], [80 * H, true]]) {
+    const { dir, state } = interruptedRun({ ageMs, now, state: { sessionId: 'sess-a', owner: ownerBlock(now, ageMs, { sessionId: 'sess-old' }) } });
+    const rung = runLiveness(dir, { now });
+    assert.equal(rung.verdict, 'unknown', `mismatch rung at ${ageMs / H}h`);
+    assert.equal(ownerPidEntry(rung).result, 'error');
+    assert.equal(ownerPidEntry(rung).detail, 'owner-session-mismatch');
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now), want, `mismatch at ${ageMs / H}h`);
+  }
+});
+
+test('AC3.2: a dead owner-block run is never abandoned sooner than 24 hours after its last own event', () => {
+  const now = Date.now();
+  for (const [ageMs, want] of [[23 * H, false], [25 * H, true]]) {
+    const { dir, state } = interruptedRun({ ageMs, now, state: { sessionId: 'sess-a', owner: ownerBlock(now, ageMs) } });
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: DEAD }), want, `DEAD at ${ageMs / H}h`);
+  }
+  // Real probes: the owner pid is gone on this host.
+  for (const [ageMs, want] of [[23 * H, false], [25 * H, true]]) {
+    const { dir, state } = interruptedRun({ ageMs, now, state: { sessionId: 'sess-a', owner: ownerBlock(now, ageMs) } });
+    const rung = runLiveness(dir, { now });
+    assert.equal(rung.verdict, 'dead', `rung at ${ageMs / H}h`);
+    assert.equal(ownerPidEntry(rung).detail, 'gone');
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now), want, `real probes at ${ageMs / H}h`);
+  }
+});
+
+test('the 24h and 72h floors are strict: silence exactly at the floor is not abandoned, one millisecond past it is', () => {
+  const now = Date.now();
+  const at = (ageMs, runVerdict) => {
+    const { dir, state } = interruptedRun({ ageMs, now });
+    return isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict });
+  };
+  // Route (a): a dead verdict clears STALE_INTERRUPTED_TTL_MS.
+  assert.equal(STALE_INTERRUPTED_TTL_MS, 24 * H);
+  assert.equal(at(STALE_INTERRUPTED_TTL_MS, DEAD), false, 'dead, exactly at the 24h floor');
+  assert.equal(at(STALE_INTERRUPTED_TTL_MS + 1, DEAD), true, 'dead, 1 ms past the 24h floor');
+  // Route (b): unknown with no live positive clears LEGACY_DEAD_MS.
+  assert.equal(LEGACY_DEAD_MS, 72 * H);
+  assert.equal(at(LEGACY_DEAD_MS, verdictOf('unknown')), false, 'unknown, exactly at the 72h floor');
+  assert.equal(at(LEGACY_DEAD_MS + 1, verdictOf('unknown')), true, 'unknown, 1 ms past the 72h floor');
+});
+
+test('the abandoned classification carries ttlMs LEGACY_DEAD_MS and the unknown verdict on route (b), STALE_INTERRUPTED_TTL_MS and dead on route (a)', () => {
+  const now = Date.now();
+  const classify = (ageMs, runVerdict) => {
+    const { dir, state } = interruptedRun({ ageMs, now });
+    return classifyRunDir({ dir, state, sessionId: OTHER, kinds: ['abandoned-interrupted'], runVerdict }, now);
+  };
+  const fallback = classify(LEGACY_DEAD_MS + 1, verdictOf('unknown'));
+  assert.equal(fallback.kind, 'abandoned-interrupted');
+  assert.equal(fallback.ttlMs, LEGACY_DEAD_MS);
+  assert.equal(fallback.evidence.verdict, 'unknown');
+  const dead = classify(STALE_INTERRUPTED_TTL_MS + 1, DEAD);
+  assert.equal(dead.kind, 'abandoned-interrupted');
+  assert.equal(dead.ttlMs, STALE_INTERRUPTED_TTL_MS);
+  assert.equal(dead.evidence.verdict, 'dead');
+});
+
+test('AC4.1: a non-ad-hoc main-checkout run whose owner pid is gone reads dead through the adjustment and is abandoned after the floor', () => {
+  const now = Date.now();
+  const missing = { pathType: () => ({ type: 'missing' }) };
+  for (const [ageMs, want] of [[25 * H, true], [23 * H, false]]) {
+    const root = fs.realpathSync(makeRepo());
+    const { dir, state } = interruptedRun({
+      root, ageMs, now, state: { worktree: root, sessionId: 'sess-a', owner: ownerBlock(now, ageMs) },
+    });
+    assert.equal(runLiveness(dir, { now }).verdict, 'live', 'unadjusted: the shared checkout\'s fresh commit reads live');
+    assert.equal(runLiveness(dir, { now, probes: missing }).verdict, 'dead', 'with the worktree path forced missing');
+    assert.equal(defaultRunVerdict(dir, now).verdict, 'dead', 'defaultRunVerdict applies the adjustment');
+    assert.equal(isMainCheckoutAdHoc(dir), false, 'not an ad-hoc dir');
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now), want, `at ${ageMs / H}h`);
+    if (want) {
+      const c = classifyRunDir({ dir, state, sessionId: OTHER, kinds: ['abandoned-interrupted'] }, now);
+      assert.equal(c.kind, 'abandoned-interrupted');
+      assert.equal(c.evidence.verdict, 'dead');
+    }
+  }
+});
+
+test('AC4.1: a run stamped with a real linked worktree keeps its last-commit evidence — defaultRunVerdict reads live and the run is never abandoned', () => {
+  const now = Date.now();
+  const root = fs.realpathSync(makeRepo());
+  const wt = path.join(root, '.claude', 'worktrees', 'linked');
+  git(root, 'worktree', 'add', '-b', 'linked-branch', wt); // a real linked checkout, its tip commit made just now
+  const { dir, state } = interruptedRun({ root, ageMs: 100 * H, now, state: { worktree: wt } });
+  assert.equal(recordedWorktreeIsMainCheckout(dir, state), false, 'a linked worktree is not the main checkout');
+  const result = defaultRunVerdict(dir, now);
+  assert.equal(result.evidence.find((e) => e.probe === 'last-commit').result, 'positive', 'the linked worktree\'s fresh commit is read, not forced missing');
+  assert.equal(result.verdict, 'live');
+  assert.equal(isAbandonedInterrupted(dir, state, OTHER, now), false, 'silent past 72h but live by its worktree commit');
+});
+
+test('AC5.1: a readable log with no own event and a run id under 24 hours old is not abandoned', () => {
+  const now = Date.now();
+  const fallbackOnly = [JSON.stringify({ type: 'skill_invoked', attribution: 'fallback', ts: new Date(now).toISOString() })];
+  const idAt = (ms) => `${new Date(ms).toISOString().slice(0, 19).replace(/:/g, '')}-record-4421`;
+  for (const [ageMs, want] of [[2 * H, false], [30 * H, true]]) {
+    const { dir, state } = interruptedRun({ now, runId: idAt(now - ageMs), lines: fallbackOnly });
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: DEAD }), want, `run id ${ageMs / H}h old`);
+  }
+});
+
+test('AC5.1 no reference time: a basename with no run id and no own event is never abandoned', () => {
+  const now = Date.now();
+  const fallbackOnly = [JSON.stringify({ type: 'skill_invoked', attribution: 'fallback', ts: new Date(now).toISOString() })];
+  const { dir, state } = interruptedRun({ now, runId: 'run', lines: fallbackOnly });
+  assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: DEAD }), false);
+});
+
+test('the verdict is asked only after the cheap guards', () => {
+  const now = Date.now();
+  let calls = 0;
+  const counting = () => { calls += 1; throw new Error('must not be asked'); };
+  const rows = [
+    ['status active', interruptedRun({ ageMs: 100 * H, now, state: { status: 'active' } })],
+    ['own session', interruptedRun({ ageMs: 100 * H, now, state: { sessionId: OTHER } })],
+    ['no events.jsonl', interruptedRun({ ageMs: null, now })],
+    ['own event 1h old', interruptedRun({ ageMs: 1 * H, now })],
+  ];
+  for (const [label, { dir, state }] of rows) {
+    assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: counting }), false, label);
+    assert.equal(calls, 0, `${label}: the verdict must not be asked`);
+  }
+  const { dir, state } = interruptedRun({ ageMs: 30 * H, now });
+  assert.equal(isAbandonedInterrupted(dir, state, OTHER, now, { runVerdict: counting }), false, 'a throwing verdict reads as not abandoned');
+  assert.equal(calls, 1, 'past every cheap guard it is asked exactly once');
+});
+
+test('archiveMerged threads runVerdict into the classifier', () => {
+  const { root, runDir } = fixtureAbandonedShippedRun({ runId: '2026-08-01T090000-spec-4421-live' });
+
+  const result = archiveMerged({ cwd: root, sessionId: 'this-session', runVerdict: verdictOf('live') });
+
+  assert.ok(!result.archived.includes(runDir), `a live verdict must keep ${runDir} out of archived, got ${JSON.stringify(result)}`);
+  assert.equal(fs.existsSync(runDir), true, 'the run dir stays where it is');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8')).status, 'interrupted');
 });
 
 test('lastOwnEventMs: excludes fallback-attributed lines, returns the newest non-fallback timestamp', () => {
@@ -3608,7 +3869,7 @@ test('archiveMerged: ordinary branch-resolvable path — a PR console holding a 
 });
 
 test('isAbandonedInterrupted: false for a non-interrupted status', () => {
-  assert.equal(isAbandonedInterrupted('/x', { status: 'active' }, 'sess-1', Date.now()), false);
+  assert.equal(isAbandonedInterrupted('/x', { status: 'active' }, 'sess-1', Date.now(), { runVerdict: DEAD }), false);
 });
 
 // #3249: decideArchiveCore's new third parameter — defaults (2-arg calls,
@@ -5572,10 +5833,10 @@ test('archiveMerged: a shared cache spawns git worktree list once per pass (#403
   const wrapper = installGhWrapper([]);
   try {
     const uncachedTimings = createTimings();
-    const uncached = withTimings(uncachedTimings, () => archiveMerged({ cwd: root, dryRun: true }));
+    const uncached = withTimings(uncachedTimings, () => archiveMerged({ cwd: root, dryRun: true, runVerdict: DEAD }));
     const cache = newPassCache();
     const cachedTimings = createTimings();
-    const cached = withTimings(cachedTimings, () => archiveMerged({ cwd: root, dryRun: true, cache }));
+    const cached = withTimings(cachedTimings, () => archiveMerged({ cwd: root, dryRun: true, cache, runVerdict: DEAD }));
     assert.ok(uncached.archived.length >= 3, `control must reach checkRunIntegrity for each abandoned run, got ${JSON.stringify(uncached)}`);
     assert.ok(worktreeListSpawns(uncachedTimings) > 1, 'without a cache every per-dir checkRunIntegrity re-spawns the list');
     assert.equal(worktreeListSpawns(cachedTimings), 1, 'with a shared cache the whole archive phase lists worktrees once');
@@ -5593,8 +5854,81 @@ test('archiveMerged: a cache shared with prefetchArchivePrStates keeps the pass 
     const timings = createTimings();
     await withTimings(timings, async () => {
       await prefetchArchivePrStates(root, prStates, { cache });
-      archiveMerged({ cwd: root, dryRun: true, cache, prStates });
+      archiveMerged({ cwd: root, dryRun: true, cache, prStates, runVerdict: DEAD });
     });
     assert.equal(worktreeListSpawns(timings), 1);
   } finally { wrapper.restore(); }
+});
+
+// #4421: archiveMerged reports how many run dirs the pass left with no owner block to ask
+// run-liveness about (spec AC6) — counted AFTER this pass's own archival.
+const ownerlessFixture = (root) => {
+  const pipelines = path.join(root, '.claude-tweaks', 'pipelines');
+  // `config.yml` adopts the dir (keeps the orphaned-mint sweep off it); `config: false` omits it.
+  const mk = (name, state, { config = true } = {}) => {
+    const dir = path.join(pipelines, name);
+    fs.mkdirSync(dir, { recursive: true });
+    if (config) fs.writeFileSync(path.join(dir, 'config.yml'), 'x: 1\n');
+    if (state !== undefined) fs.writeFileSync(path.join(dir, 'run-state.json'), typeof state === 'string' ? state : JSON.stringify(state));
+    return dir;
+  };
+  return { pipelines, mk };
+};
+
+test('archiveMerged: ownerlessNonClean counts absent or owner-less non-clean run dirs after this pass\'s archival (#4421 AC6.1)', () => {
+  const root = fs.realpathSync(makeRepo());
+  const { pipelines, mk } = ownerlessFixture(root);
+  mk('2026-08-01T090001-record-1', { status: 'active', worktree: path.join(root, 'gone-1') });
+  mk('2026-08-01T090002-record-2', { status: 'active', worktree: path.join(root, 'gone-2') });
+  mk('2026-08-01T090003-record-3', undefined); // config.yml, no run-state.json
+  mk('2026-08-01T090004-record-4', { status: 'active', owner: { sessionId: 's', host: 'h', pid: 1 } });
+  mk('2026-08-01T090005-record-5', { status: 'clean' });
+  const mint = mk('2026-08-01T090006-record-6', { status: 'active' }, { config: false });
+  const old = new Date(Date.now() - ORPHAN_MINT_TTL_MS * 2);
+  fs.utimesSync(mint, old, old);
+  fs.mkdirSync(path.join(pipelines, 'archive', '2026-08-01T090000-old'), { recursive: true });
+  fs.writeFileSync(path.join(pipelines, 'archive', '2026-08-01T090000-old', 'run-state.json'), JSON.stringify({ status: 'active' }));
+
+  const result = archiveMerged({ cwd: root, runVerdict: DEAD });
+  assert.ok(result.archived.includes(mint), `the orphaned mint must be archived this pass, got ${JSON.stringify(result)}`);
+  assert.equal(result.ownerlessNonClean, 3);
+
+  // Review Focus 4: an unparseable file, a non-object file and an archive twin are not counted.
+  mk('2026-08-01T090007-record-7', '{not json');
+  mk('2026-08-01T090008-record-8', '[]');
+  mk('2026-08-01T090009-twin', { status: 'active', worktree: path.join(root, 'gone-9') });
+  fs.mkdirSync(path.join(pipelines, 'archive', '2026-08-01T090009-twin'), { recursive: true });
+  fs.writeFileSync(path.join(pipelines, 'archive', '2026-08-01T090009-twin', 'run-state.json'), JSON.stringify({ status: 'clean' }));
+  assert.equal(archiveMerged({ cwd: root, runVerdict: DEAD }).ownerlessNonClean, 3);
+});
+
+test('archiveMerged: an owner-less run-state with no status key counts as non-clean (#4421 AC6.1)', () => {
+  const root = fs.realpathSync(makeRepo());
+  const { mk } = ownerlessFixture(root);
+  mk('2026-08-01T090001-record-1', { createdBy: 'x' }); // no `status`, no owner
+  assert.equal(countOwnerlessNonClean(root), 1);
+  assert.equal(archiveMerged({ cwd: root, runVerdict: DEAD }).ownerlessNonClean, 1);
+});
+
+test('archiveMerged: only owner-block runs, or no pipelines dir, count 0 (#4421 AC6.2)', () => {
+  const root = fs.realpathSync(makeRepo());
+  assert.equal(archiveMerged({ cwd: root, runVerdict: DEAD }).ownerlessNonClean, 0, 'a missing pipelines dir counts 0');
+  const { mk } = ownerlessFixture(root);
+  mk('2026-08-01T090001-record-1', { status: 'active', owner: { sessionId: 's', host: 'h', pid: 1 } });
+  mk('2026-08-01T090002-record-2', { status: 'active', owner: { sessionId: 't', host: 'h', pid: 2 } });
+  assert.equal(archiveMerged({ cwd: root, runVerdict: DEAD }).ownerlessNonClean, 0);
+});
+
+test('archiveMerged: a dry run, a pass with no main checkout and an unreadable pipelines dir leave ownerlessNonClean absent (#4421 AC6.4)', () => {
+  const root = fs.realpathSync(makeRepo());
+  const { mk } = ownerlessFixture(root);
+  mk('2026-08-01T090001-record-1', { status: 'active', worktree: path.join(root, 'gone-1') });
+  assert.equal('ownerlessNonClean' in archiveMerged({ cwd: root, dryRun: true, runVerdict: DEAD }), false);
+  assert.equal('ownerlessNonClean' in archiveMerged({ cwd: fs.mkdtempSync(path.join(os.tmpdir(), 'archive-merged-norepo-')) }), false);
+
+  const blocked = fs.realpathSync(makeRepo());
+  fs.mkdirSync(path.join(blocked, '.claude-tweaks'), { recursive: true });
+  fs.writeFileSync(path.join(blocked, '.claude-tweaks', 'pipelines'), 'not a directory\n'); // readdir -> ENOTDIR
+  assert.equal(countOwnerlessNonClean(blocked), null);
+  assert.equal('ownerlessNonClean' in archiveMerged({ cwd: blocked, runVerdict: DEAD }), false);
 });

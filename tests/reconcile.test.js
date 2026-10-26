@@ -1402,6 +1402,16 @@ test('docs/reconcile-checks.md prerequisite table matches PREREQUISITES row for 
   assert.deepEqual(fromDoc, PREREQUISITES);
 });
 
+test('AC7.2: docs/reconcile-checks.md and docs/hooks.md state the legacy-route removal condition verbatim (#4421)', () => {
+  const sentence = 'remove it when `ownerlessNonCleanZeroSince` is at least 7 days old in this repository\'s `reconcile-cache.json`, on a plugin build newer than v6.153.0.';
+  for (const doc of ['reconcile-checks.md', 'hooks.md']) {
+    const text = readText(path.join(__dirname, '..', 'docs', doc)).replace(/\s+/g, ' ');
+    assert.ok(text.includes(sentence), `${doc} must carry the removal condition verbatim`);
+  }
+  const hooks = readText(path.join(__dirname, '..', 'docs', 'hooks.md'));
+  assert.ok(!hooks.includes('The remaining consumers are #3977 and #4421.'), 'docs/hooks.md still lists #4421 as a future consumer');
+});
+
 // #3630 behavioral scaffolding: origin's main is one commit (NEW) ahead of the
 // clone's local main, as when GitHub merges a PR asynchronously. archive/
 // release/reap are stubbed; the archive stub records what local main and
@@ -3268,5 +3278,120 @@ test('#4180 reconcile: a dry run skips the declined-learning prune; a real run s
     assert.equal(calls, 1, 'a real pass prunes once');
   } finally {
     store.pruneDeclines = original;
+  }
+});
+
+// #4421: archiveMerged's `ownerlessNonClean` count rides reconcile()'s result, the summary line and
+// the cache — with `ownerlessNonCleanZeroSince` stamping when the count first reads 0.
+function ownerlessFixture() {
+  const fx = dryRunFixture();
+  const pipelines = path.join(fx.root, '.claude-tweaks', 'pipelines');
+  const mk = (name, state) => {
+    const dir = path.join(pipelines, name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'config.yml'), 'x: 1\n');
+    fs.writeFileSync(path.join(dir, 'run-state.json'), JSON.stringify(state));
+  };
+  const owned = (n) => {
+    for (let i = 1; i <= n; i++) mk(`2026-10-26T10000${i}-record-${i}`, { status: 'active', owner: { sessionId: `s${i}`, host: 'h', pid: i } });
+  };
+  const cacheJson = () => JSON.parse(fs.readFileSync(cachePath(fx.root), 'utf8'));
+  return { ...fx, mk, owned, cacheJson };
+}
+
+test('#4421 AC6.2 AC7.1: a pass over only owner-block runs reports 0 on the result, the summary line and the cache, and stamps ownerlessNonCleanZeroSince', async () => {
+  const { run, owned, cacheJson } = ownerlessFixture();
+  owned(2);
+  const r = await run({});
+  assert.equal(r.ownerlessNonClean, 0);
+  assert.match(formatSummary(r), /^ownerless non-clean: 0 run dirs$/m);
+  assert.equal(cacheJson().ownerlessNonClean, 0);
+  const stamp = cacheJson().ownerlessNonCleanZeroSince;
+  assert.equal(typeof stamp, 'string');
+  assert.ok(Number.isFinite(Date.parse(stamp)));
+
+  await new Promise((resolve) => setTimeout(resolve, 15)); // a later pass must not move the stamp
+  const again = await run({});
+  assert.equal(again.ownerlessNonClean, 0);
+  assert.equal(cacheJson().ownerlessNonCleanZeroSince, stamp, 'the zero-since stamp is kept byte-equal');
+});
+
+test('#4421 AC6.3: a later pass with a count above 0 clears ownerlessNonCleanZeroSince', async () => {
+  const { run, owned, mk, cacheJson } = ownerlessFixture();
+  owned(2);
+  await run({});
+  assert.equal(typeof cacheJson().ownerlessNonCleanZeroSince, 'string');
+  mk('2026-10-26T100009-record-9', { status: 'active' }); // owner-less, non-clean
+  const r = await run({});
+  assert.equal(r.ownerlessNonClean, 1);
+  assert.match(formatSummary(r), /^ownerless non-clean: 1 run dir$/m);
+  assert.equal(cacheJson().ownerlessNonClean, 1);
+  assert.equal('ownerlessNonCleanZeroSince' in cacheJson(), false);
+});
+
+test('#4421 AC6.4: a skipped pass leaves both fields absent', async () => {
+  const { root, run, owned, mk } = ownerlessFixture();
+  owned(1);
+  mk('2026-10-26T100009-record-9', { status: 'active' });
+  const scoped = await run({ checks: ['console'] });
+  assert.equal('ownerlessNonClean' in scoped, false);
+  const dry = await run({ dryRun: true });
+  assert.equal('ownerlessNonClean' in dry, false);
+  // The summary line is dropped with the count (format-summary's absent-count branch).
+  assert.doesNotMatch(formatSummary(scoped), /ownerless non-clean/);
+  assert.doesNotMatch(formatSummary(dry), /ownerless non-clean/);
+  // The scoped pass is not skipCacheStamp, so finalize writes the cache (lastRunAt) — but never the ownerless keys.
+  assert.ok(fs.existsSync(cachePath(root)), 'the scoped pass writes the cache');
+  const cache = JSON.parse(fs.readFileSync(cachePath(root), 'utf8'));
+  assert.equal('ownerlessNonClean' in cache, false);
+  assert.equal('ownerlessNonCleanZeroSince' in cache, false);
+});
+
+// #4421: an over-budget early return skips `finalize`, so it persists the ownerless count itself —
+// otherwise a pass that read a count above 0 would leave an older ownerlessNonCleanZeroSince standing,
+// and the stamp would stop dating the current unbroken run of zero readings.
+// The stub budget reports "exceeded" from its Nth check on; each overBudget() call asks once.
+async function withBudgetExceededFrom(nth, fn) {
+  const budgetMod = require('../plugin/bin/lib/reconcile/budget');
+  const original = budgetMod.createBudget;
+  let asked = 0;
+  budgetMod.createBudget = () => ({ exceeded: () => { asked += 1; return asked >= nth; }, remainingMs: () => 0 });
+  try {
+    return await fn();
+  } finally {
+    budgetMod.createBudget = original;
+  }
+}
+
+function seedOwnerlessCache(root) {
+  fs.mkdirSync(path.dirname(cachePath(root)), { recursive: true });
+  fs.writeFileSync(cachePath(root), JSON.stringify({ ownerlessNonClean: 0, ownerlessNonCleanZeroSince: '2026-10-01T00:00:00.000Z' }));
+}
+
+test('#4421: an over-budget return after archive ran persists ownerlessNonClean and clears a standing ownerlessNonCleanZeroSince', async () => {
+  const { root, run, mk, cacheJson } = ownerlessFixture();
+  for (let i = 1; i <= 3; i++) mk(`2026-10-26T10000${i}-record-${i}`, { status: 'active' }); // owner-less, non-clean
+  seedOwnerlessCache(root);
+  // Calls 1-5 are the checks before archive's own; the 6th (after archive) trips.
+  const r = await withBudgetExceededFrom(6, () => run({ checks: ['archive', 'archive-branches'] }));
+  assert.equal(r.ownerlessNonClean, 3, 'archive ran before the budget tripped');
+  assert.ok(r.skipped.some((s) => s.check === 'archive-branches' && s.reason === 'budget-exceeded'), 'the pass returned early, before finalize');
+  assert.equal(cacheJson().ownerlessNonClean, 3);
+  assert.equal('ownerlessNonCleanZeroSince' in cacheJson(), false);
+  assert.equal(cacheJson().lastRunAt ?? null, null, 'finalize still owns the freshness stamp');
+});
+
+test('#4421: an over-budget return that never ran archive leaves a persisted ownerlessNonClean and its zero-since stamp untouched', async () => {
+  for (const [label, nth, checks] of [
+    ['budget exceeded before archive', 1, ['archive']],
+    ['a pass without archive', 2, ['console']],
+  ]) {
+    const { root, run, cacheJson } = ownerlessFixture();
+    seedOwnerlessCache(root);
+    const before = cacheJson();
+    const r = await withBudgetExceededFrom(nth, () => run({ checks }));
+    assert.equal('ownerlessNonClean' in r, false, label);
+    assert.ok(r.skipped.some((s) => s.reason === 'budget-exceeded'), `${label}: the pass returned early`);
+    assert.deepEqual(cacheJson(), before, label);
   }
 });

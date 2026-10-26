@@ -1,8 +1,11 @@
 'use strict';
 // bin/lib/run-liveness/index.js — a three-valued `live | dead | unknown` verdict
 // for a pipeline run directory (#3973), built from POSITIVE evidence over
-// injectable probes. One consumer: reconcile/archive-merged.js's `adhoc-session-ended`
-// sweep, through `adHocSessionLiveness` (#4179).
+// injectable probes. Consumers: reconcile/archive-merged.js's `adhoc-session-ended`
+// sweep, through `adHocSessionLiveness` (#4179), and its `abandoned-interrupted`
+// kind, through `defaultRunVerdict` (#4421), plus `blocksResume`'s two resume
+// callers (#4420). runIdMs and LIVE_PROBES are exported so reconcile's
+// abandoned-interrupted decision reuses them rather than copying (#4421).
 //
 // Shape: gatherEvidence() asks every probe once and records a tagged entry
 // ({ probe, result: positive | negative | error, detail }) plus the "death
@@ -196,4 +199,27 @@ function runLiveness(runDir, opts) {
   }
 }
 
-module.exports = { PROBE_ORDER, gatherEvidence, decideVerdict, runLiveness };
+// Whether a resume must be refused on this runLiveness result (#4420): only the
+// worktree-lock and last-commit entries can block, on `positive` (the run is in use
+// or just committed) or `error` (could not ask). Maintainer ruling: the owner probes
+// (owner-pid, heartbeat, owner-events) stay informational here — widening this helper
+// to them turns every missing events.jsonl and every just-ended session into a blocked
+// resume (#3979 red-team). `last-commit` `negative`/`no-commits` does NOT block: both
+// callers handle that case themselves. A missing answer cannot be read as "no", so
+// only a `negative` on both entries lets a resume through: no evidence array, a
+// missing entry, or an unrecognised result all block.
+function blocksResume(result) {
+  const { lock, commit } = resumeEntries(result);
+  return lock.result !== 'negative' || commit.result !== 'negative';
+}
+
+// The two entries blocksResume reads, as its callers map them to a verdict. A
+// missing evidence array or entry reads as an `error` entry (detail
+// `missing-evidence`), so a caller can never read it as "no".
+function resumeEntries(result) {
+  const evidence = result && Array.isArray(result.evidence) ? result.evidence : [];
+  const entry = (probe) => evidence.find((e) => e && e.probe === probe) || { probe, result: 'error', detail: 'missing-evidence' };
+  return { lock: entry('worktree-lock'), commit: entry('last-commit') };
+}
+
+module.exports = { PROBE_ORDER, LIVE_PROBES, runIdMs, gatherEvidence, decideVerdict, runLiveness, blocksResume, resumeEntries };
