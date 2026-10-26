@@ -1528,7 +1528,7 @@ async function runCheckSessionResidue(argv) {
   if (staleEntries.length) {
     blocks.push(
       `${staleEntries.map((e) => e.line).join('\n')}\n` +
-        `  resolve with: review {run}/decisions.md and staged/ to resume, or close a finished run with: node "${root}/bin/hooks.js" close-run --run <dir>`,
+        `  resolve with: the command on each run's line (its session is gone), or close one you decide is abandoned with: node "${root}/bin/hooks.js" close-run --run <dir>`,
     );
   }
   if (approvableEntries.length) {

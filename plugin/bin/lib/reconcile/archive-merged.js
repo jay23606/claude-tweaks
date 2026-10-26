@@ -175,10 +175,12 @@ function adHocSessionLiveness(dir) {
 // main checkout (recordedWorktreeIsMainCheckout, not the ad-hoc-only gate): there
 // the worktree-lock and last-commit evidence belong to the shared checkout, not
 // to this run. State is read from disk, the same file runLiveness reads.
+// `probes` (#3977) are extra run-liveness probes merged under the adjustment —
+// SessionStart's banner passes a lockInUse that reads one shared worktree listing.
 // -> { verdict, evidence }
-function defaultRunVerdict(dir, now) {
+function defaultRunVerdict(dir, now, probes = {}) {
   const adjust = recordedWorktreeIsMainCheckout(dir, readRunState(dir));
-  return runLiveness(dir, { now, probes: adjust ? { pathType: () => ({ type: 'missing' }) } : {} });
+  return runLiveness(dir, { now, probes: adjust ? { ...probes, pathType: () => ({ type: 'missing' }) } : probes });
 }
 
 // #1604: the "swept once genuinely superseded" half of #1117's own design
