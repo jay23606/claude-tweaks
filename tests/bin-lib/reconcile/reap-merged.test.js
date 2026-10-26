@@ -14,7 +14,7 @@ const { createIssueListCache } = require('../../../plugin/bin/lib/reconcile/issu
 const { createPrStateResolver } = require('../../../plugin/bin/lib/reconcile/pr-state-cache');
 const { reconcile } = require('../../../plugin/bin/lib/reconcile');
 const { residueBody } = require('../../../plugin/bin/lib/reconcile/escalate-residue');
-const { skipUnderRoot } = require('../../helpers/root');
+const { chmodDenialSkip } = require('../../helpers/root');
 
 const PATH_STUB_SKIP = process.platform === 'win32' && 'win32: execFileSync("gh") never spawns a #!/bin/sh stub named gh on PATH';
 
@@ -622,9 +622,7 @@ test('reconcile(): the real dispatcher never reaps the worktree the caller is st
 // partway — exactly where Windows's MAX_PATH bites on a deep node_modules
 // tree. Root bypasses mode bits (tests/helpers/root.js) and win32 ignores
 // chmod, so those hosts skip the tests that depend on it.
-const MID_DELETE_SKIP = process.platform === 'win32'
-  ? { skip: 'win32 ignores directory mode bits' }
-  : skipUnderRoot('root bypasses mode bits');
+const MID_DELETE_SKIP = chmodDenialSkip('root bypasses mode bits');
 
 function induceMidDeleteFailure(wtPath) {
   const ro = path.join(wtPath, 'ro');
