@@ -30,10 +30,11 @@ test('STUB_SKIP_REASON is the spec text, and STUB_SKIP is the reason on win32 on
   assert.strictEqual(STUB_SKIP, process.platform === 'win32' && STUB_SKIP_REASON);
 });
 
-test('installStub prepends a dir holding the stub and restore puts PATH back', () => {
+test('installStub prepends a dir holding the stub and restore puts PATH back', (t) => {
   const before = process.env.PATH;
   const restoreA = installStub('ct-a', '#!/bin/sh\nexit 0\n');
   const restoreB = installStub('ct-b', '#!/bin/sh\nexit 0\n');
+  t.after(() => { restoreB(); restoreA(); });
   const [dirB, dirA] = process.env.PATH.split(path.delimiter);
   assert.ok(fs.existsSync(path.join(dirB, 'ct-b')), 'first PATH entry holds ct-b');
   assert.ok(fs.existsSync(path.join(dirA, 'ct-a')), 'second PATH entry holds ct-a');
@@ -46,6 +47,7 @@ test('installStub prepends a dir holding the stub and restore puts PATH back', (
   assert.strictEqual(process.env.PATH, before);
   // A repeat restore is a no-op: it does not clobber a stub installed since.
   const restoreC = installStub('ct-c', '#!/bin/sh\nexit 0\n');
+  t.after(restoreC);
   const pathWithC = process.env.PATH;
   restoreA();
   assert.strictEqual(process.env.PATH, pathWithC);
@@ -53,11 +55,40 @@ test('installStub prepends a dir holding the stub and restore puts PATH back', (
   assert.strictEqual(process.env.PATH, before);
 });
 
+test('installStub restores in any order: the first-installed stub restored first leaves no dangling entry', (t) => {
+  const before = process.env.PATH;
+  const restoreA = installStub('ct-a', '#!/bin/sh\nexit 0\n');
+  const restoreB = installStub('ct-b', '#!/bin/sh\nexit 0\n');
+  t.after(() => { restoreA(); restoreB(); });
+  const [dirB] = process.env.PATH.split(path.delimiter);
+  restoreA();
+  assert.strictEqual(process.env.PATH, dirB + path.delimiter + before);
+  restoreB();
+  assert.strictEqual(process.env.PATH, before);
+});
+
+test('installStub with PATH unset leaves PATH unset after restore', (t) => {
+  const saved = process.env.PATH;
+  t.after(() => { process.env.PATH = saved; });
+  delete process.env.PATH;
+  const restore = installStub('ct-a', '#!/bin/sh\nexit 0\n');
+  assert.strictEqual(fs.existsSync(path.join(process.env.PATH, 'ct-a')), true);
+  restore();
+  assert.strictEqual(process.env.PATH, undefined);
+});
+
 test('AC2.1: pathWithOnly([git], { exclude: [gh] }) resolves git and not gh', (t) => {
   const p = pathWithOnly(['git'], { exclude: ['gh'] });
   // Remove only a symlink dir pathWithOnly made, never a real binary dir.
   if (path.basename(p).startsWith('ct-path-only-')) t.after(() => fs.rmSync(p, { recursive: true, force: true }));
   assert.doesNotThrow(() => execFileSync('git', ['--version'], { env: { ...process.env, PATH: p }, stdio: 'ignore' }));
+  // On a host with no gh the ENOENT below holds for any PATH, so it proves the
+  // exclusion only where gh exists; the symlink-fallback test pins the rule itself.
+  try {
+    execFileSync('gh', ['--version'], { stdio: 'ignore' });
+  } catch {
+    t.diagnostic('gh is not on this host PATH: the gh half of AC2.1 is not discriminating here');
+  }
   assert.throws(
     () => execFileSync('gh', ['--version'], { env: { ...process.env, PATH: p }, stdio: 'ignore' }),
     (e) => e.code === 'ENOENT',
@@ -98,7 +129,7 @@ test('pathWithOnly finds a PATHEXT extension on win32', (t) => {
 
 test('pathWithOnly throws naming a binary that is not on PATH', (t) => {
   const emptyDir = tmpDir(t);
-  assert.throws(() => pathWithOnly(['ct-no-such-bin'], { env: { PATH: emptyDir }, platform: 'linux' }), /ct-no-such-bin not found on PATH/);
+  assert.throws(() => pathWithOnly(['ct-no-such-bin'], { env: { PATH: emptyDir }, platform: 'linux' }), /ct-no-such-bin not found on PATH \(searched \d+ dirs: /);
 });
 
 function walkJs(dir, acc = []) {
@@ -124,6 +155,7 @@ test('AC3.1: no test file joins PATH with a literal colon', () => {
 test('AC3.1 self-check: the scan flags a doctored colon join and passes a non-PATH join', () => {
   const bad = 'PATH: `${dir}' + ':' + '${process.env.PATH}`';
   assert.deepStrictEqual(findColonPathJoins(bad), [1]);
+  assert.deepStrictEqual(findColonPathJoins("env.PATH = [dir, base].join('" + ':' + "');"), [1]);
   assert.deepStrictEqual(findColonPathJoins("const targetPath = pathParts.join(':');"), []);
   assert.deepStrictEqual(findColonPathJoins('PATH: `${dir}${path.delimiter}${process.env.PATH}`'), []);
   assert.deepStrictEqual(findColonPathJoins('const v = CWD_VS_PATH.test(line) && `${rel}' + ':' + '${i + 1}`;'), []);

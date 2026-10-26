@@ -15,7 +15,8 @@
 // false off win32 (never skipped), STUB_SKIP_REASON on win32 — an explicit
 // skip that the TAP output names, never a silent early `return`.
 // installStub(name, script) is the shared way such a test installs its stub,
-// and its restore() puts PATH back and removes the stub dir.
+// and its restore() removes the stub dir and only its own PATH entry, so
+// stubs can be restored in any order (an unset PATH is unset again).
 //
 // pathWithOnly(names, { exclude }) serves the other shape: a test that needs
 // a PATH holding a real binary (e.g. `git`) but not another (e.g. `gh`). The
@@ -37,17 +38,26 @@ const STUB_SKIP_REASON = 'win32: execFile resolves only .exe/.com on PATH, so a 
 const STUB_SKIP = process.platform === 'win32' && STUB_SKIP_REASON;
 
 function installStub(name, script) {
-  const original = process.env.PATH;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-stub-'));
   const file = path.join(dir, name);
-  fs.writeFileSync(file, script);
-  fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a denial simulation
-  process.env.PATH = dir + path.delimiter + original;
+  try {
+    fs.writeFileSync(file, script);
+    fs.chmodSync(file, 0o755); // root-safe: exec-bit stub, not a denial simulation
+  } catch (err) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    throw err;
+  }
+  const hadPath = process.env.PATH !== undefined;
+  process.env.PATH = hadPath ? dir + path.delimiter + process.env.PATH : dir;
   let restored = false;
   return function restore() {
     if (restored) return;
     restored = true;
-    process.env.PATH = original;
+    const rest = (process.env.PATH ?? '').split(path.delimiter);
+    const at = rest.indexOf(dir);
+    if (at !== -1) rest.splice(at, 1);
+    if (!hadPath && rest.length === 0) delete process.env.PATH;
+    else process.env.PATH = rest.join(path.delimiter);
     fs.rmSync(dir, { recursive: true, force: true });
   };
 }
@@ -97,7 +107,7 @@ function pathWithOnly(names, { exclude = [], env = process.env, platform = proce
         break;
       }
     }
-    if (!found) throw new Error(`pathWithOnly: ${name} not found on PATH`);
+    if (!found) throw new Error(`pathWithOnly: ${name} not found on PATH (searched ${dirs.length} dirs: ${dirs.join(', ') || 'none'})`);
     let dir = path.dirname(found);
     if (excluded(dir)) {
       if (!linkDir) linkDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-path-only-'));
