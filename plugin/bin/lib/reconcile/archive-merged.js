@@ -1853,8 +1853,12 @@ function classifyRunDir(ctx, now = Date.now()) {
           const ref = last !== null ? last : runIdMs(dir);
           const silentMs = ref === null ? null : now - ref;
           if (readable && silentMs !== null && silentMs > STALE_INTERRUPTED_TTL_MS) {
-            let result = null;
-            try { result = runVerdict(dir, now); } catch { /* a throwing hook reads as not abandoned */ }
+            // #3977: archiveMerged's loop computed the verdict once already;
+            // reuse it rather than spawning the same probes a second time.
+            let result = ctx.runLivenessResult || null;
+            if (!result) {
+              try { result = runVerdict(dir, now); } catch { /* a throwing hook reads as not abandoned */ }
+            }
             const evidence = result && Array.isArray(result.evidence) ? result.evidence : null;
             const verdict = result ? result.verdict : undefined;
             const dead = !!evidence && verdict === 'dead' && !evidence.some((e) => e && e.result === 'error');
@@ -2251,6 +2255,21 @@ function countOwnerlessNonClean(root) {
   return count;
 }
 
+// #3977: the run-liveness verdict archiveMerged's loop-top guard reads. A run
+// dir with no run-state.json is `unknown` without asking (runLiveness's legacy
+// route would otherwise read a state-less dir `dead`); a throwing hook, or a
+// result with no evidence array, is `unknown` too. Those stand-ins are marked
+// `asked: false` so classifyRunDir never treats them as a real verdict (its
+// abandoned-interrupted kind reads a throwing hook as "not abandoned").
+function verdictAtGuard(dir, state, runVerdict, now) {
+  const notAsked = { verdict: 'unknown', evidence: [], asked: false };
+  if (state === null || state === undefined) return notAsked;
+  let result = null;
+  try { result = (runVerdict || defaultRunVerdict)(dir, now); } catch { /* unknown below */ }
+  if (!result || !Array.isArray(result.evidence) || typeof result.verdict !== 'string') return notAsked;
+  return result;
+}
+
 function archiveMerged({
   cwd, dryRun = false, sessionId = process.env.CLAUDE_CODE_SESSION_ID || null, runner, integration, prStates, cache, liveness, runVerdict,
 } = {}) {
@@ -2285,7 +2304,23 @@ function archiveMerged({
     if (plan && plan.action !== 'none') residuePlan.push(plan);
   };
 
+  // #3977: one liveness verdict per run per pass, shared by the loop-top guard,
+  // classifyRunDir's abandoned-interrupted kind and the disposition report.
+  const passNow = Date.now();
+  const verdicts = new Map();
+
   for (const { dir, state } of iterRunDirsWithState(root)) {
+    // #3977: no archive path acts on a run whose session is provably live —
+    // closing it would end that run's enforcement and event logging under a
+    // sibling session still driving it. `unknown` and `dead` fall through to
+    // the paths below unchanged (each has its own evidence).
+    const liveResult = verdictAtGuard(dir, state, runVerdict, passNow);
+    verdicts.set(dir, liveResult);
+    if (liveResult.verdict === 'live') {
+      skipped.push({ runDir: dir, reason: 'live' });
+      continue;
+    }
+
     // #1892 Deliverable 2: the split state — archive twin already exists,
     // live path holds only tracked `work/` headers — sits ahead of every
     // other branch below, regardless of age: `isOrphanedMint`'s own
@@ -2341,7 +2376,7 @@ function archiveMerged({
     // first-match order, unchanged from what this loop checked before
     // consolidation.
     const classification = classifyRunDir({
-      dir, state, worktrees, sessionId, liveness, runVerdict,
+      dir, state, worktrees, sessionId, liveness, runVerdict, runLivenessResult: liveResult.asked === false ? null : liveResult,
       kinds: ['orphaned-mint', 'abandoned-interrupted', 'adhoc-superseded', 'adhoc-session-ended'],
     });
     let { kind } = classification;
