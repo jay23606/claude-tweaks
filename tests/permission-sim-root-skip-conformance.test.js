@@ -5,8 +5,9 @@
 // cloud or CI harness — CLAUDE.md's Cloud parity section) the kernel ignores
 // mode bits and the assertion fails deterministically. This scan enforces the
 // rule: a test file calling chmodSync( must either (a) import the shared
-// tests/helpers/root.js helper and use skipUnderRoot or chmodDenialSkip (the
-// win32-aware superset, #4290) at least once, or (b) mark
+// tests/helpers/root.js helper and call chmodDenialSkip( (root and win32 — a
+// root-only skipUnderRoot( guard no longer satisfies the rule, because chmod
+// never denies access on win32 either, #4290) at least once, or (b) mark
 // every chmodSync( call `// root-safe` — the exception for a restore-only use
 // (undoing a fixture's own chmod) or an exec-bit setup (making a spy/stub
 // script runnable), neither of which is a permission-denial simulation at all.
@@ -34,19 +35,18 @@ const HELPER_IMPORT_RE = /require\(['"][^'"]*helpers\/root(?:\.js)?['"]\)/;
 // first bare (unmarked) chmodSync( line otherwise.
 function checkFile(filePath, text) {
   if (!text.includes('chmodSync(')) return null;
-  const usesHelper = HELPER_IMPORT_RE.test(text)
-    && (text.includes('skipUnderRoot(') || text.includes('chmodDenialSkip('));
+  const usesHelper = HELPER_IMPORT_RE.test(text) && text.includes('chmodDenialSkip(');
   if (usesHelper) return null;
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('chmodSync(') && !lines[i].includes('root-safe')) {
-      return `${path.relative(ROOT, filePath)}:${i + 1} calls chmodSync( without importing tests/helpers/root.js's skipUnderRoot or chmodDenialSkip, and is not marked // root-safe`;
+      return `${path.relative(ROOT, filePath)}:${i + 1} calls chmodSync( without importing tests/helpers/root.js and calling chmodDenialSkip( (a root-only skipUnderRoot( does not cover win32), and is not marked // root-safe`;
     }
   }
   return null;
 }
 
-test('every chmodSync( call under tests/** either uses skipUnderRoot or is marked // root-safe (#1853)', () => {
+test('every chmodSync( call under tests/** either uses chmodDenialSkip or is marked // root-safe (#1853, #4290)', () => {
   const violations = [];
   for (const file of walk(TESTS_DIR)) {
     // The helper file itself and this conformance test are not subject to the rule.
@@ -68,10 +68,12 @@ test('the scan fails on a fixture test that calls chmodSync without the helper (
   assert.match(v, /bad\.test\.js:2/);
 });
 
-test('the scan passes a fixture using skipUnderRoot, and a fixture marked // root-safe (self-check)', () => {
-  const goodHelper = "const { skipUnderRoot } = require('./helpers/root');\n"
+test('the scan flags a fixture using only skipUnderRoot, and passes a fixture marked // root-safe (self-check)', () => {
+  const rootOnly = "const { skipUnderRoot } = require('./helpers/root');\n"
     + "test('x', skipUnderRoot('reason'), () => { fs.chmodSync('/tmp/x', 0o000); });\n";
-  assert.strictEqual(checkFile('/fake/good1.test.js', goodHelper), null);
+  const v = checkFile('/fake/bad1.test.js', rootOnly);
+  assert.ok(v, 'a root-only skipUnderRoot( guard must be flagged: chmod never denies access on win32');
+  assert.match(v, /bad1\.test\.js:2/);
 
   const goodMarked = "const fs = require('fs');\nfs.chmodSync('/tmp/x', 0o755); // root-safe: exec-bit stub\n";
   assert.strictEqual(checkFile('/fake/good2.test.js', goodMarked), null);
