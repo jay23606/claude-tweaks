@@ -76,6 +76,12 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows: tests and two display-ID producers compare… ([#4288](https://github.com/thn-inc/claude-tweaks/issues/4288)) ([915237d](https://github.com/thn-inc/claude-tweaks/commit/915237d809756faa476246e83c1a4eacdafd0c5a))
 * wrap-up review-console: skip test:true gate-denial events… ([#4186](https://github.com/thn-inc/claude-tweaks/issues/4186)) ([19f3f49](https://github.com/thn-inc/claude-tweaks/commit/19f3f49277b045161cd39ce399a1b1528dccad29))
 
+### Highlights
+* Test-impact maps can be traced on Windows as well as on POSIX, and a large subset no longer overflows the Windows command line.
+* Windows: residue evidence lines and the local release CLI's plan-claim paths now print with `/`, as on other platforms. Everything else in this record is test-only.
+* Maintainer-only: the shell-scanner differential recipe now bounds every real-bash run, so a write shape can no longer leave a process filling the disk after the run ends.
+* The test-impact tracer follows more of what a test reads, so subsets miss less.
+
 ## [6.155.1](https://github.com/thn-inc/claude-tweaks/compare/v6.155.0...v6.155.1) (2026-10-25)
 
 
