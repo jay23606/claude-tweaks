@@ -11,7 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { probeArtifacts, THIRTY_DAYS_MS } = require('../../../plugin/bin/lib/residue/probes/artifacts');
 const { validateFinding } = require('../../../plugin/bin/lib/residue/finding');
-const { skipUnderRoot } = require('../../helpers/root');
+const { chmodDenialSkip } = require('../../helpers/root');
 
 const NOW = Date.UTC(2026, 7, 20, 12, 0, 0);
 const OLD = new Date(NOW - THIRTY_DAYS_MS - 24 * 60 * 60 * 1000); // 31 days ago
@@ -189,7 +189,7 @@ test('no runner injected at all is UNPROVEN, never untracked', () => {
   assert.ok(r.findings[0].evidence.includes('git could not prove the tree untracked'));
 });
 
-test('an unreadable root fails the whole probe loudly, naming it', skipUnderRoot('root ignores directory permissions'), () => {
+test('an unreadable root fails the whole probe loudly, naming it', chmodDenialSkip('root ignores directory permissions'), () => {
   const root = tmpRoot();
   const locked = path.join(root, '.claude-tweaks/artifacts/traces');
   fs.mkdirSync(locked, { recursive: true });
