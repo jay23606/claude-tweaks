@@ -79,7 +79,7 @@ test('pathWithOnly uses the binary own dir when it holds no excluded name', (t) 
   const b = tmpDir(t);
   writeExecutable(a, 'tool');
   writeExecutable(b, 'gh');
-  assert.strictEqual(pathWithOnly(['tool'], { exclude: ['gh'], env: { PATH: [a, b].join(':') }, platform: 'linux' }), a);
+  assert.strictEqual(pathWithOnly(['tool'], { exclude: ['gh'], env: { PATH: [a, b].join(path.delimiter) }, platform: process.platform }), a);
 });
 
 test('pathWithOnly finds a PATHEXT extension on win32', (t) => {
