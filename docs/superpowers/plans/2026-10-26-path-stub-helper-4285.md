@@ -23,7 +23,7 @@
 ## Rulings
 
 - **`STUB_SKIP` is the skip option value, not the bare text.** `STUB_SKIP = process.platform === 'win32' && STUB_SKIP_REASON`, the same shape as today's `PATH_STUB_SKIP`, so `{ skip: STUB_SKIP }` is `false` on POSIX (AC1). `STUB_SKIP_REASON` is exported, and its exact text is pinned.
-- **Skip exactly the 32 failing stub tests, not every stub-using test.** The other stub-using tests in these files pass on Windows, because their assertion does not depend on the stub running (for example reap-merged's dry-run and locked-worktree cases). Skipping them would drop coverage that Windows really provides. The 32 come from the record's Windows run, mapped by title to `ea728f9e8` (table in Task 2).
+- **Skip exactly the failing stub tests, not every stub-using test.** The other stub-using tests in these files pass on Windows, because their assertion does not depend on the stub running (for example reap-merged's in-use locked-worktree case). Skipping them would drop coverage that Windows really provides. The 34 skipped tests are the record's 32 (from its Windows run, mapped by title to `ea728f9e8`) plus two that a newer Windows run (40335066805) shows failing. The table is in Task 2.
 - **Scope additions (add-to-plan).**
   - `tests/bin-lib/reconcile/archive-merged.test.js:32` also defines `PATH_STUB_SKIP`, and the Deliverable says "replace each per-file `PATH_STUB_SKIP`".
   - `.claude/skills/windows-checkout-test-parity/SKILL.md:179` teaches the per-file `PATH_STUB_SKIP` and names files that will no longer have one. The #4290 final review flagged exactly this kind of stale skill row as Important.
@@ -101,7 +101,7 @@
 
 **Rule for every file.** A local helper or test body that writes a `#!/bin/sh` script, chmods it, and prepends its directory to `PATH` switches to `installStub(name, script)`. Its caller's `finally` calls the returned restore. Log and marker files the script writes move to their own `mkdtemp` path, because the stub directory is owned by `installStub`. A spawn that passed `env: { ...process.env, PATH: \`${dir}:${process.env.PATH}\` }` now installs first and passes `env: { ...process.env }`, and the `:`-join disappears. A helper that writes several stubs calls `installStub` once per name.
 
-**Tests that gain `{ skip: STUB_SKIP }`** (the 32 failing tests, by title; lines at `ea728f9e8`). Every other test keeps its options unchanged.
+**Tests that gain `{ skip: STUB_SKIP }`** (34 failing tests, by title; lines at `ea728f9e8`). Every other test keeps its options unchanged.
 
 | File | Tests |
 |---|---|
@@ -109,10 +109,10 @@
 | harness-health cli-next-target | `next-target (default no --target path) fetches durable state exactly once, not twice` (:198); `next-target --kind memory fetches durable state exactly once, not twice` (:217) |
 | journey-health cli-next-target | `next-target (default no --target path) fetches durable state exactly once, not twice` (:158) |
 | prune-remote | `pruneRemote: multiple prunable branches are deleted with ONE push call, not one per branch` (:373); `pruneRemote: a failed batch push falls back to per-branch deletes, one bad ref does not swallow the rest` (:389); `pruneRemote: a genuine per-branch delete failure still reports delete-failed` (:460) |
-| reap-merged | :100 `a merged-PR worktree is removed…`; :122 `#2783 … formal run…`; :140 `a closed-unmerged PR is skipped…`; :204, :219, :233 (the three `#1793` tests); :296 `removal-failed tracks a consecutive-failure streak…`; :333 `removal-failed threads git's real stderr…`; :357 `a pass processing 2 removal-failed worktrees…`; :399 `removal-failed reads git status --porcelain exactly once…`; :419 `a successful removal performs no git status --porcelain read`; :803 `#2566: a locked worktree on win32 is never force-removed…`; :842 `#2566: the fallback is never attempted on a non-win32 platform…` |
+| reap-merged | :100 `a merged-PR worktree is removed…`; :122 `#2783 … formal run…`; :140 `a closed-unmerged PR is skipped…`; :161 `#4180 reapMerged: a dry run reports a closed-unmerged skip…`; :204, :219, :233 (the three `#1793` tests); :296 `removal-failed tracks a consecutive-failure streak…`; :333 `removal-failed threads git's real stderr…`; :357 `a pass processing 2 removal-failed worktrees…`; :399 `removal-failed reads git status --porcelain exactly once…`; :419 `a successful removal performs no git status --porcelain read`; :785 `#2566: a DIRTY worktree at a long path on win32 is never force-removed…`; :803 `#2566: a locked worktree on win32 is never force-removed…`; :842 `#2566: the fallback is never attempted on a non-win32 platform…` |
 | reconcile | :990 `an archive merged-partial skip carries unclosed…`; :1041 `an archive tiebreak-coverage-missing skip…`; :1330 `red-tip requested alone pulls in mirror's fetch…`; :1550 `AC2 end to end (#3630)…`; :1558 and :1565 (the two `#4202 end to end` tests); :2372 `mirror and remote-prune share one fetch…`; :2468, :2485, :2512, :2522 (the four `sharedFetch`/`sharedFetchAsync` tests); :2566 `a FAST_CHECKS pass…` |
 
-That is 1 + 2 + 1 + 3 + 13 + 12 = 32.
+That is 1 + 2 + 1 + 3 + 15 + 12 = 34: the record's 32, plus two reap-merged stub tests that windows-regression run 40335066805 (7649696f1) shows failing at base but that postdate the record's 988cc584d snapshot (:161 `#4180 … dry run`, :785 `#2566 … DIRTY … long path`; both call `installGhWrapper`). Not this class, and left untouched: `attemptLongPathRemoval: on win32, a LONG-path worktree git refused (locked)…` (it writes no stub) and reconcile's `archiveRunDir: the git mv of work/ is committed…`.
 
 **Constants:** delete `PATH_STUB_SKIP` in `reap-merged.test.js:19` and `reconcile.test.js:24`, and point their existing uses (`reap-merged` :876, `reconcile` :2998) at `STUB_SKIP`.
 
