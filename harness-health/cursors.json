@@ -242,5 +242,9 @@
   "skill:pretooluse-updatedinput-normalizer": {
     "lastAuditedSha": null,
     "lastAuditedMs": 1792952770027
+  },
+  "skill:test-impact-tracer-read-shape": {
+    "lastAuditedSha": null,
+    "lastAuditedMs": 1793007012373
   }
 }
