@@ -23,7 +23,8 @@ whenever this firing's attempt on that group did **not** end in a live-held or r
 disposition:
 
 - The first call's status line was not `DONE`/`DONE_WITH_CONCERNS`, or its `OUTCOME` was not
-  `build-test-ok` (second call never dispatched) — append now.
+  `build-test-ok` (second call never dispatched) — append now. A `handoff` outcome is not this
+  case: it is continued first, as the paragraph below says.
 - The second call's `OUTCOME` was `failed`/`blocked` — Settle already released the claim, so the
   label-based pre-filter would let the group right back in — append now.
 

@@ -14,6 +14,17 @@ test('PHASES registers exactly the three dispatch phases (#4027)', () => {
   assert.ok(Object.isFrozen(PHASES), 'the registry is frozen');
 });
 
+test('the registry is frozen all the way down — phase, bundle list, bundle and source list', () => {
+  for (const [phase, entry] of Object.entries(PHASES)) {
+    assert.ok(Object.isFrozen(entry), `${phase} entry`);
+    assert.ok(Object.isFrozen(entry.bundles), `${phase} bundles`);
+    for (const bundle of entry.bundles) {
+      assert.ok(Object.isFrozen(bundle), `${phase}/${bundle.step}`);
+      assert.ok(Object.isFrozen(bundle.sources), `${phase}/${bundle.step} sources`);
+    }
+  }
+});
+
 test('every bundle has a CLI-legal step, an existing plugin-relative source list, and a known load', () => {
   for (const [phase, { bundles }] of Object.entries(PHASES)) {
     assert.ok(bundles.length > 0, `${phase} has at least one bundle`);
@@ -40,6 +51,14 @@ test('phaseBundles resolves each source to an absolute file under the plugin roo
 test('phaseBundles returns null for an unknown phase, including an inherited Object key', () => {
   assert.equal(phaseBundles('nope', PLUGIN), null);
   assert.equal(phaseBundles('constructor', PLUGIN), null);
+});
+
+test('composePhase throws a TypeError naming the known phases for an unknown one (the CLI refuses first, so only a direct caller reaches it)', () => {
+  const { composePhase } = require('../../../plugin/bin/lib/compose-context');
+  assert.throws(
+    () => composePhase({ runDir: '/nowhere', phase: 'nope', pluginRoot: PLUGIN, repoRoot: '/nowhere' }),
+    (err) => err instanceof TypeError && /unknown phase nope \(known: first-call, second-call, review-lens\)/.test(err.message),
+  );
 });
 
 // Hand-written `compose-context.js --step merge|claims` call lines in skill prose write the same

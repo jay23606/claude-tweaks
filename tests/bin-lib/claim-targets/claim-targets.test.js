@@ -1565,6 +1565,18 @@ test('--steps review-console: exit 0, skipGuard envelope, zero gh/ghApi calls', 
   assert.deepEqual(r.calls.gh, []);
 });
 
+test('--steps review-console beside another step: exit 2 naming the rule, no gh call (steps-and-gates.md: not valid in a list with other steps)', () => {
+  for (const steps of ['review-console,wrap-up', 'build,review-console']) {
+    const r = recordingRefusers();
+    const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });
+    assert.equal(run(['--run-id', 'r1', '--targets', '720', '--steps', steps], deps), 2, steps);
+    assert.equal(io.out.length, 0);
+    assert.ok(io.err.join('').includes('"review-console" is resume-only'), io.err.join(''));
+    assert.deepEqual(r.calls.ghApi, []);
+    assert.deepEqual(r.calls.gh, []);
+  }
+});
+
 test('--steps with an unknown step: the exit-2 message names the offending entry and lists every accepted name', () => {
   const r = recordingRefusers();
   const { deps, io } = baseDeps({ ghApi: r.ghApi, gh: r.gh });

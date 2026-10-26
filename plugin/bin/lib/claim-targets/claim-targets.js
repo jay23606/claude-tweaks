@@ -112,6 +112,9 @@ function parseSteps(raw) {
   if (bad !== undefined) {
     return { error: `claim-targets: unknown --steps entry ${JSON.stringify(bad)} — accepted: ${FLOW_STEPS.join(', ')}\n` };
   }
+  if (parts.length > 1 && parts.includes('review-console')) {
+    return { error: 'claim-targets: --steps entry "review-console" is resume-only and not valid beside other steps (flow/steps-and-gates.md)\n' };
+  }
   return { steps: parts };
 }
 

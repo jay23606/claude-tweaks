@@ -174,6 +174,24 @@ test('--phase composes every registered bundle of the phase: exit 0, one JSON li
   assert.equal(streamOf(out, 'err'), '');
 });
 
+test('--phase resolves the run\'s conditions once for the whole phase, and reads each source once (#4027)', () => {
+  const f = fixture();
+  const out = [];
+  let probes = 0;
+  const reads = new Map();
+  const code = run(['--run', f.runDir, '--phase', 'second-call'], deps(f.main, out, {
+    execFileSync: () => { probes += 1; return 'gh version 2\n'; },
+    readFile: (p, enc) => {
+      if (p.includes(`${path.sep}skills${path.sep}_shared${path.sep}`)) reads.set(p, (reads.get(p) || 0) + 1);
+      return fs.readFileSync(p, enc);
+    },
+  }));
+  assert.equal(code, 0, streamOf(out, 'err'));
+  assert.equal(probes, 1, 'two bundles, one gh --version probe');
+  assert.equal(reads.size, 3, 'the phase\'s three distinct sources');
+  for (const [file, n] of reads) assert.equal(n, 1, `${path.basename(file)} read ${n} times`);
+});
+
 test('--phase: an unknown phase, or --phase combined with --step or a positional source, exits 2 with nothing written', () => {
   const f = fixture();
   for (const argv of [
