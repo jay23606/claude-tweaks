@@ -46,7 +46,8 @@ const { mainCheckoutRoot } = require('../../hooks/worktree-detect');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * DAY_MS;
-// Display IDs: `/`-joined on every OS, split back into path segments at fs use.
+// Display IDs: `/`-joined on every OS and used as-is in `subject` and every
+// `failed` entry; split into native path segments only for fs reads.
 const ARTIFACT_ROOTS = [
   '.claude-tweaks/artifacts/screenshots/qa',
   '.claude-tweaks/artifacts/screenshots/browse',
