@@ -33,7 +33,6 @@ const path = require('path');
 const { lstatType } = require('../path-guard');
 const { isPathContained } = require('../shared-primitives');
 const { readManifest } = require('../flow/manifest');
-const { readRunMode } = require('../flow/run-mode');
 const { locateTranscripts, subagentsDirFor, readUsage } = require('./transcript');
 
 // #4027's measured latency curve: 5.0 s per turn under 100k context and
@@ -362,5 +361,5 @@ function buildHandoff({ runDir, nextSteps, contextTokens, cap, targets, mode = n
 
 module.exports = {
   CONTEXT_CAP_TOKENS, FIRST_USER_SCAN_BYTES, CALLER_TAIL_BYTES, GAUGE_TAIL_BYTES, firstUserText, hasInFlightGaugeCall, findAgentTranscript, gauge,
-  resolveTargetRecords, readRunMode, buildHandoff, HANDOFF_BOUND, readHandoffCount,
+  resolveTargetRecords, buildHandoff, HANDOFF_BOUND, readHandoffCount,
 };

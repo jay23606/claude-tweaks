@@ -108,7 +108,7 @@ const FLOW_STEPS = Object.freeze(['build', 'stories', 'test', 'review', 'polish'
 function parseSteps(raw) {
   if (typeof raw !== 'string' || raw.trim() === '') return { error: '' };
   const parts = raw.split(',').map((s) => s.trim());
-  const bad = parts.find((p) => p.startsWith('-') || !FLOW_STEPS.includes(p));
+  const bad = parts.find((p) => !FLOW_STEPS.includes(p));
   if (bad !== undefined) {
     return { error: `claim-targets: unknown --steps entry ${JSON.stringify(bad)} — accepted: ${FLOW_STEPS.join(', ')}\n` };
   }

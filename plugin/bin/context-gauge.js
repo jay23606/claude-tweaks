@@ -66,8 +66,9 @@ const { formatEntry, appendEntry } = require('./lib/log-decision/append');
 const ctxLib = require('./lib/hooks/context');
 const { FLOW_STEPS } = require('./lib/claim-targets/claim-targets');
 const {
-  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, readRunMode, buildHandoff, HANDOFF_BOUND, readHandoffCount,
+  CONTEXT_CAP_TOKENS, findAgentTranscript, gauge, resolveTargetRecords, buildHandoff, HANDOFF_BOUND, readHandoffCount,
 } = require('./lib/timing/context-gauge');
+const { readRunMode } = require('./lib/flow/run-mode');
 
 const USAGE = 'usage: context-gauge.js --run <run-dir> [--transcript <path>] [--cap <n>] [--next-steps <step,...>] [--help]\n'
   + '  measures this agent\'s context from its transcript; past the cap, writes {run}/handoff.json (with --next-steps)\n'

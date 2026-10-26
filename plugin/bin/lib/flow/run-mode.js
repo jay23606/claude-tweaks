@@ -1,6 +1,6 @@
 // bin/lib/flow/run-mode.js — a run's recorded mode: the `mode:` line of its
 // config.yml. One reader for lib/flow/consolidated-pass.js (the console
-// re-entry rule) and lib/timing/context-gauge.js (the handoff's resume line).
+// re-entry rule) and bin/context-gauge.js (the handoff's resume line).
 'use strict';
 const fs = require('fs');
 const path = require('path');

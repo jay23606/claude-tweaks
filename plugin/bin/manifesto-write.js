@@ -49,6 +49,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const ctxLib = require('./lib/hooks/context');
 const { resolveTarget } = require('./lib/stage-item/write');
 const { defaultDeps: preflightDeps } = require('./lib/flow/preflight');
 const {
@@ -102,9 +103,7 @@ const realDeps = {
   resolveTarget,
   // flow/SKILL.md Step 1 rung 2's read, fail-open: dispatch-bound only when
   // run-state.json parses with `dispatched: true`.
-  readDispatched: (runDir) => {
-    try { return JSON.parse(fs.readFileSync(path.join(runDir, 'run-state.json'), 'utf8')).dispatched === true; } catch { return false; }
-  },
+  readDispatched: (runDir) => (ctxLib.readRunState(runDir) || {}).dispatched === true,
   resolvePolicy: (keys, runDir, cwd) => preflightDeps(cwd).resolvePolicy(keys, runDir),
   mkdir: (p, opts) => fs.mkdirSync(p, opts),
   now: () => Date.now(),
@@ -143,7 +142,7 @@ function run(argv, overrides = {}) {
   try {
     runCreated(runDir);
     if (configPresent(runDir)) return refuse(3, `config.yml already present in ${runDir} — a case-1 adoption: read preflight.levers instead`);
-    const dispatched = o.preAuthorizeMerge ? deps.readDispatched(runDir) === true : false;
+    const dispatched = o.preAuthorizeMerge && deps.readDispatched(runDir) === true;
     const resolved = deps.resolvePolicy([...POLICY_REQUEST_KEYS], runDir, cwd) || {};
     const levers = computeLevers({
       mode: o.mode, modeSource: o.modeSource, records: parsed.records, resolved, preAuthorizeMerge: o.preAuthorizeMerge, dispatched,
