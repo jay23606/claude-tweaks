@@ -10,6 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { STUB_SKIP_REASON, STUB_SKIP, installStub, pathWithOnly, findColonPathJoins } = require('./helpers/path-stub');
+const { readText } = require('./helpers/read-skill');
 
 function tmpDir(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-path-stub-'));
@@ -86,6 +87,13 @@ test('pathWithOnly finds a PATHEXT extension on win32', (t) => {
   const dir = tmpDir(t);
   fs.writeFileSync(path.join(dir, 'git.EXE'), '');
   assert.strictEqual(pathWithOnly(['git'], { env: { Path: dir, PATHEXT: '.COM;.EXE' }, platform: 'win32' }), dir);
+  // libuv spawns only .com/.exe/bare, so a git.CMD earlier on PATH is passed over.
+  const a = tmpDir(t);
+  const b = tmpDir(t);
+  fs.writeFileSync(path.join(a, 'git.CMD'), '');
+  fs.writeFileSync(path.join(b, 'git.EXE'), '');
+  const Path = `${a};${b}`;
+  assert.strictEqual(pathWithOnly(['git'], { env: { Path, PATHEXT: '.COM;.EXE;.BAT;.CMD' }, platform: 'win32' }), b);
 });
 
 test('pathWithOnly throws naming a binary that is not on PATH', (t) => {
@@ -108,7 +116,7 @@ test('AC3.1: no test file joins PATH with a literal colon', () => {
   const hits = [];
   for (const file of walkJs(__dirname)) {
     const rel = path.relative(root, file).split(path.sep).join('/');
-    for (const line of findColonPathJoins(fs.readFileSync(file, 'utf8'))) hits.push(`${rel}:${line}`);
+    for (const line of findColonPathJoins(readText(file))) hits.push(`${rel}:${line}`);
   }
   assert.deepStrictEqual(hits, []);
 });

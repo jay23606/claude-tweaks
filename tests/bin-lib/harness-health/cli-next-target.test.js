@@ -202,7 +202,6 @@ test('next-target (default no --target path) fetches durable state exactly once,
   try {
     execFileSync('node', [CLI, 'next-target', '--root', root], {
       encoding: 'utf8',
-      env: { ...process.env },
     });
   } finally {
     restore();
@@ -225,7 +224,6 @@ test('next-target --kind memory fetches durable state exactly once, not twice', 
   try {
     execFileSync('node', [CLI, 'next-target', '--root', root, '--kind', 'memory', '--memory-dir', memoryDir], {
       encoding: 'utf8',
-      env: { ...process.env },
     });
   } finally {
     restore();

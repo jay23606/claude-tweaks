@@ -160,7 +160,6 @@ test('next-target (default no --target path) fetches durable state exactly once,
   try {
     execFileSync('node', [CLI, 'next-target', '--root', root], {
       encoding: 'utf8',
-      env: { ...process.env },
     });
   } finally {
     restore();

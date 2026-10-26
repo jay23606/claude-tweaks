@@ -14,7 +14,7 @@
 // stub test skips on win32 instead: STUB_SKIP is node:test's `skip` value —
 // false off win32 (never skipped), STUB_SKIP_REASON on win32 — an explicit
 // skip that the TAP output names, never a silent early `return`.
-// installStub(name, script) is the one way such a test installs its stub,
+// installStub(name, script) is the shared way such a test installs its stub,
 // and its restore() puts PATH back and removes the stub dir.
 //
 // pathWithOnly(names, { exclude }) serves the other shape: a test that needs
@@ -24,6 +24,11 @@
 // holds no excluded name — so the test keeps running on Windows — and falls
 // back to a symlink dir only when it does (on Windows, Git for Windows and
 // the GitHub CLI install into separate directories, so no symlink is made).
+// On win32 the binary lookup tries only what libuv spawns, in its order —
+// `name.com`, `name.exe`, then the bare `name` — so a `git.CMD` earlier on
+// PATH is passed over for the `git.EXE` that would actually run. The exclude
+// check tests every PATHEXT extension instead: an excluded `gh.CMD` still
+// means gh might resolve through a shell, so that check stays conservative.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -55,19 +60,38 @@ function isFile(p) {
   }
 }
 
+// findEntry(dir, candidates, isWin) returns the first candidate file in dir.
+// win32 file names are case-insensitive, so there it folds case — also on a
+// POSIX host simulating win32 — and returns the entry's real name.
+function findEntry(dir, candidates, isWin) {
+  if (!isWin) return candidates.find((c) => isFile(path.join(dir, c)));
+  let entries;
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return undefined;
+  }
+  for (const c of candidates) {
+    const hit = entries.find((e) => e.toLowerCase() === c.toLowerCase() && isFile(path.join(dir, e)));
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
 function pathWithOnly(names, { exclude = [], env = process.env, platform = process.platform } = {}) {
   const isWin = platform === 'win32';
   const exts = isWin ? (env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';') : [];
-  const candidates = (name) => (isWin ? [...exts.map((ext) => name + ext), name] : [name]);
+  const spawnable = (name) => (isWin ? [name + '.com', name + '.exe', name] : [name]);
+  const anyExt = (name) => (isWin ? [...exts.map((ext) => name + ext), name] : [name]);
   const dirs = (env.PATH ?? env.Path ?? '').split(isWin ? ';' : ':').filter(Boolean);
-  const excluded = (dir) => exclude.some((ex) => candidates(ex).some((c) => isFile(path.join(dir, c))));
+  const excluded = (dir) => exclude.some((ex) => findEntry(dir, anyExt(ex), isWin));
 
   const result = [];
   let linkDir = null;
   for (const name of names) {
     let found = null;
     for (const dir of dirs) {
-      const hit = candidates(name).find((c) => isFile(path.join(dir, c)));
+      const hit = findEntry(dir, spawnable(name), isWin);
       if (hit) {
         found = path.join(dir, hit);
         break;
