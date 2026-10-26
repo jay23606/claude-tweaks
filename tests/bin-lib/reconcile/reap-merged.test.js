@@ -28,8 +28,7 @@ function git(cwd, ...args) {
 // pr-state.test.js already document) — intercept at the process-spawn
 // boundary via a `gh` wrapper placed first on PATH.
 function installGhWrapper(prsJson) {
-  const restore = installStub('gh', `#!/bin/sh\ncat <<'EOF'\n${JSON.stringify(prsJson)}\nEOF\n`);
-  return { restore };
+  return { restore: installStub('gh', `#!/bin/sh\ncat <<'EOF'\n${JSON.stringify(prsJson)}\nEOF\n`) };
 }
 
 // #1796 — readPorcelainStatus (worktrees.js) is not injectable, same

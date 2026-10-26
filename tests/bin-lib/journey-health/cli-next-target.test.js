@@ -158,9 +158,7 @@ test('next-target (default no --target path) fetches durable state exactly once,
   seedDurableCursors(root, {});
   const { logFile, restore } = makeGitSpy();
   try {
-    execFileSync('node', [CLI, 'next-target', '--root', root], {
-      encoding: 'utf8',
-    });
+    execFileSync('node', [CLI, 'next-target', '--root', root], { encoding: 'utf8' });
   } finally {
     restore();
   }

@@ -200,9 +200,7 @@ test('next-target (default no --target path) fetches durable state exactly once,
   seedDurableCursors(root, {});
   const { logFile, restore } = makeGitSpy();
   try {
-    execFileSync('node', [CLI, 'next-target', '--root', root], {
-      encoding: 'utf8',
-    });
+    execFileSync('node', [CLI, 'next-target', '--root', root], { encoding: 'utf8' });
   } finally {
     restore();
   }
@@ -222,9 +220,7 @@ test('next-target --kind memory fetches durable state exactly once, not twice', 
   seedDurableCursors(root, {});
   const { logFile, restore } = makeGitSpy();
   try {
-    execFileSync('node', [CLI, 'next-target', '--root', root, '--kind', 'memory', '--memory-dir', memoryDir], {
-      encoding: 'utf8',
-    });
+    execFileSync('node', [CLI, 'next-target', '--root', root, '--kind', 'memory', '--memory-dir', memoryDir], { encoding: 'utf8' });
   } finally {
     restore();
   }

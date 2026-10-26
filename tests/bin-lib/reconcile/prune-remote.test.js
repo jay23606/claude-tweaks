@@ -361,10 +361,7 @@ function installPushWrapper(failMultiBranch) {
     'git',
     `#!/bin/sh\nif [ "$3" = "push" ]; then\n  echo "$@" >> "${logFile}"${failClause}\nfi\nexec "${realGit}" "$@"\n`,
   );
-  return {
-    logFile,
-    restore,
-  };
+  return { logFile, restore };
 }
 
 test('pruneRemote: multiple prunable branches are deleted with ONE push call, not one per branch', { skip: STUB_SKIP }, () => {
