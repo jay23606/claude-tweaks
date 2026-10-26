@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { STUB_SKIP_REASON, STUB_SKIP, installStub, pathWithOnly } = require('./helpers/path-stub');
+const { STUB_SKIP_REASON, STUB_SKIP, installStub, pathWithOnly, findColonPathJoins } = require('./helpers/path-stub');
 
 function tmpDir(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-path-stub-'));
@@ -91,4 +91,32 @@ test('pathWithOnly finds a PATHEXT extension on win32', (t) => {
 test('pathWithOnly throws naming a binary that is not on PATH', (t) => {
   const emptyDir = tmpDir(t);
   assert.throws(() => pathWithOnly(['ct-no-such-bin'], { env: { PATH: emptyDir }, platform: 'linux' }), /ct-no-such-bin not found on PATH/);
+});
+
+function walkJs(dir, acc = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules') continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) walkJs(full, acc);
+    else if (e.name.endsWith('.js')) acc.push(full);
+  }
+  return acc;
+}
+
+test('AC3.1: no test file joins PATH with a literal colon', () => {
+  const root = path.join(__dirname, '..');
+  const hits = [];
+  for (const file of walkJs(__dirname)) {
+    const rel = path.relative(root, file).split(path.sep).join('/');
+    for (const line of findColonPathJoins(fs.readFileSync(file, 'utf8'))) hits.push(`${rel}:${line}`);
+  }
+  assert.deepStrictEqual(hits, []);
+});
+
+test('AC3.1 self-check: the scan flags a doctored colon join and passes a non-PATH join', () => {
+  const bad = 'PATH: `${dir}' + ':' + '${process.env.PATH}`';
+  assert.deepStrictEqual(findColonPathJoins(bad), [1]);
+  assert.deepStrictEqual(findColonPathJoins("const targetPath = pathParts.join(':');"), []);
+  assert.deepStrictEqual(findColonPathJoins('PATH: `${dir}${path.delimiter}${process.env.PATH}`'), []);
+  assert.deepStrictEqual(findColonPathJoins('const v = CWD_VS_PATH.test(line) && `${rel}' + ':' + '${i + 1}`;'), []);
 });

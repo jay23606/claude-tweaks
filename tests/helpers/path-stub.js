@@ -85,9 +85,26 @@ function pathWithOnly(names, { exclude = [], env = process.env, platform = proce
   return result.join(path.delimiter);
 }
 
+// findColonPathJoins(text) returns the 1-based line numbers where a PATH is
+// joined with a literal colon — a template literal whose pieces meet at a
+// colon, or a .join with a colon argument — instead of path.delimiter, which
+// is ';' on win32. Case-sensitive on PATH, and PATH must stand as a word, so
+// a non-PATH join or an identifier that merely ends in PATH is not flagged.
+const COLON_TEMPLATE_JOIN = /\bPATH\b[^\n]*`[^`\n]*\}:\$\{/;
+const COLON_ARRAY_JOIN = /\bPATH\b[^\n]*\.join\(\s*['"]:['"]\s*\)/;
+
+function findColonPathJoins(text) {
+  const lines = [];
+  text.split('\n').forEach((line, i) => {
+    if (COLON_TEMPLATE_JOIN.test(line) || COLON_ARRAY_JOIN.test(line)) lines.push(i + 1);
+  });
+  return lines;
+}
+
 module.exports = {
   STUB_SKIP_REASON,
   STUB_SKIP,
   installStub,
   pathWithOnly,
+  findColonPathJoins,
 };
