@@ -139,6 +139,8 @@ test('selects the subset (AC1.1 report shape)', async () => {
   assert.strictEqual(imp.mapCommit, r.base);
   assert.strictEqual(imp.mapAgeCommits, 1);
   assert.strictEqual(imp.fetch, null);
+  assert.deepStrictEqual(imp.driftTests, []);
+  assert.strictEqual(imp.driftSelected, 0);
   assert.strictEqual(typeof report.durationMs, 'number');
   assert.strictEqual(report.scope.mode, 'scoped');
   assert.strictEqual(report.checks.tests.command, expectedSubsetCommand(imp.listPath), 'the recorded command is the substituted subset command');
@@ -147,6 +149,41 @@ test('selects the subset (AC1.1 report shape)', async () => {
   const stamp = r.stamp();
   assert.strictEqual(stamp.scope, 'scoped');
   assert.strictEqual(stamp.fullSha, r.base, 'the merge-base anchors the stamp');
+});
+
+test('a test edited after the map commit to read src/x.js is selected when src/x.js changes, map older than the base (#4132)', async () => {
+  const r = impactRepo();
+  writeMap(r); // map at the original base M: b reads only src/y.js
+  r.git('checkout', '-q', 'main');
+  commitFile(r, 'tests/b.test.js', 'b now reads src/x.js\n');
+  r.git('checkout', '-q', '-B', 'feature', 'main'); // base B = main's new tip, M is older
+  commitFile(r, 'src/x.js', 'x2\n');
+  const run = await runCli(ARGS, r.repo);
+  assert.strictEqual(run.code, 0, run.stderr + run.stdout);
+  assert.strictEqual(r.marker(), 'tests/a.test.js\ntests/b.test.js\n');
+  const imp = r.report().scope.impact;
+  assert.deepStrictEqual(imp.files, ['tests/a.test.js', 'tests/b.test.js']);
+  assert.deepStrictEqual(imp.driftTests, ['tests/b.test.js']);
+  assert.strictEqual(imp.driftSelected, 1);
+  assert.strictEqual(imp.fallback, null);
+  assert.match(run.stdout, /^Impact: 2 of 2 test file\(s\) selected \(map [0-9a-f]{9}, \d+ commit\(s\) old, 1 drift\)$/m, 'the stdout line names the drift count');
+});
+
+test('a test the branch itself edited is a changed test, not drift, with the map at the base (#4132)', async () => {
+  const r = impactRepo();
+  writeMap(r); // map at the base: the only drift is the branch's own committed test edit
+  commitFile(r, 'tests/a.test.js', 'a edited\n');
+  commitFile(r, 'src/x.js', 'x2\n');
+  const run = await runCli(ARGS, r.repo);
+  assert.strictEqual(run.code, 0, run.stderr + run.stdout);
+  assert.strictEqual(r.marker(), 'tests/a.test.js\n');
+  const imp = r.report().scope.impact;
+  assert.deepStrictEqual(imp.files, ['tests/a.test.js']);
+  assert.deepStrictEqual(imp.changedTests, ['tests/a.test.js']);
+  assert.deepStrictEqual(imp.driftTests, []);
+  assert.strictEqual(imp.driftSelected, 0);
+  assert.strictEqual(imp.fallback, null);
+  assert.doesNotMatch(run.stdout, /drift/, 'a run with no drift prints the Impact line as before');
 });
 
 test('a subset run leaves the count stamp untouched', async () => {
