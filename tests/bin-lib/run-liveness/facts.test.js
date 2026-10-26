@@ -102,7 +102,7 @@ test('git status failure yields dirty null; clean and dirty read as booleans', (
   const wt = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-facts-wt-'));
   const run = (answer) => gatherFacts({
     root, dir, state: { worktree: wt }, branch: null, prState: null,
-    deps: { git: (args) => (args[0] === 'status' ? answer : MISSING), listStaged: () => [] },
+    deps: { git: (args) => (args.join(' ') === '--no-optional-locks status --porcelain' ? answer : MISSING), listStaged: () => [] },
   }).worktree;
   assert.deepStrictEqual(run({ stdout: null, failure: 'git-error', exitCode: 128 }), { path: wt, exists: true, dirty: null });
   assert.deepStrictEqual(run(OK('')), { path: wt, exists: true, dirty: false });

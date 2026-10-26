@@ -74,7 +74,7 @@ function worktreeFact(git, state) {
   const t = lstatType(wt);
   if (t.type === 'missing') return { path: wt, exists: false, dirty: false };
   if (t.type !== 'directory' && t.type !== 'symlink') return { path: wt, exists: null, dirty: null };
-  const r = git(['status', '--porcelain'], wt);
+  const r = git(['--no-optional-locks', 'status', '--porcelain'], wt); // git-path-read: not a path list (emptiness only)
   if (r.failure) return { path: wt, exists: true, dirty: null };
   return { path: wt, exists: true, dirty: String(r.stdout || '').trim().length > 0 };
 }
