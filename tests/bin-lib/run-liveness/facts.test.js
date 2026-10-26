@@ -58,10 +58,24 @@ test('a local branch counts its commits past origin/{integration}', () => {
   const git = fakeGit({
     'rev-parse --verify --quiet refs/heads/b': OK('abc\n'),
     'rev-parse --verify --quiet refs/remotes/origin/b': MISSING,
-    'rev-list --count origin/main..refs/heads/b': OK('4\n'),
+    'rev-parse --verify --quiet refs/remotes/origin/main': OK('def\n'),
+    'rev-list --count refs/remotes/origin/main..refs/heads/b': OK('4\n'),
   });
   const f = gatherFacts({ root, dir, state: {}, branch: 'b', integration: 'main', prState: null, deps: { git, listStaged: () => [] } });
   assert.deepStrictEqual(f.branch, { name: 'b', localExists: true, remoteExists: false, uniqueCommits: 4 });
+});
+
+test('no origin integration ref falls back to the local integration branch', () => {
+  const { root, dir } = tmpRun();
+  const git = fakeGit({
+    'rev-parse --verify --quiet refs/heads/b': OK('abc\n'),
+    'rev-parse --verify --quiet refs/remotes/origin/b': MISSING,
+    'rev-parse --verify --quiet refs/remotes/origin/main': MISSING,
+    'rev-parse --verify --quiet refs/heads/main': OK('def\n'),
+    'rev-list --count refs/heads/main..refs/heads/b': OK('2\n'),
+  });
+  const f = gatherFacts({ root, dir, state: {}, branch: 'b', integration: 'main', prState: null, deps: { git, listStaged: () => [] } });
+  assert.strictEqual(f.branch.uniqueCommits, 2);
 });
 
 test('rev-list failure yields uniqueCommits null', () => {

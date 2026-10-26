@@ -55,7 +55,13 @@ function branchFact(git, root, name, integration) {
   if (localExists === false && remoteExists === false) {
     uniqueCommits = 0;
   } else if (localExists === true && typeof integration === 'string' && integration) {
-    const r = git(['rev-list', '--count', `origin/${integration}..refs/heads/${name}`], root);
+    // The remote-tracking integration ref when there is one (a checkout with no
+    // origin, or one never fetched, falls back to the local integration branch).
+    let base = null;
+    if (refExists(git, root, `refs/remotes/origin/${integration}`) === true) base = `refs/remotes/origin/${integration}`;
+    else if (refExists(git, root, `refs/heads/${integration}`) === true) base = `refs/heads/${integration}`;
+    if (!base) return { name, localExists, remoteExists, uniqueCommits: null };
+    const r = git(['rev-list', '--count', `${base}..refs/heads/${name}`], root);
     const n = r.failure ? NaN : Number(String(r.stdout || '').trim());
     uniqueCommits = Number.isInteger(n) && n >= 0 ? n : null;
   }

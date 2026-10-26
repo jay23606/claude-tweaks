@@ -17,6 +17,8 @@ const { canonicalRealpath, resolveLeaf, lstatType } = require('../path-guard');
 const { runLiveness, runIdMs, LIVE_PROBES } = require('../run-liveness');
 const { LEGACY_DEAD_MS } = require('../run-liveness/constants');
 const { ownEventRecency } = require('../run-liveness/probes');
+const { disposition } = require('../run-liveness/disposition');
+const { gatherFacts } = require('../run-liveness/facts');
 const { VERDICT_STEPS, verdictMarker } = require('../dispatch/merge-verdict');
 const { readWorkBackend } = require('../work-backend');
 const {
@@ -30,7 +32,9 @@ const { escalateResidue, resolveResidue } = require('./escalate-residue');
 const { isWorktreeAlwaysOn } = require('../policy');
 const { repoSlugOf, prClosesIssue } = require('./release-merged');
 const { closeRunState } = require('../hooks/close-run-state');
-const { checkRunIntegrity, fallbackBranch, worktreeListStdout } = require('../hooks/run-integrity');
+const {
+  checkRunIntegrity, fallbackBranch, branchFromDecisions, worktreeListStdout,
+} = require('../hooks/run-integrity');
 const { readManifest, readDeferredClosures, readSingleRecordDeferredClosure } = require('../flow/manifest');
 const { checkRunTiebreakCoverage } = require('../tiebreak');
 const { readRunResidue, FILING_PENDING_RESOLUTION, FILING_LOG_REMEDY, filingRerunCommand } = require('../console/residue');
@@ -2270,6 +2274,61 @@ function verdictAtGuard(dir, state, runVerdict, now) {
   return result;
 }
 
+// #3977: the run-disposition table (run-liveness/disposition.js) runs in
+// REPORT-ONLY mode in this release: reconcile says which runs it would close and
+// which are orphans needing a human, and closes nothing. A release step, not a
+// policy key — so every consumer project gets a dry run on its own pile first.
+// Read at exactly one site (archiveMerged's return; a source-scan test pins it).
+const RUN_AUTO_CLOSE_REPORT_ONLY = true;
+
+// #3977: evaluate the disposition for every non-clean run dir still present
+// (dirs this pass archived — `exclude` — are skipped, so a dry run never
+// reports a run twice). Writes nothing anywhere. `verdicts` is archiveMerged's
+// per-pass map; a dir missing from it is asked the guard's way. A run with
+// neither a stamped pr.number nor a branch has no PR lookup to make, so its PR
+// fact is `unknown`, never `none`.
+// -> { reportOnly: true, wouldClose: [{ runId, runDir, reason, evidence, dropFindings }],
+//      orphaned: [{ runId, runDir, reason, pr }], unknown: number } — both lists newest run id first.
+function reportRunDispositions({
+  root, worktrees = [], verdicts = new Map(), exclude = new Set(), prStates, integration, now = Date.now(), runVerdict, deps = {},
+} = {}) {
+  const report = { reportOnly: true, wouldClose: [], orphaned: [], unknown: 0 };
+  try {
+    for (const { dir, state } of iterRunDirsWithState(root)) {
+      if (exclude.has(dir)) continue;
+      const liveResult = verdicts.get(dir) || verdictAtGuard(dir, state, runVerdict, now);
+      const verdict = liveResult.verdict;
+      if (verdict === 'unknown') report.unknown += 1;
+      if (verdict !== 'dead') continue;
+      // The recorded name counts even when the branch itself is gone: "the
+      // branch no longer exists anywhere" is exactly what row 12 asks.
+      const recorded = (state && state.pr && typeof state.pr.branch === 'string' && state.pr.branch) || branchFromDecisions(dir);
+      const branch = runDirBranch(root, dir, state, worktrees) || recorded || null;
+      const hasPrIdentity = !!(state && state.pr && state.pr.number) || !!branch;
+      let prState;
+      if (hasPrIdentity) {
+        try { prState = (deps.resolvePr || resolveRunPrState)(root, state, branch, prStates); } catch { prState = undefined; }
+      }
+      const facts = gatherFacts({
+        root, dir, state, branch, integration, prState, now, deps: { listStaged: listStagedItems, ...(deps.git ? { git: deps.git } : {}) },
+      });
+      const d = disposition({ ...facts, verdict });
+      const runId = path.basename(dir);
+      if (d.action === 'close') {
+        report.wouldClose.push({ runId, runDir: dir, reason: d.reason, evidence: d.evidence, dropFindings: d.dropFindings });
+      } else if (d.action === 'orphan') {
+        report.orphaned.push({ runId, runDir: dir, reason: d.reason, pr: d.evidence.prNumber });
+      }
+    }
+  } catch (err) {
+    return { reportOnly: true, wouldClose: [], orphaned: [], unknown: 0, error: (err && err.message) || String(err) };
+  }
+  const newestFirst = (a, b) => (a.runId < b.runId ? 1 : a.runId > b.runId ? -1 : 0);
+  report.wouldClose.sort(newestFirst);
+  report.orphaned.sort(newestFirst);
+  return report;
+}
+
 function archiveMerged({
   cwd, dryRun = false, sessionId = process.env.CLAUDE_CODE_SESSION_ID || null, runner, integration, prStates, cache, liveness, runVerdict,
 } = {}) {
@@ -2671,7 +2730,18 @@ function archiveMerged({
   // #4421: counted after every archival above, so a dir this pass archived is not in it. Absent
   // (never 0) on a dry run — nothing moved, the count would overstate — and when the dir is unreadable.
   const ownerlessNonClean = dryRun ? null : countOwnerlessNonClean(root);
-  return { archived, skipped, residuePlan, residueErrors, ...(ownerlessNonClean === null ? {} : { ownerlessNonClean }) };
+
+  // #3977: the one read of RUN_AUTO_CLOSE_REPORT_ONLY. In this release the
+  // disposition pass only reports — it writes nothing to any run dir. #3978
+  // replaces the `null` arm with the act path and deletes the constant.
+  const runDispositions = RUN_AUTO_CLOSE_REPORT_ONLY
+    ? reportRunDispositions({
+      root, worktrees, verdicts, exclude: new Set(archived), prStates, integration, now: passNow, runVerdict,
+    })
+    : null;
+  return {
+    archived, skipped, residuePlan, residueErrors, runDispositions, ...(ownerlessNonClean === null ? {} : { ownerlessNonClean }),
+  };
 }
 
 module.exports = {
@@ -2685,5 +2755,6 @@ module.exports = {
   compareWorkTwin, resolveIdenticalWorkTwin, listFilesRecursive,
   isClosedSlugStuck, recordNumbersFromSlug, runRecordSet, inFlightRecords,
   listStagedItems, hasStagedItems, consoleReplacedByAutoMerge,
+  reportRunDispositions, verdictAtGuard, RUN_AUTO_CLOSE_REPORT_ONLY,
   refusal, TIEBREAK_COVERAGE_HINT, CANT_TELL_UNFILED_HINT, unfiledCantTellFindings,
 };
