@@ -16,6 +16,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const { readText } = require('./helpers/read-skill');
+const { chmodDenialSkip, MODE_BITS_HONORED } = require('./helpers/root');
 
 const ROOT = path.join(__dirname, '..');
 const TESTS_DIR = __dirname;
@@ -89,19 +90,16 @@ test('helpers/root.js exports IS_ROOT and skipUnderRoot with the documented shap
 });
 
 test('AC4.2: chmodDenialSkip skips on win32 with the shared reason, whatever the root state', () => {
-  const { chmodDenialSkip } = require(path.join(TESTS_DIR, 'helpers', 'root.js'));
   assert.deepStrictEqual(chmodDenialSkip('root reason', { platform: 'win32', isRoot: false }), { skip: 'win32: chmod does not deny access' });
   assert.deepStrictEqual(chmodDenialSkip('root reason', { platform: 'win32', isRoot: true }), { skip: 'win32: chmod does not deny access' });
 });
 
 test('AC1.1: chmodDenialSkip never skips a non-root POSIX runner, and keeps the caller reason under root', () => {
-  const { chmodDenialSkip } = require(path.join(TESTS_DIR, 'helpers', 'root.js'));
   assert.deepStrictEqual(chmodDenialSkip('root reason', { platform: 'linux', isRoot: false }), { skip: false });
   assert.deepStrictEqual(chmodDenialSkip('root reason', { platform: 'darwin', isRoot: true }), { skip: 'root reason' });
 });
 
 test('MODE_BITS_HONORED is false exactly on win32', () => {
-  const { MODE_BITS_HONORED } = require(path.join(TESTS_DIR, 'helpers', 'root.js'));
   assert.strictEqual(MODE_BITS_HONORED, process.platform !== 'win32');
 });
 
