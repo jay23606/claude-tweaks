@@ -1712,7 +1712,7 @@ async function runReconcile(argv) {
       out.background = background;
     }
   } catch {
-    out = { mirror: null, redTip: null, worktrees: null, claims: null, runs: null, branches: null, remoteBranches: null, ledgerResidue: null, console: null, residuePlan: null, residueErrors: null, skipped: [{ check: 'all', reason: 'reconcile-threw' }], timings: null };
+    out = { mirror: null, redTip: null, worktrees: null, claims: null, runs: null, branches: null, remoteBranches: null, ledgerResidue: null, console: null, residuePlan: null, residueErrors: null, runDispositions: null, skipped: [{ check: 'all', reason: 'reconcile-threw' }], timings: null };
     if (!checksList.length) out.background = { checks: CLI_DEFERRED_CHECKS, spawned: false, reason: 'not-converged' };
   }
   if (jsonOut) {
