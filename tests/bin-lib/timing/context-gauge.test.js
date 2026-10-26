@@ -488,10 +488,16 @@ test('CLI: target records — the run dir\'s work/ when no worktree is recorded;
   assert.strictEqual(await run(['--run', own.runDir, '--transcript', t, '--next-steps', 'test,review'], c.deps), 0);
   assert.strictEqual(JSON.parse(fs.readFileSync(path.join(own.runDir, 'handoff.json'), 'utf8')).resume, RESUME(own.runDir, '#4027', 'test,review'));
 
+  // A multi-spec run's targets resolve in ascending order, but the gauge hands off a single record only
+  // (--next-steps names one record's remaining steps; multi-spec handoff is #4358).
   const multi = runFixture({ spec: 'none', specDirs: [3817, 3926, 945] });
+  assert.deepStrictEqual(resolveTargetRecords({ runDir: multi.runDir }), ['#945', '#3817', '#3926']);
   c = cli(multi);
   assert.strictEqual(await run(['--run', multi.runDir, '--transcript', t, '--next-steps', 'test'], c.deps), 0);
-  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(multi.runDir, 'handoff.json'), 'utf8')).resume, RESUME(multi.runDir, '#945,#3817,#3926', 'test'));
+  assert.strictEqual(c.json().over, true);
+  assert.strictEqual(c.json().handoff, null);
+  assert.match(c.json().reason, /^handoff\.json not written: a multi-record run \(#945, #3817, #3926\) — handoff is single-record \(#4358\): continue in place$/);
+  assert.ok(!fs.readdirSync(multi.runDir).includes('handoff.json'));
 
   const none = runFixture({ spec: 'none' });
   c = cli(none);
@@ -525,9 +531,8 @@ test('CLI: a multi-spec run with manifest.yml orders its targets by the manifest
   const t = transcriptAt(tmp('ct-gauge-cli-'), 250000);
   const fx = runFixture({ spec: 'none', specDirs: [3817, 3926, 3945, 12, 7] });
   fs.writeFileSync(path.join(fx.runDir, 'manifest.yml'), MANIFEST(RUN_ID, [3926, 3817, 3945]));
-  const c = cli(fx);
-  assert.strictEqual(await run(['--run', fx.runDir, '--transcript', t, '--next-steps', 'test'], c.deps), 0);
-  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(fx.runDir, 'handoff.json'), 'utf8')).resume, RESUME(fx.runDir, '#3926,#3817,#3945,#7,#12', 'test'));
+  // The order is the resolver's (the CLI refuses a multi-record handoff, see above).
+  assert.deepStrictEqual(resolveTargetRecords({ runDir: fx.runDir }), ['#3926', '#3817', '#3945', '#7', '#12']);
   // A manifest entry with no spec dir is not a target.
   assert.deepStrictEqual(resolveTargetRecords({ runDir: fx.runDir, manifest: { multispec: { parent: 'x', specs: [{ id: 99 }, { id: 3945 }] } } }), ['#3945', '#7', '#12', '#3817', '#3926']);
 });
@@ -634,4 +639,72 @@ test('CLI: --help prints usage and exits 0 without touching anything', async () 
   assert.strictEqual(await run(['--help'], c.deps), 0);
   assert.match(c.out.join(''), /^usage: context-gauge\.js --run <run-dir>/);
   assert.ok(!fs.readdirSync(fx.runDir).includes('handoff.json'));
+});
+
+// Review fix (#4027, lens 3d): gauge() answers from the transcript's tail, because the file is
+// largest exactly when the gauge matters. The whole-file stream is the fallback.
+function countingFs() {
+  const calls = { streams: 0 };
+  return { calls, fsImpl: { ...fs, createReadStream: (...a) => { calls.streams += 1; return fs.createReadStream(...a); } } };
+}
+
+test('gauge: a transcript larger than the tail window is answered from its tail — the file is never streamed', async () => {
+  const dir = tmp('ct-gauge-t-');
+  const p = path.join(dir, 'big.jsonl');
+  const early = [];
+  for (let i = 0; i < 300; i++) early.push(...turnLines(`old${i}`, { cacheRead: 999999 }));
+  fs.writeFileSync(p, transcriptText([userLine('x'), ...early, ...turnLines('last', { input: 3, cacheRead: 120000, cacheCreate: 4000 })]));
+  assert.ok(fs.statSync(p).size > 64 * 1024, 'the fixture is larger than the window below');
+  const tail = countingFs();
+  assert.deepStrictEqual(await gauge({ transcript: p, fsImpl: tail.fsImpl, tailBytes: 16 * 1024 }), { contextTokens: 124003 });
+  assert.strictEqual(tail.calls.streams, 0, 'answered from the tail window');
+  // The same answer from the whole-file read (a 1-byte window holds no complete line, so it falls back).
+  const full = countingFs();
+  assert.deepStrictEqual(await gauge({ transcript: p, fsImpl: full.fsImpl, tailBytes: 1 }), { contextTokens: 124003 });
+  assert.strictEqual(full.calls.streams, 1, 'an empty window streams the file');
+});
+
+test('gauge: per message.id the tail takes each usage field\'s max — a streaming snapshot then the settled line — like the whole-file read', async () => {
+  const dir = tmp('ct-gauge-t-');
+  const p = path.join(dir, 'snap.jsonl');
+  const line = (usage) => JSON.stringify({ type: 'assistant', timestamp: '2026-10-25T17:01:00.000Z', message: { id: 'm9', role: 'assistant', content: [], usage } });
+  fs.writeFileSync(p, transcriptText([
+    userLine('x'),
+    line({ input_tokens: 2, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0, output_tokens: 8 }),
+    line({ input_tokens: 2, cache_read_input_tokens: 120000, cache_creation_input_tokens: 4000, output_tokens: 400 }),
+  ]));
+  assert.deepStrictEqual(await gauge({ transcript: p }), { contextTokens: 124002 });
+  assert.deepStrictEqual(await gauge({ transcript: p, tailBytes: 1 }), { contextTokens: 124002 });
+});
+
+test('gauge: a tail window with no assistant message falls back to the whole file', async () => {
+  const dir = tmp('ct-gauge-t-');
+  const p = path.join(dir, 'huge-last.jsonl');
+  fs.writeFileSync(p, transcriptText([userLine('x'), ...turnLines('m1', { input: 3, cacheRead: 120000, cacheCreate: 4000 }), userLine('y'.repeat(64 * 1024))]));
+  const c = countingFs();
+  assert.deepStrictEqual(await gauge({ transcript: p, fsImpl: c.fsImpl, tailBytes: 16 * 1024 }), { contextTokens: 124003 });
+  assert.strictEqual(c.calls.streams, 1, 'the window held only the tail of one user line');
+});
+
+// Review fix (#4027, lenses 3c/3e): a gauge that cannot work must not read as a run that stayed under the cap.
+test('CLI: every non-null reason is logged as a SKIP; a clean measurement logs nothing; a failing log never changes the result', async () => {
+  const fx = runFixture();
+  const logged = [];
+  const appendDecision = (runDir, entry) => logged.push([runDir, entry]);
+  let c = cli(fx, { env: {}, appendDecision });
+  assert.strictEqual(await run(['--run', fx.runDir], c.deps), 0);
+  assert.strictEqual(logged.length, 1);
+  assert.strictEqual(logged[0][0], fs.realpathSync(fx.runDir));
+  assert.match(logged[0][1], /^- SKIP \d{2}:\d{2}:\d{2} — Step 4 context cap: condition: context-gauge no transcript found: CLAUDE_CODE_SESSION_ID is not set \(pass --transcript <path>\) → fallback: continue in this agent\. Reversibility: n\/a\.$/);
+
+  logged.length = 0;
+  const under = transcriptAt(tmp('ct-gauge-cli-'), 150000);
+  c = cli(fx, { appendDecision });
+  assert.strictEqual(await run(['--run', fx.runDir, '--transcript', under, '--next-steps', 'test'], c.deps), 0);
+  assert.strictEqual(c.json().reason, null);
+  assert.deepStrictEqual(logged, [], 'a measurement with no reason logs nothing');
+
+  c = cli(fx, { env: {}, appendDecision: () => { throw new Error('lock timeout'); } });
+  assert.strictEqual(await run(['--run', fx.runDir], c.deps), 0);
+  assert.match(c.json().reason, /CLAUDE_CODE_SESSION_ID is not set/);
 });

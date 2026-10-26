@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { PHASES, phaseBundles } = require('../../../plugin/bin/lib/compose-context/phases');
 const { STEP_RE } = require('../../../plugin/bin/compose-context');
+const { readText } = require('../../helpers/read-skill');
 
 const PLUGIN = path.join(__dirname, '..', '..', '..', 'plugin');
 
@@ -39,4 +40,38 @@ test('phaseBundles resolves each source to an absolute file under the plugin roo
 test('phaseBundles returns null for an unknown phase, including an inherited Object key', () => {
   assert.equal(phaseBundles('nope', PLUGIN), null);
   assert.equal(phaseBundles('constructor', PLUGIN), null);
+});
+
+// Hand-written `compose-context.js --step merge|claims` call lines in skill prose write the same
+// {run}/context/{step}.md files a phase composes, so a source list that drifts from the registry
+// makes whichever composer ran last overwrite the other's bundle.
+function skillMarkdown(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) return skillMarkdown(full);
+    return e.name.endsWith('.md') ? [full] : [];
+  });
+}
+
+const STEP_CALL_RE = /compose-context\.js"\s+--run\s+"\$PIPELINE_RUN_DIR"\s+--step\s+(merge|claims)((?:\s+"\$\{CLAUDE_PLUGIN_ROOT\}\/[^"\s]+")+)/g;
+
+test('hand-written --step merge|claims call lines compose the registry\'s own source lists (#4027)', () => {
+  const registry = {};
+  for (const { bundles } of Object.values(PHASES)) {
+    for (const b of bundles) {
+      if (b.step !== 'merge' && b.step !== 'claims') continue;
+      assert.deepEqual(registry[b.step] || b.sources, b.sources, `${b.step} has one source list across the phases`);
+      registry[b.step] = b.sources;
+    }
+  }
+  assert.deepEqual(Object.keys(registry).sort(), ['claims', 'merge']);
+  let sites = 0;
+  for (const file of skillMarkdown(path.join(PLUGIN, 'skills'))) {
+    for (const m of readText(file).matchAll(STEP_CALL_RE)) {
+      const listed = [...m[2].matchAll(/"\$\{CLAUDE_PLUGIN_ROOT\}\/([^"\s]+)"/g)].map((x) => x[1]);
+      assert.deepEqual(listed, [...registry[m[1]]], `${path.relative(PLUGIN, file)}: --step ${m[1]} sources match the phase registry`);
+      sites += 1;
+    }
+  }
+  assert.ok(sites >= 5, `found ${sites} hand-written merge/claims call lines, expected at least 5 — the matcher may have stopped seeing them`);
 });

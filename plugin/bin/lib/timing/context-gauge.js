@@ -33,6 +33,7 @@ const path = require('path');
 const { lstatType } = require('../path-guard');
 const { isPathContained } = require('../shared-primitives');
 const { readManifest } = require('../flow/manifest');
+const { readRunMode } = require('../flow/run-mode');
 const { locateTranscripts, subagentsDirFor, readUsage } = require('./transcript');
 
 // #4027's measured latency curve: 5.0 s per turn under 100k context and
@@ -46,6 +47,11 @@ const SCAN_CHUNK_BYTES = 64 * 1024;
 // The in-flight call is the transcript's last tool_use line, followed at most
 // by a few hook attachments, so a bounded tail always holds it.
 const CALLER_TAIL_BYTES = 128 * 1024;
+// The context size is the last turn's usage, so gauge() reads this much of the
+// transcript's tail first instead of streaming a file that is largest exactly
+// when the gauge matters (a 200k+ token context). A turn is a few lines; the
+// window only has to hold the last one.
+const GAUGE_TAIL_BYTES = 4 * 1024 * 1024;
 
 // JSONL line -> the parsed entry when it is a timestamped message line (the
 // readUsage filter), else null.
@@ -215,11 +221,50 @@ function findAgentTranscript({ runId, sessionId, cwd, configDir, fsImpl = fs } =
   return { path: (here[0] || mains[0]).path, kind: 'main', identified: 'main' };
 }
 
-// { transcript, fsImpl? } -> Promise<{ contextTokens }>: the contextTokens of
-// the last turnStart row (input + cache_read + cache_creation, per-message.id
-// max — readUsage's), or null when the transcript has no assistant turn.
-// Rejects as readUsage does when the file cannot be read.
-async function gauge({ transcript, fsImpl = fs } = {}) {
+// path -> the last assistant turn's input + cache_read + cache_creation, read
+// from the file's last `tailBytes` bytes, or null when that window holds no
+// assistant message (a last turn larger than the window, a transcript with no
+// turn, an unreadable file) — the caller then falls back to readUsage. A turn's
+// lines share a message.id and readUsage keeps the per-field max across them,
+// so this does too; the last turn is the id whose first line comes last.
+function tailContextTokens(filePath, { fsImpl = fs, tailBytes = GAUGE_TAIL_BYTES } = {}) {
+  const lines = tailLines(filePath, { fsImpl, tailBytes });
+  if (!lines) return null;
+  const turns = []; // [{ id, input, cacheRead, cacheCreate }] in first-line order
+  const byId = new Map();
+  for (const line of lines) {
+    const entry = messageEntry(line);
+    if (!entry || entry.message.role !== 'assistant') continue;
+    const u = entry.message.usage || {};
+    const usage = {
+      input: Number(u.input_tokens) || 0,
+      cacheRead: Number(u.cache_read_input_tokens) || 0,
+      cacheCreate: Number(u.cache_creation_input_tokens) || 0,
+    };
+    const id = typeof entry.message.id === 'string' ? entry.message.id : null;
+    const turn = id !== null ? byId.get(id) : undefined;
+    if (!turn) {
+      const fresh = { ...usage };
+      turns.push(fresh);
+      if (id !== null) byId.set(id, fresh);
+      continue;
+    }
+    for (const field of Object.keys(usage)) turn[field] = Math.max(turn[field], usage[field]);
+  }
+  if (turns.length === 0) return null;
+  const last = turns[turns.length - 1];
+  return last.input + last.cacheRead + last.cacheCreate;
+}
+
+// { transcript, fsImpl?, tailBytes? } -> Promise<{ contextTokens }>: the
+// contextTokens of the last turnStart row (input + cache_read + cache_creation,
+// per-message.id max — readUsage's), or null when the transcript has no
+// assistant turn. The tail window answers when it holds an assistant message;
+// otherwise the whole file is streamed. Rejects as readUsage does when the file
+// cannot be read.
+async function gauge({ transcript, fsImpl = fs, tailBytes = GAUGE_TAIL_BYTES } = {}) {
+  const tail = tailContextTokens(transcript, { fsImpl, tailBytes });
+  if (tail !== null) return { contextTokens: tail };
   const rows = await readUsage(transcript, { fsImpl });
   let last = null;
   for (const r of rows) if (r.turnStart) last = r;
@@ -269,15 +314,6 @@ function resolveTargetRecords({ runDir, worktree = null, gitRoot = null, fsImpl 
   return null;
 }
 
-// runDir -> config.yml's `mode:` value, or null (no config.yml, no mode line).
-// The same read as lib/flow/consolidated-pass.js's readMode.
-function readRunMode(runDir, { fsImpl = fs } = {}) {
-  let text;
-  try { text = fsImpl.readFileSync(path.join(runDir, 'config.yml'), 'utf8'); } catch { return null; }
-  const m = text.match(/^mode:[ \t]*(\S+)/m);
-  return m ? m[1] : null;
-}
-
 // The resume line's mode token: auto, confirm and hybrid all run as auto once
 // the Manifesto is past, so they resume as auto; interactive, an unknown
 // value, or no recorded mode resumes with no token, so an interactive run
@@ -289,6 +325,14 @@ const RESUME_AS_AUTO = new Set(['auto', 'confirm', 'hybrid']);
 // it. At the bound the gauge writes no handoff, and the caller continues in
 // place (`handoff: null`), so a well-behaved agent never reports a fourth
 // handoff — its call completes, or HARD-GATEs and settles itself.
+//
+// Why 3: a backstop, not a measured limit. Each hop finishes at least one of
+// the pipeline's five steps and a fresh agent starts far under the cap, so a
+// chain ends on its own; the bound only stops a mis-measuring gauge (a wrong
+// caller, a transcript that keeps growing between hops) from handing off
+// forever. The #4027 build chose 3 without data that separates it from 2 or 5 —
+// raise or lower it with a measured run in hand, in this constant and in the
+// "three" that flow/context-handoff.md and dispatch/two-call-gate.md restate.
 const HANDOFF_BOUND = 3;
 
 // runDir -> the run's earlier handoffs: {run}/handoff.json's `handoffCount`.
@@ -317,6 +361,6 @@ function buildHandoff({ runDir, nextSteps, contextTokens, cap, targets, mode = n
 }
 
 module.exports = {
-  CONTEXT_CAP_TOKENS, FIRST_USER_SCAN_BYTES, CALLER_TAIL_BYTES, firstUserText, hasInFlightGaugeCall, findAgentTranscript, gauge,
+  CONTEXT_CAP_TOKENS, FIRST_USER_SCAN_BYTES, CALLER_TAIL_BYTES, GAUGE_TAIL_BYTES, firstUserText, hasInFlightGaugeCall, findAgentTranscript, gauge,
   resolveTargetRecords, readRunMode, buildHandoff, HANDOFF_BOUND, readHandoffCount,
 };

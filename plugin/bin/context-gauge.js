@@ -40,8 +40,12 @@
 // Fail-open: a missing or unreadable transcript, one with no assistant turn,
 // or any other measurement failure prints over: false, contextTokens: null and
 // a `reason`; a handoff that cannot be written (no target records, a failed
-// write) prints over: true, handoff: null and a `reason`. Neither ever stops
-// a run. Several reasons are joined with "; ".
+// write, a multi-record run) prints over: true, handoff: null and a `reason`.
+// Neither ever stops a run. Several reasons are joined with "; ". Every
+// non-null `reason` is also logged to the run's decisions.md as a SKIP
+// (_shared/auto-decision-log.md's degrade trace), so a gauge that cannot work
+// — a transcript layout that changed, a caller it cannot find — is visible
+// at the Review Console instead of reading as a run that stayed under the cap.
 // Exit 0 in every measured state — status is data, the JSON is the answer
 //        (bin/verify.js --stamp-status's posture).
 //      2 malformed invocation: an unknown flag, a value-less flag, a --cap that
@@ -58,6 +62,7 @@
 const path = require('path');
 const { writeFileAtomic } = require('./lib/atomic-write');
 const { resolveTarget, findGitRoot } = require('./lib/stage-item/write');
+const { formatEntry, appendEntry } = require('./lib/log-decision/append');
 const ctxLib = require('./lib/hooks/context');
 const { FLOW_STEPS } = require('./lib/claim-targets/claim-targets');
 const {
@@ -111,6 +116,7 @@ const realDeps = {
   readRunMode: (runDir) => readRunMode(runDir),
   readHandoffCount: (runDir) => readHandoffCount(runDir),
   writeFile: (p, text) => writeFileAtomic(p, text),
+  appendDecision: (runDir, entry) => appendEntry({ runDir, section: '/flow', entry }),
   now: () => Date.now(),
   stdout: (s) => process.stdout.write(s),
   stderr: (s) => process.stderr.write(s),
@@ -184,6 +190,9 @@ async function measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg }, de
     if (!targets || targets.length === 0) {
       return done(`handoff.json not written: no target records (no spec-{N}/ dir, no work/{n}-spec.md in ${runDir}${worktree ? ' or its worktree copy' : ''})`);
     }
+    // --next-steps names one record's remaining steps, so a resume over several records would
+    // skip the later ones' earlier steps. Multi-spec handoff is #4358; until then continue in place.
+    if (targets.length > 1) return done(`handoff.json not written: a multi-record run (${targets.join(', ')}) — handoff is single-record (#4358): continue in place`);
     const handoffPath = path.join(runDir, 'handoff.json');
     const mode = deps.readRunMode(runDir);
     const handoff = buildHandoff({ runDir, nextSteps, contextTokens: result.contextTokens, cap, targets, mode, handoffCount: previous + 1, now: deps.now() });
@@ -234,6 +243,14 @@ async function run(argv, overrides = {}) {
   if (!ctxLib.RUN_ID_RE.test(runId)) return usageError(`--run basename is not a run id (a spec- subdir answers for its parent run): ${runId}`);
 
   const result = await measure({ runDir, runId, cwd, cap, nextSteps, transcriptArg: o.transcript }, deps);
+  if (result.reason) {
+    try {
+      deps.appendDecision(runDir, formatEntry({
+        status: 'SKIP', now: deps.now(), step: 'Step 4 context cap',
+        text: `condition: context-gauge ${result.reason} → fallback: continue in this agent`, reversibility: 'n/a',
+      }));
+    } catch { /* the trace is best-effort: the gauge never stops a run */ }
+  }
   deps.stdout(`${JSON.stringify(result)}\n`);
   return 0;
 }

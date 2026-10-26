@@ -26,7 +26,7 @@ The gauge prints one JSON line, `{contextTokens, cap, over, transcript, handoff,
 - At the bound the gauge writes no handoff. The bound is `HANDOFF_BOUND` (3) handoffs per run, counted in handoff.json's `handoffCount`. The count is per run, not per call: a dispatch group's two calls share one run dir, so they share the three. At the bound the gauge prints `over: true` and `handoff: null` with `reason` `handoff bound reached (3 handoffs this run): continue in place`. Continue in this agent and never stop: the call ends as it would have without the gauge, completing or hitting a HARD-GATE it settles itself.
 - Exit 2 (a malformed call, a refused `--run`) or any non-JSON output: continue in this agent.
 
-A gauge failure never stops the run. Only `over: true` with `handoff` set hands off. Log it first, as its own Bash call:
+A gauge failure never stops the run, and the gauge itself logs every non-null `reason` to `decisions.md` as a SKIP, so a gauge that cannot measure (a changed transcript layout, an unidentified caller) shows at the Review Console and needs no log line from you. Only `over: true` with `handoff` set hands off. Log it first, as its own Bash call:
 
 `node "${CLAUDE_PLUGIN_ROOT}/bin/log-decision.js" --run "{run}" --status AUTO --step "Step 4 context cap" --text "context {contextTokens} tokens over cap {cap}; steps {next-steps} handed to a fresh agent from handoff.json" --reversibility n/a`
 
