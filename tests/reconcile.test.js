@@ -18,7 +18,7 @@ const { structurallyStuckBody } = require('../plugin/bin/lib/reconcile/escalate-
 const { isWorktreeLocked } = require('../plugin/bin/lib/hooks/worktree-reap');
 const { reconcile, PREREQUISITES } = require('../plugin/bin/lib/reconcile');
 const { gitRepo } = require('./helpers/git-fixtures');
-const { skipUnderRoot } = require('./helpers/root');
+const { chmodDenialSkip } = require('./helpers/root');
 const { readText } = require('./helpers/read-skill');
 
 const PATH_STUB_SKIP = process.platform === 'win32' && 'win32: execFileSync("gh") never spawns a #!/bin/sh stub named gh on PATH';
@@ -604,7 +604,7 @@ test('archiveRunDir: a git-tracked non-work file in the run dir refuses with rea
   assert.ok(fs.existsSync(path.join(runDir, 'tracked-stray.md')));
 });
 
-test('archiveRunDir: an unreadable run dir returns reason readdir-failed instead of throwing', skipUnderRoot('root ignores directory permissions'), () => {
+test('archiveRunDir: an unreadable run dir returns reason readdir-failed instead of throwing', chmodDenialSkip('root ignores directory permissions'), () => {
   // Review finding #902: a TOCTOU between the existsSync guard and the
   // readdirSync enumeration (dir deleted/permission-changed in between)
   // must not crash the caller — hooks.js's archive-run verb has no
