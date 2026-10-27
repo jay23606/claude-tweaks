@@ -71,7 +71,7 @@ test('the tests suite declares test.yml\'s test job as its CI source, and that j
   assert.deepStrictEqual(Object.keys(r.decl.ci), ['tests']);
   assert.strictEqual(r.decl.ci.tests.workflow, 'test.yml');
   assert.strictEqual(r.decl.ci.tests.job, 'test');
-  const workflow = fs.readFileSync(path.join(REPO_ROOT, '.github', 'workflows', 'test.yml'), 'utf8');
+  const workflow = readText(path.join(REPO_ROOT, '.github', 'workflows', 'test.yml'));
   assert.match(workflow, /^ {2}test:\n/m, 'test.yml must keep a job keyed `test` (its job name, with no name: override)');
   assert.match(workflow, /^\s+- run: npm test$/m, 'the CI job must run the same suite the declaration names');
   assert.match(workflow, /^\s+pull_request:/m, 'CI runs only exist for a PR head under pull_request');

@@ -2,7 +2,7 @@ CI-sourced full-suite verification — the `ci` block of `.claude-tweaks/verify-
 
 # CI-sourced full-suite verification
 
-A declared suite's full run can come from the CI job that already runs it on every PR push. On a busy machine a local full run of this repo's suite took 55 minutes and more, while the same suite took 3.5 minutes in CI, and the merge gate (`merge-verification: merge-when-green`) requires that CI check green anyway.
+A declared suite's full run can come from the CI job that already runs it on every PR push. On a busy machine a local full run of this repo's suite took 55 minutes and more, while the same suite took 3.5 minutes in CI, and the merge gate (`_shared/pr-first-merge.md`'s merge-verification gate) requires that CI check green anyway.
 
 ## Declaration
 
