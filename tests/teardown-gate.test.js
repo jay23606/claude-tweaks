@@ -502,14 +502,18 @@ test('IMPORTANT 4: Bash `cd <dir> && git worktree remove <relative-path>` is den
 });
 
 // #4149: an & inside a quoted "$( )" body is no background, so the earlier `cd` still anchors
-// the relative teardown target; and a heredoc body line like `1) a` closes no outer `(`.
-for (const [label, command] of [
+// the relative teardown target; and a heredoc body line like `1) a` closes no outer `(`. #4303: the
+// remove after the `cd … && commit` list on a new line also runs in /wt when the cd fails (bash 3.2
+// and 5 run it from the starting directory then).
+const teardownAtMain = { path: path.resolve('/main/.claude/worktrees/x'), source: 'bash' };
+for (const [label, command, expected = [teardownAtMain]] of [
   ['an & inside a quoted "$( )" body', "cd /main && gh pr create --body \"$(cat <<'EOF'\nUse \"R&D\" term\nEOF\n)\" && git worktree remove .claude/worktrees/x"],
-  ['a heredoc body line `1) a` inside a subshell', "(cd /main && git commit -F - <<'EOF'\n1) a\nEOF\ngit worktree remove .claude/worktrees/x)"],
+  ['a heredoc body line `1) a` inside a subshell', "(cd /main && git commit -F - <<'EOF'\n1) a\nEOF\ngit worktree remove .claude/worktrees/x)",
+    [teardownAtMain, { path: path.resolve('/wt/.claude/worktrees/x'), source: 'bash' }]],
 ]) {
   test(`#4149: teardownTargets resolves the target under the earlier cd after ${label}`, () => {
     const targets = preToolUse.teardownTargets({ input: { tool_name: 'Bash', tool_input: { command } }, cwd: '/wt' });
-    assert.deepStrictEqual(targets, [{ path: path.resolve('/main/.claude/worktrees/x'), source: 'bash' }]);
+    assert.deepStrictEqual(targets, expected);
   });
 }
 
@@ -817,6 +821,45 @@ test('#693: ExitWorktree removing the session\'s own cwd is unaffected by the ow
   const payload = JSON.stringify({ tool_name: 'ExitWorktree', tool_input: { action: 'remove' }, cwd: wt, session_id: 'caller-1' });
   const r = runHook(['pre-tool-use'], { input: payload, cwd: wt });
   assert.strictEqual(r.stdout.trim(), '');
+});
+
+// #4303: past the shell scanner's cwd cap the walk has lost the cwd bash is in. A relative
+// `git worktree remove` path from there names a worktree the gate cannot place, so it cannot show the
+// path is not the session's own cwd: teardownTargets marks it `lost`, and the gate denies it. From a
+// worktree nested at M/.claude/worktrees/x, bash 3.2 and 5 remove the session's own worktree for each
+// (with every /tmp/ct-4303-aK present, every /tmp/ct-4303-nK absent):
+//   T3  16 `cd aK &&`, then `cd M/.claude/worktrees; git worktree remove --force x`
+//   T1  15 groups `{ cd aK; }`, then `{ cd M/.claude/worktrees; }; git worktree remove --force x`
+//   T2  15 groups `{ cd nK; }`, then `{ cd wt/sub; }; git -C ../.. worktree remove --force x`
+// Base d9aa6b82d denies T3 and allows T1 and T2 (earlier revisions of this branch allowed or denied
+// all three). An absolute path after the cap keeps the ordinary checks: removing
+// another, unassigned worktree is allowed. Skipped on win32: the commands splice native temp paths.
+test('#4303: past the cwd cap, a relative `git worktree remove` of the session\'s own worktree is denied', {
+  skip: process.platform === 'win32' && 'win32: the commands splice native temp paths, whose backslashes the scanner reads as escapes',
+}, () => {
+  const root = fixtureRoot();
+  const wt = path.join(root, '.claude', 'worktrees', 'x');
+  sh(root, 'worktree', 'add', '-q', wt, '-b', `wt-branch-${wtSeq++}`);
+  const other = addWorktree(root);
+  const parent = path.dirname(wt);
+  const chain = Array.from({ length: 16 }, (_, i) => `cd /tmp/ct-4303-a${i + 1} && `).join('');
+  const ok15 = Array.from({ length: 15 }, (_, i) => `{ cd /tmp/ct-4303-a${i}; }; `).join('');
+  const fail15 = Array.from({ length: 15 }, (_, i) => `{ cd /tmp/ct-4303-n${i}; }; `).join('');
+  const decide = (command) => preToolUse.run({ input: { tool_name: 'Bash', tool_input: { command }, cwd: wt }, runDir: null, runState: null, ownedRun: {}, cwd: wt });
+  for (const [shape, command] of [
+    ['T3', `${chain}cd ${parent}; git worktree remove --force x`],
+    ['T1', `${ok15}{ cd ${parent}; }; git worktree remove --force x`],
+    ['T2', `${fail15}{ cd ${wt}/sub; }; git -C ../.. worktree remove --force x`],
+  ]) {
+    const out = decide(command);
+    assert.strictEqual(out.json && out.json.hookSpecificOutput.permissionDecision, 'deny', shape);
+    assert.match(out.json.hookSpecificOutput.permissionDecisionReason, /cannot tell which worktree the path names/, shape);
+    const targets = preToolUse.teardownTargets({ input: { tool_name: 'Bash', tool_input: { command } }, cwd: wt });
+    assert.ok(targets.length && targets.every((t) => t.lost === true), `${shape}: ${JSON.stringify(targets)}`);
+  }
+  const absolute = `${fail15}{ cd /tmp/ct-4303-n15; }; git worktree remove --force ${other}`;
+  assert.deepStrictEqual(decide(absolute), {});
+  assert.ok(preToolUse.teardownTargets({ input: { tool_name: 'Bash', tool_input: { command: absolute } }, cwd: wt }).every((t) => !t.lost));
 });
 
 // #2282: the own-cwd deny above previously left no friction-event trace at

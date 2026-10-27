@@ -20,7 +20,9 @@ function splitSegments(command) {
 
 // splitSegments' pass, with each segment's `end`: the index in `command` of the
 // separator that ends it (the string's length for the last one). forEachShellSegment
-// uses it to find the segment that holds a heredoc opener.
+// uses it to find the segment that holds a heredoc opener, and reads the separator there.
+// `sub` marks a segment that began inside a top-level backtick span, `endsInSub` one whose
+// separator lies inside one (it separates the backtick's own commands, never the outer list's).
 function segmentSpans(command) {
   const str = String(command || '');
   return scanPass((spans) => segmentSpansWith(str, spans));
@@ -30,8 +32,11 @@ function segmentSpansWith(str, spans) {
   const segments = [];
   let current = '';
   let sub = false; // the segment in progress began inside a top-level backtick span
-  const cut = (at) => { segments.push({ text: current, end: at, sub }); current = ''; sub = false; };
+  const cut = (at, endsInSub = false) => { segments.push({ text: current, end: at, sub, endsInSub }); current = ''; sub = false; };
   let quote = null; // null | "'" (a double-quoted span is consumed whole below)
+  let parens = null; // parenMatches from the first `((` or `$((` on, offset by parensFrom
+  let parensFrom = 0;
+  let opens = null; // opens[k]: command-substitution openers in str[parensFrom, parensFrom + k)
   for (let i = 0; i < str.length; i++) {
     const ch = str[i];
     if (quote === "'") {
@@ -61,7 +66,7 @@ function segmentSpansWith(str, spans) {
         const inner = segmentSpans(str.slice(i + 1, r.end - 1));
         current += `\`${inner[0].text}`;
         for (let k = 1; k < inner.length; k += 1) {
-          cut(i + 1 + inner[k - 1].end);
+          cut(i + 1 + inner[k - 1].end, true);
           current = inner[k].text;
           sub = true;
         }
@@ -78,6 +83,38 @@ function segmentSpansWith(str, spans) {
       current += str.slice(i, nested.end);
       i = nested.end - 1;
       continue;
+    }
+    // An unquoted `$((`, or a `((` at a word start, is arithmetic when the `(` after its first `(`
+    // closes at a `)` directly followed by `)` (the test groupEvents applies, #4303). It is one piece
+    // through that `))`, across lines: a `||`, `&&`, `|` or `;` inside it is an operator of the
+    // expression, not a separator. Any other one (`$((true); …)`, `((cd x && ls) | cat)`) holds a
+    // subshell, whose commands are cut as before, and so does a `((` glued to `<` or `>`. Arithmetic
+    // that holds a command-substitution opener (a `$(` that is no `$((`, a backtick, `<(` or `>(`,
+    // quoted or not) is cut as before #4303 too: bash runs that substitution, and the cuts at its
+    // separators are what expose its writes to the walk. An inner `$((` counts as such an opener
+    // unless it passes the same arithmetic test (`$(( $((true); cp a f) ))` runs its cp).
+    let lead = -1;
+    if (ch === '$' && str[i + 1] === '(' && str[i + 2] === '(') lead = i + 2;
+    else if (ch === '(' && str[i + 1] === '(' && (i === 0 || /[\s;&|(]/.test(str[i - 1]))) lead = i + 1;
+    if (lead !== -1) {
+      if (parens === null) {
+        parensFrom = i;
+        parens = parenMatches(str.slice(i));
+        opens = new Uint32Array(str.length - i + 1);
+        for (let k = i; k < str.length; k += 1) {
+          const c = str[k];
+          const dollarParen = c === '$' && str[k + 1] === '(';
+          const arith = dollarParen && str[k + 2] === '(' && closesDoubled(parens, str, k + 2, i);
+          const opener = c === '`' || (dollarParen && !arith) || ((c === '<' || c === '>') && str[k + 1] === '(');
+          opens[k - i + 1] = opens[k - i] + (opener ? 1 : 0);
+        }
+      }
+      const end = closesDoubled(parens, str, lead, parensFrom) ? parensFrom + parens.get(lead - parensFrom) + 2 : -1;
+      if (end !== -1 && opens[end - parensFrom] === opens[i - parensFrom]) {
+        current += str.slice(i, end);
+        i = end - 1;
+        continue;
+      }
     }
     if (ch === '&' && str[i + 1] === '&') { cut(i); i += 1; continue; }
     if (ch === '|' && str[i + 1] === '|') { cut(i); i += 1; continue; }
@@ -514,12 +551,91 @@ function isUnprovableDriveRelative(raw, base, pathImpl) {
 // future fix to cd-resolution edge cases (a new isUnresolvable pattern,
 // pushd/popd support, etc.) can never land in one caller and not the other.
 function resolveCd(effCwd, raw, pathImpl = path) {
-  if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, effCwd, pathImpl)) return null;
-  if (effCwd === null) {
-    // Unknown cwd: only a plain absolute path restores provability.
-    return isAbsolutePlain(raw, pathImpl) ? pathImpl.resolve(raw) : null;
+  if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, driveBase(effCwd), pathImpl)) return null;
+  if (effCwd === null || effCwd instanceof LostCwd) {
+    // Unknown or lost cwd: only a plain absolute path makes it known; a relative one leaves it as
+    // it was (a lost one keeps its trail, LostCwd.after).
+    if (isAbsolutePlain(raw, pathImpl)) return pathImpl.resolve(raw);
+    return effCwd === null ? null : effCwd.after(raw);
   }
   return pathImpl.resolve(effCwd, raw);
+}
+
+// The plugin-owned pipeline state directory, relative to a checkout's root. pre-tool-use.js reads
+// it from here (its exemption and the shadow guard), so the lost cwd's trail below spells the same
+// two components.
+const PIPELINE_STATE_DIR = path.join('.claude-tweaks', 'pipelines');
+
+// A cwd the walk has lost past its cwd cap (#4303, see CWD_SET_CAP): the shell is somewhere under
+// `root` or anywhere a relative `cd` from there led. Only this module's own consumers see one.
+// `overflow` marks the one rooted at the caller's overflow cwd (the main checkout): a relative
+// target from it resolves to the root itself, which no exemption covers.
+//
+// `trail` keeps the one part of the relative `cd`s since the cwd was lost that a consumer reads
+// off a lost target: how far they spelled the `.claude-tweaks/pipelines` segment (LOST_TRAIL), so
+// that `cd .claude-tweaks/pipelines; mkdir 2026-x` still names it (writeTarget prefixes it to
+// `rel`). It is a step count, 0 to LOST_TRAIL.length, and a collapse seeds it from any known cwd
+// in the set, whose own path may spell some of it (forEachShellSegment's overflow).
+//
+// A lost cwd carries no reading of its own: base d9aa6b82d's readings of a command whose walk lost
+// its cwd are the targets base's own walk resolves (BASE_VIEW, see CWD_SET_CAP), which the module's
+// consumers report beside the lost ones. Every lost cwd of one collapse shares `family` (the one it
+// began as), and two are the same cwd when their family and trail match (sameCwd).
+const LOST_TRAIL = PIPELINE_STATE_DIR.split(path.sep);
+// The trail `text` spells on from `trail`: each component that spells the next part of LOST_TRAIL
+// advances it (any components between are skipped, failing closed: bash resolves a `..` through
+// links the text does not show; case is ignored).
+function spellTrail(text, trail) {
+  for (const part of text.toLowerCase().split(/[\\/]+/)) if (part === LOST_TRAIL[trail]) trail += 1;
+  return trail;
+}
+// Whether relative target text names a `.claude-tweaks/pipelines` segment on its way: a
+// `.claude-tweaks` component with a `pipelines` component anywhere after it, so the whole of
+// LOST_TRAIL is spelled. Read on the text as written, never normalized, so a `x/../` cannot hide
+// one; any later `pipelines` counts (failing closed, as bash resolves `..` through links the text
+// does not show), and case is ignored, since a case-insensitive volume reads `.Claude-Tweaks` as
+// the same directory.
+function namesPipelinesSegment(rel) {
+  return spellTrail(String(rel), 0) === LOST_TRAIL.length;
+}
+class LostCwd {
+  constructor(root, overflow, trail = 0, family = null) {
+    this.root = root;
+    this.overflow = overflow;
+    this.trail = trail;
+    this.family = family || this;
+  }
+
+  // This lost cwd after a relative `cd rel`: the same cwd, its trail advanced as `rel` spells it.
+  after(rel) {
+    return this.withTrail(spellTrail(rel, this.trail));
+  }
+
+  withTrail(trail) {
+    return trail === this.trail ? this : new LostCwd(this.root, this.overflow, trail, this.family);
+  }
+}
+
+// Whether two cwds in the walk's set are one: the same path, or lost cwds alike in family and trail.
+function sameCwd(a, b) {
+  return a === b || (a instanceof LostCwd && b instanceof LostCwd && a.family === b.family && a.trail === b.trail);
+}
+
+// The path a drive-relative value is judged against (isUnprovableDriveRelative, #4281): a known cwd
+// itself, or a lost cwd's root. A lost cwd is on its root's drive: a relative `cd` never changes
+// drive, a drive-relative one to another drive leaves the cwd unknown, and an absolute one makes it
+// known again.
+function driveBase(cwd) {
+  return cwd instanceof LostCwd ? cwd.root : cwd;
+}
+
+// `rel` with every `..` that would climb above its start dropped (`a/../../b` reads `b`), so a
+// target resolved from a lost cwd stays under its root. `pathImpl` is the walk's (#4281).
+function clampRel(rel, pathImpl = path) {
+  const parts = pathImpl.normalize(rel).split(/[\\/]/);
+  let k = 0;
+  while (k < parts.length && parts[k] === '..') k += 1;
+  return parts.slice(k).join(pathImpl.sep) || '.';
 }
 
 // Matches a segment that is exactly one token shaped like a simple literal
@@ -536,9 +652,11 @@ const SIMPLE_ASSIGNMENT_RE = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/;
 
 // #4281: a word is an assignment only when its name and its `=` are bare. The value is
 // read after quote removal, so `A\=x` and `"A"=x` both read `A=x`, yet bash runs each as
-// the command `A=x` (exit 127) and assigns nothing. `kinds` is the word's spanKinds.
-function isAssignmentWord(tok, kinds) {
-  if (!SIMPLE_ASSIGNMENT_RE.test(tok)) return false;
+// the command `A=x` (exit 127) and assigns nothing. `kinds` is the word's spanKinds. `re` is
+// the shape to test (assignmentWordEnd passes ASSIGNMENT_WORD_RE, which accepts `+=` too: its
+// `+` is part of the name side, so it must be bare as well).
+function isAssignmentWord(tok, kinds, re = SIMPLE_ASSIGNMENT_RE) {
+  if (!re.test(tok)) return false;
   const eq = tok.indexOf('=');
   return kinds.slice(0, eq + 1) === 'b'.repeat(eq + 1);
 }
@@ -646,6 +764,47 @@ function forEachCommandSegment(command, cwd, handler, opts) {
   forEachShellSegment(command, cwd, handler, opts);
 }
 
+// The index just past the assignment word that starts at token `i` of `rawT`, or `i` itself when
+// `rawT[i]` is not an assignment (#4303). Bash reads `x=$(cd /tmp)`, `x=${a:-b c}` and `x=$[1 + 2]`
+// as one word each, but tokenize splits them at the spaces inside, so the word runs on through
+// later tokens until every level it opened is closed, read on the `b` characters of `spanKinds`
+// (a quoted or escaped character is text). `stack` holds one character per open level: `c` for a
+// `(` (a `$(` or `$((` included), `p` for `${`, `a` for `$[` or a `[` inside one. Inside `${ … }` a
+// `(`, `)`, `{`, `[` or `]` is word text and only a `}` closes it (as advanceNesting reads a `p`
+// frame); a `$(`, `${`, `$[` or backtick still nests there. A backtick span belongs to the inner
+// command, so nothing inside it is counted. A word that never closes is no assignment: bash
+// cannot parse it and runs nothing. An appending `x+=1` is an assignment word too (bash 3.2 and 5
+// change into M for `x+=1 cd M`); only this lead reads it, since updateAssignment cannot track
+// the value it appends to. As for isAssignmentWord (#4281), the name and its `=` (or `+=`) must
+// be bare: `"x"=1 cd M` and `A\=x cd M` run the command `x=1` or `A=x` and never change directory.
+const WORD_OPENERS = { '(': 'c', '{': 'p', '[': 'a' };
+const ASSIGNMENT_WORD_RE = /^[A-Za-z_][A-Za-z0-9_]*\+?=.*$/; // SIMPLE_ASSIGNMENT_RE, plus `+=`
+function assignmentWordEnd(rawT, spanKinds, i) {
+  if (i >= rawT.length || !isAssignmentWord(rawT[i], spanKinds[i], ASSIGNMENT_WORD_RE)) return i;
+  let stack = '';
+  let inTick = false;
+  for (let j = i; j < rawT.length; j += 1) {
+    const w = rawT[j];
+    const kinds = spanKinds[j];
+    for (let k = 0; k < w.length; k += 1) {
+      if (kinds[k] !== 'b') continue;
+      const c = w[k];
+      const top = stack[stack.length - 1];
+      if (c === '`') inTick = !inTick;
+      else if (inTick) continue;
+      else if (c === '$' && WORD_OPENERS[w[k + 1]] && kinds[k + 1] === 'b') {
+        stack += WORD_OPENERS[w[k + 1]];
+        k += 1;
+      } else if (top === 'p') { if (c === '}') stack = stack.slice(0, -1); }
+      else if (c === '(') stack += 'c';
+      else if (c === '[' && top === 'a') stack += 'a';
+      else if (c === ')' || (c === ']' && top === 'a')) stack = stack.slice(0, -1);
+    }
+    if (stack === '' && !inTick) return j + 1;
+  }
+  return i;
+}
+
 // One segment of forEachShellSegment's walk, already tokenized (`tok`, from tokenize, and
 // `nestAt`, the nesting state at each token's start): updates `vars`, calls `handler` for a
 // non-assignment segment (a cd one included), and returns the effective cwd after it.
@@ -668,13 +827,27 @@ function visitSegment(tok, nestAt, effCwd, vars, handler, pathImpl = path) {
   // for a shape that has no real effect. An assignment is read from the raw word, whose
   // spanKinds it is aligned with: bash decides it before any `$` expands (#4281).
   let cdLead = 0;
-  while (cdLead < t.length && isAssignmentWord(rawT[cdLead], spanKinds[cdLead])) cdLead += 1;
+  for (;;) {
+    const next = assignmentWordEnd(rawT, spanKinds, cdLead);
+    if (next === cdLead) break;
+    cdLead = next;
+  }
   const quoting = { raw: rawT, typed, singleQuoted, doubleQuoted, leadQuoted, spanKinds, nestAt, pathImpl };
   // #4281: bash applies a cd line's redirections before the builtin runs, so `cd sub > f1`
   // writes f1 in the cwd before the cd: the handler sees the cd segment under that cwd. Its
-  // redirect words are no argument of cd (`cd > f1 sub` changes to sub).
+  // redirect words are no argument of cd (`cd > f1 sub` changes to sub). Only the words after
+  // `cd` are read for them: an assignment word before it can span tokens that look like a
+  // redirection (`x=$(echo >f) cd /m`, #4303), and dropping one there would shift the argument.
+  if (t[cdLead] === 'cd') {
+    const from = cdLead + 1;
+    // The word after `cd` is its argument unless it could start a redirection (dropRedirections'
+    // lead test), the common case, which skips the slices.
+    const arg = from >= t.length || leadQuoted[from] || !REDIRECTION_LEAD_RE.test(rawT[from]) ? t[from]
+      : dropRedirections(t.slice(from), { raw: rawT.slice(from), leadQuoted: leadQuoted.slice(from), spanKinds: spanKinds.slice(from) })[0];
+    handler(t, effCwd, quoting);
+    return resolveCd(effCwd, arg, pathImpl);
+  }
   handler(t, effCwd, quoting);
-  if (t[cdLead] === 'cd') return resolveCd(effCwd, dropRedirections(t, quoting)[cdLead + 1], pathImpl);
   return effCwd;
 }
 
@@ -707,13 +880,17 @@ function skipGlobalFlags(t, i, dir, pathImpl = path) {
         // Resolving it would normalize the string and hand the worktree gate
         // a different target than an omitted -C (e.g. `C:\repo` vs `/repo` on
         // Windows) — #3314.
-      } else if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, dir, pathImpl)) {
+      } else if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, driveBase(dir), pathImpl)) {
         unprovable = true;
       } else if (pathImpl.isAbsolute(raw)) {
         dir = pathImpl.resolve(raw);
       } else if (dir === null) {
         // Relative -C while cwd is UNKNOWN — cannot prove the target.
         unprovable = true;
+      } else if (dir instanceof LostCwd) {
+        // A relative -C from a lost cwd (#4303) keeps it lost (resolveGitCommand gives it the root)
+        // and moves its base.
+        dir = dir.after(raw);
       } else {
         dir = pathImpl.resolve(dir, raw);
       }
@@ -791,7 +968,8 @@ function findGitLead(t, dir, pathImpl = path) {
 // segment's real git lead and the subcommand position/dir past any global
 // flags, in the one index/unprovable/dir-null check sequence both gitTargets
 // and teardownTargets (pre-tool-use.js) need. Returns `{ index, dir }` (index
-// is the resolved SUBCOMMAND token position) or null when the segment isn't
+// is the resolved SUBCOMMAND token position; plus `lost: true` when `dir` is a
+// lost cwd's stand-in, #4303) or null when the segment isn't
 // git, or the target is unprovable / cwd-unknown-with-no-provable--C. A
 // single shared point so a future fix to this preamble lands once for both
 // callers instead of drifting between two hand-kept copies — the exact gap
@@ -802,6 +980,9 @@ function resolveGitCommand(t, effCwd, pathImpl = path) {
   if (lead.index === -1) return null;
   const { index, dir, unprovable } = skipGlobalFlags(t, lead.index + 1, lead.dir, pathImpl);
   if (lead.unprovable || unprovable || dir === null) return null;
+  // A git command run from a lost cwd (#4303) runs somewhere the walk does not know: `dir` is the
+  // lost cwd's root, a stand-in, and `lost: true` says so (see CWD_SET_CAP).
+  if (dir instanceof LostCwd) return { index, dir: pathImpl.resolve(dir.root), lost: true };
   return { index, dir };
 }
 
@@ -840,17 +1021,90 @@ const PLUMBING_WRITE_SUBCOMMANDS = new Set(['mv', 'rm', 'update-ref', 'apply']);
 // apart from "stash" apart from everything else — the traversal itself stays
 // ignorant of which subcommand pre-tool-use.js's callers each care about.
 function resolvedGitSegments(command, cwd, opts) {
-  const segments = [];
-  let pieceStart = 0; // where the current piece's first-cwd visit began pushing
-  forEachCommandSegment(command, cwd, (t, effCwd, quoting, again) => {
-    if (!again) pieceStart = segments.length;
-    const resolved = resolveGitCommand(t, effCwd, quoting.pathImpl);
-    if (!resolved) return;
-    // A repeat visit under another cwd (after a brace group) that resolves to the same dir adds nothing.
-    if (again && segments.slice(pieceStart).some((s) => s.dir === resolved.dir && s.index === resolved.index)) return;
-    segments.push({ tokens: t, index: resolved.index, dir: resolved.dir });
-  }, opts);
+  const pathImpl = (opts && opts.pathImpl) || path;
+  const walk = (walkOpts) => {
+    const segments = [];
+    let pieceStart = 0; // where the current piece's first-cwd visit began pushing
+    forEachCommandSegment(command, cwd, (t, effCwd, quoting, again) => {
+      if (!again) pieceStart = segments.length;
+      const resolved = resolveGitCommand(t, effCwd, quoting.pathImpl);
+      if (!resolved) return;
+      // A repeat visit under another cwd (after a brace group) that resolves to the same dir adds nothing.
+      if (again && segments.slice(pieceStart).some((s) => s.dir === resolved.dir && s.index === resolved.index && s.lost === resolved.lost)) return;
+      segments.push({ tokens: t, ...resolved });
+    }, walkOpts);
+    return segments;
+  };
+  const segments = walk(keepLost(opts));
+  // #4303: a walk that lost its cwd also reports base's own readings (BASE_VIEW), as known segments.
+  // A reading's dir can be the collapse's overflow root or start as given, so it is resolved to a
+  // native path as the lost segments' dirs are, through the walk's pathImpl (#4281).
+  if (segments.some((s) => s.lost)) {
+    const readings = newReadings(walk(baseView(opts)), segments, (s) => `${s.dir}\0${s.index}\0${s.tokens.join('\0')}`);
+    segments.push(...readings.map((s) => ({ ...s, dir: pathImpl.resolve(s.dir) })));
+  }
   return segments;
+}
+
+// The entries of `extra`, a base-view walk's (#4303), that no known entry of `have` already holds,
+// each once (by `keyOf`), marked as base's readings: both walks visit the same pieces, so a target
+// the first walk resolved from a known cwd comes back from the second too.
+function newReadings(extra, have, keyOf) {
+  const seen = new Set(have.filter((x) => !x.lost).map(keyOf));
+  return extra.filter((x) => !seen.has(keyOf(x)) && seen.add(keyOf(x))).map((x) => ({ ...x, reading: true }));
+}
+
+// The subject a `git commit`'s own message gives (#4303): the first non-blank line of its `-m` /
+// `--message` values, joined as git joins them (a blank line between), trailing whitespace
+// dropped. `t[index]` is the `commit` subcommand. Null when the text cannot be read from the
+// command: no `-m`, a message taken from elsewhere (`-F`, `-C`, `-c`, `--fixup`, `--squash`), a
+// value the walk did not substitute (`$`, a backtick, a backslash), or an option this does not
+// know (git takes abbreviated long options, so an unknown one could be `--mess`).
+const COMMIT_NO_ARG_SHORT = new Set('apsneiovqz');
+const COMMIT_NO_ARG_LONG = new Set(['--all', '--patch', '--interactive', '--amend', '--edit', '--no-edit', '--verify', '--no-verify',
+  '--allow-empty', '--allow-empty-message', '--signoff', '--no-signoff', '--quiet', '--verbose', '--dry-run', '--short', '--branch',
+  '--porcelain', '--long', '--null', '--include', '--only', '--no-post-rewrite', '--reset-author', '--status', '--no-status',
+  '--no-gpg-sign', '--gpg-sign', '--untracked-files', '--no-trailer']);
+const COMMIT_VALUE_LONG = new Set(['--author', '--date', '--cleanup', '--template', '--trailer', '--pathspec-from-file']);
+function commitSubject(t, index) {
+  const msgs = [];
+  for (let i = index + 1; i < t.length; i += 1) {
+    const tok = t[i];
+    if (tok === '--') break;
+    if (tok.startsWith('--')) {
+      const eq = tok.indexOf('=');
+      const name = eq === -1 ? tok : tok.slice(0, eq);
+      if (name === '--message') {
+        if (eq !== -1) msgs.push(tok.slice(eq + 1));
+        else msgs.push(t[(i += 1)]);
+      } else if (COMMIT_VALUE_LONG.has(name)) {
+        if (eq === -1) i += 1;
+      } else if (!COMMIT_NO_ARG_LONG.has(name)) return null;
+      continue;
+    }
+    if (!tok.startsWith('-') || tok === '-') continue; // a pathspec
+    for (let k = 1; k < tok.length; k += 1) {
+      const c = tok[k];
+      if (c === 'm' || c === 't') {
+        const value = k + 1 < tok.length ? tok.slice(k + 1) : t[(i += 1)];
+        if (c === 'm') msgs.push(value);
+        break;
+      }
+      if (c === 'S' || c === 'u') break; // an optional value, attached only
+      if (!COMMIT_NO_ARG_SHORT.has(c)) return null; // -F, -C, -c, or one this does not know
+    }
+  }
+  if (!msgs.length || msgs.some((m) => typeof m !== 'string' || /[$`\\]/.test(m))) return null;
+  return subjectLine(msgs.join('\n\n'));
+}
+
+// A commit message's first non-blank line, trailing whitespace dropped; null when there is none.
+function subjectLine(message) {
+  for (const line of String(message).split('\n')) {
+    const s = line.replace(/\s+$/, '');
+    if (s) return s;
+  }
+  return null;
 }
 
 // Pure classification over an already-resolved segment list — no traversal of
@@ -859,10 +1113,18 @@ function resolvedGitSegments(command, cwd, opts) {
 // classify" in one call.
 function gitTargetsFrom(segments) {
   const targets = [];
-  for (const { tokens: t, index, dir } of segments) {
+  for (const { tokens: t, index, dir, lost, reading } of segments) {
     const sub = t[index];
     if (sub === 'commit' || sub === 'push' || PLUMBING_WRITE_SUBCOMMANDS.has(sub)) {
-      targets.push({ action: sub, dir });
+      const target = { action: sub, dir };
+      if (reading) target.reading = true;
+      if (lost) {
+        target.lost = true;
+        // #4303: post-tool-use matches a lost commit to the one this command made by its subject.
+        const subject = sub === 'commit' ? commitSubject(t, index) : null;
+        if (subject !== null) target.subject = subject;
+      }
+      targets.push(target);
     }
   }
   return targets;
@@ -943,7 +1205,7 @@ const DEVNULL_LIKE = new Set(['/dev/null', '/dev/stdout', '/dev/stderr']);
 // Also called by bash-prefilter.js's hasFileRedirection with a placeholder cwd, so every
 // exclusion here is one the prefilter applies too: narrowing one narrows both.
 function resolveWriteTarget(effCwd, raw, pathImpl = path) {
-  if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, effCwd, pathImpl)) return null;
+  if (isUnresolvable(raw) || isUnprovableDriveRelative(raw, driveBase(effCwd), pathImpl)) return null;
   // An explicitly-empty token is never a file. It reaches here as BSD sed's
   // separate backup suffix (`sed -i '' ...`); without this it would resolve to
   // effCwd itself and flag the whole directory as a write target.
@@ -951,30 +1213,52 @@ function resolveWriteTarget(effCwd, raw, pathImpl = path) {
   if (DEVNULL_LIKE.has(raw)) return null;
   if (pathImpl.isAbsolute(raw)) return pathImpl.resolve(raw);
   if (effCwd === null) return null; // cwd UNKNOWN and a relative path — not provable
+  // From a lost cwd (#4303): the overflow root itself, or the clamped path under the start.
+  // The root itself is resolved too, so a stand-in is a native path as every other target is
+  // (a caller's '/main' is D:\main on win32).
+  if (effCwd instanceof LostCwd) return effCwd.overflow ? pathImpl.resolve(effCwd.root) : pathImpl.resolve(effCwd.root, clampRel(raw, pathImpl));
   return pathImpl.resolve(effCwd, raw);
 }
 
-// A redirection's RHS that is a file-descriptor duplication (`>&2`, `2>&1`),
-// or an fd close/move (`>&-`, `>&3-`), never a file target — distinct from
-// resolveWriteTarget's unresolvable set because the shape (a bare `&` followed
-// by digits or `-`) is specific to redirection syntax and would otherwise read
-// as a plausible-looking relative path.
-function isFdDupTarget(raw) {
-  return /^&(\d+-?|-)$/.test(raw);
+// The `{ action, file }` entry for write target word `raw` under `effCwd`, or null. A relative
+// target from a lost cwd (#4303) also carries `lost: true` and `rel`, the target as written (after
+// the lost cwd's trail, LostCwd): the walk does not know the directory it lands in, so `file` is
+// only the lost cwd's stand-in (resolveWriteTarget), and a consumer that reads the marker denies on
+// it (see CWD_SET_CAP). `raw` is the word's value (#4281), so `rel` is it as bash passes it, and
+// `pathImpl` is the walk's.
+function writeTarget(action, effCwd, raw, pathImpl = path) {
+  const file = resolveWriteTarget(effCwd, raw, pathImpl);
+  if (!file) return null;
+  if (!(effCwd instanceof LostCwd) || pathImpl.isAbsolute(raw)) return { action, file };
+  return { action, file, lost: true, rel: [...LOST_TRAIL.slice(0, effCwd.trail), raw].join('/') };
+}
+
+// The word after a redirection's `&` that duplicates a file descriptor
+// (`>&2`, `2>&1`, `>& 2`) or closes/moves one (`>&-`, `>&3-`), never a file
+// target — distinct from resolveWriteTarget's unresolvable set because the
+// shape (digits or `-`) is specific to redirection syntax and would otherwise
+// read as a plausible-looking relative path. Any other word after `>&` or
+// `1>&` is the csh form's file (redirectWriteTargets).
+function isFdDupTarget(word) {
+  return /^(\d+-?|-)$/.test(word);
 }
 
 // Matches a write-redirection operator at the START of a token, optionally
 // fd-prefixed (`2>`, `1>>`) or in `&>`/`&>>` combined-stream form, capturing
 // whatever follows the operator in the SAME token (a glued target, or '' for
 // a standalone operator whose target is the next token). `<` (input
-// redirection) and `>&N`/`N>&M` (fd duplication, handled by the caller once it
-// has the full candidate target) are not matched as write operators here.
-const REDIRECT_OP_RE = /^\d*(>>|>\||>)(.*)$/;
+// redirection) is not matched. `>&` matches as `>` with a target that starts
+// with `&` (an fd duplication, or the csh form `>& file`), which the caller
+// resolves; `plainFd` is the fd prefix of a plain `>` ('' when unprefixed),
+// and null for `>>`, `>|`, `&>` and `&>>`.
+const REDIRECT_OP_RE = /^(\d*)(>>|>\||>)(.*)$/;
 const AMP_REDIRECT_OP_RE = /^&(>>|>)(.*)$/;
 
 function matchRedirectOperator(tok) {
-  const m = REDIRECT_OP_RE.exec(tok) || AMP_REDIRECT_OP_RE.exec(tok);
-  return m ? m[2] : null;
+  const m = REDIRECT_OP_RE.exec(tok);
+  if (m) return { plainFd: m[2] === '>' ? m[1] : null, target: m[3] };
+  const amp = AMP_REDIRECT_OP_RE.exec(tok);
+  return amp ? { plainFd: null, target: amp[2] } : null;
 }
 
 // #3989/#4149 heredoc-body stripping (see stripHeredocBodies below). A body is
@@ -1721,6 +2005,7 @@ const MAX_HEREDOC_NESTING = 8;
 // opens a group and the `)` or `}` that matches it closes it, so a `cd` behind `(`/`{` is read as
 // a `cd` scoped to its group. Returns the segment as { text } pieces and { open } / { close } /
 // { bg } events, in order ({ bg } at a lone `&`, which backgrounds the and-or list before it);
+// each piece, { bg } and group frame carries `nesting`, the substitution depth it begins at;
 // `g.stack` carries the open groups and nesting parens across segments. Any
 // other `(` (`$(`, `$((`, `<(`, an array, a glob) only nests until its `)`. A `)` while a `case` is
 // open in the innermost group is a pattern's, and a `)` that matches nothing (a group this walk
@@ -1751,19 +2036,35 @@ function groupEventsWith(seg, g, spans, undo) {
   let pieceNesting = g.nesting; // the nesting the current piece began at
   let tail = false; // the current piece follows the closer of a substitution: the rest of its command
   const setCaseDepth = (frame, d) => { const was = frame.caseDepth; frame.caseDepth = d; undo.push(() => { frame.caseDepth = was; }); };
+  const setCasePattern = (frame, on) => { const was = frame.casePattern; frame.casePattern = on; undo.push(() => { frame.casePattern = was; }); };
+  const setBrackets = (frame, d) => { const was = frame.brackets; frame.brackets = d; undo.push(() => { frame.brackets = was; }); };
   const cut = (at, ev) => {
-    if (at > start) events.push({ text: seg.slice(start, at), sub: inSub, tail });
+    if (at > start) events.push({ text: seg.slice(start, at), sub: inSub, tail, nesting: pieceNesting });
     if (ev) events.push(ev);
     start = at + 1;
     inSub = g.nesting > 0;
     pieceNesting = g.nesting;
     tail = false;
   };
-  const nest = (n, cmd) => {
-    for (let k = 0; k < n; k += 1) push({ kind: 'p', caseDepth: 0, arith: n === 2 });
+  // Every frame carries `cmd`: whether a lone `&` in it backgrounds a command list. `$(`, `<(`/`>(`,
+  // groups and the root do; arithmetic (`$((`/`((`, `$[`) does not. A bare `(` not at command
+  // position takes its parent's: inside arithmetic it is a parenthesized operand, and anywhere else
+  // (a function body `f() ( … )`, `coproc ( … )`) it may be a subshell, so an `&` there still cuts.
+  const nest = (n, cmd, frameCmd = cmd) => {
+    for (let k = 0; k < n; k += 1) push({ kind: 'p', caseDepth: 0, cmd: frameCmd });
     atCmd = cmd;
   };
-  let parens = null; // parenMatches(seg), computed at the first `((` at command position
+  let parens = null; // parenMatches(seg), computed at the first `((` at command position or `$((`
+  // A bare `()` (`g()`, `function g ()`) ends a function definition's name (#4303): its body is
+  // a compound command, at command position, so a `{` there opens a group and a `case` in it is
+  // read. bash accepts no other empty `( )` (an empty subshell is a syntax error).
+  const emptyParens = (frame, close) => {
+    if (frame.openSeg !== seg) return false;
+    let k = close - 1;
+    while (k > frame.openAt && /\s/.test(seg[k])) k -= 1;
+    return k === frame.openAt;
+  };
+  let fnName = false; // the word after `function` at command position is the name, then the body
   let i = 0;
   while (i < seg.length) {
     const c = seg[i];
@@ -1774,14 +2075,20 @@ function groupEventsWith(seg, g, spans, undo) {
       // commands. Any other `((` is two subshells (`((cd x && ls) | cat)`).
       if (atCmd && seg[i + 1] === '(') {
         if (parens === null) parens = parenMatches(seg);
-        const inner = parens.get(i + 1);
-        if (inner !== undefined && seg[inner + 1] === ')') { nest(2, false); i += 2; continue; }
+        if (closesDoubled(parens, seg, i + 1)) { nest(2, false); i += 2; continue; }
       }
+      // A `(` that opens a case pattern list (`case x in (a|x) …`) is read as before (#4303), as a
+      // group or a nest, so the arm after its `)` is read as a tail, failing closed; a `|` directly
+      // in it separates patterns (walkShellChunk), and its `)` ends the pattern list.
+      const leadParen = !!top().casePattern && (i === 0 || /\s/.test(seg[i - 1]));
       if (atCmd) {
-        const frame = { kind: '(', caseDepth: 0, sub: g.nesting > 0 };
+        const frame = { kind: '(', caseDepth: 0, cmd: true, sub: g.nesting > 0, nesting: g.nesting, leadParen, openSeg: seg, openAt: i };
         push(frame);
         cut(i, { open: frame });
-      } else nest(1, false);
+      } else {
+        nest(1, false, top().cmd);
+        Object.assign(top(), { leadParen, openSeg: seg, openAt: i });
+      }
       i += 1;
       continue;
     }
@@ -1792,11 +2099,22 @@ function groupEventsWith(seg, g, spans, undo) {
         // of no word (`cp a f.js )`), and the text after it is the rest of the command the
         // substitution sits in, run out there (`$(true; cd /tmp) > f.js` writes from the outer cwd).
         pop();
+        if (t.leadParen) setCasePattern(top(), false);
         if (g.nesting < pieceNesting) { cut(i, null); tail = true; }
-        atCmd = false;
+        atCmd = emptyParens(t, i);
       }
-      else if (t.caseDepth === 0 && t.kind === '(') { pop(); cut(i, { close: t }); atCmd = false; }
-      else { cut(i, null); atCmd = true; }
+      else if (t.caseDepth === 0 && t.kind === '(') {
+        pop();
+        if (t.leadParen) setCasePattern(top(), false);
+        cut(i, { close: t });
+        atCmd = emptyParens(t, i);
+      }
+      else {
+        // A case's pattern list ends at this `)` (#4303), and its arm's commands follow.
+        if (t.caseDepth > 0) setCasePattern(t, false);
+        cut(i, null);
+        atCmd = true;
+      }
       i += 1;
       continue;
     }
@@ -1809,8 +2127,9 @@ function groupEventsWith(seg, g, spans, undo) {
         // the segment it is the `&` of `|&` (segmentSpans has cut the `|`), which pipes on: it is
         // dropped from the text, with no background. Inside a substitution or a group in one it
         // backgrounds that subshell's own list (`sub`: the walk resets the sub run, never the outer
-        // cwd); inside `$(( ))` it is arithmetic, so it is left alone.
-        if (!top().arith) cut(i, i > 0 ? { bg: true, sub: g.nesting > 0 } : null);
+        // cwd); in a frame that is no command list (`$(( ))`, `$[ ]`, a bare `(` inside one) it is
+        // arithmetic, so it is left alone.
+        if (top().cmd) cut(i, i > 0 ? { bg: true, sub: g.nesting > 0, nesting: g.nesting } : null);
         atCmd = true;
       }
       // Any other operator is a redirection. Its target is read as an ordinary word, which ends
@@ -1821,7 +2140,7 @@ function groupEventsWith(seg, g, spans, undo) {
     const wStart = i;
     let w = '';
     let plain = true;
-    let subst = 0; // 1 for `$(`, 2 for `$((`
+    let subst = 0; // 1 for `$(`, 2 for `$((`, -1 for `$[`
     while (i < seg.length && !/[\s()<>&;|]/.test(seg[i])) {
       const ch = seg[i];
       if (ch === '\\') { i += 2; plain = false; continue; }
@@ -1847,26 +2166,64 @@ function groupEventsWith(seg, g, spans, undo) {
         plain = false;
         continue;
       }
-      if (ch === '$' && seg[i + 1] === '(') { subst = seg[i + 2] === '(' ? 2 : 1; break; }
+      // A `$((` is arithmetic by the `((` command's test (#4303); any other is a `$(` holding a
+      // subshell (`$((cd x; …) )`), whose second `(` is then read at command position.
+      if (ch === '$' && seg[i + 1] === '(') {
+        subst = 1;
+        if (seg[i + 2] === '(') {
+          if (parens === null) parens = parenMatches(seg);
+          if (closesDoubled(parens, seg, i + 2)) subst = 2;
+        }
+        break;
+      }
+      // `$[ … ]` is arithmetic, closed by the `]` that matches it past any nested `[ … ]` (an array
+      // subscript), as scanHeredocs reads it.
+      if (ch === '$' && seg[i + 1] === '[') { subst = -1; break; }
+      if ((ch === '[' || ch === ']') && top().bracket) {
+        const t = top();
+        if (ch === '[') setBrackets(t, t.brackets + 1);
+        else if (t.brackets > 0) setBrackets(t, t.brackets - 1);
+        else {
+          pop();
+          if (g.nesting < pieceNesting) { cut(i, null); tail = true; }
+        }
+        i += 1;
+        plain = false;
+        continue;
+      }
       w += ch;
       i += 1;
     }
+    if (subst === -1) { push({ kind: 'p', caseDepth: 0, cmd: false, bracket: true, brackets: 0 }); atCmd = false; i += 2; continue; }
     if (subst) { nest(subst, subst === 1); i += 1 + subst; continue; }
     if (i === wStart) { i += 1; continue; } // a stray separator character: never a word
+    if (fnName) { fnName = false; atCmd = true; continue; }
     if (!plain || !atCmd) { atCmd = false; continue; }
     const t = top();
     if (w === '{') {
-      const frame = { kind: '{', caseDepth: 0, sub: g.nesting > 0 };
+      const frame = { kind: '{', caseDepth: 0, cmd: true, sub: g.nesting > 0, nesting: g.nesting };
       push(frame);
       cut(wStart, { open: frame });
       continue; // still at command position
     }
     if (w === '}' && t.kind === '{') { pop(); cut(wStart, { close: t }); atCmd = false; continue; }
-    if (w === 'case') setCaseDepth(t, t.caseDepth + 1);
-    else if (w === 'esac') setCaseDepth(t, Math.max(0, t.caseDepth - 1));
+    // `casePattern` (#4303): the frame is in a case's pattern list, from `case` (its subject and `in`
+    // hold no unquoted `|` bash accepts) and again after each `;;`, `;&` or `;;&` (walkShellChunk),
+    // to the `)` that ends the list. A `|` cut there separates patterns: walkShellChunk reads no
+    // separator at it.
+    // `g.caseSeen` tells walkShellChunk a case compound opened (#4303).
+    if (w === 'case') {
+      setCaseDepth(t, t.caseDepth + 1);
+      setCasePattern(t, true);
+      const was = g.caseSeen;
+      g.caseSeen = true;
+      undo.push(() => { g.caseSeen = was; });
+    }
+    else if (w === 'esac') { setCaseDepth(t, Math.max(0, t.caseDepth - 1)); setCasePattern(t, false); }
+    else if (w === 'function') fnName = true;
     atCmd = COMMAND_PREFIX_WORDS.has(w);
   }
-  if (seg.length > start) events.push({ text: seg.slice(start), sub: inSub, tail });
+  if (seg.length > start) events.push({ text: seg.slice(start), sub: inSub, tail, nesting: pieceNesting });
   return events;
 }
 
@@ -1892,6 +2249,13 @@ function parenMatches(seg) {
   return match;
 }
 
+// Whether the `(` at `open` in `str` closes at a `)` directly followed by another `)`: the test that
+// makes a `((` or `$((` arithmetic. `match` is parenMatches of `str` from index `from` on.
+function closesDoubled(match, str, open, from = 0) {
+  const close = match.get(open - from);
+  return close !== undefined && str[from + close + 1] === ')';
+}
+
 // visitSegment for each cwd the walk may be in (a list, as after a brace group), deduplicated.
 // `handler` gets a fourth argument, true on every visit of the piece after the first, so a
 // consumer can drop a target that does not depend on the cwd (`git -C /x`) the second time.
@@ -1907,7 +2271,7 @@ function visitUnderEach(text, cwds, vars, handler, nest, pathImpl) {
   const next = [];
   cwds.forEach((c, k) => {
     const n = visitSegment(tok, nestAt, c, vars, k === 0 ? handler : (t, effCwd, quoting) => handler(t, effCwd, quoting, true), pathImpl);
-    if (!next.includes(n)) next.push(n);
+    if (!next.some((x) => sameCwd(x, n))) next.push(n);
   });
   return next;
 }
@@ -1926,56 +2290,235 @@ function visitUnderEach(text, cwds, vars, handler, nest, pathImpl) {
 // backgrounds the and-or list before it, which runs in a subshell: the cwd returns to what it was
 // where that list began (after the last `;`, newline, `&` or group opener).
 //
+// Within an and-or list (#4303), whether a `cd` moved the shell decides what runs after it: the
+// command after `&&` runs where the one before it succeeded, the command after `||` where it failed
+// (a failed `cd` leaves the cwd where it was), and once the list ends at a `;`, a newline or the
+// end, the walk continues under every cwd the list could have left, so after `cd x && cmd;` a
+// later write resolves under x and under the cwd before the list (failing closed). The list's
+// last command branches nothing, so the walk takes it to succeed, as after any `cd x;`: its own
+// failure adds no cwd. Each element of a pipeline runs in a subshell from the cwd the pipeline
+// began at, and its `cd` ends there; a `|` between case patterns is no pipeline (the separator
+// handling in the loop below). A substitution's separators act on the substitution's own
+// list, never the outer one, and a cd inside a substitution nested in another ends at its closer,
+// as the outer walk's does.
+//
 // The walk carries at most CWD_SET_CAP cwds at once. Each brace group's `}` and each tail can add
 // a cwd, and every later piece is visited once per cwd, so a command with many distinct `cd`
-// paths would be quadratic. Past the cap the set collapses, failing closed, to the caller's
-// `opts.overflowCwd` (a path, or a function returning one, called at most once; pre-tool-use passes
-// the main checkout, so a relative target resolves where the worktree gate denies it) together
-// with the walk's own starting cwd (where a worktree-local shadow is denied).
+// paths would be quadratic. Past the cap the set collapses, failing closed.
+//
+// For this module's own consumers (fileWriteTargets, mkdirTargets, gitTargets, through KEEP_LOST)
+// it collapses to lost cwds (LostCwd, #4303): the shell is somewhere the walk no longer knows. A
+// lost cwd is no path bash can climb out of: a relative `cd` or `git -C` keeps it lost, and an
+// absolute one makes the cwd known again. With the caller's `opts.overflowCwd` (a path, or a
+// function returning one, called at most once per walk: twice for a command whose walk lost its
+// cwd, walked again in BASE_VIEW below; pre-tool-use passes the main checkout) one is rooted
+// there, and a relative target from it is that root itself: no exemption covers the main
+// checkout's root, so the worktree gate denies, where a guessed path under it could land in a
+// linked worktree or the exempt `.claude-tweaks/pipelines/` while bash wrote elsewhere in M. The
+// other is rooted at the walk's own starting cwd (the only one without an overflowCwd), and a
+// relative target from it resolves under the start, never above it (clampRel), so the shadow
+// guard still sees `start/.claude-tweaks/pipelines/…`.
+//
+// Those paths are stand-ins, never where bash is known to be, so every target resolved from a lost
+// cwd also carries an additive marker, `lost: true`, beside the fields it always had: a relative
+// write, mkdir or redirect target (writeTarget, which adds `rel`, the target as written), and a git
+// command run from a lost cwd or behind a relative `git -C` there (resolveGitCommand, then
+// resolvedGitSegments and gitTargets, which adds a commit's `subject` when its message can be read).
+// An absolute target, or a git command after an absolute `cd` or `-C`, is known and carries none.
+//
+// A command whose walk lost its cwd is also walked as base d9aa6b82d walked it (BASE_VIEW): every
+// command taken to succeed, as base took it, with no `&&`/`||` branch, so the set grows only where
+// base's grew, and past the cap it collapses to the overflow cwd and the start as real paths, as
+// base's did (a cwd the walk could not read, null, is dropped there as base dropped it). It keeps
+// this branch's other scanner fixes, which add targets base missed and drop ones it invented (the
+// `1` and `2` base read in `(( a>1 || b>2 ))`). That walk's targets are the readings of the command
+// (base's collapse, this branch's reading of each segment), and fileWriteTargets, mkdirTargets and
+// resolvedGitSegments report each that the first walk did not already resolve, as a known target
+// marked `reading: true`, after the first walk's. This walk's own `&&`/`||` branches fill the set
+// where base's did not, so it collapses where base never did; the base view keeps what base would
+// have checked there. Each consumer that reads the marker acts on it for its own concern:
+// pre-tool-use's worktree gate denies on it in a session whose own repo has worktree-always on, and
+// otherwise lets the known targets, the readings among them, decide, as base did; the pipeline
+// shadow guard checks the readings as ordinary targets and denies on the marker, and so does the
+// teardown gate; post-tool-use looks for a lost commit in every candidate repo, the readings'
+// among them. Any other consumer sees the stand-in as before.
+//
+// Any other handler (the prefilter, powershellOpaqueCommand) is never handed a lost cwd: the set
+// collapses to real paths, the overflow cwd and the start, exactly as before #4303, so the handler
+// contract (a cwd string, or null for unknown) and its decisions are unchanged. Neither needs the
+// marker: the prefilter only decides whether the full handler runs, and any redirect target from
+// any cwd already sends it there; powershellOpaqueCommand reads no cwd. A handler that does need it
+// opts in with `keepLost(opts)`, as teardownTargets does, and hands its cwd only to
+// resolveGitCommand, whose `lost` field is the channel: the handler never reads a lost cwd itself.
 //
 // #4281: bash drops a NUL it reads from a script or stdin (`echo x > b<NUL>junk` writes `bjunk`, bash
 // 3.2 and 5), so the walk drops every NUL before it reads the command. That also keeps STRAY, a NUL,
 // from ever meeting one typed in the command (settleStrayBackslash).
 const CWD_SET_CAP = 16; // four groups each with a relative cd already make 2^4 cwds
+const KEEP_LOST = Symbol('keepLostCwd');
+const keepLost = (opts) => ({ ...(opts || {}), [KEEP_LOST]: true });
+const BASE_VIEW = Symbol('baseView');
+const baseView = (opts) => ({ ...(opts || {}), [BASE_VIEW]: true });
 function forEachShellSegment(command, cwd, handler, opts = {}) {
   const start = cwd || '.';
   let collapsed = null;
-  const overflow = () => {
+  const overflow = (set) => {
     if (collapsed === null) {
       const o = typeof opts.overflowCwd === 'function' ? opts.overflowCwd() : opts.overflowCwd;
-      collapsed = o && o !== start ? [o, start] : [start];
+      if (!opts[KEEP_LOST]) collapsed = o && o !== start ? [o, start] : [start];
+      else if (!o || o === start) collapsed = [new LostCwd(start, !!o)];
+      else collapsed = [new LostCwd(o, true), new LostCwd(start, false)];
     }
-    return collapsed;
+    if (!opts[KEEP_LOST]) return collapsed;
+    // Each lost cwd keeps the furthest trail the collapsing set had spelled, so a
+    // `.claude-tweaks/pipelines` segment named before it still names one after. A known cwd in the
+    // set may be where the shell is, so its path seeds the trail too: one inside a
+    // `.claude-tweaks/pipelines` directory starts each lost cwd with the whole segment spelled, and
+    // one under a `.claude-tweaks` alone with its first part (spellTrail, as a relative cd spells it).
+    const seed = set.reduce((most, x) => (typeof x === 'string' ? Math.max(most, spellTrail(x, 0)) : most), 0);
+    return collapsed.map((c) => c.withTrail(set.reduce((most, x) => (x instanceof LostCwd && x.family === c ? Math.max(most, x.trail) : most), seed)));
   };
-  walkShellChunk(String(command || '').replace(/\0/g, ''), [start], new Map(), handler, 0, true, overflow, opts.pathImpl || path);
+  walkShellChunk(String(command || '').replace(/\0/g, ''), [start], new Map(), handler, 0, true, overflow, !!opts[BASE_VIEW], opts.pathImpl || path);
 }
 
-// The union of two cwd lists, collapsed to `overflow()` past CWD_SET_CAP.
+// A `case` word anywhere in a segment's text, quoted or not (#4303): a superset, read only to fail
+// closed (walkShellChunk's backtick runs).
+const CASE_WORD_RE = /(?:^|[\s;&|(){}`])case(?=[\s;&|()]|$)/;
+
+// The and-or list operator the separator at `outer[at]` is: `&&`, `||`, `|`, or `;` for any other
+// (a `;`, a newline or the end).
+function separatorOp(outer, at) {
+  const c = outer[at];
+  if (c === '&') return '&&';
+  if (c !== '|') return ';';
+  return outer[at + 1] === '|' ? '||' : '|';
+}
+
+// The union of two cwd lists, collapsing to `overflow(union)` past CWD_SET_CAP.
 function joinCwds(a, b, overflow) {
-  const out = [...a, ...b.filter((c) => !a.includes(c))];
-  return out.length > CWD_SET_CAP ? overflow() : out;
+  const out = [...a, ...b.filter((c) => !a.some((x) => sameCwd(x, c)))];
+  return out.length <= CWD_SET_CAP ? out : overflow(out);
 }
 
-function walkShellChunk(text, cwds, vars, handler, depth, plan, overflow, pathImpl) {
+function walkShellChunk(text, cwds, vars, handler, depth, plan, overflow, baseLike, pathImpl) {
   const { outer, bodies } = plan && depth < MAX_HEREDOC_NESTING ? stripHeredocBodies(text) : { outer: text, bodies: [] };
-  const g = { root: { kind: 'root', caseDepth: 0 }, stack: [], nesting: 0 };
+  const g = { root: { kind: 'root', caseDepth: 0, cmd: true }, stack: [], nesting: 0 };
   let cur = cwds;
+  // An and-or list's state (#4303), besides the cwds in effect: `listStart`, where the list began
+  // (after the last `;`, newline, `&` or group opener); `spanStart`, where its current command
+  // began (a failed command leaves the cwd there); `skipOk` and `skipFail`, the cwds where the
+  // list may already have succeeded or failed and be skipping commands; `pipeStart`, the cwds a
+  // pipeline in progress began at (each element runs in a subshell from there); `pipeKeep`, whether
+  // one of its `|`s may be a case pattern's or one of its elements is a case compound (endCommand).
+  const freshList = (at) => ({ listStart: at, spanStart: at, skipOk: [], skipFail: [], pipeStart: null, pipeKeep: false });
+  // Ends the current command of list `L`, in effect at `at`, at the separator `op`, and returns the
+  // cwds the next command runs under. `&&` runs it where the command succeeded and `||` where it
+  // failed; whatever the list skips past carries on to its end. A `;`, a newline or the end joins
+  // every way the list could have gone, except the last command failing: as after any `cd x;`, the
+  // walk takes a command it does not branch on to succeed. `maybePattern` marks a `|` that may
+  // separate case patterns instead (#4303: one inside a top-level backtick that holds a `case`,
+  // whose structure groupEvents never sees): the walk keeps both readings, the next element running
+  // under the pipeline's start and the cwd in effect, and the pipeline ending under both. `caseSeen`
+  // says a case compound opened since the last separator: as a pipeline element it is one command
+  // whose own `;;` and `;` end no pipeline, and the walk cannot place its `esac` (#4244), so a
+  // pipeline holding one ends under its start and the cwd in effect, failing closed.
+  const endCommand = (L, at, op, maybePattern = false, caseSeen = false) => {
+    if (caseSeen && L.pipeStart !== null) L.pipeKeep = true;
+    if (op === '|') {
+      if (L.pipeStart === null) L.pipeStart = L.spanStart;
+      if (!maybePattern) return L.pipeStart;
+      L.pipeKeep = true;
+      return joinCwds(L.pipeStart, at, overflow);
+    }
+    if (L.pipeStart !== null) {
+      // the pipeline ran in subshells: one command, which changed no cwd
+      at = L.pipeKeep ? joinCwds(L.pipeStart, at, overflow) : L.pipeStart;
+      L.pipeStart = null;
+      L.pipeKeep = false;
+    }
+    if (baseLike) {
+      // BASE_VIEW: base took every command to succeed and ran the next from where it left the cwd.
+      if (op !== '&&' && op !== '||') L.listStart = at;
+      L.spanStart = at;
+      return at;
+    }
+    const ok = joinCwds(at, L.skipOk, overflow);
+    const fail = joinCwds(L.spanStart, L.skipFail, overflow);
+    let next;
+    if (op === '&&') {
+      next = ok;
+      L.skipFail = fail;
+      L.skipOk = [];
+    } else if (op === '||') {
+      next = fail;
+      L.skipOk = ok;
+      L.skipFail = [];
+    } else {
+      next = joinCwds(ok, L.skipFail, overflow);
+      L.skipOk = [];
+      L.skipFail = [];
+      L.listStart = next;
+    }
+    L.spanStart = next;
+    return next;
+  };
+  // A lone `&` ran list `L` in the background: the cwd returns to where the list began.
+  const background = (L) => {
+    L.skipOk = [];
+    L.skipFail = [];
+    L.pipeStart = null;
+    L.pipeKeep = false;
+    L.spanStart = L.listStart;
+    return L.listStart;
+  };
+  // A group's close restores the list it opened in; the group is that list's current command,
+  // which may fail anywhere the group left the cwd. The join keeps the cwds the group's command
+  // began at too, a deliberate superset of `at` (#4303): `at` alone drops a target the join keeps
+  // where a group closes inside a pipeline (`… | { …; cd /nope && cd sub; } | { …`).
+  const closeGroup = (frame, at) => {
+    frame.savedList.spanStart = joinCwds(frame.savedList.spanStart, at, overflow);
+    return frame.savedList;
+  };
+  let list = freshList(cwds); // the outer walk's innermost list (a group's own, while one is open)
   // A piece inside a substitution or a backtick span runs in a subshell: it is visited from the
   // cwd and assignments in effect, and what it changes holds only for the pieces after it in the
   // same run of sub pieces, never for the outer walk. A group opened inside the substitution is
   // scoped within that run (its saved cwd is the sub cwd), so its events do not end the run; the
   // next outer piece (the text after the substitution's closer among them) or outer group event does.
-  // The run keeps its own and-or list start, so a lone `&` inside it backgrounds only the run's list.
+  // The run keeps one and-or list per substitution level (`subLevels`, by nesting depth, a
+  // top-level backtick span counting as one more level), so a separator or a lone `&` inside a
+  // substitution acts on that substitution's own list only, never an enclosing one's or the outer
+  // walk's. A level ends when the walk reaches a piece or event at a shallower level: each level is
+  // a subshell of its own, so the cwd returns to the one the level began at, and a cd inside a
+  // deeper `$( )` never reaches the commands after it in the level around it.
   let subCur = null;
   let subVars = null;
-  let subListStart = null;
+  // `subLevels` is a stack of { level, entry: the cwds the level began at, list: its innermost
+  // list }, its levels strictly increasing: reaching a level truncates every deeper one, so each
+  // record is pushed and dropped once and a deep nest costs amortized O(1) per event, not a scan
+  // of every open level (#4303). It holds only the levels the walk has reached, so a level may
+  // be missing between two others.
+  let subLevels = null;
   const startSubRun = () => {
     if (subCur !== null) return;
     subCur = cur;
     subVars = new Map(vars);
-    subListStart = cur;
+    subLevels = [];
   };
-  let listStart = cwds; // the cwds where the current and-or list began
+  const subLevelAt = (level) => {
+    let keep = subLevels.length;
+    while (keep > 0 && subLevels[keep - 1].level > level) keep -= 1;
+    if (keep < subLevels.length) {
+      subCur = subLevels[keep].entry; // the shallowest of the levels the walk has just left
+      subLevels.length = keep;
+    }
+    let at = subLevels[keep - 1];
+    if (at === undefined || at.level !== level) {
+      at = { level, entry: subCur, list: freshList(subCur) };
+      subLevels.push(at);
+    }
+    return at;
+  };
   // A tail piece (the rest of a command after a substitution's closer) is visited on its own, so
   // whether a `cd` or an assignment in it runs (`x=$(…) cd /x`) or is an argument (`echo $(…) cd
   // /x`) is unknown: its cwd is added to the ones in effect (failing closed), and what it assigns
@@ -1989,49 +2532,82 @@ function walkShellChunk(text, cwds, vars, handler, depth, plan, overflow, pathIm
   let b = 0;
   const runBodies = (until, bodyCwds) => {
     for (; b < bodies.length && bodies[b].at < until; b += 1) {
-      walkShellChunk(bodies[b].text, bodyCwds, new Map(vars), handler, depth + 1, true, overflow, pathImpl);
-      if (!bodies[b].shell) walkShellChunk(bodies[b].text, bodyCwds, new Map(vars), handler, depth + 1, false, overflow, pathImpl);
+      walkShellChunk(bodies[b].text, bodyCwds, new Map(vars), handler, depth + 1, true, overflow, baseLike, pathImpl);
+      if (!bodies[b].shell) walkShellChunk(bodies[b].text, bodyCwds, new Map(vars), handler, depth + 1, false, overflow, baseLike, pathImpl);
     }
   };
+  let btCase = false; // a `case` word shows in the top-level backtick run in progress (#4303)
+  let caseSeen = false; // a case compound opened since the last separator the walk acted on (#4303)
   for (const span of segmentSpans(outer)) {
     const before = cur;
+    const inBacktick = span.sub ? 1 : 0; // the backtick span's own level, which g.nesting omits
     for (const ev of groupEvents(span.text, g)) {
       if (ev.open ? ev.open.sub || span.sub : ev.close ? ev.close.inSubRun : ev.bg && (ev.sub || span.sub)) {
         startSubRun();
         if (ev.open) {
           ev.open.inSubRun = true;
+          ev.open.level = ev.open.nesting + inBacktick;
+          const at = subLevelAt(ev.open.level);
           ev.open.saved = subCur;
-          ev.open.savedList = subListStart;
-          subListStart = subCur;
+          ev.open.savedList = at.list;
+          at.list = freshList(subCur);
         } else if (ev.close) {
-          const { saved } = ev.close;
+          const { saved, level } = ev.close;
+          const at = subLevelAt(level);
           subCur = ev.close.kind === '(' ? saved : joinCwds(saved, subCur, overflow);
-          subListStart = ev.close.savedList;
-        } else subCur = subListStart;
+          at.list = closeGroup(ev.close, subCur);
+        } else subCur = background(subLevelAt(ev.nesting + inBacktick).list);
         continue;
       }
       if (ev.open) {
         ev.open.saved = cur;
-        ev.open.savedList = listStart;
-        listStart = cur;
+        ev.open.savedList = list;
+        list = freshList(cur);
       } else if (ev.close) {
         const { saved } = ev.close;
         cur = ev.close.kind === '(' ? saved : joinCwds(saved, cur, overflow);
-        listStart = ev.close.savedList;
-      } else if (ev.bg) cur = listStart;
+        list = closeGroup(ev.close, cur);
+      } else if (ev.bg) cur = background(list);
       else if (ev.sub || span.sub) {
         startSubRun();
+        subLevelAt(ev.nesting + inBacktick);
         subCur = visitPiece(ev, subCur, subVars);
         continue;
       } else cur = visitPiece(ev, cur, vars);
       subCur = null;
     }
     runBodies(span.end, before);
-    // `&&`, `||` and `|` continue the and-or list; `;`, a newline or the end start a new one.
-    if (outer[span.end] !== '&' && outer[span.end] !== '|') {
-      listStart = cur;
-      if (subCur !== null) subListStart = subCur;
+    caseSeen = caseSeen || !!g.caseSeen;
+    g.caseSeen = false;
+    // The separator ends a command of the innermost list open where it stands: a substitution's
+    // (by the nesting there, never by whether the sub run is active: an outer piece before the
+    // separator has ended the run) or the outer walk's.
+    const op = separatorOp(outer, span.end);
+    // #4303: a `|` in a case pattern list (`case x in a|x) cd M;; esac`) separates two patterns, no
+    // pipeline elements: bash 3.2 and 5 run the arm in the current shell, so its `cd` reaches the
+    // commands after `esac` (both write M/f). The walk reads no separator there, so the arm keeps
+    // the cwd semantics base gave it; reading it as `;` would end a pipeline the case sits in
+    // (`true | case …`, which bash runs in a subshell). The frame is groupEvents' innermost one
+    // where the separator stands (a pattern list's leading `(` opens one of its own, `leadParen`),
+    // and a `;;`, `;&` or `;;&` there opens its next pattern list. A
+    // separator inside a top-level backtick is that backtick's own, never the frame's: groupEvents
+    // never reads the backtick's first command, so once a `case` word shows in the backtick run, a
+    // `|` in it is read both ways (endCommand's `maybePattern`), failing closed.
+    if (span.endsInSub) btCase = btCase || CASE_WORD_RE.test(span.text);
+    else {
+      const frame = g.stack[g.stack.length - 1] || g.root;
+      if (op === '|' && (frame.casePattern || frame.leadParen)) continue;
+      if (frame.caseDepth > 0 && outer[span.end] === ';' && (outer[span.end + 1] === ';' || outer[span.end + 1] === '&')) frame.casePattern = true;
     }
+    const maybePattern = span.endsInSub && btCase;
+    if (!span.endsInSub) btCase = false;
+    const level = g.nesting + (span.endsInSub ? 1 : 0);
+    if (level > 0) {
+      startSubRun();
+      const at = subLevelAt(level);
+      subCur = endCommand(at.list, subCur, op, maybePattern, caseSeen);
+    } else cur = endCommand(list, cur, op, maybePattern, caseSeen);
+    caseSeen = false;
   }
   runBodies(Infinity, cur);
 }
@@ -2095,19 +2671,46 @@ function redirectWriteTargets(t, effCwd, quoting) {
   return redirectRawTargets(t, quoting).map((raw) => resolveWriteTarget(effCwd, raw, pathImpl)).filter(Boolean);
 }
 
+// #4303: an unquoted `)` ends a word, so a target glued to the closer of the substitution it sits in
+// (`$(echo x >f)`, `$(echo x >&2)`) ends there: bash 3.2 and 5 write f, and nothing for `>&2)`. The
+// cut is at the first bare `)`, even one that closes a `(` of the word's own: a `$(` leaves the word
+// unresolvable however it is cut, and the text before a `<(` stays in the same directory, so the
+// cut moves no target out of it. `kinds` are the word's span kinds
+// (tokenize), so a quoted or escaped `)` is word text; null (a word a substitution rewrote, whose
+// kinds no longer line up) leaves it whole, as before.
+function wordBeforeCloser(word, kinds) {
+  if (!kinds) return word;
+  for (let j = 0; j < word.length; j += 1) if (word[j] === ')' && kinds[j] === 'b') return word.slice(0, j);
+  return word;
+}
+
 // The redirection targets of one segment as values, before any cwd resolves them: the scan
-// above without its last step. bash-prefilter.js's hasFileRedirection reads them (#4281).
+// above without its last step. bash-prefilter.js's hasFileRedirection reads them (#4281), and
+// fileWriteTargets builds its entries from them (writeTarget), so a word from a lost cwd keeps
+// its text (#4303).
 function redirectRawTargets(t, quoting) {
   const out = [];
   const kindsOf = quoting && quoting.spanKinds;
+  // The span kinds of token k when they still describe t[k] (no substitution rewrote it), else null.
+  const kindsAt = (k) => (kindsOf && t[k] === quoting.raw[k] ? kindsOf[k] : null);
   for (let i = compoundBodyEnd(t, quoting); i < t.length; i += 1) {
     let rawTarget = null;
-    if (!kindsOf) rawTarget = matchRedirectOperator(t[i]);
-    else {
+    let targetKinds = null; // rawTarget's span kinds, when known (wordBeforeCloser)
+    let plainFd = null; // the fd prefix of a plain `>` ('' when unprefixed); null for any other operator
+    // Whether an `&` that starts the target is the operator's own (`>&`). The target is a value
+    // (#4281), so an escaped or quoted `&` reads the same: `>\&2` and `> '&2'` write the file `&2`
+    // (bash 3.2 and 5), so only a bare one counts. Without span kinds every `&` counts, as before.
+    let ampOp = !kindsOf;
+    if (!kindsOf) {
+      const op = matchRedirectOperator(t[i]);
+      if (op) ({ plainFd, target: rawTarget } = op);
+    } else {
       const raw = quoting.raw[i];
+      const kinds = kindsOf[i];
       const nest = quoting.nestAt ? quoting.nestAt[i] : NOT_NESTED;
-      let opEnd = leadingRedirectOpEnd(raw, kindsOf[i], nest);
-      if (opEnd === null) opEnd = gluedRedirectOpEnd(raw, kindsOf[i], nest);
+      let opEnd = leadingRedirectOpEnd(raw, kinds, nest);
+      const leading = opEnd !== null;
+      if (!leading) opEnd = gluedRedirectOpEnd(raw, kinds, nest);
       if (opEnd !== null) {
         // substituteVars rewrites at most one `$` reference per token, so exactly one
         // side of the operator changed: read the target from whichever side survived.
@@ -2116,14 +2719,46 @@ function redirectRawTargets(t, quoting) {
         if (t[i] === raw) rawTarget = tail;
         else if (t[i].startsWith(head)) rawTarget = t[i].slice(head.length);
         else if (t[i].endsWith(tail)) rawTarget = tail;
+        if (rawTarget === tail) targetKinds = kinds.slice(opEnd);
+        // A plain `>` is not the second character of `>>` or `&>`. Its fd prefix is the
+        // head's digits when the operator starts the token (`2>`, all bare there); a
+        // glued word before it (`x2>`, `"2">`) is a word, not an fd.
+        const prev = opEnd - 2;
+        const plain = head.endsWith('>') && !(prev >= 0 && kinds[prev] === 'b' && (raw[prev] === '>' || raw[prev] === '&'));
+        if (plain) plainFd = leading ? head.slice(0, -1) : '';
+        // A substitution leaves the target's first character in place (substituteVars, above),
+        // so it is `raw[opEnd]` on every branch; one a `$` put there is text too (`>$A`).
+        ampOp = raw[opEnd] === '&' && kinds[opEnd] === 'b';
       }
     }
     if (rawTarget === null) continue;
     if (rawTarget === '') {
       i += 1; // consume the target token too — never re-scan it as its own operator
       rawTarget = t[i];
+      targetKinds = kindsAt(i);
+      // The target is a word of its own: an `&` starting it is literal unless bare.
+      if (kindsOf) ampOp = rawTarget !== undefined && kindsOf[i][0] === 'b';
     }
-    if (rawTarget === undefined || isFdDupTarget(rawTarget) || rawTarget.startsWith('(')) continue;
+    if (rawTarget === undefined) continue;
+    const whole = rawTarget;
+    rawTarget = wordBeforeCloser(rawTarget, targetKinds);
+    // #4303: a target that starts with `&` follows `>&`. After a plain `>` with no fd
+    // prefix or the prefix 1, a word that is no fd dup is the csh form `>& file`, which
+    // writes the file (bash 3.2 and 5). A bare `&` takes the next token as that word,
+    // so `>& 2` is still a dup. Any other prefix (`2>&f`, `0>&f`) is an ambiguous
+    // redirect, and any other operator (`>>&f`) a syntax error: neither writes.
+    if (ampOp && rawTarget.startsWith('&')) {
+      let word = rawTarget.slice(1);
+      if (word === '') {
+        if (rawTarget !== whole) continue; // `>&)`: the word ends at the closer, a syntax error
+        i += 1; // consume the word token too, as above
+        word = t[i] === undefined ? undefined : wordBeforeCloser(t[i], kindsAt(i));
+      }
+      const stdout = plainFd === '' || Number(plainFd) === 1; // Number(null) is 0: not stdout
+      if (word === undefined || !stdout || isFdDupTarget(word)) continue;
+      rawTarget = word;
+    }
+    if (rawTarget.startsWith('(')) continue;
     out.push(rawTarget);
   }
   return out;
@@ -2132,7 +2767,8 @@ function redirectRawTargets(t, quoting) {
 // Split a shape's argument list into positionals and the flags seen, given the
 // flags that consume the FOLLOWING token as their value. Long `--flag=value`
 // forms are self-contained and never consume the next token. `--` ends option
-// parsing, as it does for every one of these commands.
+// parsing, as it does for every one of these commands. `valueFlags.has` is also
+// handed the number of positionals before the flag (coreutilsValueFlags reads it).
 function partitionArgs(rest, valueFlags) {
   const positionals = [];
   const flags = [];
@@ -2141,7 +2777,7 @@ function partitionArgs(rest, valueFlags) {
     if (a === '--') { positionals.push(...rest.slice(i + 1)); break; }
     if (a.startsWith('-') && a !== '-') {
       flags.push(a);
-      if (valueFlags.has(a) && i + 1 < rest.length) i += 1;
+      if (valueFlags.has(a, positionals.length) && i + 1 < rest.length) i += 1;
       continue;
     }
     positionals.push(a);
@@ -2154,14 +2790,29 @@ function partitionArgs(rest, valueFlags) {
 // what keeps the shape from denying ordinary inspection commands.
 //
 // Detection can't just look for a literal `-i`: GNU attaches the backup suffix
-// (`-i.bak`), and short flags bundle (`perl -pi -e`, `sed -ni`).
-function hasInPlaceFlag(flags) {
+// (`-i.bak`), and short flags bundle (`perl -pi -e`, `sed -ni`, `perl -0pi`,
+// `perl -pi.bak`). A cluster is read the way getopt reads it (readShortCluster):
+// `i` and the options that take a value each end it, so the first of them
+// decides, and every other letter or digit is a plain switch (#4303). BSD
+// sed's -l is a plain switch, so it is not listed: BSD `sed -li.bak` edits in
+// place. perl's -d is one too (`perl -dpi` edits in place) unless a `:` or `=`
+// follows it, directly or after its `t` (`-d:MOD`, `-dt:MOD`, `-d=MOD`): then
+// the rest of the cluster is a debugger module and its arguments, so the
+// cluster ends there (PERL_DEBUG_MODULE_RE) and an i in `-d:Wiki` is no -i. BSD
+// (macOS) sed's -I edits in place too, taking its suffix the way -i does
+// (`sed -I '' …`, `sed -I .bak …`); GNU sed has no -I and rejects it, so
+// reading it as in-place there can only add a target, the fail-closed side.
+// perl's -I is an include directory, never an edit.
+const IN_PLACE_CLUSTER_LETTERS = Object.freeze({ sed: 'iIef', perl: 'ieEImMFxDC' });
+const PERL_DEBUG_MODULE_RE = /dt?[:=][\s\S]*$/;
+function hasInPlaceFlag(flags, cmd) {
   return flags.some((f) => {
     if (f === '--in-place' || f.startsWith('--in-place=')) return true;
     if (f.startsWith('--') || !f.startsWith('-')) return false;
-    if (f.startsWith('-I')) return false; // perl's include path — not in-place
-    if (f.startsWith('-i')) return true; // -i, -i.bak
-    return /^-[A-Za-z]+$/.test(f) && f.includes('i'); // bundled: -pi, -ni
+    // A letter before the module's `d` still reads first (`-pid:x` is -i with the suffix `d:x`).
+    const cluster = cmd === 'perl' ? f.replace(PERL_DEBUG_MODULE_RE, '') : f;
+    const opt = readShortCluster(cluster, IN_PLACE_CLUSTER_LETTERS[cmd] || ''); // never throw on a new cmd
+    return opt !== null && (opt.letter === 'i' || (cmd === 'sed' && opt.letter === 'I'));
   });
 }
 
@@ -2206,16 +2857,81 @@ const SED_VALUE_FLAGS = new Set(['-e', '-f', '--expression', '--file', '-l', '--
 const PERL_VALUE_FLAGS = new Set(['-e', '-E', '-I', '-m', '-M', '-F', '-x']);
 const INSTALL_VALUE_FLAGS = new Set(['-m', '--mode', '-o', '--owner', '-g', '--group', '-t', '--target-directory', '-S', '--suffix']);
 const LN_VALUE_FLAGS = new Set(['-t', '--target-directory', '-S', '--suffix']);
+
+// The GNU long options of cp, mv, ln and install that take a required value besides
+// --target-directory: with no `=`, the next word is that value (`--suffix .bak`), never an
+// option (#4303). getopt accepts any unambiguous abbreviation (`--suf`), and an exact name wins
+// over one it abbreviates: install's `--strip` takes no value though it abbreviates
+// `--strip-program`. An ambiguous abbreviation (`cp --s`) fails the command, so reading it either
+// way writes nothing. An optional value (`--backup[=CONTROL]`) is only ever given with `=`.
+const LONG_VALUE_OPTIONS = Object.freeze({
+  cp: ['--no-preserve', '--sparse', '--suffix'],
+  mv: ['--suffix'],
+  ln: ['--suffix'],
+  install: ['--group', '--mode', '--owner', '--strip-program', '--suffix'],
+});
+const LONG_NO_VALUE_EXACT = Object.freeze({ install: ['--strip'] });
+function takesLongValue(word, cmd) {
+  return word.length > 2 && !word.includes('=') && !(LONG_NO_VALUE_EXACT[cmd] || []).includes(word)
+    && LONG_VALUE_OPTIONS[cmd].some((o) => o.startsWith(word));
+}
+
+// partitionArgs' value flags for install or ln (`set`), with each long value option (takesLongValue,
+// abbreviated or not) before the first operand taking its value too, as GNU getopt reads it: BSD's
+// tool rejects a long option there, so GNU's is the only reading that writes. After an operand the
+// set alone decides, as before #4303: BSD reads every later word as an operand (`install a b --suf
+// M` installs into M), GNU an abbreviated option.
+function coreutilsValueFlags(set, cmd) {
+  return { has: (a, operandsSeen) => set.has(a) || (operandsSeen === 0 && a.startsWith('--') && takesLongValue(a, cmd)) };
+}
 const TRUNCATE_VALUE_FLAGS = new Set(['-s', '--size', '-r', '--reference', '-o', '--io-blocks']);
+
+// Reads a short-option cluster (`-vtM`) the way getopt does: left to right, each
+// letter a plain switch until the first one in valueLetters, which takes the rest
+// of the cluster as its value — or, when nothing follows it, the next word
+// (value null here). Returns that letter and value, or null when no letter in the
+// cluster takes a value.
+function readShortCluster(word, valueLetters) {
+  for (let j = 1; j < word.length; j++) {
+    if (valueLetters.includes(word[j])) return { letter: word[j], value: j + 1 < word.length ? word.slice(j + 1) : null };
+  }
+  return null;
+}
 
 // `-t DIR` / `--target-directory[=]DIR` names the destination explicitly, which
 // makes EVERY positional a source rather than the last one being the target.
-// Shared by cp/mv/install/ln, all of which accept it.
-function explicitTargetDir(rest) {
+// Shared by cp/mv/install/ln, all of which accept it. GNU getopt also reads `-t`
+// inside a cluster (`-rt DIR`, `-tDIR`, `-vtDIR`) and accepts any `--t…` prefix
+// of `--target-directory`, since none of the four has another `--t…` option.
+// valueLetters are the command's short options that take a value: the first one
+// in a cluster ends it, so `cp -tr DIR` targets `r` and `cp -St DIR` has no -t
+// (#4303), and so does a long option's value (takesLongValue): in `cp --suffix -t
+// a M/f`, `-t` is the suffix. `--` ends option parsing.
+function explicitTargetDir(rest, valueLetters, cmd) {
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
-    if ((a === '-t' || a === '--target-directory') && i + 1 < rest.length) return rest[i + 1];
-    if (a.startsWith('--target-directory=')) return a.slice('--target-directory='.length);
+    if (a === '--') break;
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=');
+      const name = eq === -1 ? a : a.slice(0, eq);
+      if (!'--target-directory'.startsWith(name)) {
+        if (takesLongValue(a, cmd)) i += 1;
+        continue;
+      }
+      if (eq !== -1) return a.slice(eq + 1);
+      if (i + 1 < rest.length) return rest[i + 1];
+      continue;
+    }
+    if (!a.startsWith('-')) continue;
+    const opt = readShortCluster(a, valueLetters);
+    if (opt === null) continue;
+    let value = opt.value;
+    if (value === null) {
+      if (i + 1 >= rest.length) continue;
+      i += 1;
+      value = rest[i];
+    }
+    if (opt.letter === 't') return value;
   }
   return null;
 }
@@ -2223,9 +2939,9 @@ function explicitTargetDir(rest) {
 // sed and perl share a program/file split: with -e/-f supplying the program,
 // EVERY positional is a file; without one, the FIRST positional IS the program
 // and only the rest are files.
-function inPlaceEditTargets(rest, valueFlags, scriptFlags) {
+function inPlaceEditTargets(rest, valueFlags, scriptFlags, cmd) {
   const { positionals, flags } = partitionArgs(rest, valueFlags);
-  if (!hasInPlaceFlag(flags)) return []; // read-only invocation — nothing written
+  if (!hasInPlaceFlag(flags, cmd)) return []; // read-only invocation — nothing written
   const programSupplied = flags.some((f) => scriptFlags.some((s) => f === s || f.startsWith(`${s}=`)));
   return programSupplied ? positionals : positionals.slice(1);
 }
@@ -2243,10 +2959,14 @@ const REDIRECTION_TOKEN_RE = /^(?:\d+|&)?(?:>>|>\||>&|<>|<&|>|<)(?![<(])/;
 // (`leadQuoted`, from tokenize). #4281: the operator is matched on the word before expansion
 // (`raw`) with every non-bare character masked out (`spanKinds`), so an escaped or quoted
 // character anywhere in it makes the word literal: `\>x` is the word `>x` and `2\>` the word `2>`.
+// Masking only removes a match, never makes one, so a word whose first character could start no
+// operator (REDIRECTION_LEAD_RE) is kept without building its mask: the walk calls this for every
+// segment, a cd one included, under every cwd it visits (#4303's cost shapes).
+const REDIRECTION_LEAD_RE = /^[\d&<>]/;
 function dropRedirections(tokens, { raw, leadQuoted, spanKinds }) {
   const out = [];
   for (let i = 0; i < tokens.length; i += 1) {
-    if (leadQuoted[i]) { out.push(tokens[i]); continue; }
+    if (leadQuoted[i] || !REDIRECTION_LEAD_RE.test(raw[i])) { out.push(tokens[i]); continue; }
     const bare = [...raw[i]].map((c, j) => (spanKinds[i][j] === 'b' ? c : '\0')).join('');
     if (bare.startsWith('<<')) {
       if (/^<<<?-?$/.test(bare)) i += 1;
@@ -2261,11 +2981,16 @@ function dropRedirections(tokens, { raw, leadQuoted, spanKinds }) {
 
 function fileWriteTargets(command, cwd, opts) {
   const targets = [];
-  forEachShellSegment(command, cwd, (tokens, effCwd, quoting) => {
+  let reading = false; // the base-view walk's entries are base's readings (#4303)
+  const visit = (tokens, effCwd, quoting) => {
     const { pathImpl } = quoting;
+    const add = (action, raw) => {
+      const entry = writeTarget(action, effCwd, raw, pathImpl);
+      if (entry) targets.push(reading ? { ...entry, reading: true } : entry);
+    };
     // Redirection has no command word, so it runs for every segment
     // regardless of t[0] — never gated by the WRITE_SHAPES check below (#3080).
-    for (const file of redirectWriteTargets(tokens, effCwd, quoting)) targets.push({ action: 'write', file });
+    for (const word of redirectRawTargets(tokens, quoting)) add('write', word);
     // A heredoc/here-string operator is input and a redirection is reported above, so
     // neither is a file the shape writes.
     const t = dropRedirections(tokens, quoting);
@@ -2275,8 +3000,7 @@ function fileWriteTargets(command, cwd, opts) {
       // first — `tee a.txt b.txt` writes both files. .find() silently
       // dropped every destination after the first.
       for (const arg of t.slice(1).filter((a) => !a.startsWith('-'))) {
-        const file = resolveWriteTarget(effCwd, arg, pathImpl);
-        if (file) targets.push({ action: 'write', file });
+        add('write', arg);
       }
       return;
     }
@@ -2288,21 +3012,22 @@ function fileWriteTargets(command, cwd, opts) {
       // the destination" rule below only applies when neither form is
       // present.
       const rest = t.slice(1);
-      const targetDirRaw = explicitTargetDir(rest);
+      const targetDirRaw = explicitTargetDir(rest, 'St', t[0]);
+      // Read only when no -t resolved, so a `-t` word here is -S's value or a
+      // trailing -t with no argument (cp refuses it). After `--` every word is
+      // an operand (`cp -- -tfoo dest`).
       const nonFlags = [];
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
-        if (a === '-t' || a === '--target-directory') { i += 1; continue; }
+        if (a === '--') { nonFlags.push(...rest.slice(i + 1)); break; }
         if (a.startsWith('-')) continue; // other flags — never a positional
         nonFlags.push(a);
       }
       const action = t[0] === 'cp' ? 'copy' : 'move';
       if (targetDirRaw !== null) {
-        const file = resolveWriteTarget(effCwd, targetDirRaw, pathImpl);
-        if (file) targets.push({ action, file });
+        add(action, targetDirRaw);
       } else if (nonFlags.length >= 2) {
-        const file = resolveWriteTarget(effCwd, nonFlags[nonFlags.length - 1], pathImpl);
-        if (file) targets.push({ action, file });
+        add(action, nonFlags[nonFlags.length - 1]);
       }
       return;
     }
@@ -2315,10 +3040,10 @@ function fileWriteTargets(command, cwd, opts) {
         t.slice(1),
         isSed ? SED_VALUE_FLAGS : PERL_VALUE_FLAGS,
         isSed ? ['-e', '-f', '--expression', '--file'] : ['-e', '-E'],
+        t[0],
       );
       for (const arg of raw) {
-        const file = resolveWriteTarget(effCwd, arg, pathImpl);
-        if (file) targets.push({ action: 'edit', file });
+        add('edit', arg);
       }
       return;
     }
@@ -2327,11 +3052,10 @@ function fileWriteTargets(command, cwd, opts) {
       // Same source→dest shape as cp, plus `-d`, under which EVERY positional
       // is a directory being created rather than a source.
       const rest = t.slice(1);
-      const { positionals, flags } = partitionArgs(rest, INSTALL_VALUE_FLAGS);
-      const targetDirRaw = explicitTargetDir(rest);
+      const { positionals, flags } = partitionArgs(rest, coreutilsValueFlags(INSTALL_VALUE_FLAGS, 'install'));
+      const targetDirRaw = explicitTargetDir(rest, 'mogSt', 'install');
       if (targetDirRaw !== null) {
-        const file = resolveWriteTarget(effCwd, targetDirRaw, pathImpl);
-        if (file) targets.push({ action: 'install', file });
+        add('install', targetDirRaw);
         return;
       }
       const creatingDirs = flags.some((f) => (
@@ -2343,8 +3067,7 @@ function fileWriteTargets(command, cwd, opts) {
       if (creatingDirs) written = positionals;
       else if (positionals.length >= 2) written = positionals.slice(-1);
       for (const arg of written) {
-        const file = resolveWriteTarget(effCwd, arg, pathImpl);
-        if (file) targets.push({ action: 'install', file });
+        add('install', arg);
       }
       return;
     }
@@ -2353,19 +3076,16 @@ function fileWriteTargets(command, cwd, opts) {
       // The LINK name is what gets created — the last positional. With a single
       // positional the link lands in the cwd under the source's basename.
       const rest = t.slice(1);
-      const targetDirRaw = explicitTargetDir(rest);
-      const { positionals } = partitionArgs(rest, LN_VALUE_FLAGS);
+      const targetDirRaw = explicitTargetDir(rest, 'St', 'ln');
+      const { positionals } = partitionArgs(rest, coreutilsValueFlags(LN_VALUE_FLAGS, 'ln'));
       if (targetDirRaw !== null) {
-        const file = resolveWriteTarget(effCwd, targetDirRaw, pathImpl);
-        if (file) targets.push({ action: 'link', file });
+        add('link', targetDirRaw);
         return;
       }
       if (positionals.length >= 2) {
-        const file = resolveWriteTarget(effCwd, positionals[positionals.length - 1], pathImpl);
-        if (file) targets.push({ action: 'link', file });
+        add('link', positionals[positionals.length - 1]);
       } else if (positionals.length === 1) {
-        const file = resolveWriteTarget(effCwd, pathImpl.basename(positionals[0]), pathImpl);
-        if (file) targets.push({ action: 'link', file });
+        add('link', pathImpl.basename(positionals[0]));
       }
       return;
     }
@@ -2375,8 +3095,7 @@ function fileWriteTargets(command, cwd, opts) {
       // does not exist, so this writes regardless of `-c`.
       const { positionals } = partitionArgs(t.slice(1), TRUNCATE_VALUE_FLAGS);
       for (const arg of positionals) {
-        const file = resolveWriteTarget(effCwd, arg, pathImpl);
-        if (file) targets.push({ action: 'truncate', file });
+        add('truncate', arg);
       }
       return;
     }
@@ -2385,17 +3104,23 @@ function fileWriteTargets(command, cwd, opts) {
       // dd takes keyword arguments, not flags: the destination is `of=`.
       for (const arg of t.slice(1)) {
         if (!arg.startsWith('of=')) continue;
-        const file = resolveWriteTarget(effCwd, arg.slice('of='.length), pathImpl);
-        if (file) targets.push({ action: 'write', file });
+        add('write', arg.slice('of='.length));
       }
       return;
     }
-  }, opts);
+  };
+  forEachShellSegment(command, cwd, visit, keepLost(opts));
+  // #4303: a walk that lost its cwd also reports base's own readings (BASE_VIEW), as known targets.
+  if (targets.some((entry) => entry.lost)) {
+    reading = true;
+    forEachShellSegment(command, cwd, visit, baseView(opts));
+  }
   // forEachShellSegment may visit a segment under two cwds, or a kept body twice (planned and
-  // whole), so the same target can come back more than once: report each one once.
+  // whole), so the same target can come back more than once: report each one once. A lost entry
+  // (#4303) is never folded into a known one, nor into a lost one written another way.
   const seen = new Set();
-  return targets.filter(({ action, file }) => {
-    const key = `${action}\0${file}`;
+  return targets.filter(({ action, file, rel }) => {
+    const key = `${action}\0${file}\0${rel === undefined ? '' : `\0${rel}`}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -2412,23 +3137,29 @@ function fileWriteTargets(command, cwd, opts) {
 // can create several directories in one invocation.
 const MKDIR_VALUE_FLAGS = new Set(['-m', '--mode']);
 function mkdirTargets(command, cwd, opts) {
-  const targets = [];
-  let pieceStart = 0; // where the current piece's first-cwd visit began pushing
-  forEachCommandSegment(command, cwd, (t, effCwd, quoting, again) => {
-    if (!again) pieceStart = targets.length;
-    if (t[0] !== 'mkdir') return;
-    const { positionals } = partitionArgs(t.slice(1), MKDIR_VALUE_FLAGS);
-    for (const arg of positionals) {
-      const file = resolveWriteTarget(effCwd, arg, quoting.pathImpl);
-      // A repeat visit under another cwd (after a brace group) adds an absolute path only once.
-      if (file && !(again && targets.slice(pieceStart).some((x) => x.file === file))) targets.push({ action: 'mkdir', file });
-    }
-  }, opts);
+  const walk = (walkOpts) => {
+    const targets = [];
+    let pieceStart = 0; // where the current piece's first-cwd visit began pushing
+    forEachCommandSegment(command, cwd, (t, effCwd, quoting, again) => {
+      if (!again) pieceStart = targets.length;
+      if (t[0] !== 'mkdir') return;
+      const { positionals } = partitionArgs(t.slice(1), MKDIR_VALUE_FLAGS);
+      for (const arg of positionals) {
+        const entry = writeTarget('mkdir', effCwd, arg, quoting.pathImpl);
+        // A repeat visit under another cwd (after a brace group) adds an absolute path only once.
+        if (entry && !(again && targets.slice(pieceStart).some((x) => x.file === entry.file && x.rel === entry.rel))) targets.push(entry);
+      }
+    }, walkOpts);
+    return targets;
+  };
+  const targets = walk(keepLost(opts));
+  // #4303: a walk that lost its cwd also reports base's own readings (BASE_VIEW), as known targets.
+  if (targets.some((entry) => entry.lost)) targets.push(...newReadings(walk(baseView(opts)), targets, (x) => x.file));
   return targets;
 }
 
 module.exports = {
-  gitTargets, gitTargetsFrom, resolvedGitSegments, fileWriteTargets, mkdirTargets, splitSegments, tokenize, forEachCommandSegment, skipGlobalFlags, findGitLead, resolveGitCommand, resolveWriteTarget, powershellOpaqueCommand, WRITE_SHAPES, GUARDED_PROGRAM_WORDS, redirectWriteTargets, redirectRawTargets, stripHeredocBodies, forEachShellSegment,
+  gitTargets, gitTargetsFrom, resolvedGitSegments, fileWriteTargets, mkdirTargets, splitSegments, tokenize, forEachCommandSegment, skipGlobalFlags, findGitLead, resolveGitCommand, resolveWriteTarget, powershellOpaqueCommand, WRITE_SHAPES, GUARDED_PROGRAM_WORDS, redirectWriteTargets, redirectRawTargets, stripHeredocBodies, forEachShellSegment, keepLost, PIPELINE_STATE_DIR, subjectLine, namesPipelinesSegment,
   // The heredoc reader vocabularies, pinned against policy-schema-coverage.md's prose (#4149).
   DATA_READER_WORDS, READER_WRAPPER_WORDS, GIT_DATA_SUBCOMMANDS, INERT_NEIGHBOUR_WORDS,
 };

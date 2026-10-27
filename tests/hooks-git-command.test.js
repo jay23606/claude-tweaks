@@ -634,8 +634,10 @@ test('#4149: an absolute -C after a brace group is reported once', () => {
 for (const [label, cmd, expected] of [
   ['a push after an & inside a quoted "$( )" body', "cd /main && gh issue comment 1 --body \"$(cat <<'EOF'\nThe \"Q&A\" page\nEOF\n)\" && git push", [{ action: 'push', dir: path.resolve('/main') }]],
   ['a commit message with an & inside "$( )", then a push', "cd /main && git commit -m \"$(cat <<'EOF'\nUse \"R&D\" term\nEOF\n)\" && git push", [{ action: 'commit', dir: path.resolve('/main') }, { action: 'push', dir: path.resolve('/main') }]],
-  ['a push after a commit body line `1) a`, inside a subshell', "(cd /main && git commit -F - <<'EOF'\n1) a\nEOF\ngit push)", [{ action: 'commit', dir: path.resolve('/main') }, { action: 'push', dir: path.resolve('/main') }]],
-  ['a push after a commit body line `fix: a)`, inside a subshell', "(cd /main && git commit -F - <<'EOF'\nfix: a)\nEOF\ngit push)", [{ action: 'commit', dir: path.resolve('/main') }, { action: 'push', dir: path.resolve('/main') }]],
+  // #4303: the push follows the cd && commit list on a new line, so it runs in /wt too when the cd
+  // fails (bash 3.2 and 5 push from the starting directory then).
+  ['a push after a commit body line `1) a`, inside a subshell', "(cd /main && git commit -F - <<'EOF'\n1) a\nEOF\ngit push)", [{ action: 'commit', dir: path.resolve('/main') }, { action: 'push', dir: path.resolve('/main') }, { action: 'push', dir: '/wt' }]],
+  ['a push after a commit body line `fix: a)`, inside a subshell', "(cd /main && git commit -F - <<'EOF'\nfix: a)\nEOF\ngit push)", [{ action: 'commit', dir: path.resolve('/main') }, { action: 'push', dir: path.resolve('/main') }, { action: 'push', dir: '/wt' }]],
   ['a push inside a kept shell body, walked as its own chunk', "bash <<'EOF'\ncd /main && git push\nEOF", [{ action: 'push', dir: path.resolve('/main') }]],
 ]) {
   test(`#4149: gitTargets reads ${label} as bash runs it`, () => {
@@ -645,15 +647,17 @@ for (const [label, cmd, expected] of [
 
 // #4149: a ${ } honours its quotes (`'}'` closes nothing), `$'…'` inside "$( )" honours
 // `\'`, and a cd inside a backtick or $( ) runs in a subshell, so the push stays at the earlier cd.
-// Checked against bash 3.2 and 5 with a logging git stub.
-for (const [label, cmd] of [
+// Checked against bash 3.2 and 5 with a logging git stub. #4303: a push after `cd … && …;` also
+// runs in /wt when the cd fails (bash 3.2 and 5 push from the starting directory then).
+const pushAtMain = [{ action: 'push', dir: path.resolve('/main') }];
+for (const [label, cmd, expected = pushAtMain] of [
   ['a quoted } inside an unquoted ${ }', "x=; cd /main && echo ${x:-'}'} && git push"],
   ['an ANSI-C \\\' inside a quoted "$( )"', "cd /main && echo \"$(echo $'a\\'b')\" && git push; echo ')\"'"],
-  ['a cd inside a top-level backtick', 'cd /main && echo `true; cd /tmp`; git push'],
-  ['a cd inside an unquoted $( )', 'cd /main && echo $(true; cd /tmp); git push'],
+  ['a cd inside a top-level backtick', 'cd /main && echo `true; cd /tmp`; git push', [...pushAtMain, { action: 'push', dir: '/wt' }]],
+  ['a cd inside an unquoted $( )', 'cd /main && echo $(true; cd /tmp); git push', [...pushAtMain, { action: 'push', dir: '/wt' }]],
 ]) {
   test(`#4149: gitTargets keeps the push after ${label} at the earlier cd`, () => {
-    assert.deepStrictEqual(gitTargets(cmd, '/wt'), [{ action: 'push', dir: path.resolve('/main') }]);
+    assert.deepStrictEqual(gitTargets(cmd, '/wt'), expected);
   });
 }
 
@@ -685,8 +689,10 @@ test('#4149: mkdirTargets reads a mkdir after a & in a subshell inside a $( ) at
   assert.deepStrictEqual(mkdirTargets('cd /main && pid=$( (sleep 0 & echo $!) ) && mkdir d', '/wt'), [{ action: 'mkdir', file: path.resolve('/main/d') }]);
 });
 
+// #4303: the mkdir follows the cd && cat list on a new line, so it runs in /wt too when the cd fails
+// (bash 3.2 and 5 make ./d then, and /main/d when the cd succeeds).
 test('#4149: mkdirTargets skips a heredoc body when tracking group depth', () => {
-  assert.deepStrictEqual(mkdirTargets("(cd /main && cat <<'EOF'\n1) a\nEOF\nmkdir d)", '/wt'), [{ action: 'mkdir', file: path.resolve('/main/d') }]);
+  assert.deepStrictEqual(mkdirTargets("(cd /main && cat <<'EOF'\n1) a\nEOF\nmkdir d)", '/wt'), [{ action: 'mkdir', file: path.resolve('/main/d') }, { action: 'mkdir', file: path.resolve('/wt/d') }]);
 });
 
 test('#4149: mkdirTargets reads a cd behind ( or {', () => {
@@ -959,4 +965,76 @@ test('AC3.1 AC3.2 #4281: go-red — putting the backslash rule back into isUnres
   const dirs = (mod) => mod.resolvedGitSegments(TEARDOWN_CMD, 'D:\\x', { pathImpl: path.win32 }).map((s) => s.dir);
   assert.deepStrictEqual(dirs(realGitCommand), ['D:\\repo']);
   assert.ok(!dirs(mutant).includes('D:\\repo'));
+});
+
+// #4281 x #4303: sixteen failing groups pass the walk's cwd cap, so the cwd is lost (LostCwd). Its
+// targets, the stand-in roots and the base-view readings resolve through the walk's pathImpl like
+// every other target, and a drive-relative value is judged against the lost cwd's root, whose drive
+// it shares: `D:f` from a lost cwd on D is a lost target, `E:f` is #4281's other-drive gap (no
+// target), and `cd E:sub` leaves the cwd unknown.
+const lostGroups = Array.from({ length: 16 }, (_, i) => `{ cd /nope${i}; }; `).join('');
+const lostWin = { pathImpl: path.win32, overflowCwd: 'D:\\main' };
+test('#4281 #4303: a lost cwd\'s targets and readings resolve through an injected path.win32', () => {
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}echo x > f`, 'D:\\wt', lostWin), [
+    { action: 'write', file: 'D:\\main', lost: true, rel: 'f' },
+    { action: 'write', file: 'D:\\wt\\f', lost: true, rel: 'f' },
+    { action: 'write', file: 'D:\\main\\f', reading: true },
+    { action: 'write', file: 'D:\\wt\\f', reading: true },
+  ]);
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}echo x > '..\\..\\a\\f'`, 'D:\\wt', { pathImpl: path.win32 })[0],
+    { action: 'write', file: 'D:\\wt\\a\\f', lost: true, rel: '..\\..\\a\\f' });
+  // Only win32's normalize reads `a\..\..` as a climb, which the clamp then drops: never `D:\b`.
+  assert.strictEqual(fileWriteTargets(`${lostGroups}echo x > 'a\\..\\..\\b'`, 'D:\\wt', { pathImpl: path.win32 })[0].file, 'D:\\wt\\b');
+  // An absolute native target does not depend on the lost cwd: known, no marker, so no second walk,
+  // and an absolute native cd makes the cwd known again.
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}echo x > 'D:\\abs\\f'`, 'D:\\wt', lostWin), [{ action: 'write', file: 'D:\\abs\\f' }]);
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}cd 'D:\\abs'; echo x > f`, 'D:\\wt', lostWin), [{ action: 'write', file: 'D:\\abs\\f' }]);
+  assert.deepStrictEqual(mkdirTargets(`${lostGroups}mkdir d`, 'D:\\wt', lostWin).map((t) => t.file), ['D:\\main', 'D:\\wt\\d', 'D:\\main\\d', 'D:\\wt\\d']);
+  assert.deepStrictEqual(gitTargets(`${lostGroups}git -C sub commit -m x`, 'D:\\wt', lostWin), [
+    { action: 'commit', dir: 'D:\\main', lost: true, subject: 'x' },
+    { action: 'commit', dir: 'D:\\wt', lost: true, subject: 'x' },
+    { action: 'commit', dir: 'D:\\main\\sub', reading: true },
+    { action: 'commit', dir: 'D:\\wt\\sub', reading: true },
+  ]);
+  // A POSIX root under path.win32 shows the readings and lost dirs go through it: no `/` survives.
+  assert.deepStrictEqual(resolvedGitSegments(`${lostGroups}git commit -m x`, '/wt', { pathImpl: path.win32, overflowCwd: '/main' }).map((s) => s.dir),
+    [path.win32.resolve('/main'), path.win32.resolve('/wt'), path.win32.resolve('/main'), path.win32.resolve('/wt')]);
+});
+
+test('#4281 #4303: teardownTargets marks only a relative remove from a lost cwd lost, under an injected path.win32', () => {
+  const td = (target) => realPreToolUse.teardownTargets(
+    { input: { tool_name: 'Bash', tool_input: { command: `${lostGroups}git worktree remove ${target}` } }, cwd: 'D:\\wt' }, { pathImpl: path.win32 },
+  );
+  const abs = td("'D:\\wt2'");
+  assert.ok(abs.length > 0 && abs.every((e) => e.path === 'D:\\wt2' && e.lost === undefined), JSON.stringify(abs));
+  assert.ok(td('wt2').some((e) => e.path === 'D:\\wt\\wt2' && e.lost === true));
+});
+
+test('#4281 #4303: a drive-relative value from a lost cwd is judged against the lost cwd\'s root', () => {
+  const lost = (cmd) => fileWriteTargets(`${lostGroups}${cmd}`, 'D:\\wt', lostWin).filter((t) => t.lost).map((t) => t.file);
+  assert.deepStrictEqual(lost('echo x > D:f'), ['D:\\main', 'D:\\wt\\f']);
+  assert.deepStrictEqual(lost('cd D:sub; echo x > f'), ['D:\\main', 'D:\\wt\\f']);
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}echo x > E:f`, 'D:\\wt', lostWin), []);
+  assert.deepStrictEqual(fileWriteTargets(`${lostGroups}cd E:sub; echo x > f`, 'D:\\wt', lostWin), []);
+  assert.deepStrictEqual(gitTargets(`${lostGroups}git -C E:sub commit -m x`, 'D:\\wt', lostWin), []);
+});
+
+// #4281 x #4303, bash 3.2 and 5 (a scratch tree S with dirs sub and a): `x=$(echo >f) cd sub; echo y
+// > g` and `cd > f sub; echo y > g` write S/f and S/sub/g; `"x"=1 cd sub; echo y > g` and `A\=x cd sub; …` fail with `x=1: command
+// not found` / `A=x: …` and write S/g; `x+=1 cd sub; …` writes S/sub/g. `echo x >\&2`, `> "&2"` and
+// `A="&2"; echo x >$A` write S/&2, `>"&"f` writes S/&f and `>\&` writes S/&, while `>&f`, `>& g` and
+// `1>&h` write f, g and h (the csh form) and `>&2` writes nothing.
+test('#4281 #4303: an assignment prefix, a cd\'s own argument and a literal & after > read as bash reads them', () => {
+  const files = (cmd) => fileWriteTargets(cmd, '/S').map((t) => t.file);
+  const at = (...p) => path.resolve('/S', ...p);
+  assert.ok(files('x=$(echo >f) cd sub; echo y > g').includes(at('sub', 'g')));
+  assert.deepStrictEqual(files('cd > f sub; echo y > g'), [at('f'), at('sub', 'g')]);
+  assert.deepStrictEqual(files('"x"=1 cd sub; echo y > g'), [at('g')]);
+  assert.deepStrictEqual(files('A\\=x cd sub; echo y > g'), [at('g')]);
+  assert.deepStrictEqual(files('x+=1 cd sub; echo y > g'), [at('sub', 'g')]);
+  for (const [cmd, name] of [['echo x >\\&2', '&2'], ['echo x > "&2"', '&2'], ['A="&2"; echo x >$A', '&2'], ['echo x >"&"f', '&f'], ['echo x >\\&', '&'],
+    ['echo x >&f', 'f'], ['echo x >& g', 'g'], ['echo x 1>&h', 'h']]) {
+    assert.deepStrictEqual(files(cmd), [at(name)], cmd);
+  }
+  assert.deepStrictEqual(files('echo x >&2'), []);
 });
