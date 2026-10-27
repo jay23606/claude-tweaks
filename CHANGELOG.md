@@ -60,6 +60,9 @@ Three conventions follow from how this repo works, and all are visible below:
 
 * Write gate misses writes after a conditional or pipelined… ([#4303](https://github.com/thn-inc/claude-tweaks/issues/4303)) ([4d81a3e](https://github.com/thn-inc/claude-tweaks/commit/4d81a3e0c34ccfbdc74ebd5be3dcc5c99a3ca1be))
 
+### Highlights
+* The worktree-always guard now blocks writes into the main checkout that follow a conditional or piped cd, an assignment-prefixed cd, a bundled -t or perl -0pi flag, or a >& redirect.
+
 ## [6.156.2](https://github.com/thn-inc/claude-tweaks/compare/v6.156.1...v6.156.2) (2026-10-27)
 
 
