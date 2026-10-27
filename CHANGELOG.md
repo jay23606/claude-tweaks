@@ -63,6 +63,14 @@ Three conventions follow from how this repo works, and all are visible below:
 * Windows: test PATH stand-ins (sh stubs, git/node… ([#4285](https://github.com/thn-inc/claude-tweaks/issues/4285)) ([dd46c48](https://github.com/thn-inc/claude-tweaks/commit/dd46c48dba64228b9caafed4299aa26d93175e8c)), closes [#4290](https://github.com/thn-inc/claude-tweaks/issues/4290) [#4396](https://github.com/thn-inc/claude-tweaks/issues/4396)
 * Windows: test-environment one-offs — HOME/USERPROFILE… ([#4291](https://github.com/thn-inc/claude-tweaks/issues/4291)) ([4fc576f](https://github.com/thn-inc/claude-tweaks/commit/4fc576ff3aa0c1070f990606cd2b3417c0c7a516))
 
+### Highlights
+* Changes to the committed verify-scope declaration are now checked against the previous release's reader, so a new rule shape cannot break verification for installed builds.
+* No user-visible change.
+* Fixed: on Windows, the residue sweep now reports a leftover pipeline run directory with `/` separators, like every other residue finding.
+* No user-visible change.
+* No user-visible change: fixes Windows-only test failures.
+* No user-visible change: fixes Windows-only failures caused by test-environment assumptions (home dir, `/tmp`, MSYS env rewriting, path length, global git config, file-name characters, jq line endings).
+
 ## [6.156.1](https://github.com/thn-inc/claude-tweaks/compare/v6.156.0...v6.156.1) (2026-10-26)
 
 
