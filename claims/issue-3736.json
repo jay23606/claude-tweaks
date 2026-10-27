@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-27T182035-record-3736",
-  "sessionId": "a11445fe-f664-5823-bef6-0cacfe091fa1",
-  "claimedAt": "2026-10-27T18:25:38.483Z",
-  "ttlHours": 72,
-  "host": "vm"
+  "reason": "already-shipped: spec #3736",
+  "releasedAt": "2026-10-27T18:29:49.584Z"
 }
