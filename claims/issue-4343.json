@@ -1,6 +1,7 @@
 {
-  "released": true,
-  "runId": "2026-10-27T001730-record-4343",
-  "reason": "failed: build-execution-unavailable",
-  "releasedAt": "2026-10-27T00:24:29.518Z"
+  "runId": "2026-10-27T102124-record-4343",
+  "sessionId": "3c8cc74b-76c3-50a3-bd27-958eff523d5a",
+  "claimedAt": "2026-10-27T10:25:34.199Z",
+  "ttlHours": 72,
+  "host": "vm"
 }
