@@ -1,7 +1,6 @@
 {
+  "released": true,
   "runId": "2026-10-27T163714-record-3721",
-  "sessionId": "d98f5eae-9336-5ffa-8e55-4a47a6abc2a1",
-  "claimedAt": "2026-10-27T16:41:27.123Z",
-  "ttlHours": 72,
-  "host": "vm"
+  "reason": "failed: superpowers-not-installed",
+  "releasedAt": "2026-10-27T16:46:40.760Z"
 }
