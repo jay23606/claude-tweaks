@@ -23,7 +23,7 @@
 - A dirty working tree: CI never saw the uncommitted edits — fall back (`dirty-tree`), never stamp from CI.
 - HEAD not pushed / not the open PR's head: fall back immediately (`no-open-pr-at-head`), no wait.
 - A conflicted PR (`mergeable_state: dirty`) gets no `pull_request` run: fall back immediately (`pr-conflicted`) instead of waiting the whole budget.
-- An impact-subset or tool-scoped run of the suite: CI ran the full suite, local runs a subset — CI applies only where the suite would run its full command; otherwise local, unchanged.
+- An impact-subset run of the suite: CI ran the full suite, so a CI verdict stands in for the subset too (revised during build — stronger evidence at no local cost); on fallback the subset runs locally, unchanged. A tool-scoped suite cannot declare `ci` at all.
 - CI log lines carry a timestamp prefix and the runner's absolute checkout root (`/home/runner/work/{repo}/{repo}`) — strip and remap so failing-file extraction resolves against the local checkout.
 
 ---
