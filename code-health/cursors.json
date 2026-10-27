@@ -314,5 +314,9 @@
   "plugin/bin/lib/verify": {
     "lastSweptMs": 1792811147160,
     "lastHash": "dd5385ad5db5e2c4a14a0bee773e0eb5277952af"
+  },
+  "plugin/bin/lib/express": {
+    "lastSweptMs": 1793070519133,
+    "lastHash": "8fe8202fee5ae689f4a2c53b9b38a201fde8c367"
   }
 }
