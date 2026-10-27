@@ -776,11 +776,11 @@ async function main() {
     });
     return { ...retried, retryDecision: decision };
   };
-  // #4347: a suite whose declaration names a `ci` source takes its full-run
-  // verdict from the PR's CI job on HEAD instead of running here — only when
-  // this run would run that suite's full command (an impact subset stays
-  // local), on a tree CI actually saw (clean at start). Every other outcome
-  // is a named fallback in report.json's `ci`, and the suite runs locally.
+  // #4347: a suite whose declaration names a `ci` source takes its verdict
+  // from the PR's CI job on HEAD instead of running here — the CI job ran the
+  // whole suite, so it also stands in for an impact subset — on a tree CI
+  // actually saw (clean at start). Every other outcome is a named fallback in
+  // report.json's `ci`, and the suite runs locally exactly as selected.
   const ciAttempts = [];
   const ciResults = [];
   if (decl && decl.ci && sel && !parsed.stampSuite && sel.mode !== 'none') {
@@ -790,7 +790,6 @@ async function main() {
         suite, workflow: source.workflow, job: source.job, used: false, fallback: reason,
         prNumber: null, runId: null, runUrl: null, jobId: null, conclusion: null, waitedMs: 0,
       });
-      if (impactSubset && impactSubset.suite === suite) { skipCi('impact-subset'); continue; }
       if (startGit.dirty !== false) { skipCi(startGit.dirty === null ? 'tree-state-unreadable' : 'dirty-tree'); continue; }
       const verdict = await fetchCiVerdict({
         suite, source, headSha: startSha, logDir, localRoot: logCwd, cwd: parsed.cwd || process.cwd(),
