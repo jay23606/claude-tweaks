@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T21:02:11.040Z",
+  "computedAt": "2026-10-28T21:16:04.999Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -130,7 +130,7 @@
       },
       {
         "number": 4439,
-        "updatedAt": "2026-10-28T18:39:13Z",
+        "updatedAt": "2026-10-28T21:15:46Z",
         "state": "OPEN"
       },
       {
@@ -2001,7 +2001,7 @@
         "number": 4439,
         "state": "OPEN",
         "title": "Give the open-items ledger a sanctioned append/settle CLI",
-        "updatedAt": "2026-10-28T18:39:13Z",
+        "updatedAt": "2026-10-28T21:15:46Z",
         "facets": {
           "origin": null,
           "risk": "medium",
