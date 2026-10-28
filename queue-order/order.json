@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T11:47:26.167Z",
+  "computedAt": "2026-10-28T12:04:54.321Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -235,7 +235,7 @@
       },
       {
         "number": 4294,
-        "updatedAt": "2026-10-25T14:46:32Z",
+        "updatedAt": "2026-10-28T12:04:32Z",
         "state": "OPEN"
       },
       {
@@ -3409,7 +3409,7 @@
         "number": 4294,
         "state": "OPEN",
         "title": "Resolve escaped-blank, line-continuation and `$word\\ >` redirect targets on the span-mask tokenizer",
-        "updatedAt": "2026-10-25T14:46:32Z",
+        "updatedAt": "2026-10-28T12:04:32Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
