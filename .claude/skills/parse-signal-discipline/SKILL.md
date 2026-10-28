@@ -314,7 +314,7 @@ When mechanizing a prose heuristic into a deterministic check:
     `unparseable`, its own outcome and never `ok`. Every scan except exit-code reports either one
     as an offender. The exit-code scan never calls `stripperVerdict`; it reports a `require.main`
     guard the stripper blanked, through its own `guardBlankedByStripper(raw, stripped)` detector.
-    State what the oracle cannot see, as the helper's header does: a mis-parse whose stripped text
+    State what the oracle cannot see, as the implementation's header does: a mis-parse whose stripped text
     still compiles passes unseen. Pin the planted mis-parse through every scan that calls the
     verdict, not only through the helper's own tests.
     To settle how accurate the heuristic transform is, measure it against an exact parser that is
