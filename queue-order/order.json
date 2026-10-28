@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T13:12:21.827Z",
+  "computedAt": "2026-10-28T14:51:42.023Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -180,7 +180,7 @@
       },
       {
         "number": 4387,
-        "updatedAt": "2026-10-28T07:12:11Z",
+        "updatedAt": "2026-10-28T13:14:32Z",
         "state": "OPEN"
       },
       {
@@ -2849,84 +2849,6 @@
         "facets": {
           "origin": null,
           "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: dispatch close-out session 2026-10-26 (PRs #4276, #4302, #4319, #4334, #4354)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/reconcile/archive-merged.js`'s `localHasMerge` (the #1130 guard against #657) checks the merge commit against `refs/heads/{integration}`. When the local ref lacks it, the guard falls back to `origin/{integration}` (#2565).\n\nThat fallback also fires when the local integration branch exists but is behind. In that case the tracked `work/{n}-spec.md` is not in the main checkout yet. The sweep moves the run dir's gitignored half into `archive/` and has nothing to `git mv`.\n\nOnce main fast-forwards, the spec reappears at `.claude-tweaks/pipelines/{run}/work/` as a state-less dir. `archive-run` refuses it (no readable run-state.json). The orphaned-mint sweep only takes it after a 24 h TTL.\n\nObserved 2026-10-26: the main checkout was dirty and 19 commits behind origin. Four stranded specs (runs for #3988/#3987/#3980/#3759) were the dirt that blocked mirror-ff. In that state, the merges of PRs #4276/#4302/#4319/#4334/#4354 stranded five more specs the same way, a self-perpetuating loop.\n\nBoth sets were archived by hand in 7b39e4683 and 9aaf50f45.\n\n## Deliverables\n\n1. Make the archive decision require the merge in the checkout the `git mv` runs against. Accept the local integration ref, or HEAD when that is the integration branch. When only `origin/{integration}` has it while the local ref exists and is behind, skip and retry on a later pass instead of archiving the untracked half.\n2. Keep #2565's case working: a main checkout parked on another branch, or with no local integration ref.\n3. Add a regression test in `tests/bin-lib/reconcile/archive-merged.test.js`. It uses a local integration branch behind an origin that holds the merge, and asserts that nothing is moved and the reason is a retryable skip.\n\n## Acceptance Criteria\n\n- [ ] With a local integration branch behind the merge and origin holding it, reconcile leaves the run dir in place and reports a retryable skip.\n- [ ] After the local branch fast-forwards, the same pass archives the run dir and `git mv`s `work/` in one commit.\n- [ ] #2565's no-local-ref and parked-checkout cases still archive.\n\n## Release Note\n\nReconcile no longer half-archives a merged run while the main checkout is behind, so its spec file is never left stranded.\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-26T07:54:02Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4387,
-        "state": "OPEN",
-        "title": "reconcile archive-merged strands tracked work/ specs when the local integration branch is behind origin",
-        "updatedAt": "2026-10-28T07:12:11Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
           "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
