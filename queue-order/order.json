@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T11:00:22.471Z",
+  "computedAt": "2026-10-28T11:47:26.167Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -225,12 +225,12 @@
       },
       {
         "number": 4301,
-        "updatedAt": "2026-10-26T14:33:53Z",
+        "updatedAt": "2026-10-28T11:03:10Z",
         "state": "OPEN"
       },
       {
         "number": 4299,
-        "updatedAt": "2026-10-26T14:33:58Z",
+        "updatedAt": "2026-10-28T11:03:01Z",
         "state": "OPEN"
       },
       {
@@ -240,7 +240,7 @@
       },
       {
         "number": 4287,
-        "updatedAt": "2026-10-26T14:34:04Z",
+        "updatedAt": "2026-10-28T11:02:52Z",
         "state": "OPEN"
       },
       {
@@ -5506,272 +5506,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\n**Related:** #4180, #4228, #4285, #4032, #3506, #3982, #3995, #4299, #4301, #4385, #4388\n\nOrigin: windows-regression.yml post-merge check on ff0fc67ab (PR #4239, #4180)\n\n## Current State\n\nThe post-merge Windows check on ff0fc67ab (run 40197844372) reports one newly failing test, which #4180 added. It is `tests/bin-lib/reconcile/reap-merged.test.js:161`, \"#4180 reapMerged: a dry run reports a closed-unmerged skip without appending a worktree-reap-skipped event\". The failure is `result.skipped` reasons `['network-failure']` where `['pr-closed-unmerged']` was expected.\n\nThe cause is the test's fixture, not the dry-run code. The test feeds the PR state through `installGhWrapper` (`reap-merged.test.js:32`), a `#!/bin/sh` script named `gh` prepended to PATH. On Windows, libuv resolves only `name`, `.com` and `.exe`, so the stub never spawns, the real `gh` runs on the CI runner, and the PR lookup reports `network-failure`. This is the same class #4228 fixed for the #4032 test in this file (PR #4272), by adding the file's `PATH_STUB_SKIP` constant (`reap-merged.test.js:19`) to that test.\n\nProbed at HEAD: the #4180 test at `:161` still has no skip and still calls `installGhWrapper`. `reapMerged` already takes an injected `prStates` resolver (`plugin/bin/lib/reconcile/reap-merged.js:199`, used at `:231` in place of `resolvePrState`), and the #4032 test (`reap-merged.test.js:878`) builds one with `createPrStateResolver({ root, deps: { byBranch } })`, which spawns nothing.\n\nThe older stub-based tests in this file (`:100`, `:122`, `:140` and others) also fail on Windows. They are pre-existing failures that #4285 tracks for the shared `tests/helpers/path-stub.js` migration. #4285's failing-test list predates #4180 and does not name this test.\n\n## Deliverables\n\n1. Change the #4180 dry-run test to supply the closed-unmerged PR state through an injected `prStates` resolver (`createPrStateResolver` with `deps.byBranch` returning `{ number: 7, state: 'CLOSED', mergedAt: null, updatedAt: '2026-01-01T00:00:00Z' }`) in place of `installGhWrapper`, so it spawns no `gh` and runs on every platform.\n2. Leave the other stub-based tests in the file to #4285.\n\n## Acceptance Criteria\n\n- The #4180 test passes under `node --test tests/bin-lib/reconcile/reap-merged.test.js` on macOS/Linux, with its three assertions unchanged: skip reasons `['pr-closed-unmerged']`, worktree still present, no `events.jsonl` in the run dir.\n- The test no longer calls `installGhWrapper` and carries no `PATH_STUB_SKIP`.\n- It goes red when the `!dryRun` guard on the skip-event append (`reap-merged.js:241`) is removed locally, which proves it still discriminates.\n- A `windows-regression.yml` dispatch on the branch lists `reap-merged.test.js` with no newly failing test versus its base, and the #4180 test reported as passing rather than skipped.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: fixes a Windows-only test failure.\n\n## Technical Approach\n\nMirror the subject half of the #4032 test (`reap-merged.test.js:878-905`): build the fixture, construct `createPrStateResolver({ root, deps: { byBranch: () => closedState } })`, and call `reapMerged({ cwd: root, dryRun: true, prStates })`. Injection beats the `PATH_STUB_SKIP` precedent from #4228 here, because a skip would drop the only dry-run coverage on Windows, while injection keeps it on every platform and needs no PATH change.\n\n### Key Files\n\n- `tests/bin-lib/reconcile/reap-merged.test.js` — the #4180 dry-run test\n- `plugin/bin/lib/reconcile/reap-merged.js` — reference only (`prStates` option)\n- `plugin/bin/lib/reconcile/pr-state-cache.js` — reference only (`createPrStateResolver`)\n\n## Gotchas\n\n- Confirm `createPrStateResolver`'s `deps.byBranch` answer reaches `decideReap` unchanged for a `CLOSED`/`mergedAt: null` state, so the skip reason is still `pr-closed-unmerged` (`reap-merged.js:72`) and not `network-failure` (`:69`). Keep asserting the exact reason, as the test already does.\n- #4285 will replace this file's `PATH_STUB_SKIP` and stub helpers with a shared helper. This test, once injected, is outside that migration. Keep it free of the stub so #4285 has nothing to convert here.\n- Windows proof needs a real `windows-regression.yml` dispatch after the last code change. The macOS/Linux run cannot show the stub-resolution difference.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after ff0fc67ab\n\nThe post-merge Windows check failed on commit ff0fc67ab73cc75878ec88df0074bb0464c1c06d (compared against 7d6b93bb5).\n\n**Merged PR:** #4239 (https://github.com/thn-inc/claude-tweaks/pull/4239)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/40197844372\n\n### Newly failing test files\n- `tests/bin-lib/reconcile/reap-merged.test.js`\n\n### Failure excerpts\n\n#### `tests/bin-lib/reconcile/reap-merged.test.js`\n\n_Excerpts for the 1 test(s) the baseline adjudication attributed as new._\n\n```\nnot ok 6679 - \\#4180 reapMerged: a dry run reports a closed-unmerged skip without appending a worktree-reap-skipped event\n  ---\n  duration_ms: 595.9368\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\bin-lib\\\\reconcile\\\\reap-merged.test.js:159:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n      [\n    +   'network-failure'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._",
-        "createdAt": "2026-10-25T13:49:40Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 4287,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after ff0fc67ab",
-        "updatedAt": "2026-10-26T14:34:04Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #4178, #4266, #4289, #4385, #3900, #3064, #4222, #4271, #4287, #4301, #4388, #3982, #3995\n\nOrigin: windows-regression.yml post-merge check on 8e864ba5f (PR #4266, #4178)\n\n## Current State\n\nThe post-merge Windows check on 8e864ba5f (run 40199892803) attributes one new failure in `tests/hooks-git-exec.test.js`: \"runGit: opts.env is the spawn environment — a pinned env restores -C repo discovery (#4178)\" (`:335` at HEAD). The failure reads \"opts.env must reach the child\", with actual `D:/a/_temp/…/ct-wtd-GNAJZ6/.git` and expected `D:\\a\\_temp\\…\\ct-wtd-GNAJZ6\\.git`.\n\nThe cause is the test's expectation. Git for Windows prints `rev-parse --absolute-git-dir` with forward slashes, and the test builds the expected value with `fs.realpathSync(path.join(b, '.git'))`, which is backslashed on win32. Both assertions in the test (`:339`, `:341`) have this shape. `runGit` itself is correct: the redirected and pinned answers name the right repos and differ only in separator spelling.\n\nProbed at HEAD: the async twin \"runGitAsync: opts.env is the spawn environment, same as runGit (#3900)\" (`:344`, assertions `:349`, `:351`) was added after 8e864ba5f with the identical shape. #4385 reports it newly failing on Windows at 456134058. The same artifact's isolated log (`verify-logs/tests-isolated-tests+hooks-git-exec.test.js.log`) shows three other failures in this file, tests 1, 10 and 17 (`:18`, `:119`, `:273` at HEAD, the `--show-toplevel` comparisons). Those are pre-existing and owned by #4289, which names them at their 988cc584d lines `:13`, `:114` and `:264`.\n\n## Deliverables\n\n1. In both opts.env tests (`:335` #4178 and `:344` #3900), derive each expected git dir from git's own output rather than from `path.join`. Run `git -C <repo> rev-parse --absolute-git-dir` under `repoPinnedEnv()` in the test, which is the #4289/#4222 technique, with no `process.platform` branch.\n2. Leave the three `--show-toplevel` tests to #4289.\n\n## Acceptance Criteria\n\n- Both opts.env tests pass under `node --test tests/hooks-git-exec.test.js` on macOS/Linux, with the same test count.\n- Discrimination is kept. Each test still fails on Linux when `runGit`/`runGitAsync` ignores `opts.env`, for example by reverting the `env` pass-through in `plugin/bin/lib/hooks/git-exec.js` (`:147`, `:182`) locally, and when `repoPinnedEnv` keeps `GIT_DIR`.\n- A `windows-regression.yml` dispatch on the branch shows neither opts.env test failing and no newly failing test in `hooks-git-exec.test.js` versus its base.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: fixes Windows-only test failures where git prints forward-slash paths.\n\n## Technical Approach\n\nAdd one small helper in the test file, for example `gitDirOf(repo)`, that returns `fixtureGit(['-C', repo, 'rev-parse', '--absolute-git-dir'], { encoding: 'utf8', env: repoPinnedEnv() }).trim()`. `fixtureGit` returns a Buffer without `encoding` (`tests/helpers/git-fixtures.js:46-48`), and the pinned env keeps an inherited `GIT_DIR` from redirecting it. Use it for the four expected values. Git's own spelling is the correct value under the #3064 calibration, so the expectation should match it rather than normalizing both sides.\n\n### Key Files\n\n- `tests/hooks-git-exec.test.js` — the #4178 and #3900 opts.env tests\n- `tests/helpers/git-fixtures.js` — reference only (`fixtureGit`, `gitRepo`)\n- `plugin/bin/lib/hooks/git-exec.js` — reference only (`runGit`, `runGitAsync`, `repoPinnedEnv`)\n\n## Gotchas\n\n- #4289 (ready) edits the same file for the three `--show-toplevel` tests with the same technique. Whichever builds first should land a shared expected-value helper the other reuses, and the second rebases onto it. Never both define a helper.\n- #4385's `hooks-git-exec.test.js` half (the #3900 async test) is covered by Deliverable 1 here. #4385's builder should take only its `hooks-policy-exemption.test.js` half, or close that half as fixed by this record.\n- The expected-value helper must not inherit the test's foreign `GIT_DIR`. A `fixtureGit` that passes `process.env` through while the test has `GIT_DIR` set would derive the wrong repo and make the assertion pass for the wrong reason. The discrimination check in the Acceptance Criteria catches this.\n- Windows proof needs a real `windows-regression.yml` dispatch after the last code change. Linux cannot show the separator difference.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 8e864ba5f\n\nThe post-merge Windows check failed on commit 8e864ba5f201aaa6a5f0c8b56ffd809f6efa004b (compared against 2a21fbee9).\n\n**Merged PR:** #4266 (https://github.com/thn-inc/claude-tweaks/pull/4266)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/40199892803\n\n### Newly failing test files\n- `tests/hooks-git-exec.test.js`\n\n### Failure excerpts\n\n#### `tests/hooks-git-exec.test.js`\n\n_Excerpts for the 1 test(s) the baseline adjudication attributed as new._\n\n```\nnot ok 12876 - runGit: opts.env is the spawn environment — a pinned env restores -C repo discovery (\\#4178)\n  ---\n  duration_ms: 218.0792\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\hooks-git-exec.test.js:333:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    opts.env must reach the child\n    + actual - expected\n    \n    + 'D:/a/_temp/ct-test-runs/ct-testrun-3096-v7tlVR/ct-wtd-GNAJZ6/.git'\n    - 'D:\\\\a\\\\_temp\\\\ct-test-runs\\\\ct-testrun-3096-v7tlVR\\\\ct-wtd-GNAJZ6\\\\.git'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._",
-        "createdAt": "2026-10-25T14:11:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 4299,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 8e864ba5f",
-        "updatedAt": "2026-10-26T14:33:58Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      },
-      {
-        "body": "Surface: infra\n\n**Related:** #4149, #4166, #3064, #4286, #4289, #4242, #4244, #4246, #4303, #4287, #4299, #4385, #4388, #3982, #3995\n\nOrigin: windows-regression.yml post-merge check on 2a21fbee9 (PR #4166, #4149)\n\n## Current State\n\nThe post-merge Windows check on 2a21fbee9 (run 40199814543) reports one new failure in `tests/hooks-gate-coverage.test.js`: \"#4149 cwd cap: a push and a mkdir past the cap resolve in the overflow cwd\" (`:1340`). Its first assertion fails, `gitTargets(cmd('git push'), '/r', opts).some((t) => t.dir === path.resolve('/main'))`. The run's isolated log for the file (`verify-logs/tests-isolated-tests+hooks-gate-coverage.test.js.log`) shows this as the file's only failure. #4149 added the test in that same commit.\n\nThe cause is a spelling mismatch between the fixture and the expectation. The block's `opts` is `{ overflowCwd: '/main' }` (`:1317`), a POSIX literal. Past `CWD_SET_CAP`, `forEachShellSegment` collapses the cwd set to that value as given (`plugin/bin/lib/hooks/git-command.js:1945-1946`), and a `git push` with no `-C` takes its `dir` straight from that cwd (`resolvedGitSegments`, `:851`). On win32 the dir stays `/main`, while `path.resolve('/main')` is `D:\\main`. The write and mkdir assertions pass because those targets go through `pathImpl.resolve` on the file path. Linux and macOS cannot see the difference, because `path.resolve('/main')` is `/main` there. Probed at HEAD with an injected `pathImpl: path.win32` on macOS, the push dirs are `[\"/main\",\"/r\",\"\\\\a16\",…]`: the overflow and start cwds stay as given, while the `cd`-derived cwds and every mkdir/write target go through `pathImpl.resolve`.\n\nProduction is not affected. The only production caller, `pre-tool-use.js:55`, passes `wtDetect.mainCheckoutRoot(cwd) || cwd`, which is a native absolute path built with `path` operations (`worktree-detect.js:50`), so the collapsed cwd already uses the same spelling as `path.resolve`.\n\n## Deliverables\n\n1. In `tests/hooks-gate-coverage.test.js:1342`, expect the push target `dir` to be the `'/main'` literal the walk passes through unresolved, not `path.resolve('/main')`. Keep the mkdir assertion on the next line as it is, because `mkdirTargets` resolves its target.\n2. No change to `git-command.js`.\n\n## Acceptance Criteria\n\n- All `#4149 cwd cap` tests pass under `node --test tests/hooks-gate-coverage.test.js` on macOS/Linux, with the same test count.\n- The push assertion still discriminates. On Linux it fails when the cap collapse is disabled locally, for example by raising `CWD_SET_CAP` above 20, because the push then resolves under the uncapped `/r`, `/a0`…`/a19` set and never under the overflow cwd.\n- A `windows-regression.yml` dispatch on the branch shows the test passing and no newly failing test in `hooks-gate-coverage.test.js` versus its base.\n- `npm test` passes.\n\n## Release Note\n\nNo user-visible change: fixes a Windows-only test failure.\n\n## Technical Approach\n\nFollow the repo-local `windows-checkout-test-parity` skill's `path.resolve` Anti-Patterns row: \"A path the code passes through unresolved stays literal: `gitTargets`'s cwd `'/repo'` is one.\" Two alternatives were considered. Feeding `overflowCwd: path.resolve('/main')` would also pass, but it changes a fixture input the rest of the block shares in order to suit one assertion. Resolving the overflow cwd inside `forEachShellSegment` (`pathImpl.resolve(o)`) was rejected. The walk's own start cwd (`:1941`) is also used as given, so normalizing only the overflow value would leave the set half-normalized. It would also change the security write gate with no production symptom behind it, because the production caller already passes a native path.\n\n### Key Files\n\n- `tests/hooks-gate-coverage.test.js` — the #4149 cwd-cap push assertion (`:1342`)\n- `plugin/bin/lib/hooks/git-command.js` — reference only (`forEachShellSegment`, `resolvedGitSegments`)\n- `plugin/bin/lib/hooks/pre-tool-use.js` — reference only (the production `overflowCwd`)\n\n## Gotchas\n\n- Several open records edit `git-command.js`'s lexer half (#4244, #4246), and #4242 proposes splitting it out. This record touches only the test file, but a rebase may still shift the block's line numbers.\n- If a future change makes `mainCheckoutRoot` return a git-printed `D:/…` spelling, the production collapse would then mix spellings with `cd`-derived cwds. That is a separate production defect, not this record's.\n- Windows proof needs a real `windows-regression.yml` dispatch after the last code change. Linux cannot show the separator difference.\n\n## Original request\n\nWindows regression: 1 test file(s) newly failing after 2a21fbee9\n\nThe post-merge Windows check failed on commit 2a21fbee9d45aae8b4f8c9356cd0ab27f50934bd (compared against 43c11df0e).\n\n**Merged PR:** #4166 (https://github.com/thn-inc/claude-tweaks/pull/4166)\n\n**Run:** https://github.com/thn-inc/claude-tweaks/actions/runs/40199814543\n\n### Newly failing test files\n- `tests/hooks-gate-coverage.test.js`\n\n### Failure excerpts\n\n#### `tests/hooks-gate-coverage.test.js`\n\n_Excerpts for the 1 test(s) the baseline adjudication attributed as new._\n\n```\nnot ok 12671 - \\#4149 cwd cap: a push and a mkdir past the cap resolve in the overflow cwd\n  ---\n  duration_ms: 17.7972\n  type: 'test'\n  location: 'D:\\\\a\\\\claude-tweaks\\\\claude-tweaks\\\\tests\\\\hooks-gate-coverage.test.js:1340:5'\n  failureType: 'testCodeFailure'\n  error: |-\n    The expression evaluated to a falsy value:\n    \n      assert.ok(gitTargets(cmd('git push'), '/r', opts).some((t) => t.dir === path.resolve('/main')))\n    \n  code: 'ERR_ASSERTION'\n```\n\n_Filed by .github/workflows/windows-regression.yml — failures were compared against the push's base commit (verify.js --baseline). Shape it with /claude-tweaks:specify before building._",
-        "createdAt": "2026-10-25T14:15:08Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszED4w",
-            "name": "ceremony:fast-lane",
-            "description": "Ceremony: small/clean record — proportionately fewer review & wrap-up steps",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACxyFo1g",
-            "name": "shaped:headless",
-            "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
-            "color": "ededed"
-          }
-        ],
-        "number": 4301,
-        "state": "OPEN",
-        "title": "Windows regression: 1 test file(s) newly failing after 2a21fbee9",
-        "updatedAt": "2026-10-26T14:33:53Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "fast-lane",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
         "body": "Surface: infra\n\n**Related:** #3737, #3876, #3190, #3744, #3792, #3835, #3931, #3936, #3955, #3956, #3965, #3975, #3989\n\nOrigin: ledger resolve gate (#3340 wrap-up)\n\n## Current State\n\n`plugin/skills/_shared/subagent-dispatch-core.md:39` (**One plain command per Bash call.**) tells every dispatch prompt that, for a worktree-isolated dispatched agent, \"`&&`/`;` chains, a variable assigned and then used in the same call, loops, and heredocs are refused by shape\", and asserts that every dispatch under `worktree-always` is worktree-isolated.\n\n`_shared/scratch-worktree.md` §7's current-state table (re-verified live by #3340 on 2026-10-20, rows since added by #3783 and #3829) contradicts the shape list: a 2-command `&&` chain, `;` sequences with assign-then-use, `VAR=val && cmd \"$VAR\"`, `for`/`while` loops, and standalone heredocs all **pass** (`scratch-worktree.md:243-248`, `:270`). Shapes that are still **refused** include `git` inside `$(...)` (`:255`), a runtime variable as `node`'s script operand (`:260`), `sed` on a runtime-variable path (`:259`), the bare tokens `complete`/`eval` (`:249`, `:263`), `mkdir -p … && heredoc` (`:271`), and a backslash-escaped space (`:273`). §7's own Practical workaround (`:275`) still recommends one plain command per call because it \"avoids every refused shape\", and the boundary moves between Claude Code builds (`:279`).\n\nThe isolation premise is also mixed in practice. #3480's dispatched lens agents hit the guard about 14 times in three minutes (#3675), so dispatched agents can be guard-isolated; #3340 saw a dispatched implementer's Bash run unguarded. Neither observation supports the absolute \"as every dispatch under `worktree-always` does\".\n\n`dispatch/task-prompt.md`'s Context pack item 6 (Worktree shell constraint) has the same drift: its avoid-list includes a `for`/`while` loop variable, a glob argument, a `gh api` call inside an `if RAW=$(...)`, and `cat \"$P/…\"`, all of which §7 now marks as passing.\n\n## Deliverables\n\n- [ ] Keep **One plain command per Bash call** as the dispatch-prompt convention. It still avoids every refused shape, costs little, and holds even when the harness boundary moves. Reword its justification: some shapes are refused by the worktree guard, the refused set changes between Claude Code builds, and one plain command per call avoids all of them. Cite §7 for the current refused set; do not list shapes inline.\n- [ ] Replace \"as every dispatch under `worktree-always` does\" with what is observed: a dispatched agent **may** be guard-isolated (#3480's lens agents were; #3340's implementer was not), so every dispatch prompt carries the rule regardless\n- [ ] `dispatch/task-prompt.md` item 6: drop every shape §7 marks `passes` from its avoid-list, keeping only refused shapes (or replace the list with a §7 citation), and keep the \"one plain command per Bash call is the general pattern\" sentence\n- [ ] Sweep the remaining copies — `_shared/worktree-setup.md:132`, `review/step3-lens-dispatch.md`'s Scratch path paragraph, and any dispatch template that restates the rule — so none lists a shape §7 marks as passing\n\n## Acceptance Criteria\n\n- `subagent-dispatch-core.md`'s rule no longer states that `&&`/`;` chains, assign-then-use, loops, or heredocs are refused, and cites `_shared/scratch-worktree.md` §7 for the refused set\n- The rule no longer asserts that every `worktree-always` dispatch is guard-isolated\n- `dispatch/task-prompt.md` item 6 names no shape that §7's table marks `passes`\n- `tests/subagent-contract-clauses.test.js`'s `PLAIN_COMMAND_RULE` / `PLAIN_COMMAND_CITATION` pins still pass (the rule heading and its citation form are unchanged), and a new assertion fails if a dispatch prompt lists a §7-passing shape as refused\n- `npm test` passes\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\nThe decision the original request left open is settled from §7 alone, with no new probe. Whether a given dispatched agent is guard-isolated doesn't change what its prompt should say: guarded agents need the rule, unguarded ones lose nothing by following it, and both cases have been observed. What changes is the justification text, which must stop asserting a refused-shape list that §7 has since contradicted.\n\nFor the new assertion, derive the \"passes\" shapes from §7's table rows (Verdict column `passes`) rather than hard-coding them. The test then follows the table as rows change, which is how §7 is maintained (\"a new or changed shape updates or adds a row … never a dated addendum\").\n\n### Key Files\n\n- `plugin/skills/_shared/subagent-dispatch-core.md` — line 39's rule text\n- `plugin/skills/dispatch/task-prompt.md` — Context pack item 6's avoid-list\n- `plugin/skills/_shared/worktree-setup.md` — the §7 pointer near line 132\n- `plugin/skills/review/step3-lens-dispatch.md` — Scratch path paragraph\n- `plugin/skills/_shared/scratch-worktree.md` — §7 table (read-only source of truth; no change expected)\n- `tests/subagent-contract-clauses.test.js` — existing pins plus the new no-passing-shape assertion\n\n## Gotchas\n\n- `/flow`'s `multispec-parallel-waves.md` and other dispatch sites inline Context pack items verbatim; grep for item 6's text before editing so every inlined copy moves together.\n- #3737 (open) asks lens prompts to forbid shell-variable paths and cd-chains. Keep this change's wording compatible: `sed`/`node` on a variable path are still refused in §7, so naming them as refused stays correct.\n- The §7 table is \"last observed, not a guarantee\". Cite it rather than copying its verdicts, so the next re-verification doesn't reopen this drift.\n\n## Original request\n\nSettle the dispatch-prompt \"one plain command per call\" mandate against the section 7 refusal table\n\n**Related:** #3737, #3876\n\nOrigin: ledger resolve gate (#3340 wrap-up)\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`plugin/skills/_shared/subagent-dispatch-core.md` line 39 (\"One plain command per Bash call\") tells every dispatch prompt that `&&`/`;` chains, assign-then-use variables, loops and heredocs \"are refused by shape\" for any worktree-isolated dispatched agent. #3340 re-verified `_shared/scratch-worktree.md` section 7 live: `;` sequences, loops, assign-then-use and standalone heredocs now pass in a guard-isolated session, so the clause overstates the guard. #3340 also observed that the dispatched implementer subagent's Bash ran unguarded (no refusals, control probe passed), which contradicts the \"as every dispatch under `worktree-always` does\" premise. Whether dispatched subagent sessions are guard-isolated is therefore unsettled, and the dispatch-prompt mandate is a shipped contract that every dispatching skill inlines.\n\n## Deliverables\n\n- Settle whether a dispatched (Task-tool) agent session is guard-isolated, with a live probe from a dispatched agent under a `worktree-always` project.\n- Restate `subagent-dispatch-core.md` line 39 to match section 7's table (cite it, do not list shapes), keeping or dropping the \"one plain command per call\" mandate by that finding.\n- Sweep the dispatch prompts that inline the mandate so none still lists a shape the table marks as passing.\n\n## Open Question\n\nKeep \"one plain command per call\" in dispatch prompts as a conservative convention (it avoids every refused shape and costs little), or relax it to the shapes the table actually refuses? Needs a maintainer call plus the dispatched-agent probe.\n\n## Release Note\n\nNo user-visible change.\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
         "createdAt": "2026-10-20T21:01:53Z",
         "labels": [
@@ -6766,13 +6500,6 @@
         3982,
         3995,
         4164
-      ]
-    },
-    {
-      "records": [
-        4287,
-        4299,
-        4301
       ]
     },
     {
