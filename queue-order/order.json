@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T09:14:47.927Z",
+  "computedAt": "2026-10-28T09:30:34.558Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -360,7 +360,7 @@
       },
       {
         "number": 3875,
-        "updatedAt": "2026-10-24T05:39:42Z",
+        "updatedAt": "2026-10-28T09:30:07Z",
         "state": "OPEN"
       },
       {
@@ -4045,7 +4045,7 @@
         "number": 3875,
         "state": "OPEN",
         "title": "Let E1 allow a multi-run reconciliation's conflict-resolution commit without closing sibling runs",
-        "updatedAt": "2026-10-24T05:39:42Z",
+        "updatedAt": "2026-10-28T09:30:07Z",
         "facets": {
           "origin": null,
           "risk": "medium",
