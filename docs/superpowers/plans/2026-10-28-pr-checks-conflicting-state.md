@@ -20,7 +20,16 @@ Scope keywords: classifyMergeState, no-ci | read-failed, STATUS_BY_STATE, ci.sta
 - Every envelope that is not `conflicting` stays byte-identical (the `cli.test.js` characterization tests must pass unchanged).
 - `--pr` never writes `decisions.md` and never carries `logged`.
 - `auto`/`confirm` never get a new stop on `conflicting` (a merge conflict is not a HARD-GATE); only `interactive`/`hybrid` stop.
-- Read-limit rail: `plugin/skills/review/code-mode-steps.md` is 51,037 B and `plugin/skills/_shared/github-pr-scan.md` is 50,324 B against `RAIL_BYTES` 52,500 B — headroom 1,463 B and 2,176 B. Additions there must be a few dozen bytes each.
+- Read-limit rail: `plugin/skills/review/code-mode-steps.md` is 51,037 B and `plugin/skills/_shared/github-pr-scan.md` 50,195 B (stripped) against `RAIL_BYTES` 52,500 B — headroom 1,463 B and 2,305 B; github-pr-scan also composes into `tidy/scan-procedures.md`'s `pr-scan` bundle at 50,342 B (headroom 2,158 B). Additions there must be a few dozen bytes each.
+
+## Acceptance-criterion map
+
+- AC1.1, AC1.2, AC2.1 — Task 1 (`applyMergeState` unit cases) and Task 2 (CLI envelope cases)
+- AC3.1 — Task 1 (`stale` stays) and Task 2 (`--run` with a differing head)
+- AC4.1 — Task 1 (identity assertion; existing `pr-merge-state` tests unchanged)
+- AC5.1, AC5.2 — Task 2 (`--run` AUTO entry; `--pr` has no `logged`)
+- AC6.1 — Task 3; AC6.2 — Task 4
+- AC7.1 — every task's Step 4 plus `/build`'s final verification
 - `bin/lib/flow/preflight.js`'s inline `CONFLICTING` check is left alone: it tests `mergeable` only, so swapping in `classifyMergeState` (which also fires on `DIRTY`) would change its output.
 
 ## Review Focus
@@ -39,8 +48,10 @@ Scope keywords: classifyMergeState, no-ci | read-failed, STATUS_BY_STATE, ci.sta
 
 **Files:**
 - Modify: `plugin/bin/lib/pr-checks/classify.js` (header comment; add `classifyMergeState`, `CHECK_DERIVED_STATES`, `applyMergeState`; export them)
-- Modify: `plugin/bin/pr-merge-state.js:59-69,148` (delete the local `classifyMergeState`; `require` it from `./lib/pr-checks/classify`; keep exporting it)
-- Test: `tests/bin-lib/pr-checks/classify.test.js`, `tests/bin-lib/pr-merge-state/cli.test.js`
+- Modify: `plugin/bin/pr-merge-state.js` (lines 59-69 and 148: delete the local `classifyMergeState`; `require` it from `./lib/pr-checks/classify`; keep exporting it)
+- Test: `tests/bin-lib/pr-checks/classify.test.js`
+- Test: `tests/bin-lib/pr-merge-state/cli.test.js`
+- Test (run only, unchanged): `tests/git-discipline-merge-state-conformance.test.js`
 
 **Interfaces:**
 - Produces: `classifyMergeState(view) -> 'conflicting'|'no-conflict'|'unknown'` (body moved verbatim, including its `isStr` helper use).
@@ -150,9 +161,10 @@ The new code-mode-steps row: `| \`pr-checks.js\` reports \`conflicting\` (\`_sha
 **Files:**
 - Modify: `plugin/skills/_shared/github-pr-scan.md:41` (item 3: add `` `conflicting` → `CI conflicting` (no CI runs until caught up), never passing ``) and `:67` (`STATUS_BY_STATE` gains `['conflicting', 'conflicting']`). Item 9's filter (`:163`, `:171`) admits only `green`/`no-ci` — no change.
 - Modify: `plugin/skills/dispatch/settle-parked.md:57` (append `` `conflicting` → `conflicting` (never `passing`) ``)
-- Modify: `plugin/skills/wrap-up/review-console-interactive.md:46-47,57` (`conflicting` → option 2 carries Recommended: the merge cannot land until the branch is caught up)
+- Modify: `plugin/skills/wrap-up/review-console-interactive.md` (lines 46-47 and 57: `conflicting` → option 2 carries Recommended: the merge cannot land until the branch is caught up)
 - Modify: `plugin/bin/lib/wrap-up/pack.js:651-655` comment only — the probe passes `ci` through verbatim, so `conflicting` reaches the console unmapped; say so in the comment
-- Test: `tests/display-ci-readers-conformance.test.js`, `tests/bin-lib/wrap-up/pack.test.js`
+- Test: `tests/display-ci-readers-conformance.test.js`
+- Test: `tests/bin-lib/wrap-up/pack.test.js`
 
 **Interfaces:** consumes Task 2's state name.
 
