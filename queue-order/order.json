@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T16:31:55.451Z",
+  "computedAt": "2026-10-28T17:17:55.589Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -224,6 +224,11 @@
         "state": "OPEN"
       },
       {
+        "number": 4343,
+        "updatedAt": "2026-10-28T16:39:11Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4301,
         "updatedAt": "2026-10-28T11:03:10Z",
         "state": "OPEN"
@@ -400,7 +405,7 @@
       },
       {
         "number": 3763,
-        "updatedAt": "2026-10-23T22:04:36Z",
+        "updatedAt": "2026-10-28T17:15:56Z",
         "state": "OPEN"
       },
       {
@@ -3204,6 +3209,84 @@
     ],
     [
       {
+        "body": "Origin: speed analysis of the #4026 dispatch (run 2026-10-25T132807-record-4026)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/SKILL.md` Common Step 5 (Final Verification) runs the full suite first. The build phase exit (`phase-exit.js`) then pushes and runs the Post-push merge-state check (`_shared/git-discipline.md`, \"### Post-push merge-state check\"). Only at that point does a DIRTY or BEHIND PR get its catch-up merge of the integration branch.\n\nThat merge changes the tree, so `/test` Step 1 (`plugin/skills/test/verification.md`, Skip-if-recent, Mismatch branch) re-runs verification. A catch-up merge is never a bookkeeping-only delta, so the suite runs a second time.\n\nObserved 2026-10-25 on #4026 (run `2026-10-25T132807-record-4026`, PR #4277): Common Step 5 passed at `d99fc7da2` at 18:20 after 55 min. The merge-state check found PR #4277 DIRTY at 18:21, because origin/main had moved during the 4-hour build. The catch-up merge resolved 3 conflicts (`d99fc7da2` -> `622a5adf8`) at 18:27. `/test` then re-ran the full suite at `622a5adf8` until 20:01 (1h34). One of the two full runs was avoidable.\n\n## Deliverables\n\n- Before Common Step 5 runs its suite, build fetches the integration branch. When the run branch is behind it, build applies the existing Catch-up (`auto`) procedure from `_shared/git-discipline.md` (merge, never rebase, with the same conflict-resolution and `merge --abort` rules), so the verified tree already contains the current base.\n\n- The pre-verification catch-up logs one `decisions.md` line naming the before and after SHAs, or a `SKIP` line when the branch is already current.\n\n- The Post-push merge-state check stays as is. The base can still move during verification, and that residual case keeps today's behavior.\n\n- The prose that describes the ordering (`build/SKILL.md` Common Step 5, `git-discipline.md`'s merge-state section) states the new order.\n\n## Acceptance Criteria\n\n- [ ] A run whose branch is behind the integration branch at Common Step 5 merges it in before the suite runs, and build's `VERIFICATION_SHA` equals the post-merge HEAD.\n\n- [ ] When the base did not move again during verification, `/test` Step 1 takes the Match branch and runs no suite.\n\n- [ ] A branch that is already current logs a `SKIP` and merges nothing.\n\n- [ ] A catch-up conflict that cannot be resolved confidently follows the existing `merge --abort` path, and verification still runs on the un-merged tree.\n\n- [ ] A conformance test pins that Common Step 5's prose places the catch-up before the verification run, and it fails against the current prose.\n\n## Release Note\n\nA pipeline run whose branch fell behind main during the build now merges main in before its final test run, so the full suite runs once instead of twice.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/SKILL.md` — Common Step 5 catches the branch up before running the suite\n- `plugin/skills/_shared/git-discipline.md` — Post-push merge-state check section states the new order\n- `plugin/skills/test/verification.md` — Skip-if-recent Match branch is the expected path after a pre-verify catch-up\n- `plugin/bin/pr-merge-state.js` — reused (or a fetch-and-behind probe) for the pre-verification read\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-25T19:52:43Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4343,
+        "state": "OPEN",
+        "title": "Catch the run branch up with the integration branch before build's final verification, not after it",
+        "updatedAt": "2026-10-28T16:39:11Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
         "body": "**Related:** #4212, #4210, #4247\n\nOrigin: dispatch close-out of PR #4223 (record #4212), 2026-10-25\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nAfter #4210 (PR #4235, merge `b4a2f59db`), `plugin/bin/lib/hooks/git-command.js`'s `tokenize` returns a per-character `spanKinds` mask and keeps backslashes in token values as typed; `isUnresolvable` then rejects any token still carrying a backslash. Measured on main (2026-10-25) against #4212's test expectations, three classes resolve **no** target where bash writes to a concrete path. All three are fail-open: none fabricates a target.\n\n1. **Escaped blank in a path word:** `mkdir a\\ b`, `mkdir -p /r/a\\ b/c`, `cp a my\\ file.js`, `cd /r/a\\ b && git commit -m x` return `[]`; bash targets `/r/a b`, `/r/a b/c`, `/r/my file.js`, `/r/a b`.\n2. **Backslash-newline line continuation** inside or before a word: `echo x >/ma\\<newline>in/x` and `mkdir -p \\<newline>/abs/dir` return `[]`; bash targets `/main/x` and `/abs/dir`.\n3. **A `$` / `${…}` / backtick word, then an escaped blank, then `>`:** `echo $M\\ >x`, `echo ${M}\\ >x`, ``echo `d`\\ >x``, `echo $M\\ bar>x` return `[]`; bash redirects to `x`. `echo $M>x` staying `[]` is the documented gap and must not change.\n\nPR #4223 (record #4212, branch `worktree-dispatch-record-4212`, tip `9a6fc75a9`) implemented all three by unescaping values in the old regex tokenizer. It was closed unmerged: it predates the span mask, conflicts with it in all four touched files, and lacks #4210's quoted-span and `(ls)>out` resolution. #4212's own acceptance criteria already pass on main.\n\n## Deliverables\n\n- `tokenize` yields the unescaped value for an escaped blank in a bare word and for an escaped double quote, and deletes a backslash-newline pair before word splitting, while keeping `spanKinds[i].length === tokens[i].length` (the mask must shrink with the value) and keeping every other backslash pair verbatim (Windows paths, `\\'`).\n- The glued-redirect scan resolves the operand after an escaped blank that follows a `$`/backtick prefix (`$M\\ >x`), without accepting `$M>x`.\n- `isUnresolvable` stops rejecting a token whose only backslashes were unescaped by the tokenizer.\n- `docs/journeys/write-a-glued-redirect-from-the-main-checkout-4015.md` and the redirect paragraph in `plugin/skills/_shared/policy-schema-coverage.md` describe the new behavior.\n\n## Acceptance Criteria\n\n- Every case listed in Current State resolves the bash target named there, pinned in `tests/hooks-gate-coverage.test.js` / `tests/hooks-git-command.test.js`, each going red when the change is reverted.\n- #4212's carried-over expectations hold on the new code: `echo \"a\\\" b>c \"` → none, `echo foo>x` → `x`, `echo foo\\\\>x` → `x`, `echo foo\\>x` → none, `cd \\'/wt\\' && git commit` → none, `echo x > \\'/abs/f\\'` → none, `echo $M>x` → none, and `echo a\\\"b>c` → `c` (bash's actual target; #4212 had pinned it as a known miss).\n- #4210's cases still resolve (`echo \"hi\">x` → `x`, `(ls)>out` → `out`), and the existing `fileWriteTargets` / `gitTargets` / `mkdirTargets` suites pass unchanged.\n- Full `npm test` passes.\n\n## Release Note\n\nThe worktree-always gate now sees writes to a path with an escaped space, a path split by a line continuation, and a redirect after a `$VAR\\ ` word, which it previously let through.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n- `tests/hooks-git-command.test.js` — modify\n- `docs/journeys/write-a-glued-redirect-from-the-main-checkout-4015.md` — modify\n- `plugin/skills/_shared/policy-schema-coverage.md` — modify\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-25T13:56:27Z",
         "labels": [
@@ -4055,84 +4138,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: reflect full from #3712\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:build` runs its `plan-authoring-checks.md` checks against a plan, but none of them asks whether a project skill already governs a file the plan touches. Dispatched SDD implementers and reviewers see only their task brief, so a rule that lives only in a `.claude/skills/*/SKILL.md` never reaches them unless the plan quotes it.\n\nIn #3712 this cost one review fix. The plan's Global Constraints defined \"provably owned\" as `isTrustedOwnedRun` plus not ad-hoc, which is weaker than `pre-tool-use-gate-exemptions`' existing rule that a deny keyed on the caller's own run must also require `classifyOwnership === 'mine'`. Five task reviews, the whole-branch review and its re-review all passed the weaker check, and /review's lens 3a caught it (fixed in 0a5d6cf24).\n\n## Deliverables\n\n- [ ] Add a check to `plugin/skills/build/plan-authoring-checks.md`: for each file the plan creates or modifies, find the project skills under `.claude/skills/` whose description or body names that file or its module, and quote their applicable rule bullets verbatim into the plan's Global Constraints, or say why none apply.\n- [ ] Pin the new check with a conformance test, following the file's existing pinned checks.\n\n## Acceptance Criteria\n\n1. `plugin/skills/build/plan-authoring-checks.md` carries a check that names `.claude/skills/` and requires governing project-skill rules to be quoted into the plan's Global Constraints.\n2. A test under `tests/` fails when that check's paragraph is removed from `plan-authoring-checks.md`.\n3. `npm test` passes.\n\n## Release Note\n\nBuild plans now carry any project-skill rule that governs the files they touch, so subagents implementing a task see it.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/plan-authoring-checks.md` — add the governing-project-skill quote check\n\n_Filed by `reflect` via specShapedBody._",
-        "createdAt": "2026-10-20T17:22:54Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3763,
-        "state": "OPEN",
-        "title": "Quote governing project-skill rules into build plans' Global Constraints",
-        "updatedAt": "2026-10-23T22:04:36Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
