@@ -917,6 +917,16 @@ test('#4149 with #4210: a heredoc inside a quoted "$( … )" is judged by the su
   assert.deepStrictEqual(fileWriteTargets("git commit -m \"$(cat <<'EOF'\nfix: a > b, it's done\nEOF\n)\"", '/r'), []);
 });
 
+// #4246: a `<<` inside an unquoted `${ … }` is word text, not an opener, so no body is cut out
+// and the `: > /M/zz` line runs as a command. bash 3.2 and 5 write /M/zz for the first case; zsh
+// does not (it reads the `<<` as an opener there). For the second, bash 3.2 and zsh write /M/zz and
+// bash 5 does not (it reads the `<<` after the `$(cat` as an opener). Side with the shells that write.
+test('#4246: a `<<` inside an unquoted ${ … } is literal text, not a heredoc opener', () => {
+  for (const command of ['echo ${x:-<<EOF}\n: > /M/zz\nEOF}', 'echo ${x:-$(cat <<EOF)}\n: > /M/zz\nEOF']) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/M/zz') }], command);
+  }
+});
+
 // #4149 with #4210: a command nested past NEST_LEVEL_CAP re-reads flat, and the flat split cuts at
 // a `|` or `;` inside "$( … )"; the walk carries the nesting state across that cut, so the inner `>`
 // stays quoted. bash 3.2 and 5 write only out.js and z.

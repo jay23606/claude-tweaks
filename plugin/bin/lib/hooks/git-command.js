@@ -1827,8 +1827,8 @@ function planHeredocBodies(str, start, pending, lineText, lineOpen) {
 }
 
 // The single char-level pass behind stripHeredocBodies. Quote, escape, and comment
-// handling mirror splitSegments, so a `<<` inside quotes or after a word-boundary
-// `#` is never an opener. Every terminated body is cut out of the outer text with its
+// handling mirror splitSegments, so a `<<` inside quotes, inside a closed `${ … }`, or after a
+// word-boundary `#` is never an opener. Every terminated body is cut out of the outer text with its
 // closing line, so the outer scan resumes after the delimiter with fresh quote state and
 // never plans an opener inside a body; a kept body is returned as its own chunk.
 function scanHeredocs(str) {
@@ -1856,6 +1856,7 @@ function scanHeredocsWith(str, spans) {
   let pending = []; // heredocs opened on the current logical line, in order
   let sticky = false; // a structure was left open on an earlier line: keep every later body
   let lineStart = 0;
+  let param; // the `${ … }` span read at the current `$`
   let i = 0;
   while (i < str.length) {
     const ch = str[i];
@@ -1920,6 +1921,11 @@ function scanHeredocsWith(str, spans) {
       }
       pending = [];
       lineStart = i;
+    } else if (ch === '$' && str[i + 1] === '{' && (param = spans.param(str, i + 2)).closed) {
+      // #4246: a closed `${ … }` is word text, so a `<<` inside it opens nothing out here. An
+      // unclosed one (or the flat reading, which never closes) falls through to the branches below.
+      emit(str.slice(i, param.end));
+      i = param.end;
     } else if (ch === '$' && str[i + 1] === '[') {
       bracketDepth += 1;
       emit('$[');
