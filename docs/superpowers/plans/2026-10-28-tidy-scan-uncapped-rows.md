@@ -37,7 +37,7 @@
 **Interfaces:**
 - Produces: `tests/tidy-scan-dispatch-conformance.test.js` with a top-level `SCAN_EXECUTION` (`read('plugin/skills/tidy/scan-execution.md')`) and `SCAN_PROCEDURES` (`read('plugin/skills/tidy/scan-procedures.md')`) constant, built the way `tests/materiality-floor-conformance.test.js` builds its `read` helper. Task 2 appends tests to this file.
 
-- [ ] **Step 1: Write the failing test** — header comment naming record #4468; tests:
+- [ ] **Step 1: Write the failing test** (covers AC1.1) — header comment naming record #4468; tests:
   - `scan-execution.md's scan template carries no row cap or count row (#4468)`: `assert.doesNotMatch(SCAN_EXECUTION, /\+N more/)`; `assert.doesNotMatch(SCAN_EXECUTION, /at most \d+ rows/i)`.
   - `scan-execution.md's scan template requires one row per finding (#4468)`: `assert.match(SCAN_EXECUTION, /Return every finding as its own row/)`; `assert.match(SCAN_EXECUTION, /never collapse findings into a count or summary row/)`.
 
