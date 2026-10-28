@@ -954,12 +954,16 @@ test('#4246: only a closed ${ … } is skipped; an unclosed one reads as before'
 // body to bash 3.2 and zsh, which run the lines after it as commands; bash 5 reads them as the
 // body. bash 3.2 and zsh write /M/zz for each case, bash 5 writes nothing; the scan keeps the
 // would-be body and scans it as commands, so it reports the write. (`x=$(cat <<EOF)` and
-// `echo "$(cat <<EOF)"` already reported /M/zz before this rule.)
+// `echo "$(cat <<EOF)"` already reported /M/zz before this rule.) The last two open the heredoc in
+// an unquoted `$( … )` inside a `"$( … )"` that stays open: the heredoc belongs to the innermost
+// frame, which closes on the opener line. bash 3.2 and zsh write zz, bash 5 writes nothing.
 test('#4246: a heredoc whose $( … ) closes on the opener line keeps its would-be body, scanned as commands', () => {
   for (const command of [
     'echo $(cat <<EOF)\n: > /M/zz\nEOF',
     'echo $(cat <<EOF; echo x)\n: > /M/zz\nEOF',
     'echo $(echo $(cat <<EOF))\n: > /M/zz\nEOF',
+    'x="$(cat $(cat <<EOF)\n: > /M/zz\nEOF\n)"',
+    'x="$(\necho $(cat <<EOF)\n: > /M/zz\nEOF\n)"',
   ]) {
     assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/M/zz') }], command);
   }
