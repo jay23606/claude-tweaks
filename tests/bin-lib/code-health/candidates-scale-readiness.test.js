@@ -316,6 +316,21 @@ test('unbounded-list-query: only a top-level take/limit key bounds the call', ()
   assert.deepEqual(lines, [1, 2, 5]);
 });
 
+test('#3903 unbounded-list-query: a computed string-literal take/limit key bounds the call; a computed variable key does not', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/posts.js': [
+      "const a = await prisma.post.findMany({ ['take']: 10 });",
+      'const b = await prisma.post.findMany({ ["limit"]: 10 });',
+      'const c = await prisma.post.findMany({ [key]: 10 });',
+      'const d = await prisma.post.findMany({ [`take`]: 10 });',
+      "const e = await prisma.post.findMany({ ['take\"]: 10 });",
+      "const f = await prisma.post.findMany({ ['skip']: 10 });",
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(ofKind(root, 'unbounded-list-query').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/posts.js:3', 'routes/posts.js:5', 'routes/posts.js:6']);
+});
+
 const POST_SCHEMA = 'model Post {\n  id Int @id\n  authorId Int\n  title String\n}\n';
 
 function postRepo(schema, route) {

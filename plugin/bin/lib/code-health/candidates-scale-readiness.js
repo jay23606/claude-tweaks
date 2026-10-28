@@ -104,7 +104,10 @@
 //     matches, so a loop or an unbounded-list flag on an in-memory constant is
 //     a possible false positive. A `findMany(args)` whose argument is a
 //     variable rather than an object literal reads as unbounded, because a
-//     `take` set elsewhere is not visible. A Mongoose `.find(…)` is bounded
+//     `take` set elsewhere is not visible. A `take`/`limit` key spelled as a
+//     computed string literal (`{ ['take']: 10 }`) bounds the call; one
+//     arriving through a spread (`{ ...opts }`) or a computed variable key
+//     (`{ [key]: 10 }`) does not. A Mongoose `.find(…)` is bounded
 //     only by a `.limit(` among its own chained `.x(…)` continuations: a
 //     `.limit` applied later to a query held in a variable reads as
 //     unbounded, and a chain whose brackets do not balance is skipped.
@@ -591,14 +594,17 @@ function scanQueryInLoop(ctx, candidates) {
 }
 
 // True when the call's args are an object literal with a top-level `take` or
-// `limit` key (`key: v` or bare shorthand). A nested `include: { x: { take } }`
-// or a `limit` used as a value inside `where` does not bound the outer call.
+// `limit` key (`key: v` or bare shorthand, or a computed string-literal key
+// `['take']: v`, the same quote on both sides). A nested
+// `include: { x: { take } }` or a `limit` used as a value inside `where` does
+// not bound the outer call, and a computed variable key (`[key]: v`) stays
+// unbounded because its name is not visible.
 function hasTopLevelLimit(args) {
   const trimmed = args.trim();
   if (!trimmed.startsWith('{')) return false;
   const inner = braceInner(trimmed, 0);
   if (inner === null) return false;
-  return splitTopLevel(inner).some((seg) => /^['"]?(?:take|limit)['"]?\s*(?::|$)/.test(seg));
+  return splitTopLevel(inner).some((seg) => /^(?:['"]?(?:take|limit)['"]?\s*(?::|$)|\[\s*(['"`])(?:take|limit)\1\s*\]\s*:)/.test(seg));
 }
 
 // For a Mongoose `.find(…)` whose `)` is at `closeIdx`: true when a `.limit(`
