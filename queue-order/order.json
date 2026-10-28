@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T07:01:23.354Z",
+  "computedAt": "2026-10-28T07:09:25.172Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -220,7 +220,7 @@
       },
       {
         "number": 3736,
-        "updatedAt": "2026-10-27T18:30:02Z",
+        "updatedAt": "2026-10-28T07:08:51Z",
         "state": "OPEN"
       },
       {
@@ -1552,7 +1552,7 @@
         "number": 3736,
         "state": "OPEN",
         "title": "Move context.js's assigned-run worktree match to case-canonical realpath",
-        "updatedAt": "2026-10-27T18:30:02Z",
+        "updatedAt": "2026-10-28T07:08:51Z",
         "facets": {
           "origin": null,
           "risk": "medium",
