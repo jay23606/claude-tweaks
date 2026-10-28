@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T22:57:13.390Z",
+  "computedAt": "2026-10-28T23:13:52.998Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -50,7 +50,7 @@
       },
       {
         "number": 4466,
-        "updatedAt": "2026-10-28T18:40:43Z",
+        "updatedAt": "2026-10-28T23:13:33Z",
         "state": "OPEN"
       },
       {
@@ -837,7 +837,7 @@
         "number": 4466,
         "state": "OPEN",
         "title": "Below-floor decomposition parents are never closed: the exceeds:false branch says \"closes cleanly\" but no step closes them",
-        "updatedAt": "2026-10-28T18:40:43Z",
+        "updatedAt": "2026-10-28T23:13:33Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
