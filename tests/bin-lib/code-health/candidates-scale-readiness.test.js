@@ -635,6 +635,73 @@ test('#3903 AC4.1: a client held in a module-scope object literal is not per-req
   assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/items.js:2']);
 });
 
+test('#3903 AC4.1 per-request-db-client: an object an arrow function returns per call (Apollo and tRPC context) is still flagged', () => {
+  const root = repoWith({ next: '^14', '@prisma/client': '^5', '@apollo/server': '^4', '@trpc/server': '^10' }, {
+    'pages/api/graphql.ts': [
+      "import { ApolloServer } from '@apollo/server';",
+      "import { startServerAndCreateNextHandler } from '@as-integrations/next';",
+      "import { PrismaClient } from '@prisma/client';",
+      "import { typeDefs, resolvers } from '../../graphql/schema';",
+      '',
+      'const server = new ApolloServer({',
+      '  typeDefs,',
+      '  resolvers,',
+      '  context: ({ req }) => ({ prisma: new PrismaClient(), user: req.user }),',
+      '});',
+      '',
+      'export default startServerAndCreateNextHandler(server);',
+      '',
+    ].join('\n'),
+    'pages/api/trpc/[trpc].ts': [
+      "import { createNextApiHandler } from '@trpc/server/adapters/next';",
+      "import { PrismaClient } from '@prisma/client';",
+      "import { appRouter } from '../../../server/routers/_app';",
+      '',
+      'export default createNextApiHandler({',
+      '  router: appRouter,',
+      '  createContext: () => ({ db: new PrismaClient() }),',
+      '});',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(
+    ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]),
+    ['pages/api/graphql.ts:9', 'pages/api/trpc/[trpc].ts:7'],
+  );
+});
+
+test('#3903 AC4.1 per-request-db-client: objects after `: [ ? | &` at module scope are skipped, a handler client in the same file is flagged', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/mixed.js': [
+      'const nested = { inner: { db: new PrismaClient() } };',
+      'const list = [{ db: new PrismaClient() }];',
+      'const picked = flag ? { db: new PrismaClient() } : { db: null };',
+      'const shared = globalThis.deps || { db: new PrismaClient() };',
+      'const both = globalThis.deps && { db: new PrismaClient() };',
+      "router.get('/', async (req, res) => {",
+      '  const prisma = new PrismaClient();',
+      '  res.json(await prisma.item.findMany({ take: 5 }));',
+      '});',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/mixed.js:7']);
+});
+
+test('#3903 per-request-db-client: a stray `}` at module scope does not hide the next handler\'s client', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/tpl.js': [
+      "const tpl = '}';",
+      "router.get('/', async (req, res) => {",
+      '  const prisma = new PrismaClient();',
+      '  res.json(await prisma.item.findMany({ take: 5 }));',
+      '});',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/tpl.js:3']);
+});
+
 test('AC2.1 AC2.2 no-cache-layer: DB-backed routes with no cache signal anchor to package.json', () => {
   const root = repoWith({ '@prisma/client': '^5' }, {
     'routes/users.js': "router.get('/', async (req, res) => res.json(await prisma.user.findMany({ take: 10 })));\n",

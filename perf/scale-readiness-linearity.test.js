@@ -51,6 +51,17 @@ test('the "use server" check is linear in leading slashes', () => {
   assert.equal(r.notApplicable, true);
 });
 
+test('the per-request-client brace scan is linear in the matches of one large route file', () => {
+  // Thousands of module-scope object-literal clients: a scan restarted from index 0 per match is quadratic.
+  const body = Array.from({ length: 6000 }, (_, i) => `const deps${i} = { db: new PrismaClient(), n: ${i} };`).join('\n');
+  const big = repoWith({ express: '^4', '@prisma/client': '^5' }, { 'routes/big.js': `${body}\n` });
+  const start = Date.now();
+  const r = scanScaleReadiness(big);
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed < 1000, `scan took ${elapsed} ms`);
+  assert.equal(r.candidates.filter((c) => c.kind === 'per-request-db-client').length, 0);
+});
+
 test('the Prisma receiver-chain match is linear in a long dotted run', () => {
   const dotted = repoWith({ express: '^4', '@prisma/client': '^5' }, { 'routes/data.js': `const x = ${'a.'.repeat(20000)}b;\n` });
   const start = Date.now();

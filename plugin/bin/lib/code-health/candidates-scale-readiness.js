@@ -132,14 +132,18 @@
 //     `new Pool(`, `new Client(`, `new MongoClient(`, `mysql.createConnection(`,
 //     `mysql.createPool(` and `postgres(` inside a block brace. A `{` is an
 //     object-literal brace when the previous non-whitespace character is one
-//     of `= ( , : [ ?` or the previous word is `default`; every other `{`
-//     (after `)`, `=>`, an identifier) is a block brace, so a client held in a
-//     module-scope object literal is skipped. The scan runs from the start of
-//     the file with no string or comment awareness; a module-scope `if`/`try`
-//     block or IIFE reads as a handler, and a parameter-default object
-//     (`function f(o = { db: new X() })`) reads as module scope. `new Client(`
-//     matches any class of that name. A client built in a module-scope factory
-//     called per request is not seen.
+//     of `= ( , : [ ? | &` or the previous word is `default`, except that a
+//     `(` preceded by `=>` opens an arrow function's returned object
+//     (`context: () => ({ db: new PrismaClient() })`), evaluated per call, so
+//     that `{` is a block brace; every other `{` (after `)`, `=>`, an
+//     identifier, `.`) is a block brace. A client held in a module-scope
+//     object literal is therefore skipped, except an object directly after a
+//     spread (`...{ db: new X() }`), which reads as a handler. The scan runs
+//     from the start of the file with no string or comment awareness; a
+//     module-scope `if`/`try` block or IIFE reads as a handler, and a
+//     parameter-default object (`function f(o = { db: new X() })`) reads as
+//     module scope. `new Client(` matches any class of that name. A client
+//     built in a module-scope factory called per request is not seen.
 //   - `unbounded-pool` scans all source for `new Pool(` without a `max`
 //     option, `createPool(` without `connectionLimit` and `new MongoClient(`
 //     without `maxPoolSize`, and names the driver default in its evidence. It
@@ -801,33 +805,64 @@ function scanInlineSlowWork(ctx, candidates) {
 
 const REQUEST_CLIENT_RE = /\bnew\s+(?:PrismaClient|Pool|Client|MongoClient)\s*\(|\bmysql2?\.create(?:Connection|Pool)\s*\(|(?<![\w$.])postgres\s*\(/g;
 
-// True when text[0, idx) leaves a block brace open — a function or control
-// body, not an object literal. A `{` is an object-literal brace when the
-// previous non-whitespace character is one of `= ( , : [ ?` or the previous
-// word is `default` (`export default {`); every other `{` (after `)`, `=>`,
-// an identifier, `}`) is a block brace. A single left-to-right scan from the
-// start of the file, not a window before the match: a handler longer than
-// MAX_SCAN_CHARS would otherwise lose its opening brace and read as module
-// scope. No string or comment awareness.
-function insideNonObjectBrace(text, idx) {
-  const stack = [];
+// Whitespace by char code, not a regex per character: the brace scan is a hot loop.
+function isSpaceCode(c) {
+  return c === 32 || (c >= 9 && c <= 13) || c === 0xA0 || c === 0xFEFF || c === 0x2028 || c === 0x2029;
+}
+
+function isWordCode(c) {
+  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95 || c === 36;
+}
+
+// Characters after which a `{` opens an object literal, never a block.
+const OBJECT_BRACE_PREFIX = '=(,:[?|&';
+
+// Returns insideNonObjectBrace(idx): true when text[0, idx) leaves a block
+// brace open — a function or control body, not an object literal. A `{` is an
+// object-literal brace when the previous non-whitespace character is one of
+// `= ( , : [ ? | &` or the previous word is `default` (`export default {`),
+// except that a `(` itself preceded by `=>` opens an arrow function's returned
+// object, evaluated per call, so that `{` is a block brace. Every other `{`
+// (after `)`, `=>`, an identifier, `}`, `.`) is a block brace. One
+// left-to-right pass from the start of the file, not a window before the
+// match: a handler longer than MAX_SCAN_CHARS would otherwise lose its opening
+// brace and read as module scope. The scan position persists across calls, so
+// the per-file cost is linear in the file, not in matches times file length;
+// idx must be non-decreasing (a smaller idx restarts the scan). No string or
+// comment awareness.
+function braceTracker(text) {
+  let stack = [];
   let blockBraces = 0;
-  let prev = -1; // index of the last non-whitespace character before i
-  for (let i = 0; i < idx; i++) {
-    const ch = text[i];
-    if (ch === '{') {
-      const p = prev === -1 ? '' : text[prev];
-      const afterOperator = p !== '' && '=(,:[?'.includes(p);
-      const afterDefault = /[\w$]/.test(p) && /(?:^|[^\w$])default$/.test(text.slice(Math.max(0, prev - 7), prev + 1));
-      const isObject = afterOperator || afterDefault;
-      stack.push(!isObject);
-      if (!isObject) blockBraces++;
-    } else if (ch === '}' && stack.length > 0) {
-      if (stack.pop()) blockBraces--;
+  let pos = 0;
+  let prev = -1; // index of the last non-whitespace character before pos
+  let prev2 = -1; // the non-whitespace character before prev
+  return function insideNonObjectBrace(idx) {
+    if (idx < pos) {
+      stack = [];
+      blockBraces = 0;
+      pos = 0;
+      prev = -1;
+      prev2 = -1;
     }
-    if (!/\s/.test(ch)) prev = i;
-  }
-  return blockBraces > 0;
+    for (; pos < idx; pos++) {
+      const code = text.charCodeAt(pos);
+      if (code === 123) { // {
+        const p = prev === -1 ? '' : text[prev];
+        let isObject = p !== '' && OBJECT_BRACE_PREFIX.includes(p);
+        if (isObject && p === '(' && prev2 > 0 && text[prev2] === '>' && text[prev2 - 1] === '=') isObject = false;
+        if (!isObject && prev >= 6 && text.startsWith('default', prev - 6) && (prev === 6 || !isWordCode(text.charCodeAt(prev - 7)))) isObject = true;
+        stack.push(!isObject);
+        if (!isObject) blockBraces++;
+      } else if (code === 125 && stack.length > 0) { // }
+        if (stack.pop()) blockBraces--;
+      }
+      if (!isSpaceCode(code)) {
+        prev2 = prev;
+        prev = pos;
+      }
+    }
+    return blockBraces > 0;
+  };
 }
 
 // [call regex, option that caps the pool, driver default named in the evidence]
@@ -845,9 +880,10 @@ function scanPooling(ctx, candidates) {
       routeChecked++;
       const seen = new Set();
       const calls = new RegExp(REQUEST_CLIENT_RE.source, 'g');
+      const insideNonObjectBrace = braceTracker(text);
       let m;
       while ((m = calls.exec(text)) !== null) {
-        if (!insideNonObjectBrace(text, m.index)) continue;
+        if (!insideNonObjectBrace(m.index)) continue;
         const line = lineOf(text, m.index);
         if (seen.has(line)) continue;
         seen.add(line);
