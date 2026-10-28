@@ -130,15 +130,25 @@
 //     variable, is invisible.
 //   - `per-request-db-client` scans route files for `new PrismaClient(`,
 //     `new Pool(`, `new Client(`, `new MongoClient(`, `mysql.createConnection(`,
-//     `mysql.createPool(` and `postgres(` at brace depth above zero. Depth is a
-//     `{`/`}` count from the start of the file with no string or comment
-//     awareness, and `new Client(` matches any class of that name. A client
-//     built in a module-scope factory called per request is not seen.
+//     `mysql.createPool(` and `postgres(` inside a block brace. A `{` is an
+//     object-literal brace when the previous non-whitespace character is one
+//     of `= ( , : [ ?` or the previous word is `default`; every other `{`
+//     (after `)`, `=>`, an identifier) is a block brace, so a client held in a
+//     module-scope object literal is skipped. The scan runs from the start of
+//     the file with no string or comment awareness; a module-scope `if`/`try`
+//     block or IIFE reads as a handler, and a parameter-default object
+//     (`function f(o = { db: new X() })`) reads as module scope. `new Client(`
+//     matches any class of that name. A client built in a module-scope factory
+//     called per request is not seen.
 //   - `unbounded-pool` scans all source for `new Pool(` without a `max`
 //     option, `createPool(` without `connectionLimit` and `new MongoClient(`
 //     without `maxPoolSize`, and names the driver default in its evidence. It
 //     inspects only the literal call arguments: a config held in a variable
-//     reads as uncapped.
+//     reads as uncapped. It runs only when a dependency in `DATA_DEPS` is
+//     declared, a repo-level gate: with one declared, a non-database `Pool`
+//     class (`generic-pool`, `undici`) still matches, and a pool from a
+//     database driver that list does not name (`mariadb`, `pg-pool`,
+//     `oracledb`) is skipped as non-database.
 //   - `no-cache-layer` is a presence check, not a quality check. It applies
 //     when at least one route file contains a query call (the same shapes as
 //     the query checks), and passes if any of `redis`, `ioredis`,
@@ -791,16 +801,33 @@ function scanInlineSlowWork(ctx, candidates) {
 
 const REQUEST_CLIENT_RE = /\bnew\s+(?:PrismaClient|Pool|Client|MongoClient)\s*\(|\bmysql2?\.create(?:Connection|Pool)\s*\(|(?<![\w$.])postgres\s*\(/g;
 
-// `{` minus `}` in text[0, idx). Counted from the start of the file, not a
-// window before the match: a handler longer than MAX_SCAN_CHARS would
-// otherwise lose its opening brace and read as module scope.
-function braceDepthAt(text, idx) {
-  let depth = 0;
+// True when text[0, idx) leaves a block brace open — a function or control
+// body, not an object literal. A `{` is an object-literal brace when the
+// previous non-whitespace character is one of `= ( , : [ ?` or the previous
+// word is `default` (`export default {`); every other `{` (after `)`, `=>`,
+// an identifier, `}`) is a block brace. A single left-to-right scan from the
+// start of the file, not a window before the match: a handler longer than
+// MAX_SCAN_CHARS would otherwise lose its opening brace and read as module
+// scope. No string or comment awareness.
+function insideNonObjectBrace(text, idx) {
+  const stack = [];
+  let blockBraces = 0;
+  let prev = -1; // index of the last non-whitespace character before i
   for (let i = 0; i < idx; i++) {
-    if (text[i] === '{') depth++;
-    else if (text[i] === '}') depth--;
+    const ch = text[i];
+    if (ch === '{') {
+      const p = prev === -1 ? '' : text[prev];
+      const afterOperator = p !== '' && '=(,:[?'.includes(p);
+      const afterDefault = /[\w$]/.test(p) && /(?:^|[^\w$])default$/.test(text.slice(Math.max(0, prev - 7), prev + 1));
+      const isObject = afterOperator || afterDefault;
+      stack.push(!isObject);
+      if (!isObject) blockBraces++;
+    } else if (ch === '}' && stack.length > 0) {
+      if (stack.pop()) blockBraces--;
+    }
+    if (!/\s/.test(ch)) prev = i;
   }
-  return depth;
+  return blockBraces > 0;
 }
 
 // [call regex, option that caps the pool, driver default named in the evidence]
@@ -811,6 +838,7 @@ const POOL_CHECKS = [
 ];
 
 function scanPooling(ctx, candidates) {
+  const dbDep = [...ctx.deps].some((d) => DATA_DEPS.has(d));
   let routeChecked = 0;
   for (const { rel, text } of ctx.sourceTexts) {
     if (ctx.routeFiles.has(rel)) {
@@ -819,13 +847,14 @@ function scanPooling(ctx, candidates) {
       const calls = new RegExp(REQUEST_CLIENT_RE.source, 'g');
       let m;
       while ((m = calls.exec(text)) !== null) {
-        if (braceDepthAt(text, m.index) <= 0) continue;
+        if (!insideNonObjectBrace(text, m.index)) continue;
         const line = lineOf(text, m.index);
         if (seen.has(line)) continue;
         seen.add(line);
         candidates.push({ file: rel, kind: 'per-request-db-client', evidence: `${rel}:${line} ${m[0].replace(/\s*\($/, '').replace(/\s+/g, ' ')} created inside a handler — a new client or pool per request instead of one shared at module scope` });
       }
     }
+    if (!dbDep) continue;
     for (const { re, capped, name, note } of POOL_CHECKS) {
       const calls = new RegExp(re.source, 'g');
       let m;
@@ -838,7 +867,11 @@ function scanPooling(ctx, candidates) {
       }
     }
   }
-  return { pooling: `${routeChecked} route file(s) checked for per-request clients, ${ctx.sourceTexts.length} source file(s) checked for uncapped pools` };
+  return {
+    pooling: dbDep
+      ? `${routeChecked} route file(s) checked for per-request clients, ${ctx.sourceTexts.length} source file(s) checked for uncapped pools`
+      : `${routeChecked} route file(s) checked for per-request clients; uncapped-pool check skipped — no database dependency declared`,
+  };
 }
 
 const CACHE_DEPS = new Set(['redis', 'ioredis', '@upstash/redis', '@vercel/kv', 'lru-cache', 'node-cache', 'keyv', 'cache-manager', 'memcached']);

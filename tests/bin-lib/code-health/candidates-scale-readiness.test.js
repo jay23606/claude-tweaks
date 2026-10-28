@@ -601,6 +601,40 @@ test('unbounded-pool: an unbalanced call is skipped, not guessed at', () => {
   assert.equal(ofKind(root, 'unbounded-pool').length, 0);
 });
 
+test('#3903 AC3.1 AC3.2: unbounded-pool skips non-DB pools when no DB dependency is declared; a pg Pool still flags', () => {
+  const nonDb = repoWith({ express: '^4', 'generic-pool': '^3', undici: '^6', workerpool: '^9' }, {
+    'routes/health.js': "module.exports = (req, res) => res.send('ok');\n",
+    'lib/pools.js': [
+      "const genericPool = require('generic-pool');",
+      "const { Pool } = require('undici');",
+      'const workers = genericPool.createPool(factory, { min: 2 });',
+      "const upstream = new Pool('http://localhost:3000');",
+      '',
+    ].join('\n'),
+  });
+  assert.equal(ofKind(nonDb, 'unbounded-pool').length, 0);
+  assert.match(scanScaleReadiness(nonDb).checklist.find((x) => x.id === 'pooling').evidence, /no database dependency/);
+  const pg = repoWith({ express: '^4', pg: '^8' }, {
+    'routes/health.js': "module.exports = (req, res) => res.send('ok');\n",
+    'lib/db.js': "const { Pool } = require('pg');\nconst pool = new Pool({ connectionString: process.env.DATABASE_URL });\n",
+  });
+  assert.deepEqual(ofKind(pg, 'unbounded-pool').map((c) => c.file), ['lib/db.js']);
+});
+
+test('#3903 AC4.1: a client held in a module-scope object literal is not per-request; one inside a handler still is', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5', pg: '^8' }, {
+    'routes/users.js': "const { PrismaClient } = require('@prisma/client');\nmodule.exports = { db: new PrismaClient() };\n",
+    'routes/orders.js': [
+      'const deps = { db: new PrismaClient(), cache: new Map() };',
+      'app.use(makeRouter({ db: new PrismaClient() }));',
+      'export default { pool: new Pool({ max: 5 }) };',
+      '',
+    ].join('\n'),
+    'routes/items.js': "router.get('/', async (req, res) => {\n  const deps = { db: new PrismaClient() };\n  res.json(await deps.db.item.findMany({ take: 5 }));\n});\n",
+  });
+  assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/items.js:2']);
+});
+
 test('AC2.1 AC2.2 no-cache-layer: DB-backed routes with no cache signal anchor to package.json', () => {
   const root = repoWith({ '@prisma/client': '^5' }, {
     'routes/users.js': "router.get('/', async (req, res) => res.json(await prisma.user.findMany({ take: 10 })));\n",

@@ -46,8 +46,8 @@ Judge each candidate against the generator's known limits before filing — read
 - `unindexed-where-field` when the field is the leading column of a composite `@@index` — and conversely, a field that is only a non-leading column of one is still unindexed, since a composite index covers only its leading column. Also skip a table that stays small by construction.
 - `inline-slow-work` on a `streamText`/`streamObject` response (request-bound by design), and on a call already handed to a queue the generator's signal list does not name.
 - `no-cache-layer` when a CDN or edge cache configured outside the repo (a platform setting, a Cloudflare rule) fronts the routes.
-- `per-request-db-client` on a module-scope object literal that holds a client in a route file (`const deps = { db: new PrismaClient() }`) — it reads as per-request to the brace-depth count but runs once.
-- `unbounded-pool` on a `Pool` class that is not a database pool (`generic-pool`, `undici`, `workerpool`), and on a serverless platform's own pooling (Prisma Accelerate, a Neon or Supabase pooler URL) that bounds connections outside the constructor.
+- `per-request-db-client` on a client built once at module scope inside a block the generator reads as a function body (a top-level `if (!globalThis.prisma) { … }` singleton guard, a module-scope IIFE); a client held in a module-scope object literal is already skipped.
+- `unbounded-pool` on a non-database `Pool` class (`generic-pool`, `undici`, `workerpool`) in a repo that also declares a database dependency — with none declared the generator skips the check — and on a serverless platform's own pooling (Prisma Accelerate, a Neon or Supabase pooler URL) that bounds connections outside the constructor.
 - `no-monitoring` when a platform-level agent or a hosted log drain with no dependency covers errors.
 - Any candidate on a repo that does not run a server — a library or static site has no scale to prepare for.
 
