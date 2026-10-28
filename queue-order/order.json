@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T12:18:30.567Z",
+  "computedAt": "2026-10-28T13:12:21.827Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -200,7 +200,7 @@
       },
       {
         "number": 4367,
-        "updatedAt": "2026-10-28T07:12:24Z",
+        "updatedAt": "2026-10-28T12:39:43Z",
         "state": "OPEN"
       },
       {
@@ -3021,84 +3021,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #4169, #4350, #4351\n\n## Current State\n\n`sectionText` (`plugin/bin/lib/issues/materialize-format.js`, ~line 102) locates a section with `body.indexOf('## ' + name)` — a substring search, not a line-anchored heading match. #4169 added a fence check around it but kept the substring search.\n\nSo a heading mentioned mid-line counts as the record's own section: inline code (a Current State sentence naming the `` `## Acceptance Criteria` `` heading), a blockquote line, or prose. The match is also a prefix match, so `## Release Notes` satisfies `## Release Note`.\n\nProbe at v6.155.1 and at the pre-#4169 tree (2837561ec), same result: `shapeGate` on a body whose only mention of Acceptance Criteria and Release Note is that inline sentence returns `{ ok: true, missing: [] }` — the shape gate passes a record that has neither section. Found by the post-release review of #4169 (staged as review-82 in the v6.155.x release run dir).\n\n## Deliverables\n\n- [ ] `sectionText` matches a section heading only on a line that is itself `## {name}` (line-anchored, the whole heading text, optional trailing whitespace), outside a fenced block\n\n- [ ] `extractSection` and `sectionText` agree on what counts as a heading for the same body\n\n- [ ] tests pin the inline-code mention, the blockquote mention and the `Release Notes` prefix case through `shapeGate`\n\n## Acceptance Criteria\n\n1. `shapeGate` on a body whose only Acceptance Criteria / Release Note mention is inline code in Current State reports both sections missing.\n\n2. A body with `## Release Notes` and no `## Release Note` heading reports Release Note missing.\n\n3. Existing real records still pass: the `shapeGate` and `sectionText` suites in `tests/bin-lib/issues/materialize-format.test.js` stay green.\n\n4. `npm test` passes.\n\n## Release Note\n\nA record that only mentions a required section heading in passing no longer passes the shape gate as if it had that section.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/materialize-format.js` — sectionText matches line-anchored, whole-name headings\n- `tests/bin-lib/issues/materialize-format.test.js` — inline-mention, blockquote and prefix cases\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-26T05:23:32Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4367,
-        "state": "OPEN",
-        "title": "Match a record section heading only when it starts its own line",
-        "updatedAt": "2026-10-28T07:12:24Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
