@@ -951,10 +951,11 @@ test('#4246: only a closed ${ … } is skipped; an unclosed one reads as before'
 });
 
 // #4246: a heredoc opened inside an unquoted `$( … )` whose `)` closes on the opener line has no
-// body, so the lines after it are commands. bash 3.2 and zsh write /M/zz for each case; bash 5
-// reads the lines as the body. The scan sides with the shells that write. (`x=$(cat <<EOF)` and
+// body to bash 3.2 and zsh, which run the lines after it as commands; bash 5 reads them as the
+// body. bash 3.2 and zsh write /M/zz for each case, bash 5 writes nothing; the scan keeps the
+// would-be body and scans it as commands, so it reports the write. (`x=$(cat <<EOF)` and
 // `echo "$(cat <<EOF)"` already reported /M/zz before this rule.)
-test('#4246: a heredoc whose $( … ) closes on the opener line has no body, so the next lines are commands', () => {
+test('#4246: a heredoc whose $( … ) closes on the opener line keeps its would-be body, scanned as commands', () => {
   for (const command of [
     'echo $(cat <<EOF)\n: > /M/zz\nEOF',
     'echo $(cat <<EOF; echo x)\n: > /M/zz\nEOF',
@@ -964,11 +965,28 @@ test('#4246: a heredoc whose $( … ) closes on the opener line has no body, so 
   }
 });
 
-// #4246: once `$(cat <<A)` closes, only `<<B` reads the next lines, so `: > /M/zz` is B's body.
-// bash 3.2, bash 5 and zsh all write nothing. Before this rule the scan read A's body first, found
-// no `A` line, kept the rest as written and reported /M/zz, a spurious deny.
-test('#4246: a real opener after a same-line $(cat <<A) still plans its own body', () => {
-  assert.deepStrictEqual(fileWriteTargets('cat $(cat <<A) <<B\n: > /M/zz\nB', '/r'), []);
+// #4246 (deliberate fail-closed tradeoff): a line holding a same-line-closed `$(cat <<A)` keeps
+// every body on it, B's included. bash 3.2, bash 5 and zsh write nothing for either case (`: > /M/zz`
+// is A's or B's body under each reading). The first is a spurious deny base did not have (base
+// stripped both bodies); the second matches base (A has no `A` line, so the rest stays as written).
+test('#4246: a line holding a same-line-closed $(cat <<A) keeps every body (deliberate fail-closed tradeoff)', () => {
+  for (const command of ['cat $(cat <<A) <<B\nA\n: > /M/zz\nB', 'cat $(cat <<A) <<B\n: > /M/zz\nB']) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/M/zz') }], command);
+  }
+});
+
+// #4246: a kept would-be body is scanned from the opener's cwd as its own chunk, and the outer scan
+// resumes after the delimiter with the opener line's cwd, bash 5's reading. From /r, bash 5 writes
+// /r/zz and bash 3.2 and zsh write /M/zz (they run the `cd`): the scan reports /r/zz, the known gap
+// in policy-schema-coverage.md. From /main, bash 5 writes /main/zz, which the scan must keep
+// reporting (bash 3.2 and zsh write /wt/zz); dropping the body would report only /wt/zz.
+test('#4246: a `cd` in a kept would-be body does not move a write after the delimiter', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo $(cat <<EOF)\ncd ../M\nEOF\n: > zz', '/r'), [
+    { action: 'write', file: path.resolve('/r/zz') },
+  ]);
+  assert.deepStrictEqual(fileWriteTargets('echo $(cat <<EOF)\ncd ../wt\nEOF\n: > zz', '/main'), [
+    { action: 'write', file: path.resolve('/main/zz') },
+  ]);
 });
 
 // #4149 with #4210: a command nested past NEST_LEVEL_CAP re-reads flat, and the flat split cuts at

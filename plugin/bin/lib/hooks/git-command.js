@@ -1805,8 +1805,9 @@ const KNOWN_SHELL_WORDS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'mksh', '
 //           opener's index in the outer text, `shell` whether a token on the line names a
 //           KNOWN_SHELL_WORDS program), because a structure is open (`lineOpen`:
 //           left open on an earlier line or on this one), the line feeds them to
-//           something other than a known data reader, the line continues, or an
-//           unquoted body expands `$(` or a backtick; `end` is the index after the last;
+//           something other than a known data reader, the line continues, an
+//           unquoted body expands `$(` or a backtick, or a heredoc's `$( … )` closed on
+//           its opener line (`sameLineClose`, #4246); `end` is the index after the last;
 //   strip - every body is data; `end` is the index after the last one.
 function planHeredocBodies(str, start, pending, lineText, lineOpen) {
   const bodies = [];
@@ -1817,7 +1818,10 @@ function planHeredocBodies(str, start, pending, lineText, lineOpen) {
     bodies.push({ h, text: body.text });
     p = body.end;
   }
-  const keep = lineOpen || CONTINUATION_RE.test(lineText) || !lineFeedsOnlyDataReaders(lineText);
+  // #4246: bash 3.2 and zsh run a same-line-closed heredoc's would-be body as commands, so the
+  // line's bodies are all kept (scanned as commands) whatever reads them; a mixed line such as
+  // `cat $(cat <<A) <<B` keeps B's too, a spurious deny the scan accepts.
+  const keep = lineOpen || pending.some((h) => h.sameLineClose) || CONTINUATION_RE.test(lineText) || !lineFeedsOnlyDataReaders(lineText);
   const expands = bodies.some(({ h, text }) => !h.quoted && /\$\(|`/.test(text));
   if (keep || expands) {
     const shell = tokenize(lineText).typed.some((tok) => programNames(tok).some((n) => KNOWN_SHELL_WORDS.has(n)));
@@ -1963,10 +1967,11 @@ function scanHeredocsWith(str, spans) {
       if (subs[subs.length - 1].depth === 0) {
         const popped = subs.pop();
         if (popped.dq) quote = '"';
-        // #4246: a heredoc opened inside a `$( … )` that closes on its opener line has no body:
-        // bash 3.2 and zsh run the lines after it as commands (bash 5 reads them as the body), so
-        // the scan sides with the shells that run them and plans no body for it.
-        pending = pending.filter((h) => h.frame !== popped);
+        // #4246: a heredoc opened inside a `$( … )` that closes on its opener line has no body to
+        // bash 3.2 and zsh, which run the lines after it as commands, while bash 5 reads them as
+        // its body. Marked here so planHeredocBodies keeps every body on the line: each would-be
+        // body is scanned as commands, and the outer scan still resumes after the delimiter.
+        for (const h of pending) if (h.frame === popped) h.sameLineClose = true;
       }
       emit(ch);
       i += 1;
