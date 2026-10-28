@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T20:00:03.120Z",
+  "computedAt": "2026-10-28T20:18:59.276Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -115,7 +115,7 @@
       },
       {
         "number": 4448,
-        "updatedAt": "2026-10-28T18:39:35Z",
+        "updatedAt": "2026-10-28T20:18:40Z",
         "state": "OPEN"
       },
       {
@@ -1773,7 +1773,7 @@
         "number": 4448,
         "state": "OPEN",
         "title": "Write gate misses a write behind a NAME=value, env or sudo prefix",
-        "updatedAt": "2026-10-28T18:39:35Z",
+        "updatedAt": "2026-10-28T20:18:40Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
