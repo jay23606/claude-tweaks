@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T12:04:54.321Z",
+  "computedAt": "2026-10-28T12:18:30.567Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -205,7 +205,7 @@
       },
       {
         "number": 4366,
-        "updatedAt": "2026-10-26T14:34:31Z",
+        "updatedAt": "2026-10-28T12:18:06Z",
         "state": "OPEN"
       },
       {
@@ -3169,7 +3169,7 @@
         "number": 4366,
         "state": "OPEN",
         "title": "pr-checks.js cannot see a merge-conflicted PR: the review PR-check gate lets a DIRTY PR with no CI through",
-        "updatedAt": "2026-10-26T14:34:31Z",
+        "updatedAt": "2026-10-28T12:18:06Z",
         "facets": {
           "origin": null,
           "risk": "medium",
