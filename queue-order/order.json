@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-26T15:10:37.716Z",
+  "computedAt": "2026-10-28T07:01:23.354Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -25,12 +25,7 @@
       },
       {
         "number": 4347,
-        "updatedAt": "2026-10-25T21:06:01Z",
-        "state": "OPEN"
-      },
-      {
-        "number": 4343,
-        "updatedAt": "2026-10-25T21:05:56Z",
+        "updatedAt": "2026-10-27T16:00:53Z",
         "state": "OPEN"
       },
       {
@@ -65,7 +60,7 @@
       },
       {
         "number": 4244,
-        "updatedAt": "2026-10-26T14:34:47Z",
+        "updatedAt": "2026-10-28T04:33:49Z",
         "state": "OPEN"
       },
       {
@@ -99,11 +94,6 @@
         "state": "OPEN"
       },
       {
-        "number": 4135,
-        "updatedAt": "2026-10-25T08:19:21Z",
-        "state": "OPEN"
-      },
-      {
         "number": 4038,
         "updatedAt": "2026-10-26T14:35:02Z",
         "state": "OPEN"
@@ -134,13 +124,8 @@
         "state": "OPEN"
       },
       {
-        "number": 3979,
-        "updatedAt": "2026-10-26T12:22:36Z",
-        "state": "OPEN"
-      },
-      {
         "number": 3977,
-        "updatedAt": "2026-10-23T22:43:11Z",
+        "updatedAt": "2026-10-26T22:27:36Z",
         "state": "OPEN"
       },
       {
@@ -150,7 +135,7 @@
       },
       {
         "number": 3942,
-        "updatedAt": "2026-10-23T22:09:21Z",
+        "updatedAt": "2026-10-26T20:36:05Z",
         "state": "OPEN"
       },
       {
@@ -225,7 +210,7 @@
       },
       {
         "number": 3758,
-        "updatedAt": "2026-10-24T05:39:13Z",
+        "updatedAt": "2026-10-27T10:32:58Z",
         "state": "OPEN"
       },
       {
@@ -235,7 +220,7 @@
       },
       {
         "number": 3736,
-        "updatedAt": "2026-10-23T22:04:12Z",
+        "updatedAt": "2026-10-27T18:30:02Z",
         "state": "OPEN"
       },
       {
@@ -245,7 +230,7 @@
       },
       {
         "number": 3721,
-        "updatedAt": "2026-10-24T05:39:06Z",
+        "updatedAt": "2026-10-27T16:47:48Z",
         "state": "OPEN"
       },
       {
@@ -421,162 +406,6 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: speed analysis of the #4026 dispatch (run 2026-10-25T132807-record-4026)\n\nDefer-reason: tangential\n\n## Current State\n\nBuild's Common Step 5 and `/test` Step 1 run the full suite locally through `verify.js` (`plugin/skills/test/verification.md`). The runner writes the pass stamp that `verify.js --stamp-status` and `artifact-verdict.js`'s `deriveTestVerdict` read.\n\nConcurrent pipeline sessions on one machine compete for CPU. On 2026-10-25 the #4026 run (`2026-10-25T132807-record-4026`, PR #4277) spent 55 min on one local full run and 1h34 on a second, while #4027, #4140 and #4317 ran their own suites. An unloaded local run takes about 20 min.\n\nThe same suite (~17,900 tests) already runs on every PR push in `.github/workflows/test.yml` (ubuntu-latest, Node 20, 15-min timeout). On PR #4277 it took 3.5 min (run 40216510908, 17:26:55Z to 17:30:30Z). Every phase exit already pushes the run branch, and the merge gate (`merge-verification: merge-when-green`) already requires that check green. So today the local full run duplicates a check that is faster, contention-free, free for this public repo, and required anyway.\n\n## Deliverables\n\n- `.claude-tweaks/verify-scope.json` can declare a CI source for a suite (workflow file and job name). Without one, behavior is unchanged, so consumer projects are not affected.\n\n- With a CI source declared, `verify.js`'s full-suite run for that suite requires HEAD to be pushed and equal to the run PR's head. It waits for the declared job's run on that exact head SHA (bounded wait, polling, never backgrounded) and writes the pass stamp from the job's conclusion. The stamp records `source: ci` with the run id and URL.\n\n- A failed CI run fetches the failing test files from the job log and re-runs only those locally for baseline adjudication (the existing `baseline.js` path). A test that is red at the fork point or passes on isolated re-run is adjudicated exactly as a local failure would be.\n\n- Fallback to the local full run, with the reason named in `report.json`, when no CI run for the head SHA appears within the wait (a DIRTY PR gets no `pull_request` runs, the workflow did not trigger, Actions is down), when the run was cancelled, or when `gh` is unavailable.\n\n- `deriveTestVerdict` and `/test`'s Skip-if-recent read accept a `source: ci` stamp the same as a local one.\n\n- `verification.md` states what the CI pass does not cover: macOS and Node 22 (the local platform), and Windows (still post-merge via `windows-regression.yml`).\n\n## Acceptance Criteria\n\n- [ ] With the CI source declared and a green CI run on HEAD, Common Step 5 writes a full-scope pass stamp with `source: ci` and runs no local suite.\n\n- [ ] A red CI run whose only failures are red at the fork point is adjudicated a baseline pass, and only the failing files were re-run locally.\n\n- [ ] A red CI run with a real failure fails verification and names the failing tests from the CI log.\n\n- [ ] A head SHA with no CI run within the wait (simulated DIRTY PR) falls back to the local full run, and `report.json` names the fallback reason.\n\n- [ ] Without a declared CI source, `verify.js` output and stamps are byte-identical to today's.\n\n- [ ] Each new branch has a test that fails against the current `verify.js`. The gh calls go through the injectable runner seam, never the network.\n\n## Release Note\n\nProjects can point final test verification at their CI run, so a pipeline waits a few minutes for CI instead of running the whole suite on a busy local machine.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/verify.js` — CI-backed full-suite mode: wait for the declared check run on HEAD, stamp from its result\n- `plugin/bin/lib/verify/declaration.js` — accept a declared CI source (workflow, job) for a suite\n- `plugin/bin/lib/verify/stamp.js` — pass stamp records its source (local or ci, with run id and URL)\n- `plugin/bin/lib/verify/baseline.js` — adjudicate a CI failure against the base by re-running only the failing files\n- `plugin/bin/lib/dispatch/artifact-verdict.js` — deriveTestVerdict accepts a ci-sourced stamp\n- `plugin/skills/test/verification.md` — document the CI-backed mode, its fallbacks and what it does not cover\n- `plugin/skills/build/SKILL.md` — Common Step 5 uses the CI-backed mode when declared\n- `.claude-tweaks/verify-scope.json` — declare this repo's test.yml test job as the CI source\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-25T20:00:11Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
-            "name": "size:high",
-            "description": "Scoring: large change — consider decomposition before building",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMTcg",
-            "name": "risk:high",
-            "description": "Scoring: high blast radius — human review required",
-            "color": "D93F0B"
-          }
-        ],
-        "number": 4347,
-        "state": "OPEN",
-        "title": "Take the full-suite verification from the PR's CI run instead of a local run when the declaration names one",
-        "updatedAt": "2026-10-25T21:06:01Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "high",
-          "size": "high",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: speed analysis of the #4026 dispatch (run 2026-10-25T132807-record-4026)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/build/SKILL.md` Common Step 5 (Final Verification) runs the full suite first. The build phase exit (`phase-exit.js`) then pushes and runs the Post-push merge-state check (`_shared/git-discipline.md`, \"### Post-push merge-state check\"). Only at that point does a DIRTY or BEHIND PR get its catch-up merge of the integration branch.\n\nThat merge changes the tree, so `/test` Step 1 (`plugin/skills/test/verification.md`, Skip-if-recent, Mismatch branch) re-runs verification. A catch-up merge is never a bookkeeping-only delta, so the suite runs a second time.\n\nObserved 2026-10-25 on #4026 (run `2026-10-25T132807-record-4026`, PR #4277): Common Step 5 passed at `d99fc7da2` at 18:20 after 55 min. The merge-state check found PR #4277 DIRTY at 18:21, because origin/main had moved during the 4-hour build. The catch-up merge resolved 3 conflicts (`d99fc7da2` -> `622a5adf8`) at 18:27. `/test` then re-ran the full suite at `622a5adf8` until 20:01 (1h34). One of the two full runs was avoidable.\n\n## Deliverables\n\n- Before Common Step 5 runs its suite, build fetches the integration branch. When the run branch is behind it, build applies the existing Catch-up (`auto`) procedure from `_shared/git-discipline.md` (merge, never rebase, with the same conflict-resolution and `merge --abort` rules), so the verified tree already contains the current base.\n\n- The pre-verification catch-up logs one `decisions.md` line naming the before and after SHAs, or a `SKIP` line when the branch is already current.\n\n- The Post-push merge-state check stays as is. The base can still move during verification, and that residual case keeps today's behavior.\n\n- The prose that describes the ordering (`build/SKILL.md` Common Step 5, `git-discipline.md`'s merge-state section) states the new order.\n\n## Acceptance Criteria\n\n- [ ] A run whose branch is behind the integration branch at Common Step 5 merges it in before the suite runs, and build's `VERIFICATION_SHA` equals the post-merge HEAD.\n\n- [ ] When the base did not move again during verification, `/test` Step 1 takes the Match branch and runs no suite.\n\n- [ ] A branch that is already current logs a `SKIP` and merges nothing.\n\n- [ ] A catch-up conflict that cannot be resolved confidently follows the existing `merge --abort` path, and verification still runs on the un-merged tree.\n\n- [ ] A conformance test pins that Common Step 5's prose places the catch-up before the verification run, and it fails against the current prose.\n\n## Release Note\n\nA pipeline run whose branch fell behind main during the build now merges main in before its final test run, so the full suite runs once instead of twice.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/build/SKILL.md` — Common Step 5 catches the branch up before running the suite\n- `plugin/skills/_shared/git-discipline.md` — Post-push merge-state check section states the new order\n- `plugin/skills/test/verification.md` — Skip-if-recent Match branch is the expected path after a pre-verify catch-up\n- `plugin/bin/pr-merge-state.js` — reused (or a fetch-and-behind probe) for the pre-verification read\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-25T19:52:43Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4343,
-        "state": "OPEN",
-        "title": "Catch the run branch up with the integration branch before build's final verification, not after it",
-        "updatedAt": "2026-10-25T21:05:56Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
         }
       }
     ],
@@ -822,84 +651,6 @@
     ],
     [
       {
-        "body": "# Reflect — staged finding 2\n\n**Category:** tangential\n\nOrigin: reflect full from #4024\nDefer-reason: tangential\n\n## Current State\n\n#4024 added the `impact` rule kind to `.claude-tweaks/verify-scope.json`. The full suite passed with a committed declaration that the previous release's `plugin/bin/lib/verify/declaration.js` rejects outright (a rule without `suites`), which makes `verify.js --scope` exit 2 for every run of the installed build until a release ships. Nothing in the suite ran the previous reader over the committed file; review caught it by reading the diff and confirmed it by running the base reader by hand. CLAUDE.md requires committed-config contract changes to stay readable by the installed build, but no test enforces it.\n\n## Deliverables\n\n- A conformance test that loads `declaration.js` as of the latest release tag (`git show v{latest}:plugin/bin/lib/verify/declaration.js`, with its `../issues/blast-radius` dependency) and asserts it parses this repo's committed `.claude-tweaks/verify-scope.json` with `ok: true`.\n- The test skips with a stated reason when no release tag is reachable (a shallow clone) and never reads the network.\n\n## Acceptance Criteria\n\n- [ ] Committing a rule shape the previous release's reader rejects (for example an `impact: true` rule with no `suites`) makes the test fail, naming the reader's own error text.\n- [ ] A declaration the previous reader accepts passes it.\n- [ ] A shallow clone with no release tag skips the test with its reason rather than failing.\n\n## Release Note\n\nChanges to the committed verify-scope declaration are now checked against the previous release's reader, so a new rule shape cannot break verification for installed builds.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/verify-scope-declaration.test.js` — where this repo's declaration is already pinned\n- `plugin/bin/lib/verify/declaration.js` — the reader whose previous release is loaded\n- `.claude-tweaks/verify-scope.json` — the committed file under test\n\n_Filed by `reflect` via specShapedBody._\n",
-        "createdAt": "2026-10-24T12:33:49Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4135,
-        "state": "OPEN",
-        "title": "Pin that the committed verify-scope.json stays readable by the previous release's declaration reader",
-        "updatedAt": "2026-10-25T08:19:21Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "Evidence: 14-day transcript analysis of this repo (176 main sessions, 5,599 subagent transcripts, 132 archived timing.json files, ~286k tool calls), 2026-10-24.\n\n## Current State\n\nbuild,test dispatch agents resolve `[Use: Capable]` (Opus) because Sonnet bypassed /flow in 6 of 10 firings vs 0 of 3 (#3212, `plugin/skills/dispatch/task-prompt.md`). Opus averages 8.6 s per turn (12.1 s above 300k context); Sonnet is flat at ~4.2 s. 251 of 548 build/review dispatch agents in 14 days ran on Opus. The bypass failure mode comes from long procedure the agent must follow, which the blocking records remove.\n\n## Deliverables\n\n1. Re-run the #3212 comparison on the slimmed procedure: at least 10 firings per arm, counting /flow bypasses and gate failures.\n2. If Sonnet's bypass count is 1/10 or less, drop build,test to `[Use: Standard]` in `task-prompt.md` with the measured evidence; keep Capable only where judgment needs it (size:high implementers, review lenses that call for it).\n\n## Acceptance Criteria\n\n- [ ] The comparison is recorded with raw per-firing counts.\n- [ ] `task-prompt.md`'s profile line cites the new evidence, whichever way it lands.\n- [ ] If moved, dispatch-agent median seconds per turn falls below 5 over 10 runs.\n\n## Release Note\n\nBuild agents run on a faster model once the pipeline no longer depends on long procedure-following.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/dispatch/task-prompt.md` — profile line\n- `plugin/bin/resolve-profile.js` — only if the profile mapping changes\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-24T08:10:10Z",
         "labels": [
@@ -1050,144 +801,6 @@
     ],
     [
       {
-        "body": "Surface: infra\n\nThis is the decommission step of the run-directory-cleanup strangler sequence (parent #3972): route every \"is this run's session still alive?\" question through `runLiveness` (`plugin/bin/lib/run-liveness/index.js`, #3973), then delete the private copies, so exactly one place answers live / dead / unknown.\n\nRe-shaped on 2026-10-26 from one `size:medium` record into four sub-issues. As one record it had 9 deliverables across 4 packages (`hooks/`, `reconcile/`, `flow/`, `run-liveness/`) plus the reconcile summary/cache, two docs and a conformance suite, past the 2–3-module guideline for one work unit. This record is now the parent: it is never built directly and carries no `ready` or scoring labels.\n\n## Leaves\n\n| Sub-issue | Scope | Depends on |\n|---|---|---|\n| #4419 | A — adoption cleanup: delete `isDeadRunDir`, rename the adoption preconditions; adoption deliberately does **not** consult `runLiveness` | — |\n| #4420 | B — resume: `blocksResume` (lock + commit evidence only); `checkResumeFreshness` + `parentLiveDetail`; move `lastCommitMs` into `run-liveness/probes.js` | — |\n| #4421 | C — reconcile: `abandoned-interrupted` through `runLiveness` plus a bounded 72h fallback; `ownerlessNonClean` count; legacy-route removal condition in docs | — |\n| #4422 | D — conformance scan banning the retired probes in the four callers | #4419, #4420, #4421 |\n\nA, B and C are independent of each other and can build in parallel. Only C touches `reconcile/archive-merged.js`, so overlap with #3975, #3977, #3978 and #4191 is confined to C.\n\n## Decision Rationale\n\n- **The split follows the callers.** Each caller keeps its own decision wrapper (what to do with a verdict); only the liveness question moves. Splitting one record per caller makes each per-caller equivalence table a self-contained PR-body artifact, and each migration can be bisected on its own.\n- **Safety direction, not preference.** Maintainer rulings from 2026-10-26, after a 10-persona red-team of the leaves:\n  - **Adoption is not liveness.** `dead` on an `active` run means a crashed or long-idle run that a resuming session must still adopt, so #4419 keeps the unresumable preconditions and does not consult `runLiveness`.\n  - **Resume blocks only on the questions it already asked.** `blocksResume` counts only `worktree-lock` and `last-commit` evidence (positive or error). Owner probes are informational, so a just-ended session's fresh heartbeat or a missing `events.jsonl` never blocks a resume. There is no new verdict string.\n  - **`abandoned-interrupted` gets a bounded fallback.** It acts on `dead` (no `error`) after the 24-hour floor, **or** on `unknown` with no positive live probe after 72 hours, so owner-block runs that read `unknown` forever (another host, a re-stamped session) still drain. (2026-10-22 ruling: keep the 24-hour floor and revisit once the owner block has shipped for a release.)\n  - **The legacy route has a checkable removal condition.** It goes when `ownerlessNonCleanZeroSince` is at least 7 days old on a build newer than v6.153.0.\n- **The conformance scan comes last.** It can only go green once A–C have removed the old probes, so it is a separate fast-lane record that the other three block.\n- **Drift found while re-shaping (2026-10-26), already folded into the leaves:**\n  - `newestMatch` now goes through `adoptionRefusal` (#4151), and `isDeadRunDir` has no production caller.\n  - `ownEventRecency` moved to `run-liveness/probes.js`.\n  - `archive-merged.js` already uses `runLiveness` for `adhoc-session-ended` (#4179).\n  - `run-liveness/probes.js` imports `lastCommitMs` from `hooks/resume-freshness.js`, so B must move it to avoid a require cycle.\n  - Plain `runLiveness` never reads a main-checkout-stamped run as `dead`, so C must apply the same path-probe adjustment `adHocSessionLiveness` uses.\n\nThe original record's full text, including its non-goals, prerequisites and equivalence-table rulings, is preserved below.\n\n## Original request\n\nRoute isDeadRunDir, abandoned-interrupted recency and resume-freshness through run-liveness, then delete the copies\n\nSurface: infra\n\n## Overview\n\nFour modules each decide, in their own way, whether a run's session is gone: `isDeadRunDir` in `run-dir-resolve.js`, the `abandoned-interrupted` recency test in `archive-merged.js`'s `classifyRunDir`, the probes in `resume-freshness.js`, and (found while specifying this record, not in the design) the worktree-lock probe in `parentLiveDetail` in `lib/flow/consolidated-pass.js`. #3973 adds `runLiveness`, the one verdict module. This is the decommission step of the project's strangler sequence: migrate those four callers to `runLiveness`, then delete the old definitions, so exactly one place answers \"is this run live, dead, or unknown\".\n\nThe migration is not a rename. The old predicates answer slightly different questions from a positive-evidence verdict (for example, `isDeadRunDir` calls every `interrupted` run dead, which for a legacy run with no owner block `runLiveness` calls `unknown`). The record therefore starts with a per-caller equivalence table, and any outcome that changes is listed and justified in the PR body rather than discovered later.\n\nThis record also records the removal condition of the legacy 72 hour route in `runLiveness`: reconcile reports a count of owner-less non-clean runs, and the route is removed when that count reaches 0.\n\n**Complexity:** Medium\n**Estimated tasks:** 6\n\n## Non-Goals\n\n- No new verdict rows, no change to the 10 minute and 72 hour windows, and no change to what `runLiveness` reports for any input; this record only changes who asks.\n- No auto-close or banner change (#3977, #3978).\n- The legacy 72 hour route is not removed here. Only its removal condition and the count that makes the condition checkable are added.\n- No change to the worktree reaper (`worktree-reap.js`) or its lock probes; `runLiveness` already consumes them.\n- `ownEventRecency` itself stays (it is a probe `runLiveness` uses); only `classifyRunDir`'s recency branch that duplicates the decision is replaced.\n\n## Prerequisites\n\n| Spec | Title | Status |\n|------|-------|--------|\n| #3973 | Add a run-liveness verdict module and an owner block in run-state.json | must merge first |\n| #3865 | resolve-run-dir --spec-slug matches by substring, so spec-378 adopts a spec-3784 run | in progress; edits `run-dir-resolve.js`, which holds `isDeadRunDir` and `newestMatch`. Rebase on it before starting and re-derive the `newestMatch` rows of the equivalence table from its final skip semantics |\n\n## Current State\n\n- `isDeadRunDir(dir)` (`plugin/bin/lib/hooks/run-dir-resolve.js`, line 89): `true` when `run-state.json` reads `status: 'interrupted'`, or `status: 'active'` with a recorded `worktree` that no longer exists on disk; `false` otherwise, including when `run-state.json` is absent. Its one caller is `newestMatch` (line 105 region), which skips a dead candidate in favor of the next-newest match (#1962). Tests: `tests/hooks-run-dir-resolve.test.js`.\n- `classifyRunDir`'s `abandoned-interrupted` branch (`plugin/bin/lib/reconcile/archive-merged.js`, line 1614): for `status: 'interrupted'`, not the caller's own live session, with readable `events.jsonl` and no owner-attributed event within `STALE_INTERRUPTED_TTL_MS` (24 hours), the run is `abandoned-interrupted`. `isAbandonedInterrupted` (line 311) is the thin wrapper; `ownEventRecency` (line 263) is the event probe.\n- `checkResumeFreshness(runDir, { sessionId, now, thresholdMs })` (`plugin/bin/lib/hooks/resume-freshness.js`, line 49) returns `{ safe, verdict }`: `own-session` is safe; a run not stamped `interrupted` is safe; no worktree or a gone worktree is safe; an in-use worktree lock is unsafe; a last commit under 10 minutes old is unsafe; and every probe error (`indeterminate`) is unsafe, deliberately failing closed. Callers: the `check-resume-freshness` verb in `plugin/bin/hooks.js` (line 1318) and `plugin/bin/lib/flow/consolidated-pass.js` (line 68). Tests: `tests/hooks-resume-freshness.test.js` and `tests/flow-resume-freshness-citations.test.js`.\n- `parentLiveDetail(runDir, runState, opts, deps)` in `plugin/bin/lib/flow/consolidated-pass.js` (line 64) is a fourth copy: for an `interrupted` run it asks `checkResumeFreshness`; for any other status it reads the recorded worktree's lock (`listWorktrees`, `parseWorktreeList`, `lockVerdict`) and treats `in-use`, `unknown`, and a failed listing as live (\"every cannot-tell reads as live\"). It reads `fresh.safe`, `fresh.verdict`, and `fresh.reason`.\n- `checkResumeFreshness` verdict strings today: `no-state`, `own-session`, `not-interrupted`, `no-worktree`, `worktree-gone` (all safe, returned before any probe), then `indeterminate` (unsafe, with `reason`), `locked` (unsafe), `recent-commit` (unsafe, with `ageMs`), and `stale` (safe).\n- `runLiveness` (from #3973, `plugin/bin/lib/run-liveness/index.js`; signature, probe seam, and the structured evidence are pinned by #3973's PR and quoted into this record's PR body before migration starts) returns `{ verdict, evidence: [{ probe, result, detail }] }` with `result` of `positive`, `negative`, or `error` per probe, so a caller can tell a probe error from a clean negative.\n- The precedent for recording a transitional route's removal condition is ADR 0014 (`docs/decisions/0014-hook-read-key-renames-carry-a-transitional-twin.md`) and `_shared/policy-deprecations.md` for policy keys; this route is not a policy key, so its condition is recorded in `docs/reconcile-checks.md` and `docs/hooks.md`.\n\n## Deliverables\n\n- [ ] Task 0, first: an equivalence table, one row per distinct run shape the three old predicates classify (status `active` or `interrupted`, worktree present or gone, owner block present or absent, events recent or stale, own session or not), giving the old answer and `runLiveness`'s answer. Every row where they differ is named and gets an explicit ruling (below); the table goes in the PR body.\n- [ ] Migrate `newestMatch` in `run-dir-resolve.js` to `runLiveness` and delete `isDeadRunDir`. A code comment and `docs/hooks.md` state that the interrupted and worktree-gone tests there are adoption-eligibility preconditions, not liveness.\n- [ ] Migrate `classifyRunDir`'s `abandoned-interrupted` branch to `runLiveness`: a run is abandoned when its status is `interrupted`, it is not the caller's own live session (that guard is kept), `runLiveness` returns `dead` with no `error` entry, `events.jsonl` is readable, and there has been no owner-attributed event for the 24 hour floor (`STALE_INTERRUPTED_TTL_MS` and `ownEventRecency` stay, as that floor only, so a paused run is never archived sooner than today). The decision of whether the run is gone moves to the verdict; the floor is a minimum silence, not a liveness probe.Resolved by the maintainer (2026-10-22): keep the 24-hour own-event silence as a floor on the abandoned-interrupted path, so archiving is never faster than today (resume grace window preserved; only the legacy case gets slower, 72 hours). Revisit once the owner block has shipped for a release.\n- [ ] Migrate `checkResumeFreshness`'s probes to `runLiveness`; delete the duplicated lock and last-commit probes it carries. Order is fixed: `no-state`, `own-session` (identity), `not-interrupted`, `no-worktree`, `worktree-gone` are returned before `runLiveness` is called (the two-call dispatch handoff relies on `not-interrupted` returning first). Then: a `live` verdict is unsafe, with verdict string `locked` when the lock evidence is the positive one, `recent-commit` (with `ageMs`) when the commit evidence is, and a new additive string `live-owner` when the owner PID or heartbeat is; any evidence entry with `result: 'error'` is unsafe with `indeterminate` and the entry's detail as `reason`; otherwise safe with `stale`. The `thresholdMs` option is forwarded to the commit probe. A shared helper exported from `run-liveness` (`blocksResume(result)`: true when the verdict is `live` or any evidence entry is an `error`) carries this caller policy so it is written once.\n- [ ] Migrate `parentLiveDetail` in `lib/flow/consolidated-pass.js`: its non-interrupted branch calls `runLiveness` and `blocksResume` instead of its own `lockVerdict` read, keeping the `fresh`-style detail text; delete its lock probe.\n- [ ] Reconcile reports `ownerlessNonClean`: the number of run directories directly under this checkout's `.claude-tweaks/pipelines/` (not `archive/`) whose `run-state.json` exists and parses, has no `owner` object, and whose status is not `clean`. It is a field added to the existing archive check's result, summary line, and `reconcile-cache.json`, not a new check, so none of `docs/reconcile-checks.md`'s new-check registration sites apply; only `format-summary.js` and the cache module change.\n- [ ] Record the legacy route's removal condition in `docs/reconcile-checks.md` and `docs/hooks.md`: remove the 72 hour legacy route from `runLiveness` when `ownerlessNonClean` is 0 in this repository across two consecutive reconcile passes taken at least one release after #3973 shipped. Removing the route is fail-safe for every other checkout: a run that is still owner-less simply stays `unknown` and is never auto-closed, so no consumer needs its own count to reach 0. File the removal record with that trigger when this record merges (`_shared/deferral-gate.md`).\n- [ ] A conformance test (`bin-source-scan-conformance` skill: comment-stripped source reads, a floor on matched sites, and a go-red self-test) scanning `run-dir-resolve.js`, `resume-freshness.js`, `lib/flow/consolidated-pass.js`, and the `classifyRunDir` function in `archive-merged.js`. Banned there: the identifiers `isDeadRunDir`, `lockVerdict`, `isPidAlive`, and a `git log -1` commit-recency call. Allowed: `runLiveness` and `blocksResume`; `ownEventRecency` and `STALE_INTERRUPTED_TTL_MS` only inside `classifyRunDir` as the minimum-silence floor; the worktree-exists check in `newestMatch`; and everything inside `plugin/bin/lib/run-liveness/` and `worktree-reap.js` itself.\n- [ ] At least one end-to-end fixture per migrated caller that runs the real `runLiveness` against a real temporary run directory tree, with and without an owner block, in addition to the existing fakes.\n\nRulings the equivalence table must apply (each is a safety direction, not a preference):\n\n- `newestMatch` (adoption): a candidate is skipped when its verdict is `dead`, or when it is stamped `interrupted`, or when it records a worktree that no longer exists, whatever its verdict (this reproduces both old outcomes of `isDeadRunDir` exactly, including for a `live` verdict on a falsely `interrupted` run); every other candidate is adopted as before, including an `active` run with its worktree present whose evidence carries an `error` entry. The one new skip is an `active` run with a present worktree and verdict `dead`; it is listed in the PR body. The interrupted and worktree-gone tests are adoption preconditions (an adopted run needs its worktree and a live status), not a second liveness definition.\n- `checkResumeFreshness` and `parentLiveDetail`: stay fail-closed through `blocksResume`. Blocked when the verdict is `live` or any evidence entry is an `error`; not blocked when the verdict is `dead`, or `unknown` with only clean negatives, which preserves the old no-positive-evidence outcome. Each old `indeterminate` source (unresolvable main checkout, failed `git worktree list`, failed `git log`, unparseable timestamp, and `parentLiveDetail`'s failed listing) must surface as an `error` evidence entry in `runLiveness`'s probes; the equivalence table has a row and a test per source, run against the real module.\n- `abandoned-interrupted`: acts only on `dead` with no `error` entry, readable `events.jsonl`, and the 24 hour floor. One case moves and is listed in the PR body: a legacy run now needs 72 hours of silence instead of 24 (more evidence, so safer). An owner-block run is never abandoned sooner than the old 24 hours (see the flagged question above).\n\n## Acceptance Criteria\n\n1. For every fixture in `tests/hooks-run-dir-resolve.test.js`, `tests/hooks-resume-freshness.test.js`, `tests/flow-resume-freshness-citations.test.js`, and the `abandoned-interrupted` fixtures in `tests/bin-lib/reconcile/archive-merged.test.js`, the migrated code gives the same decision as before, except for rows the equivalence table lists as intentional changes, each shown in the PR body with its justification.\n2. No intentional change moves toward treating more runs as dead, closed, or safe on `unknown` or `error` evidence: a test per migrated caller feeds a probe-error fixture and asserts that caller's old outcome for that run shape (`newestMatch` adopts an `active` run with its worktree present; `checkResumeFreshness` and `parentLiveDetail` are blocked; `abandoned-interrupted` does not abandon).\n   a. `newestMatch`: an `interrupted` run, an `active` run with its worktree gone, and a `live`-verdict run that is `interrupted` are each skipped; an `active` run with a present worktree is adopted unless its verdict is `dead`.\n   b. With `status: 'active'` and every probe throwing, `checkResumeFreshness` returns `safe` with `not-interrupted` and `runLiveness` is never called (the dispatch handoff property).\n3. `isDeadRunDir` no longer exists: a grep for the identifier across `plugin/bin` and `tests` returns only the removal tombstone, if any, and no definition or call.\n4. `checkResumeFreshness` and `parentLiveDetail` no longer call `lockVerdict`, `isPidAlive`, or `git log` themselves, and `classifyRunDir` reads `ownEventRecency` and `STALE_INTERRUPTED_TTL_MS` only as the minimum-silence floor; the conformance test above enforces this and goes red when a banned call is reintroduced.\n5. `checkResumeFreshness` returns `{ safe, verdict }` plus `reason` on every unsafe result (and `ageMs` on `recent-commit`) exactly as before, with the existing verdict strings unchanged and `live-owner` the only new one; each string has a test, and neither `hooks.js` nor `consolidated-pass.js` needs a change beyond `parentLiveDetail`'s own probe.\n6. Reconcile's summary and `reconcile-cache.json` carry `ownerlessNonClean: N`; a fixture with two owner-less non-clean runs, one owner-block run, one clean owner-less run, and an archived owner-less run reports 2, and a fixture with only owner-block runs reports 0.\n7. `docs/reconcile-checks.md` and `docs/hooks.md` state the removal condition exactly as the deliverable words it and name the code location of the route; the removal record is filed with that trigger.\n8. `npm test` passes.\n\n## Release Note\n\nReplaced four separate checks for whether a run's session is still alive with one shared check, with no change to which runs are treated as abandoned except where more evidence is now required.\n\n## Technical Approach\n\nMigrate one caller per commit so each equivalence row can be bisected. Keep each caller's own decision wrapper (what to do with a verdict); only the question \"is the session alive\" moves into `runLiveness`. Probe injection reaches the callers through their existing `deps` or option objects, so existing fixtures can keep passing fakes.\n\n### Data / API Surface\n\n`reconcile-cache.json` and the reconcile summary gain `ownerlessNonClean` (integer). No other new surface; `runLiveness` is consumed as built in #3973.\n\n### Key Files\n\n- `plugin/bin/lib/hooks/run-dir-resolve.js` — `isDeadRunDir` (delete), `newestMatch` (migrate)\n- `plugin/bin/lib/reconcile/archive-merged.js` — `classifyRunDir` `abandoned-interrupted` branch, `isAbandonedInterrupted`, `ownEventRecency`, `STALE_INTERRUPTED_TTL_MS`\n- `plugin/bin/lib/hooks/resume-freshness.js` — `checkResumeFreshness` (migrate probes)\n- `plugin/bin/lib/flow/consolidated-pass.js` — consumer of `checkResumeFreshness`, shape must not change\n- `plugin/bin/lib/run-liveness/index.js` — consumed, not changed\n- `plugin/bin/lib/reconcile/format-summary.js` — summary line for the legacy count\n- `docs/reconcile-checks.md` — removal condition and count\n- `docs/hooks.md` — removal condition\n- `tests/hooks-run-dir-resolve.test.js` — `newestMatch` fixtures\n- `tests/hooks-resume-freshness.test.js` — resume fixtures\n\n## Gotchas\n\n- A positive-evidence verdict cannot reproduce `isDeadRunDir`'s `interrupted` means dead. For a legacy run `runLiveness` answers `unknown` until 72 hours of silence. The ruling above keeps the old skip outcome for adoption; do not \"fix\" it by treating `unknown` as `dead` in `newestMatch`.\n- An in-flight legacy run (no owner block) at upgrade time reads `unknown` for up to 72 hours. For `newestMatch` that means an `active` legacy run with a present worktree is not skipped (it is not `interrupted`, so the old and new answers agree); confirm this row in the equivalence table.\n- `checkResumeFreshness` fails closed on purpose (the file header records the 2026-08-16 incident of a resume against a live sibling). Preserve that: probe error means unsafe.\n- The two-call dispatch handoff (`build,test` then `review,polish,wrap-up`) must still never trip the resume gate; its safety rests on the `not-interrupted` verdict (`status` stays `active` between the calls), which this record keeps ahead of any liveness probe.\n- `STALE_INTERRUPTED_TTL_MS` is defined as `ORPHAN_MINT_TTL_MS`; deleting the former must not touch the latter.\n- File overlap: `run-dir-resolve.js` with #3865 (in progress); `archive-merged.js` with #3975, #3977, #3978, #3945, #3740, and #3721. Rebase before opening the PR and re-run the three test files above.\n- Expand-contract: the old definitions are removed only after every caller uses `runLiveness`; grep the whole repo (including `tests/` and `docs/`) for the old names before deleting.\n\n\n<!-- work-fingerprint: 2026-10-22-run-directory-cleanup:route-isdeadrundir-abandoned-interrupted-recency-and-resume -->\nwork-fingerprint: 2026-10-22-run-directory-cleanup:route-isdeadrundir-abandoned-interrupted-recency-and-resume\n",
-        "createdAt": "2026-10-22T17:04:18Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACvaUldA",
-            "name": "parent-issue",
-            "description": "Structure: parent issue — carries the acceptance gate for its sub-issues",
-            "color": "5319E7"
-          }
-        ],
-        "number": 3979,
-        "state": "OPEN",
-        "title": "Route isDeadRunDir, abandoned-interrupted recency and resume-freshness through run-liveness, then delete the copies",
-        "updatedAt": "2026-10-26T12:22:36Z",
-        "facets": {
-          "origin": null,
-          "risk": null,
-          "size": null,
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "backlog",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": true,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\n**Related:** #2724 (auto-filed structurally-stuck tracker, kept), #3898 (release runs are owned there)\n\n## Overview\n\nRun directories pile up because nothing closes a run whose session died. Measured 2026-10-22: 78 empty `-adhoc-standalone` directories (0 staged items and 0 decision lines in every one), and 27 stale formal runs (20 open PRs, 6 closed-unmerged, 1 merged). A session that crashes never fires SessionEnd, so its run stays `active` forever. The SessionStart \"unfinished runs\" banner shows 3 only because `MAX_REPORTED = 3` caps it with no overflow line, and it has no liveness filter: it listed three runs that sibling sessions were probably still driving.\n\nThis record is the report-only half of the fix. It adds a pure disposition function (run shape by liveness verdict gives close, leave, or orphan, with a reason), runs it inside reconcile in report-only mode so reconcile says what it would close and closes nothing, narrows the SessionStart banner to dead-and-orphaned runs with an overflow line, and makes a session archive its own ad hoc run at SessionEnd. Closing for real is a later record that must ship in a release after this one, so every consumer project gets a dry run on its own pile first.\n\nThe asymmetry the maintainer agreed on governs every rule here: settle findings aggressively, close runs conservatively. Closing a run a live sibling session is still driving ends that run's enforcement and event logging invisibly. A run left open by mistake costs one more banner line.\n\n**Complexity:** Medium\n**Estimated tasks:** 8\n\n## Non-Goals\n\n- Reconcile closes nothing in this record. No `run-state.json` is flipped to `clean` by the new rows, no staged item is dropped, no directory is archived by them. Turning that on, and `close-run --abandon`, are #3978.\n- Reconcile gains no GitHub write and no skill-file write, and never carries out a staged item's outcome. It never deletes a branch, removes a worktree, or changes claim labels.\n- No filing of backlog records per orphaned run, and no listing of live sibling runs \"for information\"; both relocate the noise.\n- No change to the existing merged, `orphaned-mint`, `adhoc-superseded`, and `abandoned-interrupted` archive paths beyond the `live` skip; replacing `abandoned-interrupted`'s recency test is #3979.\n- Release runs (`-release-standalone`) closing at their own end is #3898's scope; this record only covers dead ones through the standalone row.\n- Not the auto-filed structurally-stuck tracker (#2724), which stays as it is.\n\n## Prerequisites\n\n| Spec | Title | Status |\n|------|-------|--------|\n| #3973 | Add a run-liveness verdict module and an owner block in run-state.json | must merge first: this record consumes `runLiveness` |\n| #3845 | A nested `claude -p` inside a pipeline session marks the parent's run interrupted at its SessionEnd | in progress; it also edits `session-end.js` and writes a false `interrupted` this record must tolerate |\n\n## Current State\n\n- `classifyRunDir(ctx, now)` in `plugin/bin/lib/reconcile/archive-merged.js` (line 1602) walks `CLASSIFY_ORDER = ['orphaned-mint', 'abandoned-interrupted', 'adhoc-superseded', 'merged', 'structurally-stuck']`. `adhoc-superseded` requires an ad hoc mint whose worktree is gone and a directory idle for `ADHOC_SUPERSEDED_TTL_MS` (30 days). `abandoned-interrupted` requires `status: interrupted` and no owner-attributed event within `STALE_INTERRUPTED_TTL_MS` (24 hours); `orphaned-mint` requires a directory with no `config.yml` idle for `ORPHAN_MINT_TTL_MS` (24 hours).\n- `collectStaleRuns(cwd, { cache, exclude, pluginRoot })` in `plugin/bin/lib/hooks/session-residue.js` (line 56) walks `iterRunDirsWithState`, skips ad hoc directories (`isAdHocRunDir`), and stops at `MAX_REPORTED = 3` (line 36) with no overflow line. Its sibling `CONSOLE_OVERFLOW_LINE` (line 201) is the existing overflow pattern: `- … more run(s) may have unreviewed console items (newest 3 shown).`\n- `plugin/bin/lib/hooks/session-start.js` renders the banner; line 148 carries the instruction text \"Say with it that only the session owning a run should close it: a listed run may be live in a sibling session right now, ...\", the warning this record drops.\n- `plugin/bin/lib/hooks/session-end.js` stamps `{ status: 'interrupted', lastEvent: 'session-end' }` onto the session's own non-`fallback` run, then appends a `session-end` event.\n- Staged items live in the run's `staged/` (and `spec-*/staged/`); `listStagedItems` and `hasStagedItems` are in `archive-merged.js` (lines 443 and 461). Kinds are classified by `classifyStagedItem(filename, text, siblingText)` in `plugin/bin/lib/console/resolve.js` (line 179); review findings are the `review-unconfirmed-` and `review-contested-`/`review-debate-` prefixes (`SECTION_MAP`, line 47).\n- Reconcile writes its results to `.claude-tweaks/reconcile-cache.json` (`plugin/bin/lib/reconcile/cache.js`, `CACHE_FILENAME`) and renders them through `plugin/bin/lib/reconcile/format-summary.js`'s `CATEGORIES` table (line 50).\n- `#3973` provides `runLiveness(runDir, { now, probes }) -> { verdict: 'live' | 'dead' | 'unknown', evidence }` and the `owner` block in `run-state.json`.\n- Tests: `tests/bin-lib/reconcile/archive-merged.test.js` (classifier fixtures), `tests/hooks-session-start.test.js` (banner), `tests/reconcile.test.js`.\n\n## Deliverables\n\n- [ ] A pure disposition function, `plugin/bin/lib/run-liveness/disposition.js` (next to the verdict module), taking run shape, liveness verdict, PR state, branch and worktree facts, and staged inventory, and returning `{ action: 'close' | 'leave' | 'orphan', reason, evidence, dropFindings }` and exporting the set of reasons that return `close` as `CLOSE_REASONS`. The ordered rules below are its contract, evaluated first match wins with a default of `leave`.\n- [ ] A facts gatherer next to it (`plugin/bin/lib/run-liveness/facts.js`, injectable git and `gh` runners) that produces the inputs the function needs and maps any failed probe to the \"cannot determine\" value (never to a value that closes): `pr` is `merged | closed-unmerged | open | none | unknown`; `branch` is `{ localExists, remoteExists, uniqueCommits }` where `uniqueCommits` is a count against the integration branch's merge-base or `null` when it cannot be computed; `worktree` is `{ exists, dirty }` with `dirty` `null` when `git status` fails. `pr: 'unknown'` (a `gh`-absent environment, an API error, or the SessionStart fast path) and any `null` fact yield `leave` for every new row.\n- [ ] The `live` skip: no archive path, existing ones included, acts on a run whose verdict is `live`. The skip is one guard at the top of the per-run loop in `archiveMerged`, which computes the verdict once per run and hands it to `classifyRunDir` as `ctx.liveness` (the classifier stays pure); a run directory with no `run-state.json` yields `unknown`. The existing merged, `orphaned-mint`, and `adhoc-superseded` paths gain only this skip and keep acting on `unknown`, each having its own evidence (a merged PR, a mint that never wrote `config.yml`, a worktree gone for 30 days). The existing `abandoned-interrupted` path also gains the skip; its own 24 hour recency test stays, and it keeps acting on `unknown`, until #3979 replaces it with the verdict.\n- [ ] Reconcile evaluates the disposition for every non-clean run in REPORT-ONLY mode, behind one module constant `RUN_AUTO_CLOSE_REPORT_ONLY = true` in `plugin/bin/lib/reconcile/archive-merged.js` read at exactly one call site: it writes `would close {run} ({reason}, evidence ...)` lines to its summary and to `reconcile-cache.json` (`wouldClose`), lists the `orphan` runs in the same cache (`orphaned`, each with its PR number and reason) and in the archive check's `--json` output, reports a count of `unknown` runs in the summary (never in the banner), and closes nothing. Each pass records `reportOnlyPassAt` in `reconcile-cache.json`, the marker #3978 reads so that auto-close never acts on a checkout that has not first had a report-only pass. The summary renders wherever reconcile's summary already renders; a false positive is reported through `/claude-tweaks:feedback`.\n- [ ] Banner: `collectStaleRuns` lists only runs that are `dead` and orphaned, newest run id first, keeps the 3-row cap, and adds an overflow line in the style of `CONSOLE_OVERFLOW_LINE`: `- … and {N} more orphaned run(s) (newest {MAX_REPORTED} shown): node \"{root}/bin/hooks.js\" reconcile --dry-run --json --checks archive`. The banner stays network-free: it reads the `orphaned` list from `reconcile-cache.json`, re-checks each entry's verdict offline with `runLiveness`, drops an entry that is no longer `dead`, and lists nothing for a run absent from the cache (nothing is listed before the first reconcile pass). Each row names its reason and a resume command, using the existing integrity-derived line text where it applies (the shipped-unclosed and consolidated-pass lines are kept as the text of rows that pass the filter). The \"only the owning session should close a run\" instruction text in `session-start.js` is removed.\n- [ ] `session-end.js` closes and archives its own ad hoc run directly instead of marking it `interrupted`, keeping `events.jsonl` in the archive for `/claude-tweaks:feedback`. Order: append the `session-end` event first, then `closeRunState` (recording `closedBy: 'session-end'`) and `archiveRunDir`, with no write to the run directory afterwards (a late write would recreate the archived directory). It applies only when the `reason` on the SessionEnd input is one after which the session cannot continue (not `clear`, not `resume`) and when `staged/` is empty or holds only review findings; otherwise today's `interrupted` stamp is kept.\n- [ ] `docs/reconcile-checks.md` documents the disposition table and the report-only switch; the switch is a release step, not a policy key.\n- [ ] Review this repository's report-only output by hand before the enabling record; record the result in the PR body. Pass criterion: every `would close` line on a formal run names a run the maintainer agrees is abandoned; any disagreement blocks the enabling record until the disposition is fixed. The 27 stale formal runs measured on 2026-10-22 (20 open PRs, 6 closed-unmerged, 1 merged) are the review set; the 20 open-PR runs are `orphan` by design and the banner stays loud for them until their PR merges or closes or a human runs the abandon command.\n\nThe disposition rules, in order, first match wins, default `leave` (\"staged ok\" means `staged/` and every `spec-*/staged/` is empty or holds only review findings; \"other staged\" means any other kind):\n\n| # | Run shape | Conditions | Disposition |\n|---|---|---|---|\n| 1 | any | verdict `live` | `leave`; never touched by any archive path |\n| 2 | any | verdict `unknown` | `leave` for the new rows; existing paths keep acting on `unknown` |\n| 3 | `-adhoc-standalone` | verdict `dead`, staged ok | `close` (no 30-day wait); `events.jsonl` moves with it |\n| 4 | `-adhoc-standalone` | verdict `dead`, other staged | `orphan`, reason `staged items need an outcome` |\n| 5 | other standalone (`-tidy-`, `-sweep-`, `-release-standalone`) | verdict `dead`, `staged/` empty | `close` |\n| 6 | other standalone | verdict `dead`, `staged/` not empty | `leave` (the existing staged-proposals banner and #3898 own it) |\n| 7 | formal | PR merged | `leave` here; the existing merged path acts, unchanged |\n| 8 | formal | verdict `dead`, PR closed unmerged, staged ok | `close`, reason `pr-closed-unmerged`, `dropFindings` set |\n| 9 | formal | verdict `dead`, PR closed unmerged, other staged | `orphan`, reason `staged items need an outcome` |\n| 10 | formal | verdict `dead`, PR open (draft or ready) | `orphan`, reason `draft PR #N, session gone` or `PR #N open, session gone`; never closed |\n| 11 | formal | verdict `dead`, no PR, (`uniqueCommits` greater than 0 or worktree dirty) | `orphan`, reason `unpushed commits on {branch}` or `uncommitted changes in {worktree}` |\n| 12 | formal | verdict `dead`, no PR, (branch absent locally and on origin, or `uniqueCommits` 0), (worktree absent or clean), no owner-attributed event for 24 hours, staged ok | `close`, reason `nothing-to-resume`, `dropFindings` set |\n| 13 | formal | verdict `dead`, no PR, otherwise as row 12 but other staged | `orphan`, reason `staged items need an outcome` |\n| 14 | any | anything else (including any `unknown` fact: `pr: 'unknown'`, `uniqueCommits: null`, `dirty: null`) | `leave` |\n\nRow 12's 24 hour floor is the existing `abandoned-interrupted` window (`STALE_INTERRUPTED_TTL_MS`) reused so a just-started or just-paused run is never closable sooner than today; the design table does not state it, and it only narrows what can close.\n\nStaged items: for rows 8 and 12, review findings (the `review-unconfirmed-`, `review-contested-`, `review-debate-` kinds) would be dropped with reason `run-abandoned`, which report-only mode lists in `dropFindings` but does not do. Any other staged kind (reflect, queue write, skill update, `shadow-dup-*`) makes a run not closable and orphaned, as rows 4, 9 and 13 say. `run-abandoned` is introduced here as report vocabulary and registered in `_shared/auto-decision-log.md` by #3978, where the drop becomes real.\n\n## Acceptance Criteria\n\n1. A fixture run whose owner PID is alive with a matching start time (a live-PID fixture) is never listed by the banner, never reported as `would close`, and is skipped by the merged, `orphaned-mint`, `adhoc-superseded`, and `abandoned-interrupted` paths; one test per path. The first three still act on an `unknown` fixture.\n2. Each numbered rule of the disposition table has a test asserting its `action` and `reason`, including the default row; a run with verdict `unknown` yields `leave` for every new row, and `pr: 'unknown'`, `uniqueCommits: null`, and `dirty: null` each yield `leave` even when every other fact says close (a `gh`-absent fixture does not close a run whose PR was never seen).\n3. Fail-open variants of the disposition function (treating verdict `unknown` as `dead`, and treating `pr: 'unknown'` as `none`) are present as injected faults and the corresponding tests fail against each.\n   a. A falsely `interrupted` run (status `interrupted`, owner PID alive with a matching start time, as #3845 produces) is `live`: not listed, not `would close`, and left by the `abandoned-interrupted` path.\n   b. The report-only constant is read at one call site (a source-scan test finds exactly one); with the constant set, the act path is unreachable (a test calling it with the constant true observes no write).\n4. A reconcile run over a fixture containing a dead ad hoc run, a dead closed-unmerged-PR run, and a dead no-PR run with nothing to resume writes three `would close` lines to the summary and to `reconcile-cache.json`, and leaves every `run-state.json`, `staged/`, and directory byte-identical (a test snapshots the tree before and after).\n5. A dead formal run with an open draft PR, and one with unique commits and no PR, yield `orphan`, appear in the banner, and are not in the `would close` lines.\n6. A dead run holding a non-review staged item (for example `reflect-1.md`) yields `orphan` with reason `staged items need an outcome`; a dead closed-unmerged-PR run holding only `review-unconfirmed-*` items yields a `would close` line that also lists the findings it would drop with reason `run-abandoned`, and drops none.\n7. With five dead orphaned runs in `reconcile-cache.json` the banner prints the newest three rows and one overflow line naming the remaining count (2) and the listing command; with three or fewer it prints no overflow line. With only `live`, `unknown`, or would-close runs, or with no cache, the banner prints nothing about runs. A cached orphan whose verdict is now `live` is dropped.\n8. Each banner row names its reason (for example `draft PR #N, session gone`, `unpushed commits on {branch}`, `staged items need an outcome`) and a resume command; the text \"only the session owning a run should close it\" no longer appears in `session-start.js` (a grep test pins this).\n9. `session-end.js`, given a session whose own run is ad hoc and a terminal SessionEnd reason, closes the run (status `clean`, `closedBy: 'session-end'`) and archives the directory including `events.jsonl`, with the `session-end` event appended before the archive and no write afterwards (the archived directory is not recreated); given a non-terminal reason (`clear`, `resume`), or an ad hoc run holding a non-review staged item, it stamps `interrupted` exactly as before; given a formal run it still stamps `interrupted` exactly as before; given a `fallback` attribution it touches nothing.\n   a. The set of terminal reasons is taken from the SessionEnd `reason` values the harness actually emits (see the Gotchas probe), and the test enumerates each.\n10. `docs/reconcile-checks.md` states that the new rows are report-only in this release and that the switch is deleted by the record that enables closing.\n\n## Release Note\n\nAdded a dry-run report of runs that could be closed automatically, trimmed the unfinished-runs banner to runs that really need attention, and made sessions archive their own scratch run when they end.\n\n## Technical Approach\n\nThe disposition function is pure (no I/O): reconcile gathers the facts (PR state from the existing merged-proof path, branch and worktree facts, staged inventory, the verdict from `runLiveness`) and passes them in, so the table is tested without a filesystem. Report-only is one module constant read at the single call site that would act, so the enabling record is a one-line flip plus deleting the constant.\n\nThe banner reuses the same disposition: it lists exactly the runs whose action is `orphan` and whose verdict is `dead`. A `would close` run is not listed in the banner (it is reconcile's to report) and is not closed in this release.\n\n### Data / API Surface\n\n`disposition({ shape, verdict, pr, branch, worktree, staged })` returns `{ action, reason, evidence, dropFindings: string[] }`, where `shape` is one of `adhoc`, `standalone`, `formal`; `pr` is `merged | closed-unmerged | open | none`; `dropFindings` lists staged files that would be dropped with reason `run-abandoned`. Reconcile's summary gains a `would-close` category (`format-summary.js`'s `CATEGORIES`) and `reconcile-cache.json` gains a `wouldClose` list of `{ runDir, reason, evidence }`.\n\n### Key Files\n\n- `plugin/bin/lib/run-liveness/disposition.js` — new, the pure disposition function\n- `plugin/bin/lib/run-liveness/index.js` — `runLiveness`, consumed (created by #3973)\n- `plugin/bin/lib/reconcile/archive-merged.js` — `live` skip in `classifyRunDir`'s callers and the report-only evaluation\n- `plugin/bin/lib/reconcile/format-summary.js` — `would-close` summary category\n- `plugin/bin/lib/reconcile/cache.js` — `wouldClose` persisted in `reconcile-cache.json`\n- `plugin/bin/lib/hooks/session-residue.js` — `collectStaleRuns` filter, overflow line\n- `plugin/bin/lib/hooks/session-start.js` — banner render, removal of the owning-session warning text\n- `plugin/bin/lib/hooks/session-end.js` — close-and-archive of the session's own ad hoc run\n- `docs/reconcile-checks.md` — disposition table and report-only switch\n\n## Gotchas\n\n- ASSUMPTION — verify at build: the resume command each banner row prints actually re-enters the run. Existing re-entry text in `collectStaleRuns` covers the shipped-unclosed and consolidated-pass cases; for `draft PR, session gone` and `unpushed commits` confirm what `/claude-tweaks:flow` adoption (`flow/preflight.js`'s `computeAdoption`) accepts before wording the command.\n- ASSUMPTION — verify at build: the SessionEnd `reason` values the harness emits (for example `clear`, `resume`, and the exit reasons) and which of them leave the session running; probe it from a real hook invocation and record the raw values in the PR body before fixing the terminal set. Until verified, treat any reason other than a clearly terminal one as non-terminal.\n- Reconcile must never act on `unknown`, and a probe error is `unknown`, never `dead`; do not add a shortcut that treats a missing `owner` block as dead (the legacy 72 hour route in `runLiveness` is the only legacy path to `dead`).\n- The SessionEnd ad hoc close is safe only because the run is the ending session's own and ad hoc runs never resume (a resumed session mints a fresh one). Keep the `fallback`-attribution guard that `session-end.js` already has: a guessed run is never closed.\n- Nested `claude -p` sessions (#3845) can fire SessionEnd against the parent's run. The ad hoc direct close must be gated on the same own-run attribution as the existing stamp, never on `ctx.runDir`.\n- Report-only means no write of any kind to a run directory by the new rows: no `closedBy`, no `decisions.md` line, no archive move. The only writes are the summary and `reconcile-cache.json`.\n- `reconcile` runs on a fast path at SessionStart (`FAST_CHECKS`) and a background path; the disposition needs PR state, which may require `gh`. Respect the existing gh-absent posture (`_shared/github-write-transport.md`'s MCP path and the accepted MCP gap documented in `docs/reconcile-checks.md`): without PR state a formal run is `leave`, not `close`.\n- The banner currently skips ad hoc runs (`isAdHocRunDir`) so they cannot crowd out a real interrupted run; keep that skip for ad hoc and listing only `orphan` rows keeps the cap meaningful.\n- File overlap with open records: `archive-merged.js` with #3975 (same file, sequential), #3945, #3740, and #3721; `session-residue.js` with #3950; `session-end.js` with #3845. Related: #2724 (the structurally-stuck tracker stays) and #3898 (release runs close at their own end there).\n- Skill edges, if any, go in `docs/skill-graph.md` only; new reconcile checks follow `docs/reconcile-checks.md`'s \"Adding a new check\" registration list, including the `reconcile-threw` fallback duplicate in `hooks.js`.\n\n\n<!-- work-fingerprint: 2026-10-22-run-directory-cleanup:close-dead-runs-in-report-only-mode-show-only-orphaned-runs -->\nwork-fingerprint: 2026-10-22-run-directory-cleanup:close-dead-runs-in-report-only-mode-show-only-orphaned-runs",
-        "createdAt": "2026-10-22T17:04:08Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2oaA",
-            "name": "type:feature",
-            "description": "Type: new capability or enhancement",
-            "color": "FEF2C0"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3977,
-        "state": "OPEN",
-        "title": "Close dead runs in report-only mode, show only orphaned runs in the SessionStart banner, and archive a session's own ad hoc run at SessionEnd",
-        "updatedAt": "2026-10-23T22:43:11Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
         "body": "**Related:** #3877\nOrigin: build of #3877 (final whole-branch review finding #6)\n\nDefer-reason: tangential\n\n## Current State\n\nAfter #3877, `/tidy`'s `## Arm ready PR` action (`plugin/skills/tidy/actions-github-issues.md`) holds a record-linked PR whose acceptance labeling never landed. That covers three cases: the run's `verify.json` `acceptance-labeling` row is not `pass`/`skip`, no `demo:pending` is set on its `Fixes` records, and no trusted brief/try-it run comment exists. In those cases the action logs a `SKIP` to `decisions.md` instead of arming.\n\n`_shared/github-pr-scan.md`'s `repo-wide` item 9 still classifies that same PR as a granted `[pr-unarmed]` candidate on every sweep. So `tidy/step-6-auto.md` re-stages the same record-linked \"Arm ready PR\" row each run, and a human approves an arm that only holds again. `step-6-auto.md`'s own header treats a recurring staged item as a missing routing rule.\n\n## Deliverables\n\n- Item 9 (or tidy's Step 6 routing) applies the same acceptance-labeling landed check as the arm action. It reuses `dispatch/close-out.md` step 3's live-state precheck: `demo:pending` on every `Fixes` record, or a trusted brief/try-it run comment. Where a local run dir resolves, it also reads that run's `verify.json` `acceptance-labeling` row.\n- A not-landed record-linked PR routes to **Yours**, carrying the paste-ready recommendation the arm action already names: `/claude-tweaks:dispatch close-out #{record}`, or the no-run-dir alternative. It does not appear as an Arm ready PR row.\n- The arm action's own guard stays as the execution-time backstop.\n\n## Acceptance Criteria\n\n1. A record-linked unarmed PR whose labeling has not landed surfaces under Yours with `/claude-tweaks:dispatch close-out #{record}` (or the no-run-dir alternative), not as an Arm ready PR row.\n2. A record-linked PR whose labeling has landed still stages as an Arm ready PR row.\n3. Housekeeping-marker PRs are unaffected.\n4. `npm test` passes.\n\n## Release Note\n\n`/tidy` no longer keeps offering to arm a PR it will only hold for missing acceptance labeling.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/github-pr-scan.md` — item 9 classifies a not-landed record-linked PR away from the Arm candidate set\n- `plugin/skills/tidy/step-6-auto.md` — routes the not-landed record-linked flavor to Yours\n- `plugin/skills/tidy/actions-github-issues.md` — arm guard stays as backstop; cross-reference the scan-time routing\n\n_Filed by `capture` via specShapedBody._",
         "createdAt": "2026-10-22T14:24:28Z",
         "labels": [
@@ -1247,78 +860,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3880\nOrigin: build final review of #3880\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nAt the Wrap-Up Review Console, ratifying an `sdd-ruling-*` item (`apply`, per `wrap-up/review-console-appendix.md`'s `sdd-ruling-*` bullet) writes its ledger row to `accepted` and files nothing; only `reverse` composes a record proposal (`staged/ledger-record-sdd-ruling-{N}.md`). #3880 added a safe-deferral class that console-auto ratifies at `unattended`: `Defers: yes` with exactly one valid `Defer-reason:` header (including `tangential` and `pre-existing-outside-diff`). That deferred work ends as a terminal `accepted` row, the ledger is deleted once nothing is open, and the work reaches no backlog record. This contradicts CLAUDE.md's \"No implicit deferrals\" and `_shared/deferral-gate.md`'s premise that a `Defer-reason:` goes with a record. It is not a regression: before #3880 every ratified ruling was dropped the same way. Found by #3880's final whole-branch review (finding I-3). The ratify contract is shared by the single-run console (`review-console.md` step 1 and step 7), the multi-spec console (`flow/multispec-review-console.md`), the interactive Override vocabulary (`review-console-interactive.md`), the on-PR console (`_shared/console-on-pr.md`, `_shared/console-execution.md`, `bin/lib/reconcile/console-execute.js`), and `finish-console`.\n\n## Deliverables\n\nRatifying a deferral ruling (`Defers: yes`, or any `Defer-reason:` header line, with a valid reason) composes a record proposal via `specShapedBody`, the same way `reverse` does today. Current State is the ruling and the finding it deferred; Deliverables is the deferred work; the record carries the staged file's own `Defer-reason:` value. The proposal routes through the console's record-creation step in the same pass. Once the record exists, the ledger row is written `deferred` with Resolution `ratified → #{n}`; if creation fails or is refused, the row stays `open`.\n\nRatifying a `Defers: no` ruling (a settled design decision) keeps today's `accepted` write-back unchanged.\n\nApply the same rule at every console surface that ratifies a ruling: single-run, multi-spec, interactive, on-PR/reconciler execution, and `finish-console`.\n\nAdd a conformance test pinning the ratify-files-a-record rule in `wrap-up/review-console-appendix.md` and its code twin, if one exists.\n\n## Acceptance Criteria\n\nRatifying a `Defers: yes` `sdd-ruling-*` item with a valid `Defer-reason:` produces a backlog record carrying that reason, and the ledger row is `deferred` with the record number.\n\nRatifying a `Defers: no` ruling still writes the row `accepted` with no record.\n\nA refused or failed record creation leaves the row `open`, never `accepted` or `deferred` without a record number.\n\n`npm test` passes in full.\n\n## Release Note\n\nRatifying a deferred SDD ruling at the Review Console now files the deferred work as a backlog record instead of closing it silently.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/review-console-appendix.md` — modify\n- `plugin/skills/wrap-up/review-console.md` — modify\n- `plugin/skills/_shared/console-execution.md` — modify\n- `plugin/bin/lib/reconcile/console-execute.js` — modify\n\n_Filed by `build` via specShapedBody._",
-        "createdAt": "2026-10-22T08:52:58Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 3942,
-        "state": "OPEN",
-        "title": "Ratifying a deferral SDD ruling at the Review Console files no backlog record",
-        "updatedAt": "2026-10-23T22:09:21Z",
-        "facets": {
-          "origin": null,
-          "risk": "medium",
-          "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
           "stage": "ready",
           "grants": {
             "build": true,
@@ -1867,7 +1408,7 @@
         "number": 3758,
         "state": "OPEN",
         "title": "Dispatch contract doesn't name or detect an Agent/Task-tool-less sandbox",
-        "updatedAt": "2026-10-24T05:39:13Z",
+        "updatedAt": "2026-10-27T10:32:58Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -2011,7 +1552,7 @@
         "number": 3736,
         "state": "OPEN",
         "title": "Move context.js's assigned-run worktree match to case-canonical realpath",
-        "updatedAt": "2026-10-23T22:04:12Z",
+        "updatedAt": "2026-10-27T18:30:02Z",
         "facets": {
           "origin": null,
           "risk": "medium",
@@ -2185,7 +1726,7 @@
         "number": 3721,
         "state": "OPEN",
         "title": "archive-run: commits the archive move on the current branch without reporting the commit or that it is unpushed",
-        "updatedAt": "2026-10-24T05:39:06Z",
+        "updatedAt": "2026-10-27T16:47:48Z",
         "facets": {
           "origin": null,
           "risk": "low",
@@ -3821,7 +3362,7 @@
         "number": 4244,
         "state": "OPEN",
         "title": "Write gate misses a command after a compound keyword or builtin prefix (if/then/do/while/!/time/command/pushd)",
-        "updatedAt": "2026-10-26T14:34:47Z",
+        "updatedAt": "2026-10-28T04:33:49Z",
         "facets": {
           "origin": null,
           "risk": "medium",
