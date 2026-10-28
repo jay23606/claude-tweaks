@@ -28,6 +28,9 @@ for (const [label, piece] of [
   ['an unterminated heredoc inside "$( repeated', '"$(<<X\n"'],
   ['a "$( # comment repeated', '"$( #"'],
   ['an unquoted ${a repeated', '${a'],
+  // #4246: the heredoc scan reads each `${` once; a closed span is skipped whole, an unclosed one falls through.
+  ['a closed ${x:-<<E} repeated', '${x:-<<E}'],
+  ['an unclosed ${x:-<<E repeated', '${x:-<<E'],
 ]) {
   test(`fileWriteTargets: ${label} (60 KB) stays linear`, () => {
     const { value, ms } = timed(() => fileWriteTargets(`echo ${piece.repeat(Math.floor(60000 / piece.length))} && cp a /main/f.js`, '/r'));

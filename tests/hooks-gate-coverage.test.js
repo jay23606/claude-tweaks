@@ -927,6 +927,29 @@ test('#4246: a `<<` inside an unquoted ${ … } is literal text, not a heredoc o
   }
 });
 
+// #4246: a heredoc opened before a multi-line `${ … }` has its body planned after the line that
+// holds the closing `}`, which is how bash reads it. bash 3.2, bash 5 and zsh all write nothing
+// here: `: > /M/zz` is the heredoc's body. Base planned the body at the span's first newline, so
+// the body line read as a command and base reported /M/zz.
+test('#4246: a heredoc opened before a multi-line ${ … } keeps its body after the closing line', () => {
+  assert.deepStrictEqual(fileWriteTargets('cat <<EOF; echo ${x:-a\nb}\n: > /M/zz\nEOF', '/r'), []);
+});
+
+// #4246 guard pin: only a closed `${ … }` is skipped. bash 3.2, bash 5 and zsh all write nothing
+// for an unclosed one (a syntax error), and the scanner keeps the opener line's bodies as their own
+// chunks, tagged `shell` for a shell reader, so a writer behind it is still found. Skipping an
+// unclosed span would emit the rest of the command as one raw run and return no bodies at all.
+test('#4246: only a closed ${ … } is skipped; an unclosed one reads as before', () => {
+  assert.deepStrictEqual(stripHeredocBodies('cat <<EOF ${x\nbody\nEOF'), {
+    outer: 'cat <<EOF ${x\n',
+    bodies: [{ at: 4, text: 'body\n', shell: false }],
+  });
+  assert.deepStrictEqual(stripHeredocBodies('sh <<EOF ${x\n: > /M/zz\nEOF'), {
+    outer: 'sh <<EOF ${x\n',
+    bodies: [{ at: 3, text: ': > /M/zz\n', shell: true }],
+  });
+});
+
 // #4149 with #4210: a command nested past NEST_LEVEL_CAP re-reads flat, and the flat split cuts at
 // a `|` or `;` inside "$( … )"; the walk carries the nesting state across that cut, so the inner `>`
 // stays quoted. bash 3.2 and 5 write only out.js and z.
