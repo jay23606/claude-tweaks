@@ -61,11 +61,11 @@
   },
   "skill:skill-prose-conformance-tests": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1793162138071
+    "lastAuditedMs": 1793174063744
   },
   "skill:shared-contract-extraction": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792964707450
+    "lastAuditedMs": 1793174055527
   },
   "skill:work-record-facet-rename": {
     "lastAuditedSha": null,
@@ -121,7 +121,7 @@
   },
   "skill:compose-context-fencing": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792961769328
+    "lastAuditedMs": 1793174065550
   },
   "skill:run-directory-fact-packs": {
     "lastAuditedSha": null,
@@ -153,7 +153,7 @@
   },
   "skill:prose-code-twin-pin": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1793038156526
+    "lastAuditedMs": 1793174070123
   },
   "skill:code-health-focus-vertical": {
     "lastAuditedSha": null,
@@ -197,7 +197,7 @@
   },
   "skill:single-source-constant-guard": {
     "lastAuditedSha": null,
-    "lastAuditedMs": 1792946388333
+    "lastAuditedMs": 1793174077305
   },
   "skill:mcp-agent-fetch-node-compute": {
     "lastAuditedSha": null,
