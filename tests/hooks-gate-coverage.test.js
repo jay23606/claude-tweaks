@@ -993,6 +993,72 @@ test('#4246: a `cd` in a kept would-be body does not move a write after the deli
   ]);
 });
 
+// #4246: a closed `${ … }` that holds a `$(` is read a character at a time, so a heredoc inside its
+// substitution is planned as any other. From /main, bash 5 writes /main/zz (`cd ../wt` is the body)
+// and bash 3.2 and zsh write /wt/zz; from /r, bash 5 writes /r/zz and bash 3.2 and zsh write /M/zz
+// (the known gap above). Skipping the span whole ran the `cd` as a command and reported only /wt/zz
+// and /M/zz, which let bash 5's /main/zz through.
+test('#4246: a heredoc inside a $( … ) inside a closed ${ … } is planned as any other', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo ${x:-$(cat <<EOF)}\ncd ../wt\nEOF\n: > zz', '/main'), [
+    { action: 'write', file: path.resolve('/main/zz') },
+  ]);
+  assert.deepStrictEqual(fileWriteTargets('echo ${x:-$(cat <<EOF)}\ncd ../M\nEOF\n: > zz', '/r'), [
+    { action: 'write', file: path.resolve('/r/zz') },
+  ]);
+});
+
+// #4246 guard pin: a `<<` in the own text of a closed `${ … }` that holds a `$(` stays literal.
+// bash 3.2 and 5 write /main/zz (the `cd` runs); zsh writes nothing (it reads the `<<` as an opener).
+// Reading the span as base did made the `<<` an opener, cut `cd ../main` out as its body, and
+// reported only /wt/zz.
+test('#4246: a `<<` in the own text of a ${ … } that holds a $( is not an opener', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo ${x:-$(true) <<EOF}\ncd ../main\nEOF}\n: > zz', '/wt'), [
+    { action: 'write', file: path.resolve('/main/zz') },
+  ]);
+});
+
+// #4246 guard pin: that literal reading ends at the span's closing `}`. bash 3.2, bash 5 and zsh
+// write /main/zz (`cd ../wt` is cat's body). Reading the later `<<` as the span's own text too would
+// run the `cd` as a command and report only /wt/zz.
+test('#4246: a `<<` after a closed ${ … } that holds a $( is an opener again', () => {
+  assert.deepStrictEqual(fileWriteTargets('echo ${x:-$(true)}; cat <<EOF\ncd ../wt\nEOF\n: > zz', '/main'), [
+    { action: 'write', file: path.resolve('/main/zz') },
+  ]);
+});
+
+// #4246 guard pin: an unquoted `$( … )` inside a `"$( … )"` plans its heredoc against the quoted
+// substitution's text, as before #4246. bash 3.2, bash 5 and zsh write /M/zz: echo joins the body
+// to one line and `sh -c` runs `cat <<X : > /M/zz X`. That text names no shell, so the kept body is
+// also walked with its own `cat <<X` body left in; planning against the whole line, which names `sh`,
+// would strip it and report nothing.
+test('#4246: a $( … ) inside a "$( … )" plans its heredoc against the quoted substitution', () => {
+  assert.deepStrictEqual(fileWriteTargets("sh -c \"$(echo $(cat <<'EOF'\ncat <<X\n: > /M/zz\nX\nEOF\n))\"", '/r'), [
+    { action: 'write', file: path.resolve('/M/zz') },
+  ]);
+});
+
+// #4246 guard pin: a `)` closing on the opener line marks only its own substitution's heredocs. bash
+// 3.2, bash 5 and zsh write nothing (each `: > /M/zz` is A's or B's body, both read by cat). Marking A
+// too, which no substitution holds, would keep both bodies and scan them as commands.
+test('#4246: a same-line `)` keeps only its own substitution\'s heredoc bodies', () => {
+  assert.deepStrictEqual(fileWriteTargets('cat <<A $(true) "$(cat <<B\n: > /M/zz\nA\n: > /M/zz\nB\n)"', '/r'), []);
+});
+
+// #4246: a `$(` inside an open `$(( … ))` or `(( … ))` opens no substitution frame, so its parens
+// count toward the arithmetic and the `<<` after them is still a shift. bash 3.2, bash 5 and zsh
+// write /main/zz for each of the first two. A frame there let its `)` close the arithmetic early,
+// so the `<<` read as an opener and `cd ../main` as its body. The `$[ … ]` case was never affected
+// (its depth counts brackets, not parens); all three shells write /main/zz for it too.
+test('#4246: a $( inside arithmetic keeps the arithmetic paren count', () => {
+  for (const command of [
+    'echo $(( $(echo 1) + $(echo 1) << y ))\ncd ../main\ny\n: > zz',
+    '(( $(echo 1) + $(echo 1) << y ))\ncd ../main\ny\n: > zz',
+    'echo $[ $(echo 1) + $(echo 1) << y ]\ncd ../main\ny\n: > zz',
+  ]) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/wt'), [{ action: 'write', file: path.resolve('/main/zz') }], command);
+  }
+});
+
 // #4149 with #4210: a command nested past NEST_LEVEL_CAP re-reads flat, and the flat split cuts at
 // a `|` or `;` inside "$( … )"; the walk carries the nesting state across that cut, so the inner `>`
 // stays quoted. bash 3.2 and 5 write only out.js and z.
