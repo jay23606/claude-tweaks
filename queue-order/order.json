@@ -1,11 +1,186 @@
 {
-  "computedAt": "2026-10-28T07:09:25.172Z",
+  "computedAt": "2026-10-28T07:59:21.637Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
       {
+        "number": 4488,
+        "updatedAt": "2026-10-28T07:09:41Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4487,
+        "updatedAt": "2026-10-28T07:09:46Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4486,
+        "updatedAt": "2026-10-28T07:09:50Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4484,
+        "updatedAt": "2026-10-28T07:09:54Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4483,
+        "updatedAt": "2026-10-28T07:09:59Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4482,
+        "updatedAt": "2026-10-28T07:10:03Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4471,
+        "updatedAt": "2026-10-28T07:10:08Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4469,
+        "updatedAt": "2026-10-28T07:10:13Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4468,
+        "updatedAt": "2026-10-28T07:10:17Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4467,
+        "updatedAt": "2026-10-28T07:10:21Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4466,
+        "updatedAt": "2026-10-28T07:10:26Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4465,
+        "updatedAt": "2026-10-28T07:10:31Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4464,
+        "updatedAt": "2026-10-28T07:10:35Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4463,
+        "updatedAt": "2026-10-28T07:10:39Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4462,
+        "updatedAt": "2026-10-28T07:10:44Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4461,
+        "updatedAt": "2026-10-28T07:10:48Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4460,
+        "updatedAt": "2026-10-28T07:10:53Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4459,
+        "updatedAt": "2026-10-28T07:10:58Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4455,
+        "updatedAt": "2026-10-28T07:11:02Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4454,
+        "updatedAt": "2026-10-28T07:11:06Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4453,
+        "updatedAt": "2026-10-28T07:11:11Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4452,
+        "updatedAt": "2026-10-28T07:11:15Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4451,
+        "updatedAt": "2026-10-28T07:11:19Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4450,
+        "updatedAt": "2026-10-28T07:11:23Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4449,
+        "updatedAt": "2026-10-28T07:11:28Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4448,
+        "updatedAt": "2026-10-28T07:11:32Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4447,
+        "updatedAt": "2026-10-28T07:11:36Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4446,
+        "updatedAt": "2026-10-28T07:11:41Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4439,
+        "updatedAt": "2026-10-28T07:11:45Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4435,
+        "updatedAt": "2026-10-28T07:11:49Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4433,
+        "updatedAt": "2026-10-28T07:11:53Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4424,
+        "updatedAt": "2026-10-28T07:11:58Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4423,
+        "updatedAt": "2026-10-28T07:12:02Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4395,
+        "updatedAt": "2026-10-28T07:12:06Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4388,
         "updatedAt": "2026-10-26T14:33:42Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4387,
+        "updatedAt": "2026-10-28T07:12:11Z",
         "state": "OPEN"
       },
       {
@@ -14,8 +189,28 @@
         "state": "OPEN"
       },
       {
+        "number": 4369,
+        "updatedAt": "2026-10-28T07:12:15Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4368,
+        "updatedAt": "2026-10-28T07:12:20Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4367,
+        "updatedAt": "2026-10-28T07:12:24Z",
+        "state": "OPEN"
+      },
+      {
         "number": 4366,
         "updatedAt": "2026-10-26T14:34:31Z",
+        "state": "OPEN"
+      },
+      {
+        "number": 4364,
+        "updatedAt": "2026-10-28T07:15:11Z",
         "state": "OPEN"
       },
       {
@@ -65,7 +260,7 @@
       },
       {
         "number": 4243,
-        "updatedAt": "2026-10-26T14:34:52Z",
+        "updatedAt": "2026-10-28T07:23:06Z",
         "state": "OPEN"
       },
       {
@@ -215,7 +410,7 @@
       },
       {
         "number": 3737,
-        "updatedAt": "2026-10-25T10:57:19Z",
+        "updatedAt": "2026-10-28T07:57:53Z",
         "state": "OPEN"
       },
       {
@@ -241,6 +436,2760 @@
     ]
   },
   "groups": [
+    [
+      {
+        "body": "# Reflect — staged finding 1\n\n**Category:** tangential\n\nOrigin: reflect light from #4481\n\nDefer-reason: tangential\n\n## Current State\n\n`review/step3-routing.md` gives each Step 3 Routing log line as a template (`STAGED {time} — Step 3 Routing: {severity}-severity finding {category} at {file:line}. Stage path: …`) that the caller fills by hand and passes to `plugin/bin/log-decision.js` as `--text`, with `--step \"Step 3 Routing\"`. `log-decision.js` already writes `{step}: ` before the text, so a caller who copies the template's `Step 3 Routing:` into `--text` gets `Step 3 Routing: Step 3 Routing: …` — nothing checks for it. The severity token is also hand-ordered: #4481's review logged `high-severity security finding at …` instead of `high-severity finding security at …`, and `/claude-tweaks:release` Step 3 classifies its gate by the literal token `high-severity finding`, so that line would have read as no blocking finding. Observed in run 2026-10-27T184830-spec-4481: 13 lines carried the doubled prefix and 3 STAGED lines the mis-ordered token; they were rewritten in place by hand. Probes: `git log -S \"startsWith(o.step\" --oneline origin/main -- plugin/bin/log-decision.js plugin/bin/lib` and `git grep -n -i -e \"repeats --step\" -e \"step prefix\" -e \"duplicated step\" origin/main -- plugin/bin` both returned nothing, and no open issue matched `log-decision step prefix`.\n\n## Deliverables\n\n`log-decision.js` refuses (exit 2, naming both values) a `--text` or `--entries` text that begins with its own `--step` value followed by `:`.\n\nA composer for review routing lines, `--severity`, `--category` and `--at` flags or a small `review-routing-line.js`, so `{severity}-severity finding {category} at {file:line}` is never hand-typed; `step3-routing.md` cites it in place of the free-text template.\n\nA test that feeds the composed STAGED and KEPT-PROMPT lines through the same token match `/claude-tweaks:release` Step 3 applies and sees `review: blocking`.\n\n## Acceptance Criteria\n\n`node plugin/bin/log-decision.js --run <dir> --status AUTO --step \"Step 3 Routing\" --text \"Step 3 Routing: x\"` exits 2 and writes nothing.\n\nA high finding routed through the composer produces a line containing the literal `high-severity finding`.\n\nEach new test fails with its change reverted.\n\n## Release Note\n\nReview routing log lines are composed by a CLI, so the release gate always sees a staged high or critical finding.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/log-decision.js` — refuse a --text that repeats --step\n- `plugin/skills/review/step3-routing.md` — cite the routing-line composer\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-28T04:39:02Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4488,
+        "state": "OPEN",
+        "title": "Compose review routing log lines with a CLI and refuse a --text that repeats --step",
+        "updatedAt": "2026-10-28T07:09:41Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: SDD ruling ratified at Review Console (#4481, staged/sdd-ruling-2.md)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js` walks a function definition's body (`g() { … }`, `function g { … }`) once, as a group where it is defined, so a `cd` in it reaches the commands after the definition. A later call from another cwd is not re-walked: `f() { echo z > k; }; cd ../wt; f` writes `wt/k` in bash 3.2, bash 5 and zsh, while base and every #4481 revision report `r/k`. Not case-specific. #4481's SDD Task 1 ruled it deferred to its own record at Important (ledger row 15); `plugin/skills/_shared/policy-schema-coverage.md` lists it as a known gap (\"a function body when the function is called later from another cwd\").\n\n## Deliverables\n\nRecord each function name defined in a walked command with its body text, and when a later segment's command word is that name, walk the body under that segment's cwds (bounded, so a recursive or re-defined function cannot loop).\n\nPin `f() { echo z > k; }; cd ../wt; f` (wt/k) and a redefinition case, with bash 3.2/5 verdicts.\n\n## Acceptance Criteria\n\n`fileWriteTargets('f() { echo z > k; }; cd ../wt; f', '/r/x')` includes `/r/wt/k`.\n\nEach new test fails with the change reverted; the hook suites pass; the known-gaps clause is removed from policy-schema-coverage.md.\n\n## Release Note\n\nThe worktree write gate follows a write inside a shell function to the cwd the function is called from.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — re-walk a function body at its call site\n- `tests/hooks-gate-coverage.test.js` — pin the call-site shapes\n- `plugin/skills/_shared/policy-schema-coverage.md` — drop the known-gap clause\n\n_Filed by `review console` via specShapedBody._\n",
+        "createdAt": "2026-10-28T04:38:57Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4487,
+        "state": "OPEN",
+        "title": "Write gate walks a shell function body only where it is defined, missing a write when it is called after a cd",
+        "updatedAt": "2026-10-28T07:09:46Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger resolve gate\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js`'s cd walk assumes a `case` arm always runs, so a `cd` in an arm reaches the commands after `esac` even when no pattern matches. `case $x in a) cd /wt;; esac; echo x > f` resolves only `/wt/f`; bash 3.2 and 5 write `./f` when `$x` is not `a`. Pre-existing; #4481 (ledger row 1, SDD Task 1 review) recorded it, and `plugin/skills/_shared/policy-schema-coverage.md` lists it as a known gap (\"a case arm whose pattern does not match\").\n\n## Deliverables\n\nAfter a `case` whose arms carry no catch-all `*)` pattern, carry the cwd before the case as well as each arm's cwd into the commands after `esac`, failing closed.\n\nPin `case $x in a) cd /wt;; esac; echo x > f` (both `/wt/f` and `./f`) and the catch-all form `case $x in a) cd /wt;; *) cd /q;; esac; echo x > f` (no `./f`), with bash 3.2/5 verdicts.\n\n## Acceptance Criteria\n\n`fileWriteTargets('case $x in a) cd /wt;; esac; echo x > f', '/r')` includes `/r/f` and `/wt/f`.\n\nEach new test fails with the change reverted; the hook suites pass; the known-gaps clause is removed from policy-schema-coverage.md.\n\n## Release Note\n\nThe worktree write gate no longer assumes a `case` arm runs when no pattern may match.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — join the pre-case cwd after a case with no catch-all\n- `tests/hooks-gate-coverage.test.js` — pin both shapes\n- `plugin/skills/_shared/policy-schema-coverage.md` — drop the known-gap clause\n\n_Filed by `ledger resolve gate` via specShapedBody._\n",
+        "createdAt": "2026-10-28T04:38:52Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4486,
+        "state": "OPEN",
+        "title": "Write gate assumes a case arm always runs, so a cd in an unmatched arm hides a write",
+        "updatedAt": "2026-10-28T07:09:50Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: /claude-tweaks:release v6.156.3 Step 8 disposition (run 2026-10-27T161535-release-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\nA confirmed review finding that has no code fix (a record proposal) has no staging name that both ends of the pipeline accept:\n\n- `review/step3-routing.md` only ever stages `staged/review-{n}.patch` (line 58). It names no `.md` shape for a confirmed finding that becomes a record.\n- `plugin/bin/lib/console/resolve.js` SECTION_MAP matches `review-{n}` only through its `/\\.patch$/` row, so `stage-item.js --id review-3` for a `.md` is refused `unmapped-prefix`. The nearest canonical prefix it suggests is `review-followup-` (QUEUE section), which no skill produces.\n- `plugin/skills/release/disposition.md`'s Review staging roster lists `review-{n}` as `staged/review-{n}.{md,patch}` (route `confirmed`) and has no `review-followup-` row, so the one name stage-item accepts is off the disposition roster.\n\nHit in run `2026-10-27T161535-release-standalone` (v6.156.3): five record proposals were staged as `review-followup-1..5.md` and Step 8 disposition had to read and settle them by hand (logged as a note in that run's decisions.md).\n\n## Deliverables\n\n1. `review/step3-routing.md` names the staging shape for a confirmed finding routed to a record (no patch): `staged/review-followup-{n}.md`, written via `stage-item.js`, carrying the `Title:`/`Type:`/`Labels:`/`Defer-reason:` header the console's queue-write step reads.\n2. `release/disposition.md`'s Review staging roster gains a `review-followup-` row (route `proposal`, counted one finding per file), and the `review-{n}` row's example narrows to `staged/review-{n}.patch` — the `.md` alternative is removed because nothing can stage it.\n3. A test pins that every prefix in disposition.md's roster with a non-`not staged by review` route is either accepted by `stage-item.js` (classifies mapped) or matches the `.patch` row, so the roster and SECTION_MAP cannot drift apart again.\n\n## Acceptance Criteria\n\n- [ ] `node plugin/bin/stage-item.js --run <dir> --id review-followup-1 …` with a `.md` body succeeds, and release Step 8 disposition routes the file through its Routing table without a hand-disposal note.\n- [ ] disposition.md's roster has no row whose example a producer cannot stage (no `review-{n}.md`).\n- [ ] The new roster-vs-SECTION_MAP test fails when the `review-followup-` row is deleted from disposition.md, and passes with it.\n- [ ] `npm test` passes.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-routing.md` — name the review-followup-{n}.md staging shape for a confirmed record-routed finding\n- `plugin/skills/release/disposition.md` — add the review-followup- roster row; narrow review-{n} to .patch\n- `plugin/bin/lib/console/resolve.js` — read-only reference: SECTION_MAP / CANONICAL_PREFIXES the new test checks against\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T18:47:57Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4484,
+        "state": "OPEN",
+        "title": "Release disposition roster and review staging disagree on the name of a confirmed non-patch review finding",
+        "updatedAt": "2026-10-28T07:09:54Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: /claude-tweaks:release v6.156.3 release-gate review (run 2026-10-27T161535-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nFound by the v6.156.3 whole-branch release review (lens 3f: one finding reproduced by both agents, one confirmed by independent tiebreak), refs #4303.\n\n- `LONG_VALUE_OPTIONS` in `plugin/bin/lib/hooks/git-command.js` (line 2868) lists `cp --no-preserve` and `cp --sparse`, and line 2871 `install --group`/`--owner`. No test names them. A scratch mutant dropping the two cp rows turns `cp --no-preserve -t a /main/f.js` from `/main/f.js` into `/r/a` and stays green.\n- The test at `tests/hooks-gate-coverage.test.js:1681` (\"a flat second pass inside a multi-line `$[ … ]` restarts its subscript count\") returns the same `[{copy /r/f.js}]` at v6.156.2, 08983fb06 and 4d81a3e0c, so it does not discriminate the change it is tagged with.\n- About 25 comments in that file (lines 2074–3167) narrate \"an earlier revision of this branch\", history the squash erased.\n\n## Deliverables\n\n1. Add rows for `cp --no-preserve`, `cp --sparse`, `install --group` and `install --owner` before `-t`.\n2. Replace the line-1681 test's input with one that fails at v6.156.2, or retitle it as a pre-existing pin.\n3. Reword the branch-history comments as present-tense statements with a `#4303` ref.\n\n## Acceptance Criteria\n\n- Dropping any one `LONG_VALUE_OPTIONS` cp or install entry turns a test red.\n- The line-1681 test (or its replacement) fails against v6.156.2's `git-command.js`, or its title no longer claims #4303.\n- `grep -c \"this branch\" tests/hooks-gate-coverage.test.js` prints 0.\n- The scanner suites pass.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `review` via specShapedBody._",
+        "createdAt": "2026-10-27T18:41:28Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4483,
+        "state": "OPEN",
+        "title": "Pin the untested write-gate rows and retire the non-discriminating flat-pass test",
+        "updatedAt": "2026-10-28T07:09:59Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: /claude-tweaks:release v6.156.3 release-gate review (run 2026-10-27T161535-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nFound by the v6.156.3 whole-branch release review (lens 3a, confirmed by independent tiebreak), refs #4303.\n\n`docs/hooks.md:6` forbids restating the worktree-always coverage list (\"five files did and all five went stale `[IL-93]`\"). The \"Lost-cwd denies\" bullet at `docs/hooks.md:15` nonetheless spells out every gate's lost-target reading (shadow guard, teardown, worktree-always, post-tool-use, E1, bookkeeping-stamps, dispatch-config), then says they are \"stated once\" in `plugin/skills/_shared/policy-schema-coverage.md`'s \"Where a relative target resolves\" paragraph, which states them too.\n\n`.claude/skills/pre-tool-use-gate-exemptions/SKILL.md:34` then tells authors to add each new gate to both places: the two-copy drift the rule exists to stop.\n\n## Deliverables\n\n1. Cut the `docs/hooks.md` bullet to the `lost` marker's contract plus a pointer to the coverage paragraph.\n2. Point the gate-exemptions skill at that one paragraph only.\n\n## Acceptance Criteria\n\n- `docs/hooks.md` names no individual gate's lost-target reading.\n- `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` names one place to record a gate's reading.\n- `npm test` passes (conformance tests pin some of this prose).\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/hooks.md` — modify\n- `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` — modify\n\n_Filed by `review` via specShapedBody._",
+        "createdAt": "2026-10-27T18:41:23Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4482,
+        "state": "OPEN",
+        "title": "State each gate's lost-target reading once, not in both docs/hooks.md and policy-schema-coverage.md",
+        "updatedAt": "2026-10-28T07:10:03Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Verified-as-of: 05dc74c1fa0fea552c01784bfad03b683cf9d32b\n\nPremise-check: git grep -q -F 'commitAt = lastCommitAt' -- plugin/bin/lib/hooks/resume-freshness.js\n\nOrigin: /claude-tweaks:release v6.156.2 release-gate review (run 2026-10-27T074620-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n#4420 routed `checkResumeFreshness` (`plugin/bin/lib/hooks/resume-freshness.js`) and `parentLiveDetail` (`plugin/bin/lib/flow/consolidated-pass.js`) through run-liveness via the shared `blocksResume`/`resumeEntries` helpers, but the extraction stopped halfway:\n\n- **The resume ladder is hand-copied in both callers.** Lock positive → commit positive → `blocksResume` → `no-commits` → indeterminate, including the identical `(lock.result !== 'negative' ? lock : commit).detail` pick, at `resume-freshness.js:86-102` and `consolidated-pass.js:59-66`. `run-liveness/index.js`'s `blocksResume` comment says `no-commits` does not block because both callers handle it themselves, so the fail-closed `no-commits` rung lives in two copies kept in sync only by prose. No test asserts the two ladders agree: `tests/bin-lib/flow/consolidated-pass.test.js` stubs `checkResumeFreshness`.\n- **`checkResumeFreshness` side-channels the commit time.** The `last-commit` evidence entry carries only `{result, detail}`, so `resume-freshness.js:83-85` wraps the probe in a closure that assigns an outer `commitAt` to compute `ageMs`. That only holds while `runLiveness` calls the injected probe exactly once and synchronously. If the default probe ran instead, `commitAt` would stay `null` and `ageMs` would silently read as `now`.\n\nFound by the v6.156.2 release-gate whole-branch review (lens 3e, reproduced by both agents; cross-lens debate converged at medium; the consolidated-pass duplication separately tiebreak-confirmed). The release reviewed already-merged history, so it filed this rather than fixing it. `Premise-check:` exits 0 while the side channel is still present.\n\n## Deliverables\n\n- `plugin/bin/lib/run-liveness/index.js`: one resume-verdict helper (e.g. `resumeVerdict(result)` → `{ kind: 'locked' | 'recent-commit' | 'indeterminate' | 'clear', entry, commitAgeMs }`) that owns the whole ladder, `no-commits` rung included. The `last-commit` evidence entry carries the commit time or age, so callers need no side channel.\n- `plugin/bin/lib/hooks/resume-freshness.js` and `plugin/bin/lib/flow/consolidated-pass.js`: each maps that verdict to its own output shape (`{safe, verdict, reason, ageMs}` / detail string), keeping its own pre-probe status gates.\n- One test that feeds the same evidence (lock error, commit error, `no-commits`, lock positive, commit positive, all negative) through both callers and asserts their verdict kinds agree.\n\n## Acceptance Criteria\n\n- [ ] `git grep -n -F \"commitAt = lastCommitAt\" -- plugin/bin` prints nothing (it matches `plugin/bin/lib/hooks/resume-freshness.js:85` at 05dc74c).\n- [ ] `git grep -n -F \"(lock.result !== 'negative' ? lock : commit).detail\" -- plugin/bin` prints nothing outside `plugin/bin/lib/run-liveness/` (it matches `consolidated-pass.js:63` and `resume-freshness.js:100` at 05dc74c).\n- [ ] The agreement test above fails when the `no-commits` rung is removed from either caller's mapping and passes with both intact.\n- [ ] Existing `tests/hooks-resume-freshness.test.js`, `tests/bin-lib/flow/consolidated-pass.test.js` and `tests/run-liveness-callers-conformance.test.js` pass unchanged in behavior.\n\n## Release Note\n\nNo user-visible change. Interrupted-run resume checks and the multi-spec consolidated-pass banner now share one fail-closed decision path.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/run-liveness/index.js` — add the shared resume-verdict helper; carry commit age on the last-commit evidence entry\n- `plugin/bin/lib/hooks/resume-freshness.js` — map the shared verdict; drop the commitAt closure\n- `plugin/bin/lib/flow/consolidated-pass.js` — map the shared verdict instead of re-implementing the ladder\n- `tests/run-liveness-callers-conformance.test.js` — or a new suite: assert both callers agree on the same evidence\n\n_Filed by `release` via specShapedBody._",
+        "createdAt": "2026-10-27T08:13:31Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4471,
+        "state": "OPEN",
+        "title": "Move the resume-verdict ladder into run-liveness so checkResumeFreshness and parentLiveDetail stop hand-copying it",
+        "updatedAt": "2026-10-28T07:10:08Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #2217\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`_shared/github-pr-scan-acceptance.md` fetches every closed issue (`gh issue list --state closed --limit backlog-fetch-limit`) and filters for acceptance disposition and the oversight floor client-side. This repo has more than 4400 issues, so the fetch hits the 1000 cap on every tidy run. The scan then warns that `[acceptance-gap]` and `[parent-gate]` results may be incomplete (past the cap, sub-issues default to OPEN, so parents can read as incomplete). That warning appeared again on 2026-10-27. #2217 made the truncation loud but did not remove it.\n\n## Deliverables\n\nApproach: Query closed records already narrowed server-side, for example `gh issue list --state closed --search \"-label:demo:approved -label:demo:changes-requested reason:completed\"` (plus the oversight-floor labels), then apply the existing client-side checks to that smaller set. Keep the truncation warning for the narrowed fetch.\n\n1. Replace the unfiltered closed-record fetch with a server-side filtered query for records lacking an acceptance disposition.\n\n## Acceptance Criteria\n\n- On this repo a tidy run's acceptance-gap fetch returns fewer rows than backlog-fetch-limit and reports no truncation warning.\n\n## Release Note\n\nTidy's acceptance checks now cover every closed record without hitting the fetch limit.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/github-pr-scan-acceptance.md` — acceptance-gap and parent-gate fetches\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:31Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4469,
+        "state": "OPEN",
+        "title": "tidy acceptance-gap and parent-gate scans: filter closed records server-side instead of fetching every closed issue up to backlog-fetch-limit",
+        "updatedAt": "2026-10-28T07:10:13Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/skills/tidy/scan-execution.md` line 33 (main) tells every scan agent: \"Return at most 15 rows … append a final row reading \\\"+N more\\\"\". `step-6-auto.md`'s Report rules and `tidy-report-lint.js` reject exactly that shorthand and require one row per record. On 2026-10-27 the Step 1 (43 rows) and Step 4.5 (56 rows) agents returned \"+29 more\" and \"+42 more\", and each had to be re-queried with SendMessage before the report could be built.\n\n## Deliverables\n\nApproach: Remove the row cap from the scan-agent output template (or have agents write full findings to a file the dispatcher reads), so the dispatcher holds every row the report must render. Run Step 4.5's reconcile in the main thread before dispatching the scan batch, so every agent reads converged state, and state that scan agents are read-only.\n\n1. Drop the 15-row cap and the \"+N more\" instruction from the scan template, replacing it with a findings file per agent or an uncapped table.\n\n## Acceptance Criteria\n\n- No tidy scan template instructs an agent to collapse findings into a count row.\n\n## Release Note\n\nTidy reports are now complete on the first pass, with no truncated \"+N more\" rows.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/tidy/scan-execution.md` — scan agent output template\n- `plugin/skills/tidy/scan-procedures.md` — Step 4.5 reconcile placement\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:26Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4468,
+        "state": "OPEN",
+        "title": "tidy scan dispatch: the 15-row \"+N more\" cap contradicts the report's no-shorthand rule, and Step 4.5 puts a mutating reconcile inside a scan agent",
+        "updatedAt": "2026-10-28T07:10:17Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #579, #581\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\nstep-7-5-worktree-always.md says the arm step runs `gh pr merge --auto` and is \"never an immediate merge (checks pending)\". On a repository with no required checks GitHub merges at once: on 2026-10-27 housekeeping PR #4458 merged in the same second it was \"armed\", before any CI run on it. Its `test` workflow then ran only post-merge on main.\n\n## Deliverables\n\nApproach: Before arming, read whether the integration branch requires status checks. With none, `gh pr merge --auto` is an immediate merge, so wait for the PR's checks (bounded watch, as pr-first-merge Step 2.5 does) or leave it unarmed with the reason. Run the same closing-keyword screen build runs use on the composed housekeeping PR body before `gh pr create`.\n\n1. Detect the no-required-checks case before arming and fall back to a bounded check watch, then merge or report.\n\n## Acceptance Criteria\n\n- On a repo without required checks, tidy never merges its housekeeping PR before the PR's own checks complete green.\n\n## Release Note\n\nTidy's housekeeping PRs now wait for their checks and can no longer close an issue by accident.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/tidy/step-7-5-worktree-always.md` — arm step and PR body\n- `plugin/skills/_shared/pr-first-merge.md` — arm and watch fences\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:20Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4467,
+        "state": "OPEN",
+        "title": "tidy step-7-5: the housekeeping PR merges immediately when the repo has no required checks, and its body is not screened for closing keywords",
+        "updatedAt": "2026-10-28T07:10:21Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #3508, #367\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`wrap-up/verification-brief-parent-gate.md` says that on `exceeds: false` \"the parent closes cleanly: no demo:pending, no brief\". Nothing performs that close, though: `/claude-tweaks:demo`'s Approve action is the only place a parent is closed (\"nothing else in the system ever closes a parent\"), and a below-floor parent never gets a demo gate. Tidy's `parent-gate` scope (`_shared/github-pr-scan-acceptance.md`) also filters below-floor parents out before emitting, so no backstop surfaces them.\n\n## Deliverables\n\nApproach: When the parent gate evaluates `due` with `exceeds: false`, close the parent on the sub-issue-side entry that observed the last sub-issue closing (wrap-up's parent-gate procedure), with a comment naming the sub-issues and their merge commits. Optionally, have tidy's `parent-gate` scope surface any already-stranded below-floor parent as a Close row instead of filtering it out.\n\n1. Close the parent on the exceeds:false branch when every sub-issue is closed (`github-issues`: comment then `gh issue close --reason completed`; `local-files`: `closeRecord`).\n\n## Acceptance Criteria\n\n- A decomposition whose last sub-issue closes below the oversight floor leaves its parent closed, with a comment listing the sub-issues.\n\n## Release Note\n\nDecomposed work below the review floor now closes its parent issue automatically when the last piece ships.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/wrap-up/verification-brief-parent-gate.md` — exceeds:false branch\n- `plugin/skills/_shared/github-pr-scan-acceptance.md` — parent-gate scope filter\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:15Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4466,
+        "state": "OPEN",
+        "title": "Below-floor decomposition parents are never closed: the exceeds:false branch says \"closes cleanly\" but no step closes them",
+        "updatedAt": "2026-10-28T07:10:26Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #3109\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`/claude-tweaks:tidy` Step 4 (`scan-procedures.md`) classifies a plan whose related record is closed as Delete, and `step-6-auto.md` auto-applies that at the default `moderate` tier. `/claude-tweaks:wrap-up` reads `superpowers-plans-retention`, whose default is `keep-forever` (`_shared/policy-schema.md`), and this repo's policy.yml does not set it. ADR-0007 allows pruning the plan archive only as a deliberate maintenance action with explicit direction and a cutoff that keeps recent work (about a week).\n\n## Deliverables\n\nApproach: Make tidy's plan rule read `superpowers-plans-retention` the same way wrap-up's cleanup item 1 does: `keep-forever` (the default) means a closed record's plan is Keep (or, past an age cutoff, a Stage-tier bulk-prune proposal per ADR-0007); `prune-after-wrapup` keeps today's auto-delete; `ask` stages it.\n\n1. Tidy Step 4 resolves `superpowers-plans-retention` and routes plan findings by it.\n\n## Acceptance Criteria\n\n- With `superpowers-plans-retention` unset, a tidy run at `moderate` deletes no plan created within the cutoff.\n\n## Release Note\n\n/claude-tweaks:tidy now respects your superpowers-plans-retention setting instead of deleting recent plans.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/tidy/scan-procedures.md` — Step 4 plan rule\n- `plugin/skills/tidy/step-6-auto.md` — Delete routing rows\n- `plugin/skills/_shared/policy-schema.md` — superpowers-plans-retention consumers\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:10Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4465,
+        "state": "OPEN",
+        "title": "tidy: Step 4 auto-deletes plans of closed records, contradicting superpowers-plans-retention (keep-forever default) and ADR-0007's recent-work cutoff",
+        "updatedAt": "2026-10-28T07:10:31Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`aggregate()` (`plugin/bin/lib/calibration/aggregate.js` line 8, main) sorts run ids with a plain string comparison and takes the last N. `.claude-tweaks/pipelines/archive/` holds legacy ids such as `spec-339` … `spec-852`, compact `20260911T…` ids, and a non-run dir `unresolved-provenance`, all of which sort after every `2026-10-…` id. On 2026-10-27 the reported \"last 20 archived runs\" window was exactly `spec-339 … spec-852, unresolved-provenance`. Hence \"unlogged: 20\" console decisions, an all-zero reversibility distribution (current runs carry 46–149 Reversibility lines each), and \"consider narrowing the gate\" advice for decision-records and upstream computed from August-era data.\n\n## Deliverables\n\nApproach: Select the window by the run id's ISO timestamp (`YYYY-MM-DDTHHMMSS-…`), excluding archive entries that are not run dirs or carry no parseable timestamp (or ordering those first), and say in the read-out how many were excluded.\n\n1. Order runs by parsed timestamp and exclude non-run archive entries from the window.\n\n## Acceptance Criteria\n\n- With the 2026-10-27 archive shape, the window lists the 20 most recent hyphenated-timestamp runs.\n\n## Release Note\n\nthe calibration read-out in /claude-tweaks:tidy now reflects your most recent runs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/calibration/aggregate.js` — window selection\n- `plugin/bin/calibration-report.js` — run loading and header\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:11:05Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4464,
+        "state": "OPEN",
+        "title": "calibration-report: the \"last N runs\" window sorts run ids lexicographically, so legacy and non-run archive dirs form the window",
+        "updatedAt": "2026-10-28T07:10:35Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #2252\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\nAfter a full reconcile pass on 2026-10-27, `archive-branches` still skipped 97 local branches as `merged-pr-without-cherry-equivalence`, and `remote-prune` skipped 93 remote branches as `not-proven-merged`. Checking the 97 by hand: 62 had a tip exactly equal to their merged PR's `headRefOid`, 28 had a tip that was an ancestor of it, and only 7 carried commits made after the merge. The 90 contained ones were deleted by hand during the tidy close-out. The 7 were tag-archived (`archive/{branch}`) and deleted, matching archive-branches' unmerged-aged treatment.\n\n## Deliverables\n\nApproach: Add the PR-head containment proof next to cherry-equivalence and squash provenance: a MERGED PR whose `headRefOid` equals the branch tip, or has the tip as an ancestor, proves nothing on the branch is unmerged; the commits stay recoverable at `refs/pull/N/head`.\n\n1. Add a PR-head containment proof (tip equal to, or ancestor of, the merged PR's head) to both checks' merged-in-substance evidence.\n\n## Acceptance Criteria\n\n- A branch whose tip equals its merged PR's head is deleted by `archive-branches` (local) and `remote-prune` (remote).\n\n## Release Note\n\nreconcile now cleans up merged branches whose history includes merge commits or several squashed commits.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/archive-branches.js` — merged proof\n- `plugin/bin/lib/reconcile/prune-remote.js` — merged proof\n- `plugin/bin/lib/reconcile/squash-provenance.js` — neighbouring proof to extend or reuse\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:10:59Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4463,
+        "state": "OPEN",
+        "title": "reconcile: archive-branches and remote-prune do not accept \"branch tip equals or is contained in its merged PR's head\" as merged proof",
+        "updatedAt": "2026-10-28T07:10:39Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #3975, #3855\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`classifyMirror` (`plugin/bin/lib/reconcile/classify.js`, main) returns `dirty` whenever `git status --porcelain` prints anything, untracked files included, and `mirror-ff.js` then skips the fast-forward. A 2-byte stray file `f` in the main checkout kept the mirror un-synced for more than a day (2026-10-25 to 2026-10-27).\n\n## Deliverables\n\nApproach: Classify the mirror by what a fast-forward would actually touch: tracked modifications block it; untracked files block it only when they collide with a path the incoming range adds (`git merge --ff-only` already refuses that case safely). For tidy, write the post-commit log lines (PR opened, arm outcome) into the committed trail before the commit, or keep them out of the un-ignored files.\n\n1. Narrow the dirty classification so an untracked file that does not collide with the incoming range no longer blocks the fast-forward.\n\n## Acceptance Criteria\n\n- An untracked file at a path the incoming range does not touch no longer stops reconcile's mirror fast-forward.\n\n## Release Note\n\nreconcile keeps the main checkout in sync even when it holds unrelated untracked files, including tidy's own run trail.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/classify.js` — mirror dirty classification\n- `plugin/bin/lib/reconcile/mirror-ff.js` — fast-forward gate\n- `plugin/skills/tidy/step-7-5-worktree-always.md` — log-before-commit ordering\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:10:52Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4462,
+        "state": "OPEN",
+        "title": "reconcile: mirror fast-forward refuses on any untracked file, so a tidy run's own committed trail (or one stray file) blocks main-checkout sync indefinitely",
+        "updatedAt": "2026-10-28T07:10:44Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #1082\n\nOrigin: /claude-tweaks:tidy close-out 2026-10-27 (run 2026-10-27T055458-tidy-standalone)\n\nDefer-reason: tangential\n\n## Current State\n\n`resolvePrStatesBulk` (`plugin/bin/lib/reconcile/pr-state.js`, line 385 on main) returns `network-failure` for the WHOLE screen when any single branch's `associatedPullRequests(first:10)` page has `hasNextPage`. On 2026-10-27 the local branch `worktree-sweep` (a reused session branch name, 15 merged PRs) did exactly that: every one of 441 in-scope branches reported `skip:network-failure` in `archive-branches`, and `remote-prune` reported `pr-screen-failed`. GitHub rate limits were fine and every GraphQL chunk returned exit 0 in about 1.5 s.\n\n## Deliverables\n\nApproach: Bound the failure to the branch that caused it: a truncated `associatedPullRequests` page puts that branch on a per-branch fallback (the REST `pr list --head` resolver), and the rest of the chunk keeps its screened state. Distinguish the reason from a transport failure in the result vocabulary.\n\n1. Resolve a truncated-page branch individually (per-branch confirm) instead of failing the chunk, keeping the module's \"never a silent partial\" posture for genuinely incomplete responses (missing alias, GraphQL errors).\n\n## Acceptance Criteria\n\n- With one branch having more than 10 associated PRs, `archive-branches` and `remote-prune` still classify every other branch in the same pass (test fixture).\n\n## Release Note\n\nreconcile no longer stops cleaning up branches repo-wide because one branch name was reused across many PRs.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/reconcile/pr-state.js` — resolvePrStatesBulk truncated-page handling\n- `plugin/bin/lib/reconcile/archive-branches.js` — consume the per-branch result\n- `plugin/bin/lib/reconcile/prune-remote.js` — same, and its pr-screen-failed path\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T07:10:48Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4461,
+        "state": "OPEN",
+        "title": "reconcile: one branch with more than 10 associated PRs fails the whole bulk PR screen, silently disabling archive-branches and remote-prune",
+        "updatedAt": "2026-10-28T07:10:48Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #4281, #4247\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), the origin/main catch-up merge (1b7caaca8)\n\nDefer-reason: tangential\n\n## Current State\n\nBoth shapes fail open at base d9aa6b82d, at main's #4281 and at the merged #4303 head 1b7caaca8. Checked with `fileWriteTargets` from cwd `/r`.\n\n- `echo x > '(x'` resolves no target, but bash 3.2 and 5 write the file `/r/(x`. The redirect scan skips a target that starts with `(`, so that it never reads a process substitution as a file, and it does this even when the `(` is quoted.\n- `cd>f /main; cp a g.js` resolves `/r/f` and `/r/g.js`. Bash writes `f` in `/r`, changes to `/main`, and writes `/main/g.js`. The cd walk reads the lead word `cd>f` as no `cd` at all, because the redirect is glued to the builtin name.\n\n## Deliverables\n\n1. Skip a redirect target as a process substitution only when its `(` is bare. A quoted or escaped `(` is file text.\n2. Split a redirect glued to the lead word (`cd>f`, `cd>>f`) before reading the cd, so the cd and its redirect both apply.\n3. Pin both shapes in `tests/hooks-gate-coverage.test.js` with their bash 3.2 and 5 verdicts, per `.claude/skills/shell-scanner-bash-differential`.\n\n## Acceptance Criteria\n\n- `echo x > '(x'` resolves `/r/(x`, and `cat <(true)` still resolves no target.\n- `cd>f /main; cp a g.js` resolves `/r/f` and `/main/g.js`, so it is denied from a worktree whose main checkout is `/main`.\n- Each rule has a red-turning mutant.\n- The four scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard now catches a write to a quoted name starting with `(` and a `cd` written with a glued redirect.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-27T06:49:45Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4460,
+        "state": "OPEN",
+        "title": "Write gate misses a quoted '(x' redirect target and a cd with a glued redirect (cd>f DIR)",
+        "updatedAt": "2026-10-28T07:10:53Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Doc:** docs/decisions/0025-merge-subject-scope-is-repo-policy-resolved-in-the-composer.md | **Id:** decisions/0025-merge-subject-scope-is-repo-policy-resolved-in-the-composer | **Section:** Consequences | **Category:** staleness | **Misleads:** human engineer + coding agent | **Classification:** additive | **Confidence:** high\n\nVerified-as-of: 4439d1ff9b9027ca73f73a41e5663cb94dd3fea6\n\n## Current State\n\nThe doc states: \"tests/merge-subject-composer-conformance.test.js's COMPOSER_CALL regex pins this at all six call lines\" — but no identifier named (bare) COMPOSER_CALL exists in that file. It declares two separate regexes, LOCAL_COMPOSER_CALL (line 46, for local-merge fences) and PR_FIRST_COMPOSER_CALL (line 60, for pr-first fences), confirmed via grep against the live file. The six-call/five-file count itself is accurate (pr-first-merge.md:2, local-merge-auto-finish.md:1, auto-merge-short-circuit.md:1, settle-and-merge.md:1, worktree-merge.md:1), but naming a single regex implies one shared pinning mechanism when there are actually two, split along the same local-merge/pr-first line the rest of this ADR describes.\n\n## Deliverables\n\n**Current:**\n```\n- Every fence must name a diff source. `tests/merge-subject-composer-conformance.test.js`'s\n  `COMPOSER_CALL` regex pins this at all six call lines, so a fence added later without one fails\n  the suite.\n```\n\n**Proposed:**\n```\n- Every fence must name a diff source. `tests/merge-subject-composer-conformance.test.js`'s\n  `LOCAL_COMPOSER_CALL` and `PR_FIRST_COMPOSER_CALL` regexes pin this at all six call lines, so a\n  fence added later without one fails the suite.\n```\n\n## Acceptance Criteria\n\nFix the regex identifier the doc cites for the conformance test's call-site pinning to match the names actually declared in tests/merge-subject-composer-conformance.test.js.\n\n## Release Note\n\nNo user-visible change — documentation accuracy fix.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/decisions/0025-merge-subject-scope-is-repo-policy-resolved-in-the-composer.md` — apply the proposed documentation edit\n\n_Filed by `/claude-tweaks:docs-health`. Close to resolve; label `wontfix` to suppress future reports of this finding._\n\n<!-- work-fingerprint: docshealth-197c1ceb -->\nwork-fingerprint: docshealth-197c1ceb",
+        "createdAt": "2026-10-27T06:12:53Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACverRqw",
+            "name": "by:docs-health",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACverRrA",
+            "name": "docs-health:additive",
+            "description": "",
+            "color": "ededed"
+          }
+        ],
+        "number": 4459,
+        "state": "OPEN",
+        "title": "Doc staleness: docs/decisions/0025-merge-subject-scope-is-repo-policy-resolved-in-the-composer.md — Consequences",
+        "updatedAt": "2026-10-28T07:10:58Z",
+        "facets": {
+          "origin": "docs-health",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 1 minors\n\nDefer-reason: tangential\n\n## Current State\n\nThe redirect scan in `plugin/bin/lib/hooks/git-command.js` reads `N>&word` as bash does: an fd duplication when the word is a digit, otherwise a file for N of 1. Two shapes slip through:\n\n- **zsh:** zsh writes the file for `2>&f`, `0>&f` and `>>&f`, where bash errors or duplicates. The scanner resolves no target. Claude Code's Bash tool runs the user's shell, and on this machine that is zsh, so the gap is reachable.\n- **Variable-built target:** with `V='&2'; echo x >$V`, bash creates a file named `&2`, but the scanner reads it as fd duplication and resolves no target.\n\n## Deliverables\n\n1. Decide whether the gate models the shell the Bash tool actually runs. Probe and document which shell that is.\n2. If zsh is in scope, read zsh's `N>&file` forms as file targets.\n3. Treat an unquoted `$VAR` redirect word as an unknown target, failing closed in opted-in sessions.\n4. Pin both shapes.\n\n## Acceptance Criteria\n\n- The shell the Bash tool runs is documented, with a probe.\n- Each shape is denied from a worktree of a worktree-always repo wherever that shell writes into the main checkout.\n- The four scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard now covers zsh-only redirect forms and redirect targets built from a variable.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n- `plugin/skills/_shared/policy-schema-coverage.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:53Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4455,
+        "state": "OPEN",
+        "title": "Write gate models bash only, so zsh-only and variable-built redirect targets resolve nothing",
+        "updatedAt": "2026-10-28T07:11:02Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), round-7 re-review out-of-scope observation\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#4303's and-or walk forks the cwd set on each `&&`/`||` branch in `plugin/bin/lib/hooks/git-command.js` (Tasks 6 and 7). On a command that carries 16 real, growing cwds without any loss, it costs far more than base d9aa6b82d's walk. Measured through the hook with rr7's `firstWalk3000NoLoss`, best of 3:\n\n| version | time |\n|---|---|\n| #4303 head | 11974 ms |\n| 7e269881d | 12267 ms |\n| 71931bb44 | 21697 ms |\n| base | 1367 ms |\n\nRealistic commands are unaffected: the 1176-command corpus is within noise, and the 44 KB `{ cd aI; }` shape runs at 68 ms against base's 215 ms. The shape is adversarial, but it is a cost regression this branch introduced.\n\n## Deliverables\n\n1. Profile the and-or walk on `firstWalk3000NoLoss`.\n2. Bound its per-segment work, for example by memoising joinCwds per cwd-set identity or by collapsing identical sets, so the shape runs within about 2x base.\n3. Keep every #4303 pin green.\n4. Add a timing-free pin, a step or spawn count, in `tests/` and the wall-clock check in `perf/`.\n\n## Acceptance Criteria\n\n- `firstWalk3000NoLoss` runs within about 2x base through the hook.\n- The #4303 cost shapes do not regress.\n- The four scanner suites and `npm run test:perf` pass.\n\n## Release Note\n\nThe Bash guard stays fast on very long chains of cds.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `perf/heredoc-scan-linearity.test.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:50Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4454,
+        "state": "OPEN",
+        "title": "Bash gate's and-or cd walk costs up to 9x base on long chains of real cds",
+        "updatedAt": "2026-10-28T07:11:06Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD final-review rounds 5-8\n\nDefer-reason: tangential\n\n## Current State\n\nAfter the cwd cap is lost, `plugin/bin/lib/hooks/post-tool-use.js` judges a commit's closing keyword and logs its breadcrumb from candidate checkouts: the start, the main checkout, and the second walk's readings. It then takes the fresh commit whose subject matches the command's `-m` text. All of these are warn or log tier:\n\n- **A5x:** a commit into a foreign repo after the loss gets no warning.\n- **F6F:** with `-F <file>` or an editor message, the lone-fresh-commit fallback can judge another session's fresh commit, warning and logging the wrong breadcrumb.\n- **F5amb:** when two checkouts both offer a commit with a matching subject, the real commit gets neither its warning nor its breadcrumb. Base gave both.\n- **F7strip/F10cfg:** with `--cleanup=strip` or `-c commit.cleanup=strip` and a `#`-first `-m`, git's subject differs from the command text, so no warning is given.\n- The sibling P1 layout logs an extra fallback breadcrumb with the worktree's old HEAD. It is noise; no consumer reads commit breadcrumbs.\n- **Cost:** a lost commit spawns one `git log` per worktree, 13 spawns with 10 worktrees against base's 2.\n\n## Deliverables\n\n1. Identify the command's own commit by HEAD movement: record each candidate's HEAD in PreToolUse and compare it in PostToolUse, instead of matching subjects.\n2. Apply git's cleanup rules when comparing subjects.\n3. Drop the stale fallback breadcrumb.\n4. Bound the per-worktree spawns.\n\n## Acceptance Criteria\n\n- Every shape above warns and logs exactly as base does for the same commit without a lost cwd.\n- P1 still warns and logs M.\n- Git spawns stay at or below 3 with 10 worktrees.\n- The post-tool-use suites pass.\n\n## Release Note\n\nClosing-keyword warnings and commit breadcrumbs now name the right commit after a long chain of cds.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/post-tool-use.js` — modify\n- `plugin/bin/lib/hooks/pre-tool-use.js` — modify\n- `tests/hooks-post-tool-use-closing-keyword.test.js` — modify\n- `tests/hooks-post-tool-use-commit-dedup.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:46Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4453,
+        "state": "OPEN",
+        "title": "post-tool-use misjudges a commit made from a lost cwd (foreign repo, -F, ambiguous subject, cleanup=strip)",
+        "updatedAt": "2026-10-28T07:11:11Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD final-review rounds 4-8\n\nDefer-reason: tangential\n\n## Current State\n\nThe pipeline shadow guard in `plugin/bin/lib/hooks/pre-tool-use.js` misses two ways bash creates or writes a run dir under a linked worktree's `.claude-tweaks/pipelines/`. Both were checked with bash 3.2 and 5.\n\n- **A2b/A2c/A2p:** the cwd is already inside pipelines through an absolute cd that the cwd-cap collapse dropped. The lost cwd's trail comes only from relative text and known cwds, so it is allowed at every version.\n- **OScpNoLost:** `cd ./x/../.claude-tweaks || cp a ../wt2/.claude-tweaks/pipelines` from M copies into an existing pipelines dir. No collapse is involved. Every version allows it; base denied it only through a phantom target from the worktree gate.\n\n## Deliverables\n\n1. Seed the collapse trail from absolute cds the collapse drops.\n2. Treat a cp, mv or install whose destination is an existing pipelines dir as creating an entry under it.\n3. Pin both shapes.\n\n## Acceptance Criteria\n\n- Both shapes deny through `pre.run`.\n- No new deny appears against #4303's head over its 1176-command corpus.\n- Each rule has a red-turning mutant.\n- `tests/hooks-pipeline-shadow-guard.test.js` passes.\n\n## Release Note\n\nThe pipeline shadow guard now catches more ways a stray run directory gets created.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `plugin/bin/lib/hooks/pre-tool-use.js` — modify\n- `tests/hooks-pipeline-shadow-guard.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:42Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4452,
+        "state": "OPEN",
+        "title": "Pipeline shadow guard misses a run dir made through a dropped absolute cd or a cp into an existing pipelines dir",
+        "updatedAt": "2026-10-28T07:11:15Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #693\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD final-review fuzz (DR family: 9 rows; round-5 families: 124 rows)\n\nDefer-reason: tangential\n\n## Current State\n\n`git worktree remove y` also accepts a worktree's bare name: git matches `y` against the last path component of each registered worktree. The teardown gate resolves `y` only as a path relative to the cwd, so a bare name that names the session's own worktree, given from a cwd where `./y` does not exist, is allowed. This happens at every version, base included.\n\n## Deliverables\n\n1. When the relative path does not exist, resolve a `git worktree remove`/`move`/`lock` argument as git does: match it against `git worktree list --porcelain`'s basenames.\n2. Deny when the match is the session's own worktree.\n3. Pin the shape with a real git run.\n\n## Acceptance Criteria\n\n- `git worktree remove <own-worktree-basename>` from the main checkout is denied.\n- The same command naming a different worktree is allowed.\n- `tests/teardown-gate.test.js` passes.\n\n## Release Note\n\nThe teardown guard now blocks removing your own worktree by its bare name.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/pre-tool-use.js` — modify\n- `tests/teardown-gate.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:38Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4451,
+        "state": "OPEN",
+        "title": "Teardown gate misses git's bare-name worktree lookup in `git worktree remove <name>`",
+        "updatedAt": "2026-10-28T07:11:19Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #4244\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD final-review rounds 3-8 (rulings: out of scope at every version)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nThe cd walk in `plugin/bin/lib/hooks/git-command.js` cannot model these cwd changes, and each one allows a write into the main checkout at every version, base d9aa6b82d included:\n\n- `cd -`, `cd \"$OLDPWD\"`, a bare `cd` (HOME) and `cd -P` give an unknown (null) cwd, which no consumer treats as lost.\n- **Symlinks:** the walk follows path text, but the shadow guard matches realpaths. With `runs -> .claude-tweaks/pipelines`, `cd runs; mkdir 2026-x` after 16+ failing group cds (rr8's R17linkL, R18ctLinkL, R18bctSplitL) creates a new run dir. Head and base allow it.\n- **H1:** a plain `cd` that fails is treated as succeeding, so a later relative write resolves under the wrong dir.\n\n`pushd`, `builtin cd` and compound-command bodies belong to #4244.\n\n## Deliverables\n\n1. Treat each unknowable cwd change as lost: the `lost: true` marker #4303 added, with its consumers' deny rules.\n2. Resolve symlinks, or treat a cd through one as lost, so the shadow guard sees the real pipelines dir.\n3. Fork the cwd on a plain cd's success and failure, as the and-or walk already does for `&&`/`||`.\n4. Pin every shape with bash 3.2 and 5 verdicts, in both layouts.\n\n## Acceptance Criteria\n\n- Each shape above is denied in an opted-in session wherever bash writes into the main checkout or creates a new pipelines run dir.\n- There are no new denies against base in projects without the policy, over the #4303 1176-command corpus.\n- Cost stays within about 1.2x of #4303's head on its cost shapes.\n- Each rule has a red-turning mutant.\n\n## Release Note\n\nThe worktree-always guard now blocks writes after cd -, $OLDPWD, a bare cd, cd -P, a symlinked directory or a failing cd.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `plugin/bin/lib/hooks/pre-tool-use.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n- `tests/hooks-pipeline-shadow-guard.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:34Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4450,
+        "state": "OPEN",
+        "title": "Write gate assumes a known cwd after cd -, $OLDPWD, bare cd, cd -P, a symlinked dir, or a failing cd",
+        "updatedAt": "2026-10-28T07:11:23Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 2 parked finding\n\nDefer-reason: tangential\n\n## Current State\n\nThe cp/mv operand loop in `plugin/bin/lib/hooks/git-command.js` does not skip the value of a value-taking option:\n\n- `cp a b -S .bak` resolves `/r/.bak` and misses `b`, the real destination.\n- `cp --suffix -t X a` makes `explicitTargetDir` read `-t` as the target flag, so the scanner reports `/r/X`. GNU cp under bash 3.2 and 5 overwrites `r/a` and writes the backup `r/a-t`. That is a fail-open.\n\nBoth were checked against GNU cp semantics. macOS cp has no `-S`.\n\n## Deliverables\n\n1. Skip the value of `-S`/`--suffix` (and `--suffix=…`) and any other value-taking cp, mv or install option in the operand loop and in `explicitTargetDir`.\n2. Pin both shapes.\n\n## Acceptance Criteria\n\n- `cp a b -S .bak` resolves `b`.\n- `cp --suffix -t X a` resolves the suffix value as a suffix, not `-t` as the target flag.\n- Each rule has a red-turning mutant.\n- The scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard now reads cp and mv backup-suffix options correctly.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:30Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4449,
+        "state": "OPEN",
+        "title": "Write gate misreads cp/mv value-taking options (-S/--suffix)",
+        "updatedAt": "2026-10-28T07:11:28Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #4244\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 2 parked finding and final-review ruling\n\nDefer-reason: genuinely-larger\n\n## Current State\n\nIn `plugin/bin/lib/hooks/git-command.js`, a NAME=value assignment prefix, an `env` prefix or a `sudo` prefix hides every write shape. Each of these resolves `[]`, while bash 3.2 and 5 write or commit in the main checkout:\n\n- `X=1 cp a /main/f.js`\n- `sudo cp a /main/f.js`\n- `X=1 tee /main/f.js`\n- `X=1 sed -i s/a/b/ /main/f.js`\n- `cd M; x+=1 git commit -m x` and `x+=1 git -C M commit -m x`\n\nA quoted name goes the other way. `\"x\"=1 cd /main` is read as an assignment plus a cd, but bash 3.2 and 5 run `x=1` as a command (\"command not found\") and stay put. That is a fail-open: from the main checkout, `\"x\"=1 cd /wt; cp a f.js` resolves only `/wt/f.js`, while bash writes the main checkout's `f.js`.\n\nCompound keywords and the `builtin`/`command`/`pushd` prefixes are #4244's scope, not this record's. While in visitSegment, also replace the `while ((next = …) > cdLead)` assignment-in-condition loop (`git-command.js:~736`) with a plain loop.\n\n## Deliverables\n\n1. Skip leading NAME=value and NAME+=value words, and the `env [-i] [NAME=value…]` and `sudo [opts]` prefixes, before reading the write-shape, git and cd lead.\n2. Read a quoted-name assignment as bash does.\n3. Pin each shape with its bash 3.2 and 5 verdicts.\n\n## Acceptance Criteria\n\n- Every shape above resolves the path bash writes, so the write gate denies it from a worktree of a worktree-always repo.\n- `\"x\"=1 cd /main` resolves no cd, so `\"x\"=1 cd /wt; cp a f.js` from the main checkout resolves the main checkout's `f.js`.\n- The base comparison is clean apart from the listed shapes.\n- Each rule has a red-turning mutant.\n- The four scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard now blocks a write into the main checkout behind a NAME=value, env or sudo prefix.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:26Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4448,
+        "state": "OPEN",
+        "title": "Write gate misses a write behind a NAME=value, env or sudo prefix",
+        "updatedAt": "2026-10-28T07:11:32Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #4247\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 5 minor and final-review rounds\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js`'s redirect scan reads a `>` comparison inside `$(( … ))` as a redirect. Bash 3.2 and 5 evaluate the comparison and write nothing, but the scanner reports a target:\n\n- `echo $(( a>1 ))` resolves `/r/1`.\n- `x=$(( 3>2 ))` resolves `2`.\n- `(( a>1 || \"${x:-\")\"}\" ))` resolves `/r/1`, while bash gives a syntax error and writes nothing. Here `parenMatches` pairs quotes flatly, while `segmentSpansWith` nests `\"` and `${`.\n\nFrom the main checkout of a worktree-always repo, each of these is a spurious deny. All of them fail closed.\n\n## Deliverables\n\n1. Treat `>`, `>=`, `>>` and `<` inside `$(( ))`, `(( ))` and `$[ ]` as arithmetic operators, never as redirects.\n2. Pin both shapes, plus a spaced form, with bash 3.2 and 5 verdicts.\n\n## Acceptance Criteria\n\n- Both shapes resolve no target.\n- A real redirect after the arithmetic, as in `echo $(( 1>0 )) > /main/f.js`, still resolves `/main/f.js`.\n- Each rule has a red-turning mutant.\n- The four scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard no longer blocks a command whose only `>` is an arithmetic comparison.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:22Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4447,
+        "state": "OPEN",
+        "title": "Write gate reads an arithmetic `>` comparison as a redirect (spurious deny)",
+        "updatedAt": "2026-10-28T07:11:36Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4303, #4242, #4247\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 5 ruling and final-review rounds\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n`plugin/bin/lib/hooks/git-command.js`'s write gate does not walk the commands inside a `$( … )` or backtick body as their own segments. A write, mkdir or git command there resolves nothing, or resolves under the wrong cwd. Each shape below was checked against bash 3.2 and 5 from a worktree of a worktree-always repo:\n\n- `echo $(cp a /main/f.js)` and ``echo `cp a /main/f.js` `` resolve no target. Bash writes `/main/f.js`.\n- **N2:** a backtick holding a separator, followed by `&`, hides the rest of the command.\n- **N3:** `((…))` as the first command in a substitution gives a spurious target.\n- `echo $(( $(cd /main; cp a f.js) + 1 ))` resolves `/r/f.js`. Bash writes `/main/f.js`: the cd inside a substitution inside arithmetic is not followed.\n- After a cwd-cap loss, a write inside `\"$( cd …; … )\"` (rr7's BVsub2/BVsub3) is allowed at every version, base included.\n\n## Deliverables\n\n1. Walk each substitution and backtick body as a nested command list. The body inherits the enclosing segment's cwd and gets its own cd scope, which it never leaks out, matching bash's subshell semantics.\n2. Report the body's write, mkdir and git targets exactly as the top level does.\n3. Pin every shape above in `tests/hooks-gate-coverage.test.js`, with its bash 3.2 and 5 verdict in the comment, per `.claude/skills/shell-scanner-bash-differential`.\n\n## Acceptance Criteria\n\n- Each shape above, run from a worktree of a worktree-always repo, is denied wherever bash 3.2 and 5 write into the main checkout.\n- A base comparison of the #4149 routine table and the #4210 cases shows no allowed-to-denied move other than the listed ones.\n- Every new rule has a mutant that turns a test red.\n- The four scanner suites and `perf/heredoc-scan-linearity.test.js` pass.\n\n## Release Note\n\nThe worktree-always guard now blocks a write into the main checkout made by a command inside $( ) or backticks.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T23:55:18Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsDgIWw",
+            "name": "size:high",
+            "description": "Scoring: large change — consider decomposition before building",
+            "color": "5319E7"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4446,
+        "state": "OPEN",
+        "title": "Write gate never walks the command inside a command substitution or backticks",
+        "updatedAt": "2026-10-28T07:11:41Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "high",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: reflect full from #4421\n\nDefer-reason: tangential\n\n## Current State\n\nBuild, review and wrap-up all append rows to, and settle rows in, the run's open-items ledger (`docs/plans/*-ledger.md`, format in `plugin/skills/_shared/ledger-format.md`). The only sanctioned writer is `plugin/bin/stage-item.js --ledger` (`plugin/bin/lib/stage-item/ledger.js`), which appends a row paired with a staged file, under `{run-dir}/.ledger.lock`, through `atomic-write.js`. A plain row (a deferred minor, a fixed review finding) and a status/resolution settle have no CLI, so a worktree session writes them by hand.\n\nThe obvious hand-written forms — `node -e` with quoted table cells or `>=`, a heredoc, `printf … >>` — are refused by the harness's worktree-isolation compound-Bash guard. Run `2026-10-26T123848-spec-4336-4419-4420-4421` (records #4336, #4419, #4420, #4421) logged 42 such refusals (`wd-guard-refusal`, `harness-worktree-isolation`), many of them ledger writes, and finished its ledger edits through ad-hoc scratchpad scripts that bypass the lock and atomic write.\n\n## Deliverables\n\n- [ ] A `plugin/bin/hooks.js ledger-row` verb (or a sibling CLI) that appends one row (`--phase`, `--item`, `--status`, optional `--resolution`) or settles an existing row by number (`--row N --status … --resolution …`), reusing `stage-item/ledger.js`'s lock, re-read and atomic write and `wrap-up/ledger-write.js`'s table parser/serializer, with `escapeLedgerCell` for pipes\n- [ ] Validate `--status` against `ledger-format.md`'s closed enum (`open`, `fixed`, `deferred`, `accepted`, `acknowledged`, `observation`) and its resolution-text requirements (`fixed` needs a commit or file ref; `deferred` needs origin, files and trigger)\n- [ ] Point the build/review/wrap-up prose that appends or settles ledger rows at the verb\n\n## Acceptance Criteria\n\n1. From a linked worktree, `node plugin/bin/hooks.js ledger-row --ledger <path> --phase build --item \"a | b\" --status open` appends one row whose Item cell keeps the escaped pipe, under the ledger lock.\n2. `--row 3 --status fixed --resolution \"abc123\"` rewrites only row 3's Status and Resolution cells; `--status resolved` exits non-zero naming the enum.\n3. A concurrent append from two processes yields two distinct row numbers (test with two child processes).\n4. `npm test` passes.\n\n## Release Note\n\nPipeline phases record and settle open-items ledger rows through one safe command instead of hand-edited table lines.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/hooks.js` — new ledger-row verb\n- `plugin/bin/lib/stage-item/ledger.js` — share the lock/re-read/atomic-write path\n- `plugin/skills/_shared/ledger-format.md` — name the writer\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-26T18:39:10Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2oaA",
+            "name": "type:feature",
+            "description": "Type: new capability or enhancement",
+            "color": "FEF2C0"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4439,
+        "state": "OPEN",
+        "title": "Give the open-items ledger a sanctioned append/settle CLI",
+        "updatedAt": "2026-10-28T07:11:45Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: review (#4420, lens 3b, low-confidence), approved at PR #4425's Review Console\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/hooks/resume-freshness.js`'s `checkResumeFreshness` maps `fs.existsSync(worktree) === false` to `{ safe: true, verdict: 'worktree-gone' }`. `existsSync` also returns false on `EACCES`, `ELOOP` or `EIO`. So for an `interrupted` run, a recorded worktree path the probe cannot look at reads as gone, and the resume goes ahead.\n\nThe other resume caller, `plugin/bin/lib/flow/consolidated-pass.js`'s `parentLiveDetail`, gates the same case on path-guard's `lstatType(worktree).type === 'missing'`. That is true only for a clean `ENOENT`, so the two callers disagree on an unreadable path. #4420 left the line unchanged, because its spec kept the five pre-probe returns in their existing order.\n\n## Deliverables\n\n- [ ] `checkResumeFreshness` returns `worktree-gone` only when path-guard's `lstatType(worktree).type === 'missing'`. Any other unreadable result falls through to `runLiveness`, whose `error` entry `blocksResume` reads as `indeterminate`.\n- [ ] The verdict-string set and the order of the five pre-probe returns stay unchanged.\n- [ ] One equivalence row in the PR body: an unreadable worktree path of an `interrupted` run moves from `worktree-gone` (resume) to `indeterminate` (block).\n\n## Acceptance Criteria\n\n1. An `interrupted` run whose recorded worktree path is a symlink loop (`ELOOP`) gets verdict `indeterminate`, not `worktree-gone`. The test is red on the current code.\n2. An `interrupted` run whose recorded worktree path does not exist still gets `worktree-gone`.\n3. `tests/path-guard-conformance.test.js`'s allowlist entry for `lib/hooks/resume-freshness.js` (`existsSync: 1`) is removed, and the suite passes.\n4. `npm test` passes.\n\n## Release Note\n\nResuming an interrupted pipeline run no longer treats a worktree path it cannot read as deleted, so it waits instead of resuming over a possibly live run.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/resume-freshness.js` — gate `worktree-gone` on `lstatType`\n- `tests/hooks-resume-freshness.test.js` — unreadable-path and missing-path rows\n\n_Filed by `wrap-up review console` from spec-4420 staged/review-unconfirmed-1.md._\n",
+        "createdAt": "2026-10-26T18:38:49Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4435,
+        "state": "OPEN",
+        "title": "checkResumeFreshness reads an unreadable worktree path as worktree-gone, so an interrupted run resumes",
+        "updatedAt": "2026-10-28T07:11:49Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: Review Console, human-approved — #4285 low-confidence review findings and hindsight (run 2026-10-26T131247-spec-4290-4285-4396, PR #4427)\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#4285 added `tests/helpers/path-stub.js` (`STUB_SKIP`, `installStub`, `pathWithOnly`). It chose which tests skip on win32 from one Windows run's failing list. The rule the windows-checkout-test-parity skill now states is different: judge each test by whether it writes a stub and whether its assertion depends on that stub running. A failing list never shows a test that passes vacuously, so the two selections differ.\n\nA scripted audit of the six installStub suites found 22 stub-installing tests with no `STUB_SKIP`. They are in `tests/reconcile.test.js` at 1463-1581 (reconcileWithAsyncMerge), 2961/2970/2995 (reconcileWithRecordedResolver) and 3125-3258 (the #4180 dryRunFixture group), plus `tests/bin-lib/reconcile/prune-remote.test.js:407` and `tests/bin-lib/reconcile/reap-merged.test.js` at 168/250/572/746/810. The stub never runs on windows-latest, so several of these pass vacuously. Their assertions are things only the stub can make true or false: `ghCalls() === ''`, `fetchCalls` deep-equal to `[]`, and the batch-fail fallback path. A review agent no-op'd the stub on reconcile 3125 and 1469 and on prune-remote 407, and each still printed `ok 1`. reap-merged 746/810 skip on a chmod reason (`MID_DELETE_SKIP`), not on `STUB_SKIP`.\n\nSingle-stub `gh` wrappers outside the helper still hand-roll the install, so their temp dirs leak and their win32 skip reasons differ: `tests/bin-lib/reconcile/archive-merged.test.js` (105/141), `tests/console-execute.test.js:469`, `tests/bin-lib/timing/cli.test.js:523` and `tests/hooks-resolve-console.test.js:82`. In reap-merged.test.js:287 the stub is installed before a worktree-lock call that can throw, outside the try that restores it.\n\nThe helper's own pin suite has two gaps. `tests/path-stub-helper.test.js:86` is titled as a PATHEXT test, but the binary lookup never consults PATHEXT, and no case excludes a `gh.CMD`. The `STUB_SKIP` pin at :28 reduces to `=== false` off win32.\n\n## Deliverables\n\n- Go through the 22 tests one at a time. Add `{ skip: STUB_SKIP }` where the assertion depends on the stub running. Where a test keeps running on win32, add a comment saying its assertions hold whatever answers on PATH. reap-merged 746/810 skip with the stub reason when the stub is what fails there.\n- Move the single-stub hand-rolled wrappers listed above onto `installStub` with `STUB_SKIP`. The multi-stub wrappers the parity skill names stay hand-rolled.\n- Move reap-merged.test.js:287's stub install inside the try that restores it.\n- In `tests/path-stub-helper.test.js`, retitle the :86 test to what the lookup actually does, add an excluded-`gh.CMD` case, and give the :28 pin a win32 assertion by injecting the platform.\n\n## Acceptance Criteria\n\n- AC1.1: re-running the stub-dependence audit over the installStub suites reports no stub-installing test that lacks both `STUB_SKIP` and a comment explaining why it holds on win32.\n- AC1.2: a `windows-regression.yml` run on the branch lists no newly failing file, and each test that newly skips reports `# SKIP win32: execFile resolves only .exe/.com on PATH, so a script stub is never spawned` in `verify-logs/tests.log`.\n- AC2.1: none of the listed single-stub wrappers writes its own temp dir or PATH entry any more (a grep for `mkdtemp` beside `PATH =` in those files comes back empty).\n- AC3.1: `tests/path-stub-helper.test.js` has a case where an excluded `gh.CMD` on PATH makes `pathWithOnly` exclude that directory, and a win32 `STUB_SKIP` assertion.\n\n## Release Note\n\nInternal: tests that fake `git`/`gh` now skip on Windows whenever their result depends on the fake running, instead of passing without testing anything.\n\n## Technical Approach\n\n### Key Files\n\n- `tests/reconcile.test.js` — STUB_SKIP on the stub-dependent tests\n- `tests/bin-lib/reconcile/prune-remote.test.js` — STUB_SKIP on the batch-fail fallback test\n- `tests/bin-lib/reconcile/reap-merged.test.js` — STUB_SKIP on stub-dependent tests; stub install inside the try\n- `tests/bin-lib/reconcile/archive-merged.test.js` — single-stub gh helpers onto installStub\n- `tests/console-execute.test.js` — gh stub onto installStub\n- `tests/bin-lib/timing/cli.test.js` — gh stub onto installStub\n- `tests/hooks-resolve-console.test.js` — gh stub onto installStub\n- `tests/path-stub-helper.test.js` — retitle the PATHEXT test, add a gh.CMD exclude case and a win32 STUB_SKIP pin\n\n_Filed by `wrap-up` (Review Console, human-approved) via specShapedBody._",
+        "createdAt": "2026-10-26T16:54:24Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2pJg",
+            "name": "type:task",
+            "description": "Type: maintenance, refactor, docs, or chore work",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          }
+        ],
+        "number": 4433,
+        "state": "OPEN",
+        "title": "Windows stub tests: skip the stub-dependent tests #4285 left running and move hand-rolled gh stubs onto installStub",
+        "updatedAt": "2026-10-28T07:11:53Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: ledger row 12 of run 2026-10-22T001546-record-3315 (#3315)\nDefer-reason: genuinely-larger\n\n## Current State\n\nAt 2f32eeebd, the #3315 build's full `verify.js` run (`--baseline origin/main`) at load average ~110 had `tests/bin-lib/verify/cli.test.js` killed by SIGTERM after 6337s, a file-level failure. The adjudicator classified the file `attributable`, so verify exited 1. The isolated HEAD run of that file passed 153/153. Its base isolated run failed a different test (the #3064 SIGINT case). The branch's diff did not touch `plugin/bin/lib/verify`. #3111 (closed) added one retry for an isolated run that fails an extra test, but that does not cover this shape: a file the full run killed outright, which then passes cleanly in isolation at HEAD. Report: `.git/worktrees/dispatch-record-3315/claude-tweaks-verify/report.json` and the logs beside it, at the time of that run.\n\n## Deliverables\n\n- In `plugin/bin/lib/verify`'s baseline adjudication, classify a file whose full-run failure is a signal kill or timeout (no test-level failure), and whose isolated HEAD run passes every accounting guard with `ℹ cancelled 0`, as `flaky`, with the existing `CAVEAT: baseline-flaky` line. Do this whether or not its base run fails an unrelated test.\n- Keep a file `attributable` when its isolated HEAD run fails, or when the kill cannot be told apart from a test-level failure in the log.\n\n## Acceptance Criteria\n\n- A verify adjudication test: a full-run log in which file X is SIGTERM-killed, X's isolated HEAD log passes cleanly, and X's base log fails one test. X is reported `baseline-flaky` and verify exits 0.\n- The same fixture, with X's isolated HEAD log also failing, still reports X `ATTRIBUTABLE` and exits 1.\n\n## Release Note\n\nA test file that was killed under load and then passes on its own no longer fails the run's verification gate.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/verify/baseline.js` — signal-killed full-run file classified by its isolated HEAD run\n- `tests/bin-lib/verify/baseline.test.js` — SIGTERM fixture pins both verdicts\n\n_Filed by `wrap-up` via specShapedBody._\n",
+        "createdAt": "2026-10-26T12:12:44Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          }
+        ],
+        "number": 4424,
+        "state": "OPEN",
+        "title": "verify.js baseline adjudication calls a SIGTERM-killed file attributable though it passes in isolation at HEAD",
+        "updatedAt": "2026-10-28T07:11:58Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: reflect full from #3315\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/issues/claim-store.js`'s `tombstoneInFlightPr` is the only in-flight-PR check in `/flow`'s Step 2.8 claim (`plugin/bin/lib/claim-targets/claim-targets.js:454`). It runs only for a `pr-opened:` tombstone. A claim whose 72h TTL expired while its run was still mid-pipeline classifies `'stale'` and is re-claimed through a conditional write, with no PR check at all.\n\n#3315 is the observed case. Dispatch's first call finished the build and opened draft PR #3927 (2026-10-22). The second call never ran, and the claim expired on 2026-10-25. A `/claude-tweaks:flow #3315` with `build` in the step list would have minted a fresh run, re-claimed the stale claim, and rebuilt from scratch alongside the open PR. `steps-and-gates.md`'s case-5 resume check only applies when `build` is absent from the step list. `/tidy`'s needs-decision comment on #3315 (2026-10-26) also proposed releasing the stale claim without naming the open PR. The 2026-10-26 run caught this only through a manual `gh pr list` before claiming.\n\n## Deliverables\n\n- In the stale branch of `claim-targets.js`, before the conditional write, look for an open PR that carries the stale claim's `runId` in its `claude-tweaks-run:` marker. When one exists, stop with the same in-flight card and resume routing the `pr-opened:` tombstone case already uses.\n- `/tidy`'s stale-claim release proposal names an open marked PR when one exists, and recommends resuming its `### Resume` line rather than a plain release.\n\n## Acceptance Criteria\n\n- A claim-targets test: a stale blob whose `runId` matches an open PR's run marker returns the in-flight envelope (exit 3) and writes nothing. A stale blob with no such PR still re-claims as it does today.\n- A tidy test: the stale-claim needs-decision proposal for a record with an open marked PR names the PR and its resume command.\n\n## Release Note\n\n`/flow` no longer starts a duplicate build for a record whose earlier run's claim expired while that run's draft PR was still open. It points you at the existing PR's resume command instead.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/claim-targets/claim-targets.js` — stale-branch in-flight check\n- `plugin/bin/lib/issues/claim-store.js` — shared PR lookup beside tombstoneInFlightPr\n- `plugin/skills/tidy/scan-procedures.md` — stale-claim proposal names the open PR\n\n_Filed by `reflect` via specShapedBody._\n",
+        "createdAt": "2026-10-26T12:12:39Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACxTu0eA",
+            "name": "by:reflect",
+            "description": "Origin: filed via /reflect (wrap-up Phase 1)",
+            "color": "ededed"
+          }
+        ],
+        "number": 4423,
+        "state": "OPEN",
+        "title": "Claim step re-claims a TTL-expired claim whose run still has an open draft PR, so /flow #N rebuilds finished work",
+        "updatedAt": "2026-10-28T07:12:02Z",
+        "facets": {
+          "origin": null,
+          "risk": "medium",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": null,
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: reflect full from #4288\n\nDefer-reason: tangential\n\n## Current State\n\nTwo pipeline gates read the same bookkeeping-only delta and reach opposite answers.\n- `/claude-tweaks:test`'s Skip-if-recent (`plugin/skills/test/verification.md`) sees `VERIFICATION_SHA` ≠ HEAD. It classifies every changed path against `.claude-tweaks/verify-scope.json`, and when all of them are bookkeeping-only (`suites: []`) it skips verification and writes no stamp.\n- `/claude-tweaks:review` Step 1.5 (`plugin/skills/review/code-mode-steps.md`) then reads `verify.js --stamp-status`. It gets `verifiedHead: false`, because the full-pass stamp names the pre-ledger-commit SHA. Its gate row says \"re-trigger `/claude-tweaks:test`, re-check\", but the re-triggered `/test` takes the same bookkeeping-only skip and still writes no stamp, so the gate names no terminal outcome.\n- A `/flow` run reaches this state whenever a bookkeeping-only commit lands between `/build` Common Step 5's full verify and `/test` (for example, run-ledger rows recording AC results, which only exist after verify). #4288's run hit it: build verified 65fd6e5, a ledger-only commit moved HEAD to 81a3dc6, and the review got past the gate only by hand-running a scoped `verify.js --scope .claude-tweaks/verify-scope.json --integration-branch origin/main` (`scope: none`, `still-verified: bookkeeping-only delta`), which wrote a `none` stamp verifying HEAD.\n\n## Deliverables\n\n- [ ] Make `/claude-tweaks:test`'s bookkeeping-only Skip-if-recent branch run the scoped `verify.js` invocation the Re-verify scoping table already gives the multi-spec spec-N step (`none` on a bookkeeping-only delta), so the skip leaves a stamp that verifies HEAD instead of writing nothing.\n- [ ] Give `/claude-tweaks:review` Step 1.5's `verifiedHead: false` row a terminal outcome: after one re-trigger, a still-unverified stamp either stops the review with a named cause or passes on a recorded bookkeeping-only classification. It must never loop.\n\n## Acceptance Criteria\n\n1. In a `/flow` run whose only change after build's full verify is the run ledger commit, `/claude-tweaks:test` exits Skip-if-recent with `verify.js --stamp-status` reporting `verifiedHead: true` (`scope: none`) at the new HEAD.\n2. `/claude-tweaks:review` Step 1.5 then passes its test gate with no hand-run `verify.js` and no second `/test` re-trigger.\n3. A delta with any non-bookkeeping path still runs the scoped or full re-verify exactly as today.\n\n## Release Note\n\nA pipeline run no longer stalls at the review test gate after build commits its own ledger: the test step's bookkeeping-only skip now leaves a verification stamp for the new commit.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/test/verification.md` — bookkeeping-only Skip-if-recent branch runs the scoped none-stamp verify\n- `plugin/skills/review/code-mode-steps.md` — Step 1.5 verifiedHead:false row gets a terminal outcome\n\n_Filed by `reflect` via specShapedBody._",
+        "createdAt": "2026-10-26T10:20:17Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          }
+        ],
+        "number": 4395,
+        "state": "OPEN",
+        "title": "Leave a verification stamp on /test's bookkeeping-only skip so review Step 1.5 passes after the ledger commit",
+        "updatedAt": "2026-10-28T07:12:06Z",
+        "facets": {
+          "origin": null,
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "Origin: dispatch close-out session 2026-10-26 (PRs #4276, #4302, #4319, #4334, #4354)\n\nDefer-reason: tangential\n\n## Current State\n\n`plugin/bin/lib/reconcile/archive-merged.js`'s `localHasMerge` (the #1130 guard against #657) checks the merge commit against `refs/heads/{integration}`. When the local ref lacks it, the guard falls back to `origin/{integration}` (#2565).\n\nThat fallback also fires when the local integration branch exists but is behind. In that case the tracked `work/{n}-spec.md` is not in the main checkout yet. The sweep moves the run dir's gitignored half into `archive/` and has nothing to `git mv`.\n\nOnce main fast-forwards, the spec reappears at `.claude-tweaks/pipelines/{run}/work/` as a state-less dir. `archive-run` refuses it (no readable run-state.json). The orphaned-mint sweep only takes it after a 24 h TTL.\n\nObserved 2026-10-26: the main checkout was dirty and 19 commits behind origin. Four stranded specs (runs for #3988/#3987/#3980/#3759) were the dirt that blocked mirror-ff. In that state, the merges of PRs #4276/#4302/#4319/#4334/#4354 stranded five more specs the same way, a self-perpetuating loop.\n\nBoth sets were archived by hand in 7b39e4683 and 9aaf50f45.\n\n## Deliverables\n\n1. Make the archive decision require the merge in the checkout the `git mv` runs against. Accept the local integration ref, or HEAD when that is the integration branch. When only `origin/{integration}` has it while the local ref exists and is behind, skip and retry on a later pass instead of archiving the untracked half.\n2. Keep #2565's case working: a main checkout parked on another branch, or with no local integration ref.\n3. Add a regression test in `tests/bin-lib/reconcile/archive-merged.test.js`. It uses a local integration branch behind an origin that holds the merge, and asserts that nothing is moved and the reason is a retryable skip.\n\n## Acceptance Criteria\n\n- [ ] With a local integration branch behind the merge and origin holding it, reconcile leaves the run dir in place and reports a retryable skip.\n- [ ] After the local branch fast-forwards, the same pass archives the run dir and `git mv`s `work/` in one commit.\n- [ ] #2565's no-local-ref and parked-checkout cases still archive.\n\n## Release Note\n\nReconcile no longer half-archives a merged run while the main checkout is behind, so its spec file is never left stranded.\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T07:54:02Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4387,
+        "state": "OPEN",
+        "title": "reconcile archive-merged strands tracked work/ specs when the local integration branch is behind origin",
+        "updatedAt": "2026-10-28T07:12:11Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4169, #4350, #4351\n\n## Current State\n\nTwo more record-body readers scan `## ` / `#` heading lines without skipping fenced blocks — the defect class #4169 fixed in `extractSection` and `sectionText`, left out of its plan's consumer enumeration (which searched for those two function names only).\n\n`mergeStateDemands` (`plugin/bin/lib/preflight-records/merge-gate.js`, ~line 37) toggles its in-section state on every `## ` line. A fenced `## …` line inside Deliverables ends the section, so a later \"actually merged #N\" demand is missed and the record is not deferred; a fenced `## Prerequisites` opens a section that is not the record's own. Probe at v6.155.1 and pre-#4169: a demand after a fenced `## not heading` line returns `[]`.\n\n`extractCurrentStateAnchors` (`plugin/bin/lib/issues/near-duplicate.js`, ~lines 119-133) stops at the first heading line with no fence skip, so a fenced shell `# comment` inside Current State drops every later anchor and near-duplicate detection misses duplicates. Its suite has no fence fixture. Found by the post-release review of #4169 (review-87, review-88).\n\n## Deliverables\n\n- [ ] `mergeStateDemands` ignores heading lines inside fenced blocks (shared `fencedLineRanges`)\n\n- [ ] `extractCurrentStateAnchors` ignores heading lines inside fenced blocks\n\n- [ ] tests in each module's suite with a fenced heading inside the section under scan\n\n## Acceptance Criteria\n\n1. `mergeStateDemands` finds an \"actually merged #N\" demand that follows a fenced `## …` line inside Deliverables.\n\n2. A fenced `## Prerequisites` heading does not open a Prerequisites section for `mergeStateDemands`.\n\n3. `extractCurrentStateAnchors` keeps anchors that follow a fenced `# comment` line inside Current State.\n\n4. `npm test` passes.\n\n## Release Note\n\nRecords that quote code or markdown in their Deliverables or Current State no longer confuse merge-order checks or duplicate detection.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/preflight-records/merge-gate.js` — section toggle skips fenced lines\n- `plugin/bin/lib/issues/near-duplicate.js` — Current State scan skips fenced lines\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T05:23:42Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEquA",
+            "name": "auto:merge",
+            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
+            "color": "BFDADC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4369,
+        "state": "OPEN",
+        "title": "Make the merge gate and near-duplicate Current State reader skip fenced headings",
+        "updatedAt": "2026-10-28T07:12:15Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": true
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4169, #4350\n\n## Current State\n\nThe record metadata extractors in `plugin/bin/lib/issues/record-payload.js` (re-exported through `record.js`) — the Premise-check line regex (`PREMISE_CHECK_RE`, ~line 67, read by `extractPremiseCheck` ~line 221), `VERIFIED_AS_OF_RE` (~line 40) and `TEMPLATE_STAMP_RE` (~line 48) — run a multiline first-match regex over the whole body, fenced blocks included. #4169 made the section readers skip fences but left these alone.\n\n`materialize.js` (~line 422) passes the extracted Premise-check command to the shell for a trusted author association. A command quoted inside a fence ahead of the record's own line, or a quoted command in a record that has none of its own, is the one that runs. The #4169 scenario — a Current State quoting another spec-shaped record — carries exactly such a line.\n\nProbe at v6.155.1 and at the pre-#4169 tree, same result: a body with a fenced `echo QUOTED` command line followed by the record's own `echo REAL` line yields `echo QUOTED`. The #4169 plan does not record whether leaving the metadata extractors fence-blind was deliberate. Related prior finding: v6.155.0's staged review-62 (a staged finding body's command line reaching the same executor). Found by the post-release review of #4169 (review-83).\n\n## Deliverables\n\n- [ ] `extractPremiseCheck`, `extractVerifiedAsOf` and `extractTemplateStamp` ignore lines inside fenced blocks, using the shared fence rule (`fencedLineRanges`)\n\n- [ ] a record whose only command line is inside a fence yields no command, so `materialize.js` runs nothing\n\n- [ ] tests pin fenced-before-real, fenced-only and real-only bodies for all three extractors\n\n## Acceptance Criteria\n\n1. A body with a fenced command line before the record's own unfenced one yields the unfenced command.\n\n2. A body whose only command line is fenced yields no command (null/empty, whichever the extractor already returns for absence).\n\n3. The same holds for the Verified-as-of and Template lines.\n\n4. `npm test` passes.\n\n## Release Note\n\nA command quoted inside a code block in a work record can no longer be picked up and run as that record's own premise check.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/record-payload.js` — metadata extractors skip fenced lines\n- `tests/bin-lib/issues/record.test.js` — fenced/unfenced extractor cases\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T05:23:38Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
+            "name": "priority:high",
+            "description": "Priority: dispatch picks this band first",
+            "color": "FBCA04"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4368,
+        "state": "OPEN",
+        "title": "Read a record's Premise-check, Verified-as-of and Template lines only outside fenced blocks",
+        "updatedAt": "2026-10-28T07:12:20Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "high",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4169, #4350, #4351\n\n## Current State\n\n`sectionText` (`plugin/bin/lib/issues/materialize-format.js`, ~line 102) locates a section with `body.indexOf('## ' + name)` — a substring search, not a line-anchored heading match. #4169 added a fence check around it but kept the substring search.\n\nSo a heading mentioned mid-line counts as the record's own section: inline code (a Current State sentence naming the `` `## Acceptance Criteria` `` heading), a blockquote line, or prose. The match is also a prefix match, so `## Release Notes` satisfies `## Release Note`.\n\nProbe at v6.155.1 and at the pre-#4169 tree (2837561ec), same result: `shapeGate` on a body whose only mention of Acceptance Criteria and Release Note is that inline sentence returns `{ ok: true, missing: [] }` — the shape gate passes a record that has neither section. Found by the post-release review of #4169 (staged as review-82 in the v6.155.x release run dir).\n\n## Deliverables\n\n- [ ] `sectionText` matches a section heading only on a line that is itself `## {name}` (line-anchored, the whole heading text, optional trailing whitespace), outside a fenced block\n\n- [ ] `extractSection` and `sectionText` agree on what counts as a heading for the same body\n\n- [ ] tests pin the inline-code mention, the blockquote mention and the `Release Notes` prefix case through `shapeGate`\n\n## Acceptance Criteria\n\n1. `shapeGate` on a body whose only Acceptance Criteria / Release Note mention is inline code in Current State reports both sections missing.\n\n2. A body with `## Release Notes` and no `## Release Note` heading reports Release Note missing.\n\n3. Existing real records still pass: the `shapeGate` and `sectionText` suites in `tests/bin-lib/issues/materialize-format.test.js` stay green.\n\n4. `npm test` passes.\n\n## Release Note\n\nA record that only mentions a required section heading in passing no longer passes the shape gate as if it had that section.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/materialize-format.js` — sectionText matches line-anchored, whole-name headings\n- `tests/bin-lib/issues/materialize-format.test.js` — inline-mention, blockquote and prefix cases\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T05:23:32Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyrJA",
+            "name": "size:low",
+            "description": "Scoring: small, agent-sized change",
+            "color": "D4C5F9"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
+            "name": "priority:medium",
+            "description": "Priority: dispatch picks after priority:high",
+            "color": "0052CC"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
+            "name": "risk:medium",
+            "description": "Scoring: moderate blast radius — review before merge recommended",
+            "color": "FBCA04"
+          }
+        ],
+        "number": 4367,
+        "state": "OPEN",
+        "title": "Match a record section heading only when it starts its own line",
+        "updatedAt": "2026-10-28T07:12:24Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "medium",
+          "size": "low",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "medium",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
+        }
+      }
+    ],
     [
       {
         "body": "Surface: infra\n\n**Related:** #4025, #4354, #4168, #2986, #3014, #3013, #3469, #4304, #4343, #4395, #3905, #4345\n\nOrigin: reflect full from #4025\n\nDefer-reason: tangential\n\n## Current State\n\nDuring #4025's review, PR #4354 was `DIRTY`, conflicting with main after #4168 landed, and had run no CI beyond the label workflows. The reviewer found the conflict by reading the PR state by hand, about 3 hours after the build opened the PR.\n\n`bin/pr-checks.js` is the one read `/claude-tweaks:test`'s pipeline gate and `/claude-tweaks:review` Step 1.5 both run (`_shared/pr-check-gate.md`). Probed at HEAD, its `gh pr view` asks only for `headRefOid,statusCheckRollup,baseRefName` (`pr-checks.js:187`), and its states are `red | inherited-red | pending | stale | green | no-ci | read-failed | no-pr | gh-absent`. A conflicted PR with no check runs therefore reads `no-ci`, a fail-open `SKIP` (\"local verification only\"), or `pending` when the repo has pull_request CI (`classify.js:77`). The review gate table (`review/code-mode-steps.md:108-109`) proceeds on anything but `red`.\n\nPremise correction: the plugin already detects a conflicted PR, but only at phase exits. `bin/pr-merge-state.js` (#2986) runs after every phase-exit push through `phase-exit.js`, classifies with an exported `classifyMergeState` (`pr-merge-state.js:63-69`, exported at `:148`: `DIRTY` or `CONFLICTING` is conclusive, `UNKNOWN` is no signal), and is routed by `_shared/git-discipline.md`'s Post-push merge-state check. The gap is a base that moves after the last phase-exit push. The next gate reads checks only, and the `--pr` display readers (`_shared/github-pr-scan.md`, `wrap-up/pack.js`, `dispatch/settle-parked.md`) count such a PR as `no-ci`. `bin/lib/flow/preflight.js:294-310` holds a third, inline `CONFLICTING` check (#3014).\n\n## Deliverables\n\n1. Add a `conflicting` state to `pr-checks.js`. Request `mergeable,mergeStateStatus` in its existing `gh pr view` call and classify with `pr-merge-state.js`'s `classifyMergeState`, moved to a shared lib module both CLIs import, not copied. Carry `mergeStateStatus`, `mergeable` and `baseBranch` (the PR's `baseRefName`) in the envelope.\n2. Precedence: `conflicting` replaces every check-derived state (`red`, `inherited-red`, `pending`, `green`, `no-ci`), because a conflicted PR gets no new `pull_request` runs, so its checks say nothing about HEAD. `stale` still wins, because a local HEAD ahead of the PR may already hold the catch-up. `no-pr`, `gh-absent` and a failed `gh pr view` stay as they are. `unknown` merge state changes nothing.\n3. Route `conflicting` in `_shared/pr-check-gate.md` by citing `_shared/git-discipline.md`'s Post-push merge-state check routing rather than restating it. In `auto`/`confirm`, run its Catch-up, then re-run the gate once. In `interactive`/`hybrid`, stop at the gate and give the catch-up commands. The CLI's own `--run` decisions.md line for `conflicting` is one `AUTO` entry naming the PR and base.\n4. Add the `conflicting` row to `review/code-mode-steps.md`'s Step 1.5 gate table, citing `pr-check-gate.md`, and map the state in every `pr-checks.js --pr` reader: `_shared/github-pr-scan.md`'s count (not a green or `no-ci` candidate), `wrap-up/pack.js` and `dispatch/settle-parked.md`.\n5. Update `pr-checks.js`'s header comment, its USAGE state list, and `docs/plugin-structure.md`'s state list where they enumerate states.\n\n## Acceptance Criteria\n\n- A fixture PR view with `mergeStateStatus: DIRTY` and no check runs classifies `conflicting`, not `no-ci`, `pending` or `green`. So does `mergeable: CONFLICTING` with `mergeStateStatus: BLOCKED`.\n- `mergeStateStatus: UNKNOWN` with `mergeable: UNKNOWN` leaves the check-derived state unchanged.\n- A `DIRTY` view whose `headRefOid` differs from local HEAD reads `stale`, not `conflicting`.\n- `pr-merge-state.js`'s outputs are byte-identical on its existing tests after `classifyMergeState` moves, and both CLIs import the one function.\n- Under `--run`, a `conflicting` read writes one `AUTO` `PR-check gate` entry. `--pr` writes nothing.\n- `review/code-mode-steps.md`'s gate table and `pr-check-gate.md`'s routing name `conflicting`. Every `pr-checks.js --pr` reader maps it, so none treats it as green or `no-ci`.\n- `npm test` passes.\n\n## Release Note\n\nThe test and review gates now notice when a pull request has fallen into a merge conflict, so the run catches up instead of reviewing a branch that will never get CI.\n\n## Technical Approach\n\nMove `classifyMergeState` into `plugin/bin/lib/pr-checks/classify.js`, the classification lib `pr-checks.js` already imports, or into a small sibling module, and have `pr-merge-state.js` import it from there. Apply it in `classifyPr` after the rollup verdict, so the precedence rule in Deliverable 2 lives in one place. Routing stays in prose by citation: `pr-check-gate.md` points at `git-discipline.md`'s Post-push merge-state check and Catch-up for the action, so the two conflict routes cannot drift.\n\n### Key Files\n\n- `plugin/bin/pr-checks.js` — request merge fields; `conflicting` state; envelope; USAGE\n- `plugin/bin/lib/pr-checks/classify.js` — shared `classifyMergeState`\n- `plugin/bin/pr-merge-state.js` — import the moved classifier\n- `plugin/skills/_shared/pr-check-gate.md` — route `conflicting`\n- `plugin/skills/review/code-mode-steps.md` — Step 1.5 gate row\n- `plugin/skills/_shared/github-pr-scan.md` — count mapping\n- `plugin/bin/lib/wrap-up/pack.js` — `ci.state` consumer\n- `plugin/skills/dispatch/settle-parked.md` — fresh CI read consumer\n- `docs/plugin-structure.md` — state list\n- `tests/bin-lib/pr-checks/classify.test.js`, `tests/bin-lib/pr-checks/cli.test.js` — classification, precedence and envelope cases\n- `tests/bin-lib/pr-merge-state/cli.test.js` — unchanged outputs after the move\n\n## Gotchas\n\n- Auto-mode contract: a new mid-flow stop in `auto` is forbidden unless it is a HARD-GATE (`_shared/auto-mode-contract.md`). A merge conflict is not a test failure, so `auto` runs the catch-up instead of stopping. Only `interactive`/`hybrid` stop.\n- GitHub computes mergeability asynchronously, so `UNKNOWN` is common right after a push. Never read it as a conflict and never re-read inside this CLI, the same rule `pr-merge-state.js` follows.\n- Expand-contract: an installed build's prose may read an older `pr-checks.js`, and a newer CLI's `conflicting` may reach older prose that lacks the row. Older routing falls to its own default, which must not read it as green. Check each consumer's unknown-state fallback, and land the prose rows in the same release as the CLI state.\n- `pr-checks.js`'s state list is enumerated in its header comment, its USAGE and `docs/plugin-structure.md`, and `pr-merge-state.js`'s `STATES` is pinned to prose by `tests/git-discipline-merge-state-conformance.test.js`. Find every enumeration with `git grep -n \"no-ci | read-failed\"` and update them together.\n- `preflight.js`'s inline `CONFLICTING` check (#3014) is a third copy. Importing the shared classifier there is in scope only if it is a one-line swap with unchanged output, otherwise leave it.\n- #4304 (catch-up before the whole-branch review) and #4343 (catch-up before build's final verification) add proactive catch-ups at other points. They narrow the window but do not remove it, because the base can still move after them, so this gate-time detection stays needed. #4395 edits the same Step 1.5 gate table (its `verifiedHead: false` row). Rebase onto whichever lands first.\n\n## Original request\n\npr-checks.js cannot see a merge-conflicted PR: the review PR-check gate lets a DIRTY PR with no CI through\n\nOrigin: reflect full from #4025\n\nDefer-reason: tangential\n\n## Current State\n\nDuring #4025's review, PR #4354 was `DIRTY` (a merge conflict with main after #4168 landed) and had run no CI beyond the label workflows. `bin/pr-checks.js` and `bin/lib/pr-checks/classify.js` classify only check runs (`red|pending|stale|green|no-ci|...`); nothing in them reads `mergeStateStatus`, so the review Step 1.5 PR-check gate cannot tell a clean PR from one that is conflicted and therefore never gets CI. The conflict was found only because the reviewer read the PR state by hand, ~3 hours after the build opened it.\n\n## Deliverables\n\nMake `pr-checks.js` report a conflicted PR (`mergeStateStatus` `DIRTY`, or `mergeable` `CONFLICTING`) as its own state, distinct from `no-ci`, with the conflicting base named.\n\nHave review Step 1.5 (`review/code-mode-steps.md`) stop on that state with the catch-up instruction (`_shared/git-discipline.md`, Catching a branch up with main) instead of proceeding to the lenses.\n\n## Acceptance Criteria\n\nA fixture PR with `mergeStateStatus: DIRTY` and no check runs classifies as the new conflicted state, not `no-ci` or `green`.\n\nThe review gate table maps the conflicted state to a stop with the catch-up command.\n\n## Release Note\n\nA review now stops at once when its pull request has a merge conflict, instead of reviewing a branch that can never get CI.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/pr-checks/classify.js` — modify\n- `plugin/skills/review/code-mode-steps.md` — modify\n- `plugin/skills/_shared/pr-check-gate.md` — modify\n\n_Filed by `reflect` via specShapedBody._\n",
@@ -322,6 +3271,84 @@
           "isParentIssue": false,
           "notPlanned": false,
           "shapedHeadless": true
+        }
+      }
+    ],
+    [
+      {
+        "body": "**Related:** #4365\n\nOrigin: #4025 build (express lane) — fix-wave re-review Minor; refs #4025\n\nDefer-reason: genuinely-larger\n\n## Current State\n\n#4025's express-lane post-merge sample review (`plugin/skills/_shared/express-lane.md`, Post-merge sampling step 2) files each confirmed finding with `/claude-tweaks:capture`, then posts the `<!-- run-comment: express-review -->` marker comment only when every finding filed. A capture that fails after earlier captures for the same PR succeeded leaves the PR unmarked, so the next sweep reviews it again and can file the already-filed findings a second time.\n\nThe shaped-body capture branch never passes a `fingerprint` (`recordPayload` accepts one; the health sweeps dedupe by it), so there is no filing-time dedupe to lean on. Flagged as a Minor by the #4025 fix-wave re-review.\n\n## Deliverables\n\n1. Make a re-review of a partly-filed sampled PR skip findings already filed for it — e.g. a per-finding fingerprint (PR number + lens + finding key) passed through the capture filing and checked before filing, or a non-marker progress comment listing filed records that the next sweep reads.\n\n2. Pin the chosen mechanism in `tests/express-lane-prose.test.js` (or a CLI test if it lands in `plugin/bin/lib/express/`).\n\n## Acceptance Criteria\n\n- [ ] A sampled PR whose first sweep filed some findings and then failed a capture files no duplicate record on the next sweep.\n\n- [ ] The marker comment still posts only once every finding is filed.\n\n## Release Note\n\nExpress-lane post-merge reviews no longer risk filing the same finding twice after a partial filing failure.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/_shared/express-lane.md` — modify\n\n_Filed by `capture` via specShapedBody._",
+        "createdAt": "2026-10-26T01:32:49Z",
+        "labels": [
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyqXw",
+            "name": "ready",
+            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
+            "color": "2EA44F"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruyq1w",
+            "name": "risk:low",
+            "description": "Scoring: low blast radius — safe for autonomous build",
+            "color": "0E8A16"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
+            "name": "size:medium",
+            "description": "Scoring: moderate change, may span several files",
+            "color": "8B5CF6"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2myw",
+            "name": "by:capture",
+            "description": "Origin: filed via /capture",
+            "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACry2nbg",
+            "name": "type:bug",
+            "description": "Type: defect in existing behavior",
+            "color": "d73a4a"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
+            "name": "auto:build",
+            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
+            "color": "F9D0C4"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
+            "name": "priority:low",
+            "description": "Priority: dispatch picks last among prioritized records",
+            "color": "5319E7"
+          }
+        ],
+        "number": 4364,
+        "state": "OPEN",
+        "title": "Keep the express-lane sample review from re-filing findings after a partial capture failure",
+        "updatedAt": "2026-10-28T07:15:11Z",
+        "facets": {
+          "origin": "capture",
+          "risk": "low",
+          "size": "medium",
+          "ceremony": null,
+          "solutionUnjustified": false,
+          "breaking": false,
+          "needsDefinition": false,
+          "priority": "low",
+          "stage": "ready",
+          "grants": {
+            "build": true,
+            "merge": false
+          },
+          "bot": {
+            "inProgress": false,
+            "blocked": false,
+            "parked": false
+          },
+          "acceptance": null,
+          "isParentIssue": false,
+          "notPlanned": false,
+          "shapedHeadless": false
         }
       }
     ],
@@ -1414,78 +4441,6 @@
           "risk": "medium",
           "size": "medium",
           "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #3876, #3822\n\nOrigin: wrap-up reflect from #3682\n\nDefer-reason: tangential\n\n## Current State\n\nDuring #3682's /review (2026-10-20), 9 harness worktree-isolation refusals (\"Refusing to run it\") hit 5 of the 8 dispatched lens agents (one agent alone hit 5), each on a Bash command that built a path from a shell variable (W=\"...\"; sed -n ... \"$W/...\") or chained `cd ... &&` with a heredoc, even though the dispatch prompt carried literal absolute paths and the Working Directory Discipline rule. `review/step3-lens-dispatch.md`'s dispatch rules tell agents to use `git -C <abs path>` and absolute arguments but never say \"no shell variables for paths, one plain command per Bash call\" — the constraint the harness actually enforces (`_shared/scratch-worktree.md` section 7).\n\n## Deliverables\n\nAdd one sentence to `plugin/skills/review/step3-lens-dispatch.md`'s dispatch rules (outside the byte-identical Calibration/Output block): agents run one plain Bash command per call with literal absolute paths — no shell variable for a path, no `cd ... &&`, no heredoc-in-compound — and use Read/Grep for file reads\n\nCheck `plugin/skills/_shared/subagent-dispatch-core.md`'s Working Directory Discipline for the same gap and fold the sentence in once, there, if the review file can cite it instead\n\n## Acceptance Criteria\n\n`step3-lens-dispatch.md` (or the composed dispatch bundle it cites) states the no-shell-variable-path rule in text a lens agent receives\n\nThe skill-prose conformance suites pass (`npm test`)\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/skills/review/step3-lens-dispatch.md` — add the one-sentence shell-variable-path rule to the lens dispatch rules\n- `plugin/skills/_shared/subagent-dispatch-core.md` — possibly the single home for the rule\n\n_Filed by `wrap-up reflect` via specShapedBody._",
-        "createdAt": "2026-10-20T13:35:39Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 3737,
-        "state": "OPEN",
-        "title": "Lens dispatch prompts should forbid shell-variable paths and cd-chains (9 harness refusals in one review)",
-        "updatedAt": "2026-10-25T10:57:19Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
           "needsDefinition": false,
@@ -3840,7 +6795,7 @@
         "number": 4243,
         "state": "OPEN",
         "title": "Carry the worktree shell constraint into /build's SDD implementer and reviewer dispatches",
-        "updatedAt": "2026-10-26T14:34:52Z",
+        "updatedAt": "2026-10-28T07:23:06Z",
         "facets": {
           "origin": null,
           "risk": "low",
