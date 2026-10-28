@@ -950,6 +950,27 @@ test('#4246: only a closed ${ … } is skipped; an unclosed one reads as before'
   });
 });
 
+// #4246: a heredoc opened inside an unquoted `$( … )` whose `)` closes on the opener line has no
+// body, so the lines after it are commands. bash 3.2 and zsh write /M/zz for each case; bash 5
+// reads the lines as the body. The scan sides with the shells that write. (`x=$(cat <<EOF)` and
+// `echo "$(cat <<EOF)"` already reported /M/zz before this rule.)
+test('#4246: a heredoc whose $( … ) closes on the opener line has no body, so the next lines are commands', () => {
+  for (const command of [
+    'echo $(cat <<EOF)\n: > /M/zz\nEOF',
+    'echo $(cat <<EOF; echo x)\n: > /M/zz\nEOF',
+    'echo $(echo $(cat <<EOF))\n: > /M/zz\nEOF',
+  ]) {
+    assert.deepStrictEqual(fileWriteTargets(command, '/r'), [{ action: 'write', file: path.resolve('/M/zz') }], command);
+  }
+});
+
+// #4246: once `$(cat <<A)` closes, only `<<B` reads the next lines, so `: > /M/zz` is B's body.
+// bash 3.2, bash 5 and zsh all write nothing. Before this rule the scan read A's body first, found
+// no `A` line, kept the rest as written and reported /M/zz, a spurious deny.
+test('#4246: a real opener after a same-line $(cat <<A) still plans its own body', () => {
+  assert.deepStrictEqual(fileWriteTargets('cat $(cat <<A) <<B\n: > /M/zz\nB', '/r'), []);
+});
+
 // #4149 with #4210: a command nested past NEST_LEVEL_CAP re-reads flat, and the flat split cuts at
 // a `|` or `;` inside "$( … )"; the walk carries the nesting state across that cut, so the inner `>`
 // stays quoted. bash 3.2 and 5 write only out.js and z.

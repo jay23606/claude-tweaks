@@ -1846,7 +1846,9 @@ function scanHeredocsWith(str, spans) {
   let quote = null;
   // Each open `"$( … )"` substitution (#4210): its paren depth and where its own text starts. A
   // heredoc opened inside one is planned against that text (`cat <<'EOF'`), never the outer line,
-  // since the substitution's command is the one that reads the body.
+  // since the substitution's command is the one that reads the body. #4246 adds a frame for each
+  // open unquoted `$( … )` too (`dq: false`), only so a heredoc can tell its substitution closed on
+  // the opener line; it leaves the planned line text as before.
   const subs = [];
   // Parens left open by a `((` or `$((`: `((` opens two and every single paren inside counts, so
   // `((cd x && ls) | cat)` (bash's nested-subshell reading) closes at its final `)`. It spans
@@ -1873,7 +1875,7 @@ function scanHeredocsWith(str, spans) {
       // is found, and its body no longer reads as quotes. `subs` holds one paren depth per
       // open substitution; the `)` that closes the last one returns to the double quote.
       emit('$(');
-      subs.push({ depth: 1, start: i + 2 });
+      subs.push({ depth: 1, start: i + 2, dq: true });
       quote = null;
       i += 2;
     } else if (quote === '"') {
@@ -1906,7 +1908,9 @@ function scanHeredocsWith(str, spans) {
       emit(str.slice(i, j));
       i = j;
     } else if (ch === '\n') {
-      const lineText = str.slice(subs.length ? Math.max(lineStart, subs[subs.length - 1].start) : lineStart, i);
+      // #4246: only a `"$( … )"` frame narrows the planned text; an unquoted one plans as before.
+      const dqSub = subs.findLast((s) => s.dq);
+      const lineText = str.slice(dqSub ? Math.max(lineStart, dqSub.start) : lineStart, i);
       i += 1;
       emit(ch);
       sticky = sticky || lineLeavesStructureOpen(lineText);
@@ -1926,6 +1930,13 @@ function scanHeredocsWith(str, spans) {
       // unclosed one (or the flat reading, which never closes) falls through to the branches below.
       emit(str.slice(i, param.end));
       i = param.end;
+    } else if (quote === null && ch === '$' && str[i + 1] === '(' && str[i + 2] !== '(') {
+      // #4246: an unquoted `$( … )` opens a frame, so a heredoc opened inside it knows when its
+      // substitution closes (the `)` branch below). This sits after the `${` branch, so a `$(`
+      // inside a closed `${ … }` never opens one. `$((` is arithmetic and stays with parenDepth.
+      emit('$(');
+      subs.push({ depth: 1, start: i + 2, dq: false });
+      i += 2;
     } else if (ch === '$' && str[i + 1] === '[') {
       bracketDepth += 1;
       emit('$[');
@@ -1950,8 +1961,12 @@ function scanHeredocsWith(str, spans) {
     } else if (subs.length > 0 && (ch === '(' || ch === ')')) {
       subs[subs.length - 1].depth += ch === '(' ? 1 : -1;
       if (subs[subs.length - 1].depth === 0) {
-        subs.pop();
-        quote = '"';
+        const popped = subs.pop();
+        if (popped.dq) quote = '"';
+        // #4246: a heredoc opened inside a `$( … )` that closes on its opener line has no body:
+        // bash 3.2 and zsh run the lines after it as commands (bash 5 reads them as the body), so
+        // the scan sides with the shells that run them and plans no body for it.
+        pending = pending.filter((h) => h.frame !== popped);
       }
       emit(ch);
       i += 1;
@@ -1967,6 +1982,7 @@ function scanHeredocsWith(str, spans) {
       }
       if (h) {
         h.at = outLen;
+        h.frame = subs[subs.length - 1] || null; // #4246: the substitution it was opened in, if any
         emit(str.slice(i, h.end));
         pending.push(h);
         i = h.end;
