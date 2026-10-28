@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T22:26:57.957Z",
+  "computedAt": "2026-10-28T22:41:06.771Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -65,7 +65,7 @@
       },
       {
         "number": 4462,
-        "updatedAt": "2026-10-28T18:40:25Z",
+        "updatedAt": "2026-10-28T22:40:48Z",
         "state": "OPEN"
       },
       {
@@ -993,7 +993,7 @@
         "number": 4462,
         "state": "OPEN",
         "title": "reconcile: mirror fast-forward refuses on any untracked file, so a tidy run's own committed trail (or one stray file) blocks main-checkout sync indefinitely",
-        "updatedAt": "2026-10-28T18:40:25Z",
+        "updatedAt": "2026-10-28T22:40:48Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
