@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T19:00:29.647Z",
+  "computedAt": "2026-10-28T20:00:03.120Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -25,7 +25,7 @@
       },
       {
         "number": 4482,
-        "updatedAt": "2026-10-28T18:41:25Z",
+        "updatedAt": "2026-10-28T19:19:49Z",
         "state": "OPEN"
       },
       {
@@ -57,11 +57,6 @@
         "number": 4465,
         "updatedAt": "2026-10-28T18:40:39Z",
         "state": "OPEN"
-      },
-      {
-        "number": 4464,
-        "updatedAt": "2026-10-28T19:00:21Z",
-        "state": "CLOSED"
       },
       {
         "number": 4463,
@@ -130,7 +125,7 @@
       },
       {
         "number": 4446,
-        "updatedAt": "2026-10-28T18:39:26Z",
+        "updatedAt": "2026-10-28T19:59:38Z",
         "state": "OPEN"
       },
       {
@@ -180,7 +175,7 @@
       },
       {
         "number": 4369,
-        "updatedAt": "2026-10-28T07:12:15Z",
+        "updatedAt": "2026-10-28T19:55:24Z",
         "state": "OPEN"
       },
       {
@@ -550,84 +545,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: /claude-tweaks:release v6.156.3 release-gate review (run 2026-10-27T161535-release-standalone)\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\nFound by the v6.156.3 whole-branch release review (lens 3a, confirmed by independent tiebreak), refs #4303.\n\n`docs/hooks.md:6` forbids restating the worktree-always coverage list (\"five files did and all five went stale `[IL-93]`\"). The \"Lost-cwd denies\" bullet at `docs/hooks.md:15` nonetheless spells out every gate's lost-target reading (shadow guard, teardown, worktree-always, post-tool-use, E1, bookkeeping-stamps, dispatch-config), then says they are \"stated once\" in `plugin/skills/_shared/policy-schema-coverage.md`'s \"Where a relative target resolves\" paragraph, which states them too.\n\n`.claude/skills/pre-tool-use-gate-exemptions/SKILL.md:34` then tells authors to add each new gate to both places: the two-copy drift the rule exists to stop.\n\n## Deliverables\n\n1. Cut the `docs/hooks.md` bullet to the `lost` marker's contract plus a pointer to the coverage paragraph.\n2. Point the gate-exemptions skill at that one paragraph only.\n\n## Acceptance Criteria\n\n- `docs/hooks.md` names no individual gate's lost-target reading.\n- `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` names one place to record a gate's reading.\n- `npm test` passes (conformance tests pin some of this prose).\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `docs/hooks.md` — modify\n- `.claude/skills/pre-tool-use-gate-exemptions/SKILL.md` — modify\n\n_Filed by `review` via specShapedBody._",
-        "createdAt": "2026-10-27T18:41:23Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4482,
-        "state": "OPEN",
-        "title": "State each gate's lost-target reading once, not in both docs/hooks.md and policy-schema-coverage.md",
-        "updatedAt": "2026-10-28T18:41:25Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
@@ -2012,7 +1929,7 @@
         "number": 4446,
         "state": "OPEN",
         "title": "Write gate never walks the command inside a command substitution or backticks",
-        "updatedAt": "2026-10-28T18:39:26Z",
+        "updatedAt": "2026-10-28T19:59:38Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
@@ -2398,90 +2315,6 @@
           "grants": {
             "build": true,
             "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #4169, #4350, #4351\n\n## Current State\n\nTwo more record-body readers scan `## ` / `#` heading lines without skipping fenced blocks — the defect class #4169 fixed in `extractSection` and `sectionText`, left out of its plan's consumer enumeration (which searched for those two function names only).\n\n`mergeStateDemands` (`plugin/bin/lib/preflight-records/merge-gate.js`, ~line 37) toggles its in-section state on every `## ` line. A fenced `## …` line inside Deliverables ends the section, so a later \"actually merged #N\" demand is missed and the record is not deferred; a fenced `## Prerequisites` opens a section that is not the record's own. Probe at v6.155.1 and pre-#4169: a demand after a fenced `## not heading` line returns `[]`.\n\n`extractCurrentStateAnchors` (`plugin/bin/lib/issues/near-duplicate.js`, ~lines 119-133) stops at the first heading line with no fence skip, so a fenced shell `# comment` inside Current State drops every later anchor and near-duplicate detection misses duplicates. Its suite has no fence fixture. Found by the post-release review of #4169 (review-87, review-88).\n\n## Deliverables\n\n- [ ] `mergeStateDemands` ignores heading lines inside fenced blocks (shared `fencedLineRanges`)\n\n- [ ] `extractCurrentStateAnchors` ignores heading lines inside fenced blocks\n\n- [ ] tests in each module's suite with a fenced heading inside the section under scan\n\n## Acceptance Criteria\n\n1. `mergeStateDemands` finds an \"actually merged #N\" demand that follows a fenced `## …` line inside Deliverables.\n\n2. A fenced `## Prerequisites` heading does not open a Prerequisites section for `mergeStateDemands`.\n\n3. `extractCurrentStateAnchors` keeps anchors that follow a fenced `# comment` line inside Current State.\n\n4. `npm test` passes.\n\n## Release Note\n\nRecords that quote code or markdown in their Deliverables or Current State no longer confuse merge-order checks or duplicate detection.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/preflight-records/merge-gate.js` — section toggle skips fenced lines\n- `plugin/bin/lib/issues/near-duplicate.js` — Current State scan skips fenced lines\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-26T05:23:42Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEquA",
-            "name": "auto:merge",
-            "description": "Grant: a clean autonomous run may merge unreviewed (stacks on auto:build; alone inert)",
-            "color": "BFDADC"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          }
-        ],
-        "number": 4369,
-        "state": "OPEN",
-        "title": "Make the merge gate and near-duplicate Current State reader skip fenced headings",
-        "updatedAt": "2026-10-28T07:12:15Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": true
           },
           "bot": {
             "inProgress": false,
