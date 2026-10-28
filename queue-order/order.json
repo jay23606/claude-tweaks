@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T20:18:59.276Z",
+  "computedAt": "2026-10-28T20:30:50.049Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -45,7 +45,7 @@
       },
       {
         "number": 4467,
-        "updatedAt": "2026-10-28T18:40:48Z",
+        "updatedAt": "2026-10-28T20:30:31Z",
         "state": "OPEN"
       },
       {
@@ -759,7 +759,7 @@
         "number": 4467,
         "state": "OPEN",
         "title": "tidy step-7-5: the housekeeping PR merges immediately when the repo has no required checks, and its body is not screened for closing keywords",
-        "updatedAt": "2026-10-28T18:40:48Z",
+        "updatedAt": "2026-10-28T20:30:31Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
