@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T22:14:21.136Z",
+  "computedAt": "2026-10-28T22:26:57.957Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -70,7 +70,7 @@
       },
       {
         "number": 4461,
-        "updatedAt": "2026-10-28T18:40:21Z",
+        "updatedAt": "2026-10-28T22:26:39Z",
         "state": "OPEN"
       },
       {
@@ -1071,7 +1071,7 @@
         "number": 4461,
         "state": "OPEN",
         "title": "reconcile: one branch with more than 10 associated PRs fails the whole bulk PR screen, silently disabling archive-branches and remote-prune",
-        "updatedAt": "2026-10-28T18:40:21Z",
+        "updatedAt": "2026-10-28T22:26:39Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
