@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T07:59:21.637Z",
+  "computedAt": "2026-10-28T09:14:47.927Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -195,7 +195,7 @@
       },
       {
         "number": 4368,
-        "updatedAt": "2026-10-28T07:12:20Z",
+        "updatedAt": "2026-10-28T08:39:24Z",
         "state": "OPEN"
       },
       {
@@ -3021,84 +3021,6 @@
           "grants": {
             "build": true,
             "merge": true
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #4169, #4350\n\n## Current State\n\nThe record metadata extractors in `plugin/bin/lib/issues/record-payload.js` (re-exported through `record.js`) — the Premise-check line regex (`PREMISE_CHECK_RE`, ~line 67, read by `extractPremiseCheck` ~line 221), `VERIFIED_AS_OF_RE` (~line 40) and `TEMPLATE_STAMP_RE` (~line 48) — run a multiline first-match regex over the whole body, fenced blocks included. #4169 made the section readers skip fences but left these alone.\n\n`materialize.js` (~line 422) passes the extracted Premise-check command to the shell for a trusted author association. A command quoted inside a fence ahead of the record's own line, or a quoted command in a record that has none of its own, is the one that runs. The #4169 scenario — a Current State quoting another spec-shaped record — carries exactly such a line.\n\nProbe at v6.155.1 and at the pre-#4169 tree, same result: a body with a fenced `echo QUOTED` command line followed by the record's own `echo REAL` line yields `echo QUOTED`. The #4169 plan does not record whether leaving the metadata extractors fence-blind was deliberate. Related prior finding: v6.155.0's staged review-62 (a staged finding body's command line reaching the same executor). Found by the post-release review of #4169 (review-83).\n\n## Deliverables\n\n- [ ] `extractPremiseCheck`, `extractVerifiedAsOf` and `extractTemplateStamp` ignore lines inside fenced blocks, using the shared fence rule (`fencedLineRanges`)\n\n- [ ] a record whose only command line is inside a fence yields no command, so `materialize.js` runs nothing\n\n- [ ] tests pin fenced-before-real, fenced-only and real-only bodies for all three extractors\n\n## Acceptance Criteria\n\n1. A body with a fenced command line before the record's own unfenced one yields the unfenced command.\n\n2. A body whose only command line is fenced yields no command (null/empty, whichever the extractor already returns for absence).\n\n3. The same holds for the Verified-as-of and Template lines.\n\n4. `npm test` passes.\n\n## Release Note\n\nA command quoted inside a code block in a work record can no longer be picked up and run as that record's own premise check.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/issues/record-payload.js` — metadata extractors skip fenced lines\n- `tests/bin-lib/issues/record.test.js` — fenced/unfenced extractor cases\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-26T05:23:38Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHb2Q",
-            "name": "priority:high",
-            "description": "Priority: dispatch picks this band first",
-            "color": "FBCA04"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXMS4Q",
-            "name": "risk:medium",
-            "description": "Scoring: moderate blast radius — review before merge recommended",
-            "color": "FBCA04"
-          }
-        ],
-        "number": 4368,
-        "state": "OPEN",
-        "title": "Read a record's Premise-check, Verified-as-of and Template lines only outside fenced blocks",
-        "updatedAt": "2026-10-28T07:12:20Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "medium",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
           },
           "bot": {
             "inProgress": false,
