@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T22:41:06.771Z",
+  "computedAt": "2026-10-28T22:57:13.390Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -60,7 +60,7 @@
       },
       {
         "number": 4463,
-        "updatedAt": "2026-10-28T18:40:30Z",
+        "updatedAt": "2026-10-28T22:56:52Z",
         "state": "OPEN"
       },
       {
@@ -915,7 +915,7 @@
         "number": 4463,
         "state": "OPEN",
         "title": "reconcile: archive-branches and remote-prune do not accept \"branch tip equals or is contained in its merged PR's head\" as merged proof",
-        "updatedAt": "2026-10-28T18:40:30Z",
+        "updatedAt": "2026-10-28T22:56:52Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
