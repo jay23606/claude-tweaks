@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T20:30:50.049Z",
+  "computedAt": "2026-10-28T21:02:11.040Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -135,7 +135,7 @@
       },
       {
         "number": 4435,
-        "updatedAt": "2026-10-28T18:38:56Z",
+        "updatedAt": "2026-10-28T20:45:12Z",
         "state": "OPEN"
       },
       {
@@ -2006,84 +2006,6 @@
           "origin": null,
           "risk": "medium",
           "size": "medium",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Origin: review (#4420, lens 3b, low-confidence), approved at PR #4425's Review Console\n\nDefer-reason: pre-existing-outside-diff\n\n## Current State\n\n`plugin/bin/lib/hooks/resume-freshness.js`'s `checkResumeFreshness` maps `fs.existsSync(worktree) === false` to `{ safe: true, verdict: 'worktree-gone' }`. `existsSync` also returns false on `EACCES`, `ELOOP` or `EIO`. So for an `interrupted` run, a recorded worktree path the probe cannot look at reads as gone, and the resume goes ahead.\n\nThe other resume caller, `plugin/bin/lib/flow/consolidated-pass.js`'s `parentLiveDetail`, gates the same case on path-guard's `lstatType(worktree).type === 'missing'`. That is true only for a clean `ENOENT`, so the two callers disagree on an unreadable path. #4420 left the line unchanged, because its spec kept the five pre-probe returns in their existing order.\n\n## Deliverables\n\n- [ ] `checkResumeFreshness` returns `worktree-gone` only when path-guard's `lstatType(worktree).type === 'missing'`. Any other unreadable result falls through to `runLiveness`, whose `error` entry `blocksResume` reads as `indeterminate`.\n- [ ] The verdict-string set and the order of the five pre-probe returns stay unchanged.\n- [ ] One equivalence row in the PR body: an unreadable worktree path of an `interrupted` run moves from `worktree-gone` (resume) to `indeterminate` (block).\n\n## Acceptance Criteria\n\n1. An `interrupted` run whose recorded worktree path is a symlink loop (`ELOOP`) gets verdict `indeterminate`, not `worktree-gone`. The test is red on the current code.\n2. An `interrupted` run whose recorded worktree path does not exist still gets `worktree-gone`.\n3. `tests/path-guard-conformance.test.js`'s allowlist entry for `lib/hooks/resume-freshness.js` (`existsSync: 1`) is removed, and the suite passes.\n4. `npm test` passes.\n\n## Release Note\n\nResuming an interrupted pipeline run no longer treats a worktree path it cannot read as deleted, so it waits instead of resuming over a possibly live run.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/resume-freshness.js` — gate `worktree-gone` on `lstatType`\n- `tests/hooks-resume-freshness.test.js` — unreadable-path and missing-path rows\n\n_Filed by `wrap-up review console` from spec-4420 staged/review-unconfirmed-1.md._\n",
-        "createdAt": "2026-10-26T18:38:49Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4435,
-        "state": "OPEN",
-        "title": "checkResumeFreshness reads an unreadable worktree path as worktree-gone, so an interrupted run resumes",
-        "updatedAt": "2026-10-28T18:38:56Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
           "ceremony": null,
           "solutionUnjustified": false,
           "breaking": false,
