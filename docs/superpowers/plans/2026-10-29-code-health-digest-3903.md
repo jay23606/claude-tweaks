@@ -119,7 +119,7 @@ test('#3903 AC1.1: a guard whose branches differ only after a // inside a URL st
 });
 ```
 
-The third test's body follows the existing identical-branches test's fixture shape (lines 289-306).
+The third test's body follows the existing identical-branches test's fixture shape (lines 289-306); it is the realistic, generator-level reproduction of the false positive (spec: "Use a fixture that reproduces each false positive rather than a hand-built minimal string"), and the two unit tests stay as pins of `normalizeBranch` itself.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -192,14 +192,14 @@ test('#3903 AC4.1: a client held in a module-scope object literal is not per-req
 });
 ```
 
-`repoWith` and `ofKind` are the file's existing helpers.
+`repoWith` and `ofKind` are the file's existing helpers. Realistic fixtures (spec: "Use a fixture that reproduces each false positive rather than a hand-built minimal string"; plan review row 5): the implementer may expand each fixture file into a whole realistic module — a `lib/pools.js` setup module shaped like the `generic-pool` and `undici` README examples (factory object with `create`/`destroy`, `module.exports`), and Express router files that `require('express')`, build `express.Router()` and export it — as long as the asserted candidate list (exact `file:line` values, recomputed for the expanded files) and the still-flagged positive cases stay.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `node --test --test-name-pattern="#3903" tests/bin-lib/code-health/candidates-scale-readiness.test.js`
 Expected: FAIL after Step 1 — AC3.1 finds 2 `unbounded-pool` candidates (the `createPool(` and the undici `new Pool(`); AC4.1 also lists `routes/users.js:2`, `routes/orders.js:1`, `routes/orders.js:2` and `routes/orders.js:3`.
 
-- [ ] **Step 3: Implement** `insideNonObjectBrace` per the Interfaces block and call it in `scanPooling` in place of `braceDepthAt(text, m.index) <= 0`. In `scanPooling`, compute once `const dbDep = [...ctx.deps].some((d) => DATA_DEPS.has(d));` and run the `POOL_CHECKS` loop only when it is true; the `pooling` pass evidence then reads `` `${routeChecked} route file(s) checked for per-request clients, ${ctx.sourceTexts.length} source file(s) checked for uncapped pools` `` when `dbDep`, else `` `${routeChecked} route file(s) checked for per-request clients; uncapped-pool check skipped — no database dependency declared` ``. Rewrite the two Coverage bullets to state the new rules and their limits: the brace classifier has no string or comment awareness; a module-scope `if`/`try` block or IIFE reads as a handler; a parameter-default object (`function f(o = { db: new X() })`) reads as module scope; the pool gate is repo-level, so in a repo that declares a database dependency a non-database `Pool` class still matches. Reword `criteria-scale-readiness.md` line 49 to: a client built once at module scope inside a block the generator reads as a function body (a top-level `if (!globalThis.prisma) { … }` singleton guard, a module-scope IIFE); a client held in a module-scope object literal is already skipped. Reword line 50 to: a non-database `Pool` class (`generic-pool`, `undici`, `workerpool`) in a repo that also declares a database dependency — with none declared the generator skips the check — plus the existing serverless-pooling clause.
+- [ ] **Step 3: Implement** `insideNonObjectBrace` per the Interfaces block and call it in `scanPooling` in place of `braceDepthAt(text, m.index) <= 0`. In `scanPooling`, compute once `const dbDep = [...ctx.deps].some((d) => DATA_DEPS.has(d));` and run the `POOL_CHECKS` loop only when it is true; the `pooling` pass evidence then reads `` `${routeChecked} route file(s) checked for per-request clients, ${ctx.sourceTexts.length} source file(s) checked for uncapped pools` `` when `dbDep`, else `` `${routeChecked} route file(s) checked for per-request clients; uncapped-pool check skipped — no database dependency declared` ``. Rewrite the two Coverage bullets to state the new rules and their limits: the brace classifier has no string or comment awareness; a module-scope `if`/`try` block or IIFE reads as a handler; a parameter-default object (`function f(o = { db: new X() })`) reads as module scope; the pool gate is repo-level, so in a repo that declares a database dependency a non-database `Pool` class still matches; and the gate reads only `DATA_DEPS`, so a pool from a database driver that list does not name (`mariadb`, `pg-pool`, `oracledb`) is skipped as non-database (plan review row 3 — keep the spec's `DATA_DEPS` gate, disclose the miss). Reword `criteria-scale-readiness.md` line 49 to: a client built once at module scope inside a block the generator reads as a function body (a top-level `if (!globalThis.prisma) { … }` singleton guard, a module-scope IIFE); a client held in a module-scope object literal is already skipped. Reword line 50 to: a non-database `Pool` class (`generic-pool`, `undici`, `workerpool`) in a repo that also declares a database dependency — with none declared the generator skips the check — plus the existing serverless-pooling clause.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -262,7 +262,13 @@ git commit -m "Accept a computed string-literal take key as a list bound — sca
 
 ### Orchestrator step (not dispatched): dispositions for all nine findings (AC5.1)
 
-Run by the `/build` orchestrator after Task 4, from the worktree root. Each needs-human-decision ruling is staged with `stage-item.js --id "sdd-ruling-{N}" --allocate --ledger {ledger} --label "SDD ruling" --item 'SDD ruling — {one-liner}: ratify or reverse at the Review Console'` (the sanctioned `/build` shape, `build/dispatch.md`'s carry-forward commands), never applied. The settled rulings for the genuinely-larger items are written as `accepted` ledger rows with their reason, and every disposition is logged to `decisions.md`.
+Run by the `/build` orchestrator after Task 4, from the worktree root. The spec allows a decision item exactly two outcomes — "the build either implements a fix with tests or records a one-line won't-fix or keep-deferred ruling with its reason" — so every staged ruling below is worded as keep-deferred or won't-fix, with any suggested fix carried as a note, never as the ruling itself (plan review row 1). Ratifying one keeps it deferred; a human who wants the noted fix reverses the ruling at the console, which files it as a follow-up.
+
+1. For each needs-human-decision row (6, 7, 8, 9), write a temp `.md` file with the `build/dispatch.md` header block — `Title:` (the one-liner) / `Kind: sdd-ruling` / `Ruling:` (the ruling line) / `Defers: yes` / `Defer-reason: needs-human-decision` / `Staged-at:` (short HEAD sha) — a blank line, then the ruling text, its reason, the suggested-fix note, and the two dispositions (ratify / reverse). Stage it with the sanctioned command, never applied:
+   `node "{plugin-root}/bin/stage-item.js" --run "$PIPELINE_RUN_DIR" --id "sdd-ruling-{N}" --file "{tmp}.md" --allocate --ledger "{ledger path}" --label "SDD ruling" --item 'SDD ruling — {one-liner}: ratify or reverse at the Review Console'`
+   (`{ledger path}` is the `this-run:` path `hooks.js resolve-ledger --run "$PIPELINE_RUN_DIR"` reports.)
+2. Write the settled rulings for rows 2 and 3 as `accepted` ledger rows with their reason.
+3. Post the full nine-row table below as one comment on the run's draft PR (`gh pr comment {pr} --body-file {session-tmp path}`), so the closing PR states a disposition for every item (plan review row 2), and log each disposition to `decisions.md`.
 
 | # | Finding | Disposition |
 |---|---|---|
@@ -271,10 +277,10 @@ Run by the `/build` orchestrator after Task 4, from the worktree root. Each need
 | 3 | scale-readiness `findMany(args)` non-literal / spread / computed key | partly fixed — Task 4 (computed string-literal key); won't-fix (accepted) for a variable argument and a spread: the bound is not visible to the screen, flagging keeps recall, and the fragment tells the judge to read where `args` is built |
 | 4 | scale-readiness module-scope object-literal client | fixed — Task 3 |
 | 5 | scale-readiness `unbounded-pool` on non-DB pools | fixed — Task 3 (the spec names this fix as mechanical) |
-| 6 | scale-readiness `window.fetch(` / `globalThis.fetch(` not matched | staged `sdd-ruling-*` — recommend fix as a follow-up (allow `window.`/`globalThis.`/`self.` receivers in the third-party fetch lookbehind) |
-| 7 | scale-readiness `isRouteFile` naming trap | staged `sdd-ruling-*` — recommend keep-deferred until its trigger (a second caller) fires; today it has no production caller — only `tests/bin-lib/code-health/candidates-scale-readiness.test.js` imports it |
-| 8 | scale-readiness Nuxt/h3/@trpc/server/Elysia read as not applicable | staged `sdd-ruling-*` — recommend adding `h3`, `@trpc/server` and `elysia` to `SERVER_DEPS`, and not `nuxt` (a static Nuxt site, like `next`, has no server work) |
-| 9 | criteria fragment severity calibration | staged `sdd-ruling-*` — recommend `unbounded-pool` off-serverless → low, an AI `inline-slow-work` call on a non-user-facing route → medium, and rewording the low line to "a script whose input is bounded but not fixed-size" so it no longer reads against What NOT to flag |
+| 6 | scale-readiness `window.fetch(` / `globalThis.fetch(` not matched | staged `sdd-ruling-*` — keep-deferred: server route files rarely call fetch through those receivers, and no judge rejection or missed finding has been traced to it. Note: the fix, if wanted, allows `window.`/`globalThis.`/`self.` receivers in the third-party fetch lookbehind |
+| 7 | scale-readiness `isRouteFile` naming trap | staged `sdd-ruling-*` — keep-deferred until its trigger (a second caller) fires; today it has no production caller — only `tests/bin-lib/code-health/candidates-scale-readiness.test.js` imports it |
+| 8 | scale-readiness Nuxt/h3/@trpc/server/Elysia read as not applicable | staged `sdd-ruling-*` — keep-deferred until its trigger (a user reports a missed framework); the miss is already disclosed as "a dependency this list does not name". Note: the fix, if wanted, adds `h3`, `@trpc/server` and `elysia` to `SERVER_DEPS`, and not `nuxt` (a static Nuxt site, like `next`, has no server work) |
+| 9 | criteria fragment severity calibration | staged `sdd-ruling-*` — keep-deferred: the judge already falls back to holistic severity for the unplaced cases. Note: the calibration, if wanted, places `unbounded-pool` off-serverless at low and an AI `inline-slow-work` call on a non-user-facing route at medium, and rewords the low line to "a script whose input is bounded but not fixed-size" so it no longer reads against What NOT to flag |
 
 ## Spec coverage map
 
@@ -285,7 +291,7 @@ Run by the `/build` orchestrator after Task 4, from the worktree root. Each need
 | AC2.1 | Task 1 test |
 | AC3.1, AC3.2 | Task 3 test |
 | AC4.1 | Task 3 test |
-| AC5.1 | Orchestrator step table above (staged `sdd-ruling-*` files + `accepted` ledger rows + `decisions.md`) |
+| AC5.1 | Orchestrator step: the nine-row table posted on the draft PR, plus staged `sdd-ruling-*` files (rows 6-9), `accepted` ledger rows (rows 2-3) and `decisions.md` |
 | AC6.1 | Already satisfied — see below |
 | AC7.1 | `/build` Common Step 5 full-suite run |
 
