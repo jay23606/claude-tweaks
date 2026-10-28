@@ -1,7 +1,7 @@
 {
+  "released": true,
   "runId": "2026-10-28T093056-record-4246",
-  "sessionId": "6632f468-fb30-4491-bfde-ec591460a9c3",
-  "claimedAt": "2026-10-28T09:32:26.691Z",
-  "ttlHours": 72,
-  "host": "Thomass-MacBook-Pro-3376.local"
+  "reason": "pr-opened: spec 4246 (build blocked before test gate; fix wave committed 0e7835a75; draft PR #4504 open, grants kept)",
+  "releasedAt": "2026-10-28T10:59:51.459Z",
+  "link": "https://github.com/thn-inc/claude-tweaks/pull/4504"
 }
