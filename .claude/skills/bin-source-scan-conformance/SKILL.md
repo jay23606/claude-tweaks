@@ -33,7 +33,7 @@ Import it: `const { stripComments, stripperVerdict, STRIPPER_VERDICT_MESSAGES } 
 - Literals are returned unchanged by default, so a token inside generated source text or a bracket-string form (`fs['realpathSync']`) still counts. An operator scan that must not read literal text as code opts in with `stripComments(src, { literals: 'blank' })` (#3491): string, template-text and regex bodies are blanked too, delimiters and offsets stay, and a `\` before a newline (a string's line continuation) stays so the string still compiles. Any other `literals` value throws a TypeError. When a scan uses blank mode, it computes the blank-mode text once and hands that same text to both `stripperVerdict(raw, stripped)` and its matcher, so the mis-parse check judges what the matcher reads.
 - An unterminated construct ends at the end of its line or the input and never throws.
 
-Fixing a stripper defect means editing the helper and adding the planted case to `tests/helpers-strip-comments.test.js`. Every scan picks the fix up. The helper's test owns the stripper's own planted cases. Some scans also keep a fixture that proves their matcher still sees code after a literal holding a comment opener (see "Self-test the matcher").
+Fixing a stripper defect means editing the implementation, `plugin/bin/lib/strip-comments.js` (the helper re-exports it), and adding the planted case to `tests/helpers-strip-comments.test.js`. Every scan picks the fix up. The helper's test owns the stripper's own planted cases. Some scans also keep a fixture that proves their matcher still sees code after a literal holding a comment opener (see "Self-test the matcher").
 
 A new suite that imports the stripper is itself a caller, and two hand-written lists must name it by test-file stem: the header comment of `tests/helpers/strip-comments.js` and `parse-signal-discipline` item 15. `tests/strip-comments-callers-twin.test.js` pins both to the tree, so a suite added without them goes red on its first full run (#4153's `owner-pid-probe` suite cost a fix commit and a second full run this way). Add the stem to both lists in the commit that adds the suite. If the suite reads a source file as text, read it through `readText` from `tests/helpers/read-skill.js`, not a raw `fs.readFileSync`: `raw-markdown-read` flags the raw read.
 
@@ -102,7 +102,7 @@ Assert the exact flagged line numbers, not just a count, because the right count
 | The token can appear in more forms than one call shape (aliases, defaults, bracket access) | Count tokens rather than call shapes, and keep an allowlist with per-file counts (`tests/path-guard-conformance.test.js`) |
 | The property depends on enclosing structure, such as code under a guard block | Extract the governed region first, then match inside it (`guardRegionFor` in `tests/bin-lib/exit-code-conformance.test.js`), and add a detector for a region the stripper blanked |
 | A module cannot import the shared helper the scan enforces (a builtins-only module such as `plugin/bin/lib/visual-decide/server.js`, #1202 AC 8) | Exempt it by invariant, never silently: keep a hand-mirrored copy commented as a mirror of the helper, name it in the scan's exception list, and pin it with an agreement test that compares its accept/reject verdict to the shared primitive over a table of inputs (the `#3642` agreement case in `tests/bin-lib/path-guard/callers-characterization.test.js`) |
-| Changing a stripper behavior | Edit `tests/helpers/strip-comments.js`, add the planted case to `tests/helpers-strip-comments.test.js` first, and watch it fail against the old code |
+| Changing a stripper behavior | Edit `plugin/bin/lib/strip-comments.js` (re-exported by `tests/helpers/strip-comments.js`), add the planted case to `tests/helpers-strip-comments.test.js` first, and watch it fail against the old code |
 | Changing an existing scan's matcher | Add the planted case that motivated the change to its self-test first, and watch it fail against the old code |
 
 ## Anti-Patterns
@@ -124,7 +124,7 @@ Assert the exact flagged line numbers, not just a count, because the right count
 ## Reference
 
 - Instances: `tests/git-status-optional-locks.test.js`, `tests/windows-hide-spawn-conformance.test.js`, `tests/bin-lib/exit-code-conformance.test.js`, `tests/path-guard-conformance.test.js`, `tests/path-containment-conformance.test.js`, `tests/porcelain-cwd-compare-conformance.test.js`
-- Shared helper and its planted cases: `tests/helpers/strip-comments.js` and `tests/helpers-strip-comments.test.js`
+- Shared stripper and its planted cases: `plugin/bin/lib/strip-comments.js` (re-exported by `tests/helpers/strip-comments.js`) and `tests/helpers-strip-comments.test.js`
 - Could-not-parse principle: `.claude/skills/parse-signal-discipline/SKILL.md`, item 15
 - Rule: the `--no-optional-locks` line in `docs/donts.md`
 - Prose-pinning counterpart: `.claude/skills/skill-prose-conformance-tests/SKILL.md`
