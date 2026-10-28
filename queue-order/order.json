@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T21:16:04.999Z",
+  "computedAt": "2026-10-28T22:14:21.136Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -110,7 +110,7 @@
       },
       {
         "number": 4449,
-        "updatedAt": "2026-10-28T18:39:39Z",
+        "updatedAt": "2026-10-28T21:37:49Z",
         "state": "OPEN"
       },
       {
@@ -1627,84 +1627,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "high",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "**Related:** #4303\n\nOrigin: /claude-tweaks:build of #4303 (run 2026-10-25T143627-spec-4303), SDD Task 2 parked finding\n\nDefer-reason: tangential\n\n## Current State\n\nThe cp/mv operand loop in `plugin/bin/lib/hooks/git-command.js` does not skip the value of a value-taking option:\n\n- `cp a b -S .bak` resolves `/r/.bak` and misses `b`, the real destination.\n- `cp --suffix -t X a` makes `explicitTargetDir` read `-t` as the target flag, so the scanner reports `/r/X`. GNU cp under bash 3.2 and 5 overwrites `r/a` and writes the backup `r/a-t`. That is a fail-open.\n\nBoth were checked against GNU cp semantics. macOS cp has no `-S`.\n\n## Deliverables\n\n1. Skip the value of `-S`/`--suffix` (and `--suffix=…`) and any other value-taking cp, mv or install option in the operand loop and in `explicitTargetDir`.\n2. Pin both shapes.\n\n## Acceptance Criteria\n\n- `cp a b -S .bak` resolves `b`.\n- `cp --suffix -t X a` resolves the suffix value as a suffix, not `-t` as the target flag.\n- Each rule has a red-turning mutant.\n- The scanner suites pass.\n\n## Release Note\n\nThe worktree-always guard now reads cp and mv backup-suffix options correctly.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/git-command.js` — modify\n- `tests/hooks-gate-coverage.test.js` — modify\n\n_Filed by `capture` via specShapedBody._",
-        "createdAt": "2026-10-26T23:55:30Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyrJA",
-            "name": "size:low",
-            "description": "Scoring: small, agent-sized change",
-            "color": "D4C5F9"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2myw",
-            "name": "by:capture",
-            "description": "Origin: filed via /capture",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2nbg",
-            "name": "type:bug",
-            "description": "Type: defect in existing behavior",
-            "color": "d73a4a"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcMQ",
-            "name": "priority:medium",
-            "description": "Priority: dispatch picks after priority:high",
-            "color": "0052CC"
-          }
-        ],
-        "number": 4449,
-        "state": "OPEN",
-        "title": "Write gate misreads cp/mv value-taking options (-S/--suffix)",
-        "updatedAt": "2026-10-28T18:39:39Z",
-        "facets": {
-          "origin": "capture",
-          "risk": "low",
-          "size": "low",
-          "ceremony": null,
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "medium",
           "stage": "ready",
           "grants": {
             "build": true,
