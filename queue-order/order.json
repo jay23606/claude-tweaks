@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T09:30:34.558Z",
+  "computedAt": "2026-10-28T11:00:22.471Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -245,7 +245,7 @@
       },
       {
         "number": 4246,
-        "updatedAt": "2026-10-26T14:34:41Z",
+        "updatedAt": "2026-10-28T10:59:59Z",
         "state": "OPEN"
       },
       {
@@ -4934,12 +4934,18 @@
             "name": "shaped:headless",
             "description": "Provenance: shaped by /specify's headless next unit — no human reviewed the spec body",
             "color": "ededed"
+          },
+          {
+            "id": "LA_kwDORUwzVM8AAAAC_vyCZQ",
+            "name": "fix-on-worktree-dispatch-record-4246",
+            "description": "Fixed on worktree-dispatch-record-4246, not yet on the default branch",
+            "color": "FBCA04"
           }
         ],
         "number": 4246,
         "state": "OPEN",
         "title": "Write gate reads << inside ${…} or a same-line $(… <<EOF) as a heredoc opener and strips real commands",
-        "updatedAt": "2026-10-26T14:34:41Z",
+        "updatedAt": "2026-10-28T10:59:59Z",
         "facets": {
           "origin": null,
           "risk": "medium",
