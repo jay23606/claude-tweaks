@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T17:17:55.589Z",
+  "computedAt": "2026-10-28T17:23:18.676Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -385,7 +385,7 @@
       },
       {
         "number": 3819,
-        "updatedAt": "2026-10-24T05:39:28Z",
+        "updatedAt": "2026-10-28T17:20:05Z",
         "state": "OPEN"
       },
       {
@@ -3982,84 +3982,6 @@
           "breaking": false,
           "needsDefinition": false,
           "priority": "medium",
-          "stage": "ready",
-          "grants": {
-            "build": true,
-            "merge": false
-          },
-          "bot": {
-            "inProgress": false,
-            "blocked": false,
-            "parked": false
-          },
-          "acceptance": null,
-          "isParentIssue": false,
-          "notPlanned": false,
-          "shapedHeadless": false
-        }
-      }
-    ],
-    [
-      {
-        "body": "Surface: infra\n\nOrigin: ledger resolve gate (#3304 final review, I3)\n**Related:** #3304, #3675, #3818, #3820, #3876, #3936\n\n## Current State\n\n`plugin/bin/lib/hooks/harness-refusal.js` defines `REFUSAL_FRAGMENTS` (`This session`, ` is isolated in the worktree `, `Refusing to run it`) and `HARNESS_ISOLATION_REFUSAL_RE`, which require the noun `This session`. `post-tool-use-failure.js` uses the regex to log a `wd-guard-refusal` event, and `bash-prefilter.js` uses the signature. The reflect Friction lens reads those events. `tools/upstream-drift/manifest.yml`'s `claude-code` entry asserts each fragment against the installed binary, and `tests/harness-refusal-drift-pin.test.js` keeps the two in lockstep.\n\nProbed against the installed Claude Code 2.1.302 binary (2026-10-24), the refusal noun is chosen by one function:\n\n```\nfunction NI(e){return Tl()?.worktreePath===e\n  ? {noun:\"This session\",possessive:\"a worktree-isolated session's\"}\n  : {noun:\"This agent\",possessive:\"a worktree-isolated agent's\"}}\n```\n\nSo every refusal template (`${noun} is isolated in the worktree …`) says `This agent` whenever the worktree is not the session's own, which is the case for a subagent dispatched with its own isolation worktree. Two more templates are fixed strings: `This agent is isolated in the worktree … no longer exists and the only recovery target is the parent session's shared checkout. Refusing to run there …` and a `${noun}` variant ending `Refusing to run there. Report this instead of retrying.` Neither the `This agent` noun nor `Refusing to run there` matches today's regex, so those refusals produce no `wd-guard-refusal` event.\n\nLens agents running inside the parent session's own worktree do say `This session` and were counted. That is how #3480's roughly 14 lens-agent refusals surfaced and led to #3675's dispatch-prompt fix. The same waste from an agent in its own isolation worktree is invisible today.\n\n## Deliverables\n\n- [ ] Count both: widen the matcher to the `This agent` noun and to the worktree-gone `Refusing to run there` ending, keeping the `This session` match unchanged\n- [ ] Add two fields to each `wd-guard-refusal` event: `actor` (`session` or `agent`, read from the noun) and `variant` (`guard` for the command-shape and different-worktree refusals, `worktree-gone` for the two \"no longer exists\" templates), so the Friction lens can report the operator's own friction separately from dispatched agents' and flag lost isolation\n- [ ] Update `REFUSAL_FRAGMENTS` and the `claude-code` manifest `must-match` values together (noun alternatives plus the `Refusing to run there` signature), and keep `tests/harness-refusal-drift-pin.test.js` in lockstep\n- [ ] Have the reflect Friction lens break the count down by `actor` and call out any `worktree-gone` event by name\n\n## Acceptance Criteria\n\n- `tests/hooks-harness-refusal.test.js` logs a `wd-guard-refusal` event for each of: a `This session … Refusing to run it` refusal (`actor: session`), a `This agent … Refusing to run it` refusal (`actor: agent`), a `This agent … Refusing to run it there` different-worktree refusal, and both worktree-gone templates (`variant: worktree-gone`); and logs none for an unrelated Bash failure\n- Reverting the widened regex turns the agent and worktree-gone cases red, while the session case stays green\n- `tools/upstream-drift`'s `claude-code` check passes against 2.1.302 with the new `must-match` values, and the drift-pin test passes\n- `bash-prefilter.js`'s signature check still fires on every matched refusal\n- `npm test` passes\n\n## Release Note\n\nReflect's friction report now counts worktree-guard refusals hit by dispatched agents, not just by the main session.\n\n## Technical Approach\n\nThe question was whether these refusals are the run operator's friction. They are the run's friction either way. A dispatched agent's refused command is a wasted turn the run pays for, and it is almost always caused by the dispatch prompt the run wrote, which is exactly the signal that produced #3675's fix. Leaving the narrow match would keep that signal for agents sharing the parent's worktree but hide it for agents in their own, an accident of how the agent was dispatched rather than a deliberate scope. The `actor` field keeps \"my own friction\" answerable without discarding the rest.\n\nBuild the regex from fragments as today: a noun alternation (`This session|This agent`), the isolation clause, a lazy gap, then `Refusing to run` followed by ` it` or ` there`. Derive `actor` from the matched noun, and `variant` from the presence of \"no longer exists\".\n\n### Key Files\n\n- `plugin/bin/lib/hooks/harness-refusal.js` — fragments, nouns, signature, regex\n- `plugin/bin/lib/hooks/post-tool-use-failure.js` — event fields `actor` / `variant`\n- `plugin/bin/lib/hooks/bash-prefilter.js` — signature check derived from the module\n- `tools/upstream-drift/manifest.yml` — `claude-code` `must-match` values and their comment block\n- `tests/hooks-harness-refusal.test.js` — new matcher cases\n- `tests/harness-refusal-drift-pin.test.js` — lockstep pin\n- `plugin/skills/reflect/full-mode.md` — the Friction lens's breakdown by `actor` (the file that reads `wd-guard-refusal`)\n\n## Gotchas\n\n- `harness-refusal.js` must still require nothing (`bash-prefilter.js` loads it on every failed Bash call), so build the widened regex from string constants only.\n- The manifest's comment records per-version occurrence counts (`noun:\"This session\"` 1x at 2.1.302, and so on); update the counts with the new fragments, measured against the installed binary, not guessed.\n- ASSUMPTION — verify at build: a subagent's failed Bash call fires the parent session's `PostToolUseFailure` hook with the refusal text intact (the #3480 lens-agent events suggest yes for agents in the parent's worktree); confirm the same for an agent dispatched with `isolation: \"worktree\"` before relying on the new `actor: agent` events appearing.\n\n## Original request\n\nDecide whether friction events should count the subagent and worktree-gone isolation refusals\n\nOrigin: ledger resolve gate\n\nDefer-reason: needs-human-decision\n\n## Current State\n\n`HARNESS_ISOLATION_REFUSAL_RE` in `plugin/bin/lib/hooks/harness-refusal.js` matches only the session noun (\"This session is isolated in the worktree ... Refusing to run it\"). A subagent's refusal (\"This agent is isolated in the worktree ...\") and the worktree-gone variant (ending \"Refusing to run there\") are not logged as `wd-guard-refusal`, so the reflect Friction lens never sees them. Found in #3304's final review (I3).\n\n## Deliverables\n\nMake the decision, then either widen `HARNESS_ISOLATION_REFUSAL_RE` and `REFUSAL_FRAGMENTS` (with the manifest must-match values and the pin tests) or record that the narrow match is intended.\n\n## Open Question\n\nShould the Friction lens count a subagent's and a worktree-gone refusal as the run operator's friction? If yes, widen the regex and `REFUSAL_FRAGMENTS` together with the manifest `claude-code` must-match values; if no, record that the narrow match is intended.\n\n## Release Note\n\nNo user-visible change.\n\n## Technical Approach\n\n### Key Files\n\n- `plugin/bin/lib/hooks/harness-refusal.js` — fragments and regex\n- `tools/upstream-drift/manifest.yml` — claude-code assertions\n\n_Filed by `ledger resolve gate` via specShapedBody._",
-        "createdAt": "2026-10-20T20:57:55Z",
-        "labels": [
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyqXw",
-            "name": "ready",
-            "description": "Stage: spec-shaped and agent-sized — in the authorization gate's worklist",
-            "color": "2EA44F"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruyq1w",
-            "name": "risk:low",
-            "description": "Scoring: low blast radius — safe for autonomous build",
-            "color": "0E8A16"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACruzLxQ",
-            "name": "size:medium",
-            "description": "Scoring: moderate change, may span several files",
-            "color": "8B5CF6"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACry2pJg",
-            "name": "type:task",
-            "description": "Type: maintenance, refactor, docs, or chore work",
-            "color": "ededed"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACrzEqFA",
-            "name": "auto:build",
-            "description": "Grant: agents may build this record autonomously (human-granted; machinery only removes)",
-            "color": "F9D0C4"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACsXHcvg",
-            "name": "priority:low",
-            "description": "Priority: dispatch picks last among prioritized records",
-            "color": "5319E7"
-          },
-          {
-            "id": "LA_kwDORUwzVM8AAAACszEEfQ",
-            "name": "ceremony:standard",
-            "description": "Ceremony: default depth — full review & wrap-up ceremony applies",
-            "color": "FEF2C0"
-          }
-        ],
-        "number": 3819,
-        "state": "OPEN",
-        "title": "Decide whether friction events should count the subagent and worktree-gone isolation refusals",
-        "updatedAt": "2026-10-24T05:39:28Z",
-        "facets": {
-          "origin": null,
-          "risk": "low",
-          "size": "medium",
-          "ceremony": "standard",
-          "solutionUnjustified": false,
-          "breaking": false,
-          "needsDefinition": false,
-          "priority": "low",
           "stage": "ready",
           "grants": {
             "build": true,
