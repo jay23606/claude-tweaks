@@ -10,7 +10,7 @@
 
 **Spec:** `.claude-tweaks/pipelines/2026-10-28T091512-record-3875/work/3875-spec.md` (record #3875)
 
-Scope keywords: MERGE_HEAD, wd-merge-finish, to pass E1, E1 still denies
+Scope keywords: wd-merge-finish, to pass E1, E1 still denies, next-newest live run
 
 ## Global Constraints
 
@@ -45,6 +45,9 @@ Scope keywords: MERGE_HEAD, wd-merge-finish, to pass E1, E1 still denies
 **Files:**
 - Modify: `plugin/bin/lib/hooks/pre-tool-use.js` (new helpers near `isIntegrationBranchFastForwardPush` ~line 425; E1 loop in `runInner` ~lines 2311-2374)
 - Test: `tests/hooks-pre-tool-use.test.js` (append a block after the existing multi-run E1 tests, ~line 308; helpers `gitRepoWithCommit`/`linkedWorktreeOf` already exist at ~330 and are hoisted function declarations)
+- No change (checked): `plugin/bin/lib/hooks/context.js` — `appendEvent` and `listRunDirsWithState(cwd, { status: 'clean' })` already exist.
+
+Covers: AC1.1, AC2.1, AC2.2, AC3.1, AC4.1, AC6.1 (targeted suites here; the full suite runs at Common Step 5).
 
 **Interfaces:**
 - Consumes: `runGit(args, cwd)` from `./git-exec` (returns `{ stdout, failure }`); `canonicalRealpath(p, { fsImpl })`; `ctxLib.listRunDirsWithState(cwd, opts)` (yields `{ dir, state }`; `{ status: 'clean' }` yields only clean runs); `ctxLib.appendEvent(runDir, type, payload)`; E1's existing locals `assigned`, `otherWorktrees`, `topOf`, `fsImpl`, `actual`, `command`.
@@ -75,7 +78,7 @@ Git calls in the fixture use `execFileSync('git', ['-C', dir, ...])`, as the fil
 - [ ] **Step 2: Run the tests to verify the allow cases fail**
 
 Run: `node --test --test-name-pattern="#3875" tests/hooks-pre-tool-use.test.js`
-Expected: FAIL on tests 1 and 2 (deny returned, no `wd-merge-finish`); tests 3-8 PASS (they pin today's verdict).
+Expected: FAIL after Step 1 on tests 1 and 2 (deny returned, no `wd-merge-finish`); tests 3-8 PASS (they pin today's verdict).
 
 - [ ] **Step 3: Implement `readMergeHeads` and `mergeFinishRunDirs` in `plugin/bin/lib/hooks/pre-tool-use.js`**
 
@@ -118,6 +121,8 @@ git commit -m "Let E1 allow a commit concluding a run branch's merge — MERGE_H
 - Modify: `docs/journeys/reconcile-local-merge-branches-from-several-terminals-3809.md:44-45` (step 4's Should understand / Red flags).
 - No change (checked): `wrap-up/auto-merge-short-circuit.md`, `dispatch/settle-and-merge.md`, `_shared/local-merge-auto-finish.md` — each closes only its own branch's run before a conflict-free merge; no sibling chase.
 - Test (existing, unchanged): `tests/local-merge-close-run-ordering.test.js`
+
+Covers: AC5.1.
 
 **Interfaces:**
 - Consumes: Task 1's behavior and event name `wd-merge-finish`; the candidate-set rule in Global Constraints.
