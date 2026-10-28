@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T16:14:51.977Z",
+  "computedAt": "2026-10-28T16:31:55.451Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -420,7 +420,7 @@
       },
       {
         "number": 3731,
-        "updatedAt": "2026-10-24T05:39:10Z",
+        "updatedAt": "2026-10-28T16:31:33Z",
         "state": "OPEN"
       },
       {
@@ -4351,7 +4351,7 @@
         "number": 3731,
         "state": "OPEN",
         "title": "wrap-up Section D never proves the recorded pid or port belongs to the server it recorded",
-        "updatedAt": "2026-10-24T05:39:10Z",
+        "updatedAt": "2026-10-28T16:31:33Z",
         "facets": {
           "origin": null,
           "risk": "medium",
