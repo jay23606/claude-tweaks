@@ -724,6 +724,40 @@ test('#3903 per-request-db-client: an array of objects an arrow function returns
   assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/factory.js:2', 'routes/unicode-space.js:1']);
 });
 
+test('#3903 per-request-db-client: an object inside an arrow expression body is per-call until the group closes or a `,`/`;` at its level; module-scope objects after it are skipped', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/server.js': [
+      "const { PrismaClient } = require('@prisma/client');",
+      "app.get('/x', (req, res) => handle(req, { db: new PrismaClient() }));",
+      'export const createContext = (opts) => createInnerContext({ prisma: new PrismaClient(), ...opts });',
+      'const pick = (cond) => (cond ? { db: new PrismaClient() } : null);',
+      'const deps = { db: new PrismaClient() };',
+      'app.use(makeRouter({ db: new PrismaClient() }));',
+      'const a = () => 1, b = { db: new PrismaClient() };',
+      'const c = [() => 1, { db: new PrismaClient() }];',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(
+    ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]),
+    ['routes/server.js:2', 'routes/server.js:3', 'routes/server.js:4'],
+  );
+});
+
+test('#3903 per-request-db-client: unmatched parens in a comment or string do not close a handler early', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/smiley.js': [
+      "router.get('/', async (req, res) => {",
+      '  // looks fine :) ] )',
+      "  const label = ')';",
+      '  const prisma = new PrismaClient();',
+      '});',
+      '',
+    ].join('\n'),
+  });
+  assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/smiley.js:4']);
+});
+
 test('#3903 per-request-db-client: a stray `}` at module scope does not hide the next handler\'s client', () => {
   const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
     'routes/tpl.js': [

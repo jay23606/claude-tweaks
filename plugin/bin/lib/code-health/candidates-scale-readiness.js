@@ -135,22 +135,26 @@
 //     `new Pool(`, `new Client(`, `new MongoClient(`, `mysql.createConnection(`,
 //     `mysql.createPool(` and `postgres(` inside a block brace. A `{` is an
 //     object-literal brace when the previous non-whitespace character is one
-//     of `= ( , : [ ? | & .` or the previous word is `default`, except that a
-//     `(` or `[` preceded by `=>` opens an arrow function's returned object
-//     (`context: () => ({ db: new PrismaClient() })`, `=> [{ db: new X() }]`),
-//     evaluated per call, so that `{` is a block brace; every other `{` (after
-//     `)`, `=>`, an identifier) is a block brace. A client held in a
+//     of `= ( , : [ ? | & .` or the previous word is `default`; every other
+//     `{` (after `)`, `=>`, an identifier) is a block brace. One exception: an
+//     arrow function's expression body is evaluated per call, so a `=>`
+//     followed by anything other than `{` marks its enclosing group (or the
+//     file level) as an arrow expression body, and every `{` opened while a
+//     mark is active is a block brace (`context: () => ({ db: new X() })`,
+//     `=> [{ db: new X() }]`, `=> handle(req, { db: new X() })`,
+//     `=> (cond ? { db: new X() } : null)`). A mark clears when its group
+//     closes or at a `,` or `;` at its own level. A client held in a
 //     module-scope object literal is therefore skipped, including one directly
-//     after a spread (`...{ db: new X() }`). The scan runs from the start of
-//     the file with no string or comment awareness; a module-scope `if`/`try`
-//     block or IIFE reads as a handler, and a parameter-default object
-//     (`function f(o = { db: new X() })`) reads as module scope, as does an
-//     arrow body returning an object through a ternary or other expression
-//     (`=> (cond ? { db: new X() } : null)`). `new Client(` matches any class
-//     of that name. A client built in a module-scope factory called per
-//     request is not seen.
-//   - `unbounded-pool` scans all source for `new Pool(` without a `max`
-//     option, `createPool(` without `connectionLimit` and `new MongoClient(`
+//     after a spread (`...{ db: new X() }`), but a module-scope arrow factory
+//     called only once (`const make = () => ({ db: new X() })`) reads as
+//     per-request, and so does everything after a semicolon-less module-scope
+//     arrow expression (`const f = x => x` then a newline) until the next `;`
+//     or `,` at that level. The scan runs from the start of the file with no
+//     string or comment awareness (a stray closer is ignored); a module-scope
+//     `if`/`try` block or IIFE reads as a handler, and a parameter-default
+//     object (`function f(o = { db: new X() })`) reads as module scope.
+//     `new Client(` matches any class of that name. A client built in a
+//     module-scope factory called per request is not seen.
 //     without `maxPoolSize`, and names the driver default in its evidence. It
 //     inspects only the literal call arguments: a config held in a variable
 //     reads as uncapped. It runs only when a dependency in `DATA_DEPS` is
@@ -828,46 +832,101 @@ const OBJECT_BRACE_PREFIX = '=(,:[?|&.';
 // Returns insideNonObjectBrace(idx): true when text[0, idx) leaves a block
 // brace open — a function or control body, not an object literal. A `{` is an
 // object-literal brace when the previous non-whitespace character is one of
-// `= ( , : [ ? | & .` or the previous word is `default` (`export default {`),
-// except that a `(` or `[` itself preceded by `=>` opens an arrow function's
-// returned object, evaluated per call, so that `{` is a block brace. Every
-// other `{` (after `)`, `=>`, an identifier, `}`) is a block brace. One
-// left-to-right pass from the start of the file, not a window before the
-// match: a handler longer than MAX_SCAN_CHARS would otherwise lose its opening
-// brace and read as module scope. The scan position persists across calls, so
-// the per-file cost is linear in the file, not in matches times file length;
-// idx must be non-decreasing (a smaller idx restarts the scan). No string or
-// comment awareness.
+// `= ( , : [ ? | & .` or the previous word is `default` (`export default {`);
+// every other `{` (after `)`, `=>`, an identifier, `}`) is a block brace. One
+// exception: an arrow function's expression body is evaluated per call, so a
+// `=>` followed (after whitespace) by anything other than `{` marks the
+// innermost open `(`, `[` or `{` group (or the file level) as inside an arrow
+// expression body, and any `{` opened while a mark is active is a block brace.
+// A mark clears when its group closes, or at a `,` or `;` at its own level.
+// Closers match their own opener within the current `{` scope: a stray or
+// mismatched `)`, `]` or `}` (no string or comment awareness) is ignored, and
+// a `}` discards any unclosed `(` or `[` above its `{`. One left-to-right pass
+// from the start of the file, not a window before the match: a handler longer
+// than MAX_SCAN_CHARS would otherwise lose its opening brace and read as
+// module scope. The scan position persists across calls, so the per-file cost
+// is linear in the file, not in matches times file length; idx must be
+// non-decreasing (a smaller idx restarts the scan).
 function braceTracker(text) {
-  let stack = [];
-  let blockBraces = 0;
-  let pos = 0;
-  let prev = -1; // index of the last non-whitespace character before pos
-  let prev2 = -1; // the non-whitespace character before prev
+  const root = { t: 'root', block: false, marked: false, p: 0, b: 0 };
+  let stack; // open groups, innermost last; frames: { t: '(' | '[' | '{', block, marked, p, b }
+  let scopes; // the root and every open `{` frame: p and b count the `(` and `[` open directly inside
+  let blockBraces;
+  let activeMarks; // marked frames currently open
+  let pos;
+  let prev; // index of the last non-whitespace character before pos
+  const reset = () => {
+    stack = [];
+    scopes = [root];
+    root.marked = false;
+    root.p = 0;
+    root.b = 0;
+    blockBraces = 0;
+    activeMarks = 0;
+    pos = 0;
+    prev = -1;
+  };
+  const discard = (f) => {
+    if (f.marked) activeMarks--;
+    if (f.block) blockBraces--;
+  };
+  // Pops frames through the innermost `(` or `[`; ignored when none is open in this scope.
+  const closeGroup = (t) => {
+    const scope = scopes[scopes.length - 1];
+    if ((t === '(' ? scope.p : scope.b) === 0) return;
+    let f;
+    do {
+      f = stack.pop();
+      discard(f);
+      if (f.t === '(') scope.p--;
+      else scope.b--;
+    } while (f.t !== t);
+  };
+  reset();
   return function insideNonObjectBrace(idx) {
-    if (idx < pos) {
-      stack = [];
-      blockBraces = 0;
-      pos = 0;
-      prev = -1;
-      prev2 = -1;
-    }
+    if (idx < pos) reset();
     for (; pos < idx; pos++) {
       const code = text.charCodeAt(pos);
+      const top = stack.length > 0 ? stack[stack.length - 1] : root;
       if (code === 123) { // {
         const p = prev === -1 ? '' : text[prev];
         let isObject = p !== '' && OBJECT_BRACE_PREFIX.includes(p);
-        if (isObject && (p === '(' || p === '[') && prev2 > 0 && text[prev2] === '>' && text[prev2 - 1] === '=') isObject = false;
         if (!isObject && prev >= 6 && text.startsWith('default', prev - 6) && (prev === 6 || !isWordCode(text.charCodeAt(prev - 7)))) isObject = true;
-        stack.push(!isObject);
-        if (!isObject) blockBraces++;
-      } else if (code === 125) { // } — a stray one pops undefined and is ignored
-        if (stack.pop()) blockBraces--;
+        const frame = { t: '{', block: !isObject || activeMarks > 0, marked: false, p: 0, b: 0 };
+        if (frame.block) blockBraces++;
+        stack.push(frame);
+        scopes.push(frame);
+      } else if (code === 40 || code === 91) { // ( [
+        stack.push({ t: code === 40 ? '(' : '[', block: false, marked: false, p: 0, b: 0 });
+        if (code === 40) scopes[scopes.length - 1].p++;
+        else scopes[scopes.length - 1].b++;
+      } else if (code === 41) { // )
+        closeGroup('(');
+      } else if (code === 93) { // ]
+        closeGroup('[');
+      } else if (code === 125) { // } — a stray one is ignored
+        if (scopes.length > 1) {
+          let f;
+          do {
+            f = stack.pop();
+            discard(f);
+          } while (f.t !== '{');
+          scopes.pop();
+        }
+      } else if (code === 44 || code === 59) { // , ;
+        if (top.marked) {
+          top.marked = false;
+          activeMarks--;
+        }
+      } else if (code === 62 && pos > 0 && text.charCodeAt(pos - 1) === 61) { // =>
+        let k = pos + 1;
+        while (k < text.length && isSpaceCode(text.charCodeAt(k))) k++;
+        if (k < text.length && text.charCodeAt(k) !== 123 && !top.marked) {
+          top.marked = true;
+          activeMarks++;
+        }
       }
-      if (!isSpaceCode(code)) {
-        prev2 = prev;
-        prev = pos;
-      }
+      if (!isSpaceCode(code)) prev = pos;
     }
     return blockBraces > 0;
   };
