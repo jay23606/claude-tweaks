@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-29T00:56:30.180Z",
+  "computedAt": "2026-10-29T01:10:02.478Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -195,7 +195,7 @@
       },
       {
         "number": 4364,
-        "updatedAt": "2026-10-28T07:15:11Z",
+        "updatedAt": "2026-10-29T01:09:35Z",
         "state": "OPEN"
       },
       {
@@ -2307,7 +2307,7 @@
         "number": 4364,
         "state": "OPEN",
         "title": "Keep the express-lane sample review from re-filing findings after a partial capture failure",
-        "updatedAt": "2026-10-28T07:15:11Z",
+        "updatedAt": "2026-10-29T01:09:35Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
