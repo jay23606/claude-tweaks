@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-28T23:13:52.998Z",
+  "computedAt": "2026-10-29T00:08:30.897Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -340,7 +340,7 @@
       },
       {
         "number": 3903,
-        "updatedAt": "2026-10-24T05:39:49Z",
+        "updatedAt": "2026-10-29T00:08:14Z",
         "state": "OPEN"
       },
       {
@@ -3021,7 +3021,7 @@
         "number": 3903,
         "state": "OPEN",
         "title": "code-health: resolve 9 accumulated below-floor digest findings",
-        "updatedAt": "2026-10-24T05:39:49Z",
+        "updatedAt": "2026-10-29T00:08:14Z",
         "facets": {
           "origin": null,
           "risk": "low",
