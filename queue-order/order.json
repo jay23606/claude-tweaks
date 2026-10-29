@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-29T01:10:02.478Z",
+  "computedAt": "2026-10-29T01:17:13.487Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -160,7 +160,7 @@
       },
       {
         "number": 4388,
-        "updatedAt": "2026-10-26T14:33:42Z",
+        "updatedAt": "2026-10-29T01:15:21Z",
         "state": "OPEN"
       },
       {
@@ -3675,7 +3675,7 @@
         "number": 4388,
         "state": "OPEN",
         "title": "Windows regression: 1 test file(s) newly failing after 3ad36593f",
-        "updatedAt": "2026-10-26T14:33:42Z",
+        "updatedAt": "2026-10-29T01:15:21Z",
         "facets": {
           "origin": null,
           "risk": "low",
