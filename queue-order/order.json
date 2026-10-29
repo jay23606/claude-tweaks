@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-29T01:17:13.487Z",
+  "computedAt": "2026-10-29T01:34:41.684Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -35,7 +35,7 @@
       },
       {
         "number": 4469,
-        "updatedAt": "2026-10-28T18:40:57Z",
+        "updatedAt": "2026-10-29T01:34:15Z",
         "state": "OPEN"
       },
       {
@@ -681,7 +681,7 @@
         "number": 4469,
         "state": "OPEN",
         "title": "tidy acceptance-gap and parent-gate scans: filter closed records server-side instead of fetching every closed issue up to backlog-fetch-limit",
-        "updatedAt": "2026-10-28T18:40:57Z",
+        "updatedAt": "2026-10-29T01:34:15Z",
         "facets": {
           "origin": "capture",
           "risk": "low",
