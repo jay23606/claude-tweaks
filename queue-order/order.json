@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-29T00:39:08.204Z",
+  "computedAt": "2026-10-29T00:56:30.180Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -200,7 +200,7 @@
       },
       {
         "number": 4353,
-        "updatedAt": "2026-10-26T14:34:36Z",
+        "updatedAt": "2026-10-29T00:55:57Z",
         "state": "OPEN"
       },
       {
@@ -2391,7 +2391,7 @@
         "number": 4353,
         "state": "OPEN",
         "title": "Worktree Bash guard again refuses spec-status --status complete (regression of #1651, 6.153.0)",
-        "updatedAt": "2026-10-26T14:34:36Z",
+        "updatedAt": "2026-10-29T00:55:57Z",
         "facets": {
           "origin": null,
           "risk": "medium",
