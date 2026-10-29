@@ -135,18 +135,20 @@
 //     `new Pool(`, `new Client(`, `new MongoClient(`, `mysql.createConnection(`,
 //     `mysql.createPool(` and `postgres(` inside a block brace. A `{` is an
 //     object-literal brace when the previous non-whitespace character is one
-//     of `= ( , : [ ? | &` or the previous word is `default`, except that a
-//     `(` preceded by `=>` opens an arrow function's returned object
-//     (`context: () => ({ db: new PrismaClient() })`), evaluated per call, so
-//     that `{` is a block brace; every other `{` (after `)`, `=>`, an
-//     identifier, `.`) is a block brace. A client held in a module-scope
-//     object literal is therefore skipped, except an object directly after a
-//     spread (`...{ db: new X() }`), which reads as a handler. The scan runs
-//     from the start of the file with no string or comment awareness; a
-//     module-scope `if`/`try` block or IIFE reads as a handler, and a
-//     parameter-default object (`function f(o = { db: new X() })`) reads as
-//     module scope. `new Client(` matches any class of that name. A client
-//     built in a module-scope factory called per request is not seen.
+//     of `= ( , : [ ? | & .` or the previous word is `default`, except that a
+//     `(` or `[` preceded by `=>` opens an arrow function's returned object
+//     (`context: () => ({ db: new PrismaClient() })`, `=> [{ db: new X() }]`),
+//     evaluated per call, so that `{` is a block brace; every other `{` (after
+//     `)`, `=>`, an identifier) is a block brace. A client held in a
+//     module-scope object literal is therefore skipped, including one directly
+//     after a spread (`...{ db: new X() }`). The scan runs from the start of
+//     the file with no string or comment awareness; a module-scope `if`/`try`
+//     block or IIFE reads as a handler, and a parameter-default object
+//     (`function f(o = { db: new X() })`) reads as module scope, as does an
+//     arrow body returning an object through a ternary or other expression
+//     (`=> (cond ? { db: new X() } : null)`). `new Client(` matches any class
+//     of that name. A client built in a module-scope factory called per
+//     request is not seen.
 //   - `unbounded-pool` scans all source for `new Pool(` without a `max`
 //     option, `createPool(` without `connectionLimit` and `new MongoClient(`
 //     without `maxPoolSize`, and names the driver default in its evidence. It
@@ -813,7 +815,7 @@ const REQUEST_CLIENT_RE = /\bnew\s+(?:PrismaClient|Pool|Client|MongoClient)\s*\(
 
 // Whitespace by char code, not a regex per character: the brace scan is a hot loop.
 function isSpaceCode(c) {
-  return c === 32 || (c >= 9 && c <= 13) || c === 0xA0 || c === 0xFEFF || c === 0x2028 || c === 0x2029;
+  return c === 32 || (c >= 9 && c <= 13) || c === 0xA0 || c === 0x1680 || (c >= 0x2000 && c <= 0x200A) || c === 0x2028 || c === 0x2029 || c === 0x202F || c === 0x205F || c === 0x3000 || c === 0xFEFF;
 }
 
 function isWordCode(c) {
@@ -821,15 +823,15 @@ function isWordCode(c) {
 }
 
 // Characters after which a `{` opens an object literal, never a block.
-const OBJECT_BRACE_PREFIX = '=(,:[?|&';
+const OBJECT_BRACE_PREFIX = '=(,:[?|&.';
 
 // Returns insideNonObjectBrace(idx): true when text[0, idx) leaves a block
 // brace open — a function or control body, not an object literal. A `{` is an
 // object-literal brace when the previous non-whitespace character is one of
-// `= ( , : [ ? | &` or the previous word is `default` (`export default {`),
-// except that a `(` itself preceded by `=>` opens an arrow function's returned
-// object, evaluated per call, so that `{` is a block brace. Every other `{`
-// (after `)`, `=>`, an identifier, `}`, `.`) is a block brace. One
+// `= ( , : [ ? | & .` or the previous word is `default` (`export default {`),
+// except that a `(` or `[` itself preceded by `=>` opens an arrow function's
+// returned object, evaluated per call, so that `{` is a block brace. Every
+// other `{` (after `)`, `=>`, an identifier, `}`) is a block brace. One
 // left-to-right pass from the start of the file, not a window before the
 // match: a handler longer than MAX_SCAN_CHARS would otherwise lose its opening
 // brace and read as module scope. The scan position persists across calls, so
@@ -855,11 +857,11 @@ function braceTracker(text) {
       if (code === 123) { // {
         const p = prev === -1 ? '' : text[prev];
         let isObject = p !== '' && OBJECT_BRACE_PREFIX.includes(p);
-        if (isObject && p === '(' && prev2 > 0 && text[prev2] === '>' && text[prev2 - 1] === '=') isObject = false;
+        if (isObject && (p === '(' || p === '[') && prev2 > 0 && text[prev2] === '>' && text[prev2 - 1] === '=') isObject = false;
         if (!isObject && prev >= 6 && text.startsWith('default', prev - 6) && (prev === 6 || !isWordCode(text.charCodeAt(prev - 7)))) isObject = true;
         stack.push(!isObject);
         if (!isObject) blockBraces++;
-      } else if (code === 125 && stack.length > 0) { // }
+      } else if (code === 125) { // } — a stray one pops undefined and is ignored
         if (stack.pop()) blockBraces--;
       }
       if (!isSpaceCode(code)) {

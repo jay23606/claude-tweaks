@@ -323,8 +323,10 @@ test('#3903 unbounded-list-query: a computed string-literal take/limit key bound
       'const b = await prisma.post.findMany({ ["limit"]: 10 });',
       'const c = await prisma.post.findMany({ [key]: 10 });',
       'const d = await prisma.post.findMany({ [`take`]: 10 });',
+      // Line 5 is deliberately invalid JS: mismatched quotes must not read as a literal key.
       "const e = await prisma.post.findMany({ ['take\"]: 10 });",
       "const f = await prisma.post.findMany({ ['skip']: 10 });",
+      "const g = await prisma.post.findMany({ [ 'take' ] : 10 });",
       '',
     ].join('\n'),
   });
@@ -701,6 +703,25 @@ test('#3903 AC4.1 per-request-db-client: objects after `: [ ? | &` at module sco
     ].join('\n'),
   });
   assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/mixed.js:7']);
+});
+
+test('#3903 per-request-db-client: an array of objects an arrow function returns per call is flagged; a spread object at module scope is skipped', () => {
+  const root = repoWith({ express: '^4', '@prisma/client': '^5' }, {
+    'routes/factory.js': [
+      "const { PrismaClient } = require('@prisma/client');",
+      'const makeDeps = () => [{ db: new PrismaClient() }];',
+      "router.get('/', async (req, res) => res.json(makeDeps()));",
+      '',
+    ].join('\n'),
+    'routes/spread.js': [
+      'const deps = { ...base, ...{ db: new PrismaClient() } };',
+      "router.get('/', async (req, res) => res.json(await deps.db.item.findMany({ take: 5 })));",
+      '',
+    ].join('\n'),
+    // U+2003 EM SPACE and U+3000 between `=>` and `(` count as whitespace, as /\s/ does.
+    'routes/unicode-space.js': 'const makeDeps = () => 　({ db: new PrismaClient() });\n',
+  });
+  assert.deepEqual(ofKind(root, 'per-request-db-client').map((c) => c.evidence.match(/^(\S+:\d+) /)[1]), ['routes/factory.js:2', 'routes/unicode-space.js:1']);
 });
 
 test('#3903 per-request-db-client: a stray `}` at module scope does not hide the next handler\'s client', () => {
