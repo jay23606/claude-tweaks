@@ -1,5 +1,5 @@
 {
-  "computedAt": "2026-10-29T00:08:30.897Z",
+  "computedAt": "2026-10-29T00:21:14.002Z",
   "runId": null,
   "freshnessSignal": {
     "issues": [
@@ -285,7 +285,7 @@
       },
       {
         "number": 4030,
-        "updatedAt": "2026-10-24T08:16:38Z",
+        "updatedAt": "2026-10-29T00:20:53Z",
         "state": "OPEN"
       },
       {
@@ -2787,7 +2787,7 @@
         "number": 4030,
         "state": "OPEN",
         "title": "Re-measure and move build,test dispatch agents to the Standard profile once ceremony is deterministic",
-        "updatedAt": "2026-10-24T08:16:38Z",
+        "updatedAt": "2026-10-29T00:20:53Z",
         "facets": {
           "origin": "capture",
           "risk": "medium",
