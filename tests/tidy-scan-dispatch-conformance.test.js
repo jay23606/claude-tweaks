@@ -17,6 +17,7 @@ const SCAN_PROCEDURES = read('plugin/skills/tidy/scan-procedures.md');
 const STEP1_RECORDS = read('plugin/skills/tidy/step-1-records.md');
 const SCAN_ACCEPTANCE = read('plugin/skills/_shared/github-pr-scan-acceptance.md');
 const STEP6_AUTO = read('plugin/skills/tidy/step-6-auto.md');
+const SKILL = read('plugin/skills/tidy/SKILL.md');
 
 test('scan-execution.md\'s scan template carries no row cap or count row (#4468)', () => {
   assert.doesNotMatch(SCAN_EXECUTION, /\+N more/);
@@ -60,7 +61,8 @@ test('scan-execution.md\'s dispatch block runs Step 4.5\'s reconcile before disp
   assert.doesNotMatch(SCAN_EXECUTION, /they write nothing/);
   assert.match(SCAN_EXECUTION, /omits only the "Reconcile first" paragraph \(it keeps Working-directory discipline\)/);
   assert.match(SCAN_EXECUTION, /feed Step 6's \*\*Applied automatically\*\* section/);
-  assert.match(SCAN_EXECUTION, /none leaves lasting repo, forge, or run-dir state/);
+  assert.match(SCAN_EXECUTION, /none leaves lasting repo or forge state/);
+  assert.match(SCAN_EXECUTION, /the context bundles Steps 4\.7 and 4\.8 compose into the run dir's `context\/`/);
   assert.doesNotMatch(SCAN_EXECUTION, /mutate no repo state|mutates repo state/);
   assert.match(SCAN_EXECUTION, /\(no Task dispatch\), the reconcile still runs first, before Step 1/);
 });
@@ -105,7 +107,42 @@ test('step-6-auto.md allows a Yours group to close with a within-width split of 
   assert.doesNotMatch(STEP6_AUTO, /closes with one batch or ref-less line/);
   assert.match(STEP6_AUTO, /one batch line \(or its within-width split\) \/ ref-less line per group/);
   assert.match(STEP6_AUTO, /closes with one batch line \(or its within-width split\), one ref-less line, or a paste block/);
+  assert.match(STEP6_AUTO, /then its batch line \(or its within-width split\) or ref-less line when the group has one/);
+});
+
+test('step-6-auto.md\'s Abandoned-branch row points at the cleanly-merged Delete row below it (#4468)', () => {
   assert.match(STEP6_AUTO, /cleanly-merged Delete row below predates/);
+});
+
+test('scan-procedures.md Step 4.5 names every mutating git command only as Step 7\'s (#4468)', () => {
+  const section = step45Section();
+  const mutating = /git (?:-C "\{REPO_ROOT\}" )?(?:branch -[dD]|worktree remove|update-ref -d|reset --hard)\b/g;
+  const hits = [...section.matchAll(mutating)];
+  assert.ok(hits.length > 0, 'Step 4.5 still names the Step 7 commands it defers to');
+  for (const hit of hits) {
+    const before = section.slice(Math.max(0, hit.index - 40), hit.index);
+    assert.match(before, /Step 7/, `"${hit[0]}" appears outside a Step 7 attribution`);
+  }
+});
+
+test('scan-execution.md\'s inlined scan template tells agents they are read-only (#4468)', () => {
+  const fence = SCAN_EXECUTION.slice(SCAN_EXECUTION.indexOf('OUTPUT FORMAT (required):'));
+  assert.match(fence.slice(0, fence.indexOf('```')), /Read only: never run reconcile, a console close-out, or any command that deletes, removes, pushes, or stages/);
+});
+
+test('scan-execution.md records tidy\'s deliberate Template A divergence (#4468)', () => {
+  assert.doesNotMatch(SCAN_EXECUTION, /Template A itself is unchanged/);
+  assert.match(SCAN_EXECUTION, /The one deliberate divergence from `_shared\/subagent-dispatch-core\.md`'s Template A is its row-cap line/);
+});
+
+test('a failed Step 4.5 reconcile renders a failure line, never an empty Applied automatically (#4468)', () => {
+  assert.match(step45Section(), /render \*\*Applied automatically\*\* as the one line `Reconcile failed \(\{reason\}\) — worktree and branch findings below read unconverged state` rather than omitting it/);
+  assert.match(STEP6_AUTO, /a failed Step 4\.5 reconcile is not empty: it renders its failure line/);
+});
+
+test('both Step 6 run-dir mint sites log the held Step 4.5 reconcile JSON (#4468)', () => {
+  assert.match(STEP6_AUTO, /then log the Step 4\.5 reconcile JSON the main thread held from before the scan batch into that `decisions\.md`/);
+  assert.match(SKILL, /and log Step 4\.5's held reconcile JSON there/);
 });
 
 test('step-6-auto.md splits an over-width Yours batch line into consecutive batch lines (#4468)', () => {
