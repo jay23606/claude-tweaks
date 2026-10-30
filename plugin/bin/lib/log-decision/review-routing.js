@@ -15,6 +15,9 @@ const ALLOWED_SEVERITIES = {
   'kept-prompt': ['critical'],
 };
 const STAGE_PATH_RE = /^staged\/review-\d+\.patch$/;
+const COMMIT_RE = /^[0-9a-f]{7,40}$/;
+// The release gate classifies Step 3 lines by these literals; a category must never inject one.
+const GATE_TOKEN_RE = /severity finding|critical finding/i;
 
 function singleLineProblem(flag, value) {
   if (typeof value !== 'string' || !value.trim()) return `${flag} is required (a non-empty string)`;
@@ -34,11 +37,11 @@ function composeRoutingLine({ route, severity, category, at, stagePath, commit }
   }
   const problem = singleLineProblem('--category', category) || singleLineProblem('--at', at);
   if (problem) return { error: problem };
+  if (GATE_TOKEN_RE.test(category)) return { error: '--category must not contain "severity finding" or "critical finding" (a release-gate token)' };
 
   if (route === 'auto') {
     if (stagePath != null) return { error: '--stage-path is not valid with --route auto' };
-    const commitProblem = singleLineProblem('--commit', commit);
-    if (commitProblem) return { error: commitProblem };
+    if (typeof commit !== 'string' || !COMMIT_RE.test(commit)) return { error: '--commit must be a 7-40 character lowercase hex commit sha' };
     return { status: 'AUTO', text: `applied ${sev}-severity ${category} fix at ${at}`, reversibility: `high (commit ${commit})` };
   }
   if (route === 'staged') {

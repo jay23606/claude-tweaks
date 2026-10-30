@@ -40,10 +40,10 @@ const skill = readText(SKILL);
 const BLOCKING = gateTokens(skill, '| `review: blocking` |');
 const FINDINGS = gateTokens(skill, '| `review: findings').filter((t) => t !== 'Step 3 Routing:');
 
-// The release gate's classification, per the table: blocking on a blocking token, findings on a findings token, else clean.
+// The release gate's classification (the brief's definition): blocking on a blocking token, findings on any Step 3 Routing line, else clean.
 function classify(lines) {
   if (lines.some((l) => BLOCKING.some((t) => l.includes(t)))) return 'review: blocking';
-  if (lines.some((l) => FINDINGS.some((t) => l.includes(t)))) return 'review: findings';
+  if (lines.some((l) => l.includes('Step 3 Routing:'))) return 'review: findings';
   return 'review: clean';
 }
 
@@ -64,6 +64,8 @@ test('release Step 3 classifies composed lines as the release gate table says', 
     { label: 'KEPT-PROMPT critical', argv: ['--route', 'kept-prompt', '--severity', 'critical', '--category', 'security', '--at', 'src/a.js:12'], verdict: 'review: blocking' },
     { label: 'STAGED medium', argv: ['--route', 'staged', '--severity', 'medium', '--category', 'naming', '--at', 'src/b.js:4', '--stage-path', 'staged/review-4.patch'], verdict: 'review: findings' },
     { label: 'AUTO low', argv: ['--route', 'auto', '--severity', 'low', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234'], verdict: 'review: findings' },
+    { label: 'AUTO medium', argv: ['--route', 'auto', '--severity', 'medium', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234'], verdict: 'review: findings' },
+    { label: 'STAGED low', argv: ['--route', 'staged', '--severity', 'low', '--category', 'naming', '--at', 'src/b.js:4', '--stage-path', 'staged/review-5.patch'], verdict: 'review: findings' },
   ];
   for (const c of cases) {
     const { main, runDir } = fixture();
@@ -116,6 +118,15 @@ test('every invalid route, severity or flag combination exits 2 and writes nothi
     'unknown --severity': ['--route', 'staged', '--severity', 'severe', ...COMMON, '--stage-path', 'staged/review-3.patch'],
     'auto with --stage-path': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc1234', '--stage-path', 'staged/review-3.patch'],
     'staged with --commit': ['--route', 'staged', '--severity', 'high', ...COMMON, '--stage-path', 'staged/review-3.patch', '--commit', 'abc1234'],
+    'kept-prompt with --stage-path': ['--route', 'kept-prompt', '--severity', 'critical', ...COMMON, '--stage-path', 'staged/review-3.patch'],
+    'kept-prompt with --commit': ['--route', 'kept-prompt', '--severity', 'critical', ...COMMON, '--commit', 'abc1234'],
+    'staged with a suffixed --stage-path': ['--route', 'staged', '--severity', 'high', ...COMMON, '--stage-path', 'staged/review-3.patch.bak'],
+    'staged with a prefixed --stage-path': ['--route', 'staged', '--severity', 'high', ...COMMON, '--stage-path', 'x/staged/review-3.patch'],
+    'auto with a non-hex --commit': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc)'],
+    'a category naming a critical finding': ['--route', 'staged', '--severity', 'low', '--category', 'critical finding', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'a category naming a severity finding in any case': ['--route', 'staged', '--severity', 'medium', '--category', 'Medium-Severity FINDING', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'a category with an interior newline': ['--route', 'staged', '--severity', 'high', '--category', 'security\nlens', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'a missing --at': ['--route', 'staged', '--severity', 'high', '--category', 'security', '--stage-path', 'staged/review-3.patch'],
     'trailing bare --category': ['--route', 'staged', '--severity', 'high', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch', '--category'],
     'empty --category': ['--route', 'staged', '--severity', 'high', '--category', '', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
   };
@@ -126,6 +137,32 @@ test('every invalid route, severity or flag combination exits 2 and writes nothi
     assert.match(streamOf(out, 'err'), /review-routing-line\.js: /, label);
     assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, `${label}: decisions.md never created`);
   }
+});
+
+test('a trailing bare --stage-path is a usage error naming the flag, and nothing is written', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--route', 'auto', '--severity', 'low', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234', '--stage-path'], deps(main, out));
+  assert.equal(code, 2);
+  assert.match(streamOf(out, 'err'), /--stage-path requires a value/);
+  assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, 'decisions.md never created');
+});
+
+test('an unknown --severity names the lowercase set', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--route', 'staged', '--severity', 'severe', '--category', 'security', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'], deps(main, out));
+  assert.equal(code, 2);
+  assert.match(streamOf(out, 'err'), /--severity must be one of low\|medium\|high\|critical/);
+});
+
+test('a missing --run is a usage error from the CLI itself, and nothing is written', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--route', 'staged', '--severity', 'high', '--category', 'security', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'], deps(main, out));
+  assert.equal(code, 2);
+  assert.match(streamOf(out, 'err'), /review-routing-line\.js: --run <run-dir> is required/);
+  assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, 'decisions.md never created');
 });
 
 test('a shadow run dir is refused with exit 3', () => {
