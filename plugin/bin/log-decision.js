@@ -9,7 +9,8 @@
 // { status, text, step?, spec?, reversibility?, lever?, section? } (an element's section wins over --section),
 // each validated like the single-entry flags before any is written; exclusive with --status/--text/--text-file/
 // --step/--spec/--reversibility/--lever.
-// Exit 0 appended (every entry echoed to stdout, in order); 2 malformed invocation; 3 run dir missing or not
+// Exit 0 appended (every entry echoed to stdout, in order); 2 malformed invocation (incl. a text beginning with
+// its own --step value followed by `:` — formatEntry writes that prefix, so the repeat is refused); 3 run dir missing or not
 // anchored under the main checkout (a worktree-local shadow — _shared/pipeline-run-dir.md).
 // The decisions.md half of #637; the staged/ half now ships as bin/stage-item.js.
 'use strict';
@@ -81,6 +82,7 @@ function run(argv, deps = realDeps) {
       o.text = line;
     }
     if (!o.text || !String(o.text).trim()) return usageError('--text or --text-file is required');
+    if (repeatsStep(o.step, o.text)) return usageError(repeatsStepMessage(o.step, o.text));
     if (!REVERSIBILITY_RE.test(String(o.reversibility))) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`);
     if (o.spec !== null && !/^\d+$/.test(String(o.spec))) return usageError('--spec must be a record number');
     specs = [{ status: o.status, step: o.step, spec: o.spec, text: o.text, reversibility: o.reversibility, lever: o.lever, section: o.section }];
@@ -122,6 +124,15 @@ function readEntries(file, defaultSection) {
   return { entries };
 }
 
+// True iff text opens with `{step}:` — the prefix formatEntry already writes before the text.
+function repeatsStep(step, text) {
+  return typeof step === 'string' && step !== '' && String(text).trim().startsWith(step + ':');
+}
+
+function repeatsStepMessage(step, text) {
+  return `--text repeats --step: --step "${step}", --text "${text}" — the step prefix is written for you; drop it from the text`;
+}
+
 // The single-entry flags' checks, applied to one --entries element; null when valid.
 function entryProblem(el) {
   if (!el || typeof el !== 'object' || Array.isArray(el)) return 'must be an object';
@@ -130,6 +141,7 @@ function entryProblem(el) {
   if (!STATUSES.includes(el.status)) return `status must be one of ${STATUSES.join('|')}`;
   if (typeof el.text !== 'string' || !el.text.trim()) return 'text is required (a non-empty string)';
   if (/[\r\n]/.test(el.text.replace(/\s+$/, ''))) return 'text must be one line (no interior line breaks)';
+  if (repeatsStep(el.step, el.text)) return repeatsStepMessage(el.step, el.text);
   for (const key of ['step', 'lever', 'section']) {
     if (el[key] != null && (typeof el[key] !== 'string' || /[\r\n]/.test(el[key]))) return `${key} must be a single-line string`;
   }
