@@ -43,12 +43,23 @@ test('scan-procedures.md Step 4.5 reconcile runs in the main thread before the s
   );
   assert.match(section, /\*\*Reconcile first — main thread, before the scan batch:\*\*/);
   assert.match(section, /the Step 4\.5 scan agent never runs it/);
+  assert.match(section, /the agent's inlined section skips this paragraph, reading converged state/);
+  assert.match(section, /on a standalone run with no run dir yet, hold the JSON and log it when Step 6 mints the run dir/);
 });
 
 test('scan-execution.md\'s dispatch block runs Step 4.5\'s reconcile before dispatching (#4468)', () => {
   assert.match(SCAN_EXECUTION, /Before dispatching the batch, when Step 4\.5 is in scope, run its reconcile in the main thread/);
   assert.match(SCAN_EXECUTION, /scan agents are read-only/);
-  assert.match(SCAN_EXECUTION, /inlined Step 4\.5 section starts at "Worktrees and merged remote branches — shared probe"/);
+  assert.match(SCAN_EXECUTION, /omits only the "Reconcile first" paragraph \(it keeps Working-directory discipline\)/);
   assert.match(SCAN_EXECUTION, /feed Step 6's \*\*Applied automatically\*\* section/);
-  assert.match(SCAN_EXECUTION, /Step 1's `\{release-note-candidates-file\}` is the one write/);
+  assert.match(SCAN_EXECUTION, /none mutates repo state, the forge, or the run dir/);
+  assert.match(SCAN_EXECUTION, /\(no Task dispatch\), the reconcile still runs first, before Step 1/);
+});
+
+test('scan-execution.md places the main-thread reconcile before the parallel dispatch line (#4468)', () => {
+  const reconcileAt = SCAN_EXECUTION.indexOf('Before dispatching the batch, when Step 4.5 is in scope');
+  const dispatchAt = SCAN_EXECUTION.indexOf('**Parallel execution:** Dispatch the agent-backed steps');
+  assert.ok(reconcileAt !== -1, 'reconcile paragraph is present');
+  assert.ok(dispatchAt !== -1, 'parallel dispatch line is present');
+  assert.ok(reconcileAt < dispatchAt, 'reconcile paragraph precedes the parallel dispatch line');
 });
