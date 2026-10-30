@@ -68,7 +68,9 @@ Claude-Session: https://claude.ai/code/session_01YPgdwTF5oxR7DnGFhhiX8r"
 
 ### Task 2: Step 4.5 reconcile runs in the main thread before the scan batch
 
-**Review risk:** high — ordering: a mutating reconcile must finish before the parallel scan batch dispatches; agents read the state it converges.
+**Review risk:** high
+
+Why high: ordering — a mutating reconcile must finish before the parallel scan batch dispatches; agents read the state it converges.
 
 **Files:**
 - Modify: `plugin/skills/tidy/scan-procedures.md:77` (lead-in only)
