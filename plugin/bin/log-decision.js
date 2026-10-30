@@ -82,7 +82,7 @@ function run(argv, deps = realDeps) {
       o.text = line;
     }
     if (!o.text || !String(o.text).trim()) return usageError('--text or --text-file is required');
-    if (repeatsStep(o.step, o.text)) return usageError(repeatsStepMessage(o.step, o.text));
+    if (repeatsStep(o.step, o.text)) return usageError(repeatsStepMessage(o.step, o.text, false));
     if (!REVERSIBILITY_RE.test(String(o.reversibility))) return usageError(`--reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`);
     if (o.spec !== null && !/^\d+$/.test(String(o.spec))) return usageError('--spec must be a record number');
     specs = [{ status: o.status, step: o.step, spec: o.spec, text: o.text, reversibility: o.reversibility, lever: o.lever, section: o.section }];
@@ -129,8 +129,10 @@ function repeatsStep(step, text) {
   return typeof step === 'string' && step !== '' && String(text).trim().startsWith(step + ':');
 }
 
-function repeatsStepMessage(step, text) {
-  return `--text repeats --step: --step "${step}", --text "${text}" — the step prefix is written for you; drop it from the text`;
+// The --entries form names its element fields (text/step); the single-entry flags keep --text/--step.
+function repeatsStepMessage(step, text, fromEntry) {
+  const [textName, stepName] = fromEntry ? ['text', 'step'] : ['--text', '--step'];
+  return `${textName} repeats ${stepName}: ${stepName} "${step}", ${textName} "${text}" — the step prefix is written for you; drop it from the text`;
 }
 
 // The single-entry flags' checks, applied to one --entries element; null when valid.
@@ -141,10 +143,10 @@ function entryProblem(el) {
   if (!STATUSES.includes(el.status)) return `status must be one of ${STATUSES.join('|')}`;
   if (typeof el.text !== 'string' || !el.text.trim()) return 'text is required (a non-empty string)';
   if (/[\r\n]/.test(el.text.replace(/\s+$/, ''))) return 'text must be one line (no interior line breaks)';
-  if (repeatsStep(el.step, el.text)) return repeatsStepMessage(el.step, el.text);
   for (const key of ['step', 'lever', 'section']) {
     if (el[key] != null && (typeof el[key] !== 'string' || /[\r\n]/.test(el[key]))) return `${key} must be a single-line string`;
   }
+  if (repeatsStep(el.step, el.text)) return repeatsStepMessage(el.step, el.text, true);
   if (el.reversibility != null && (typeof el.reversibility !== 'string' || !REVERSIBILITY_RE.test(el.reversibility))) return `reversibility must be one of ${REVERSIBILITY.join('|')}, optionally followed by " (qualifier)"`;
   if (el.spec != null && !/^\d+$/.test(String(el.spec))) return 'spec must be a record number';
   return null;
