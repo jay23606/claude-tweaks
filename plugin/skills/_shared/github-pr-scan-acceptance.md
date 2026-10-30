@@ -324,10 +324,9 @@ not `low`. This is the one finding in this file whose row count is a standing ba
 than a defect count: on a repo that closes records ad hoc it returns a three-digit set on every
 run, indefinitely. `/claude-tweaks:tidy` runs this scope in the same agent as `repo-wide`
 (`tidy/scan-procedures.md` Step 4.8) and the agent returns its rows highest-severity-first with no
-row cap, so any tier above `info` would bury every actionable `repo-wide` finding beneath a
-standing backlog. `info` is
-also where its behavioural sibling already sits — "Open PR awaiting review", the other
-no-mutation, always-surfaced row (`tidy/step-6-auto.md`).
+row cap, so any tier above `info` would bury every actionable `repo-wide` finding beneath a standing
+backlog. `info` is also where its behavioural sibling already sits — "Open PR awaiting review", the
+other no-mutation, always-surfaced row (`tidy/step-6-auto.md`).
 
 ## Scope: `parent-gate` (consumed by /tidy Step 4.8)
 
