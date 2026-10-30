@@ -78,8 +78,34 @@ test('scan-procedures.md Step 4.5 classifies branches with read-only probes, nev
   assert.doesNotMatch(section, /Use `git -C "\{REPO_ROOT\}" branch -d/);
   assert.doesNotMatch(section, /Deleted — no further action/);
   assert.doesNotMatch(section, /Use `git -C "\{REPO_ROOT\}" worktree remove/);
+  assert.match(section, /merge-base --is-ancestor \{branch\} \{branch\}@\{upstream\}/);
   assert.match(section, /merge-base --is-ancestor \{branch\} HEAD/);
+  assert.match(section, /contained in its own `@\{upstream\}` \(or `HEAD` when it has none\)/);
+  assert.doesNotMatch(section, /contained in `HEAD` or its own `@\{upstream\}`/);
   assert.match(section, /Delete \(cleanly merged — Step 7 runs git branch -d\)/);
+});
+
+test('scan-procedures.md Step 4.5 keeps the checked-out and merged-into-other-base outcomes, checked-out first (#4468)', () => {
+  const section = step45Section();
+  assert.match(section, /checked out in \{worktree-path\} — remove worktree first, then re-run/);
+  assert.match(section, /merged into \{other-base\} — needs -D, manual review required/);
+  const checkAt = section.indexOf('Before classifying a branch by merge state at all');
+  const tableAt = section.indexOf('| Outcome | Recommendation |');
+  assert.notEqual(checkAt, -1, 'checked-out check paragraph is present');
+  assert.notEqual(tableAt, -1, 'outcome table is present');
+  assert.ok(checkAt < tableAt, 'the checked-out check precedes the outcome table');
+});
+
+test('scan-procedures.md Step 4.5 working-directory rationale does not claim the scan deletes or removes (#4468)', () => {
+  assert.doesNotMatch(step45Section(), /branch deletions and worktree removals can land in the wrong checkout/);
+});
+
+test('step-6-auto.md allows a Yours group to close with a within-width split of its batch line (#4468)', () => {
+  assert.doesNotMatch(STEP6_AUTO, /one batch \/ ref-less line per group/);
+  assert.doesNotMatch(STEP6_AUTO, /closes with one batch or ref-less line/);
+  assert.match(STEP6_AUTO, /one batch line \(or its within-width split\) \/ ref-less line per group/);
+  assert.match(STEP6_AUTO, /closes with one batch line \(or its within-width split\), one ref-less line, or a paste block/);
+  assert.match(STEP6_AUTO, /cleanly-merged Delete row below predates/);
 });
 
 test('step-6-auto.md splits an over-width Yours batch line into consecutive batch lines (#4468)', () => {
