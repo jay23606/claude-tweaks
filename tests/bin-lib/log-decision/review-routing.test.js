@@ -106,6 +106,16 @@ test('the AUTO line carries the commit in the reversibility qualifier', () => {
   assert.equal(decisionsOf(runDir), '## /review\n- AUTO 09:05:07 — Step 3 Routing: applied low-severity Convention fix at src/a.js:3. Reversibility: high (commit abc1234).\n');
 });
 
+test('--spec and --lever are forwarded to log-decision.js and render in the written line', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--route', 'auto', '--severity', 'low', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234', '--spec', '12', '--lever', 'review-auto-apply-ceiling=low (default); prose-exempt bump applied'], deps(main, out));
+  assert.equal(code, 0, streamOf(out, 'err'));
+  const text = decisionsOf(runDir);
+  assert.ok(text.includes('spec #12 — Step 3 Routing:'), text);
+  assert.ok(text.includes('[lever: review-auto-apply-ceiling=low (default); prose-exempt bump applied]'), text);
+});
+
 test('every invalid route, severity or flag combination exits 2 and writes nothing', () => {
   const COMMON = ['--category', 'security', '--at', 'src/a.js:12'];
   const cases = {
@@ -129,7 +139,7 @@ test('every invalid route, severity or flag combination exits 2 and writes nothi
     'a category naming a critical finding': ['--route', 'staged', '--severity', 'low', '--category', 'critical finding', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
     'a category naming a severity finding in any case': ['--route', 'staged', '--severity', 'medium', '--category', 'Medium-Severity FINDING', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
     'an --at naming a critical finding': ['--route', 'staged', '--severity', 'low', '--category', 'security', '--at', 'critical finding:1', '--stage-path', 'staged/review-3.patch'],
-    'a category with an interior newline':['--route', 'staged', '--severity', 'high', '--category', 'security\nlens', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'a category with an interior newline': ['--route', 'staged', '--severity', 'high', '--category', 'security\nlens', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
     'a missing --at': ['--route', 'staged', '--severity', 'high', '--category', 'security', '--stage-path', 'staged/review-3.patch'],
     'trailing bare --category': ['--route', 'staged', '--severity', 'high', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch', '--category'],
     'empty --category': ['--route', 'staged', '--severity', 'high', '--category', '', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],

@@ -29,9 +29,10 @@ function deps(main, out) {
   return { now: () => NOW, cwd: () => main, mainRoot: main, stdout: (s) => out.push(['out', s]), stderr: (s) => out.push(['err', s]) };
 }
 
-// Shell-ish tokenizer for the cited commands: a double-quoted span is one argv token, quotes stripped.
+// Shell-ish tokenizer for the cited commands: a double- or single-quoted span is one argv token, quotes stripped.
+// A single-quoted span is literal (no expansion), which is what the real shell does with it.
 function argvOf(command) {
-  return [...command.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
+  return [...command.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)].map((m) => m[1] ?? m[2] ?? m[3]);
 }
 
 function citedCommand(bulletLabel) {
@@ -43,12 +44,12 @@ function citedCommand(bulletLabel) {
 }
 
 // Fill the placeholders the way a real Step 3 routing site would, then drop the `node <script>` prefix.
-function instantiate(command, severity, runDir) {
+function instantiate(command, severity, runDir, at = 'src/a.js:12') {
   const filled = command
     .split('"$PIPELINE_RUN_DIR"').join(`"${runDir}"`)
     .split('{severity}').join(severity)
     .split('{category}').join('security')
-    .split('{file:line}').join('src/a.js:12')
+    .split('{file:line}').join(at)
     .split('{hash}').join('abc1234')
     .split('{n}').join('3');
   assert.doesNotMatch(filled, /\{[a-z:]+\}/, `every placeholder must be filled: ${filled}`);
@@ -73,6 +74,23 @@ for (const c of CASES) {
   });
 }
 
+// #3792: a file name is git-supplied text — a double-quoted `$postId` would expand to empty in the real shell.
+const DOLLAR_AT = 'app/routes/posts.$postId.tsx:12';
+
+for (const c of CASES) {
+  test(`the ${c.label} bullet single-quotes --category and --at, and a $-bearing location survives verbatim into the line`, () => {
+    const command = citedCommand(c.label);
+    assert.ok(command.includes("--category '{category}' --at '{file:line}'"), `--category and --at must be single-quoted: ${command}`);
+    const { main, runDir } = fixture();
+    const out = [];
+    const argv = instantiate(command, c.severity, runDir, DOLLAR_AT);
+    assert.equal(argv[argv.indexOf('--at') + 1], DOLLAR_AT, 'the single-quoted span tokenizes to exactly the location');
+    assert.equal(run(argv, deps(main, out)), 0, `exit 0 for: ${argv.join(' ')}`);
+    const text = fs.readFileSync(path.join(runDir, 'decisions.md'), 'utf8');
+    assert.ok(text.includes(DOLLAR_AT), `the $-bearing location must be logged verbatim: ${text}`);
+  });
+}
+
 test('step3-routing.md carries no hand-typed Step 3 Routing template', () => {
-  assert.doesNotMatch(md, /Log: `(AUTO|STAGED|KEPT-PROMPT) \{time\} — Step 3 Routing:/);
+  assert.doesNotMatch(md, /`[^`\n]*\{time\} — Step 3 Routing:/);
 });
