@@ -16,12 +16,14 @@ const ALLOWED_SEVERITIES = {
 };
 const STAGE_PATH_RE = /^staged\/review-\d+\.patch$/;
 const COMMIT_RE = /^[0-9a-f]{7,40}$/;
-// The release gate classifies Step 3 lines by these literals; a category must never inject one.
+// The release gate classifies Step 3 lines by these literals; --category and --at are written into the line, so neither may inject one.
 const GATE_TOKEN_RE = /severity finding|critical finding/i;
 
-function singleLineProblem(flag, value) {
+// --category and --at are written into the entry text: each must be a non-empty single line that carries no gate token.
+function textProblem(flag, value) {
   if (typeof value !== 'string' || !value.trim()) return `${flag} is required (a non-empty string)`;
   if (/[\r\n]/.test(value)) return `${flag} must be a single line`;
+  if (GATE_TOKEN_RE.test(value)) return `${flag} must not contain "severity finding" or "critical finding" (a release-gate token)`;
   return null;
 }
 
@@ -35,9 +37,8 @@ function composeRoutingLine({ route, severity, category, at, stagePath, commit }
   if (!ALLOWED_SEVERITIES[route].includes(sev)) {
     return { error: `--route ${route} does not take --severity ${sev} (allowed: ${ALLOWED_SEVERITIES[route].join('|')})` };
   }
-  const problem = singleLineProblem('--category', category) || singleLineProblem('--at', at);
+  const problem = textProblem('--category', category) || textProblem('--at', at);
   if (problem) return { error: problem };
-  if (GATE_TOKEN_RE.test(category)) return { error: '--category must not contain "severity finding" or "critical finding" (a release-gate token)' };
 
   if (route === 'auto') {
     if (stagePath != null) return { error: '--stage-path is not valid with --route auto' };

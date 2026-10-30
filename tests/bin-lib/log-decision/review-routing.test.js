@@ -123,9 +123,13 @@ test('every invalid route, severity or flag combination exits 2 and writes nothi
     'staged with a suffixed --stage-path': ['--route', 'staged', '--severity', 'high', ...COMMON, '--stage-path', 'staged/review-3.patch.bak'],
     'staged with a prefixed --stage-path': ['--route', 'staged', '--severity', 'high', ...COMMON, '--stage-path', 'x/staged/review-3.patch'],
     'auto with a non-hex --commit': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc)'],
+    'auto with a --commit suffixed by a non-hex character': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc1234)'],
+    'auto with a --commit prefixed by a word': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'x abc1234'],
+    'auto with a too-short --commit': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc12'],
     'a category naming a critical finding': ['--route', 'staged', '--severity', 'low', '--category', 'critical finding', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
     'a category naming a severity finding in any case': ['--route', 'staged', '--severity', 'medium', '--category', 'Medium-Severity FINDING', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
-    'a category with an interior newline': ['--route', 'staged', '--severity', 'high', '--category', 'security\nlens', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'an --at naming a critical finding': ['--route', 'staged', '--severity', 'low', '--category', 'security', '--at', 'critical finding:1', '--stage-path', 'staged/review-3.patch'],
+    'a category with an interior newline':['--route', 'staged', '--severity', 'high', '--category', 'security\nlens', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
     'a missing --at': ['--route', 'staged', '--severity', 'high', '--category', 'security', '--stage-path', 'staged/review-3.patch'],
     'trailing bare --category': ['--route', 'staged', '--severity', 'high', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch', '--category'],
     'empty --category': ['--route', 'staged', '--severity', 'high', '--category', '', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
@@ -145,6 +149,15 @@ test('a trailing bare --stage-path is a usage error naming the flag, and nothing
   const code = run(['--run', runDir, '--route', 'auto', '--severity', 'low', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234', '--stage-path'], deps(main, out));
   assert.equal(code, 2);
   assert.match(streamOf(out, 'err'), /--stage-path requires a value/);
+  assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, 'decisions.md never created');
+});
+
+test('a value-taking flag followed directly by another flag is a usage error naming it, and nothing is written', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--route', 'staged', '--severity', 'high', '--category', '--at', 'src/a.js:1', '--stage-path', 'staged/review-3.patch'], deps(main, out));
+  assert.equal(code, 2);
+  assert.match(streamOf(out, 'err'), /--category requires a value/);
   assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, 'decisions.md never created');
 });
 
