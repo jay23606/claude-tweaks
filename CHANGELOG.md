@@ -53,6 +53,26 @@ Three conventions follow from how this repo works, and all are visible below:
 
 <!-- release-please boundary: `## v6.128.0`, directly below, and everything below it predate the 2026-09-21 migration to release-please and keep their `## vX.Y.Z — {summary}` heading form; every entry release-please generates is inserted directly below this comment, above `## v6.128.0`. -->
 
+## [6.157.0](https://github.com/thn-inc/claude-tweaks/compare/v6.156.3...v6.157.0) (2026-10-30)
+
+
+### Features
+
+* Catch up with the integration branch before the… ([#4304](https://github.com/thn-inc/claude-tweaks/issues/4304)) ([cb8763b](https://github.com/thn-inc/claude-tweaks/commit/cb8763b7e569a27b1de809888160b93733c76876))
+
+
+### Bug Fixes
+
+* calibration-report: the "last N runs" window sorts run… ([#4464](https://github.com/thn-inc/claude-tweaks/issues/4464)) ([fae7a76](https://github.com/thn-inc/claude-tweaks/commit/fae7a76ba07ab63f36b14e63e047d93283424d71))
+* checkResumeFreshness reads an unreadable worktree path as… ([#4435](https://github.com/thn-inc/claude-tweaks/issues/4435)) ([e245c30](https://github.com/thn-inc/claude-tweaks/commit/e245c300a49c201ed5e2cd3b4ae39b197e67c884))
+* Make the merge gate and near-duplicate Current State… ([#4369](https://github.com/thn-inc/claude-tweaks/issues/4369)) ([f86eb8b](https://github.com/thn-inc/claude-tweaks/commit/f86eb8b14d5b00be964c8f3969e78c1f3959853b))
+* Match a record section heading only when it starts its… ([#4367](https://github.com/thn-inc/claude-tweaks/issues/4367)) ([84e3352](https://github.com/thn-inc/claude-tweaks/commit/84e33527b384ce3438a614a20a4ce5f89338e96f))
+* Read a record's Premise-check, Verified-as-of and… ([#4368](https://github.com/thn-inc/claude-tweaks/issues/4368)) ([76bf9df](https://github.com/thn-inc/claude-tweaks/commit/76bf9dfffe5379313e9cf97458c86a1c8f9bda9e))
+* reconcile archive-merged strands tracked work/ specs when… ([#4387](https://github.com/thn-inc/claude-tweaks/issues/4387)) ([74c1662](https://github.com/thn-inc/claude-tweaks/commit/74c1662d4957d65ab06371b180a5801812e25af2))
+* Windows regression: 1 test file(s) newly failing after… ([#4287](https://github.com/thn-inc/claude-tweaks/issues/4287)) ([7cf500f](https://github.com/thn-inc/claude-tweaks/commit/7cf500f633642789fe2cc3daf46546d2461a444c)), closes [#4299](https://github.com/thn-inc/claude-tweaks/issues/4299) [#4301](https://github.com/thn-inc/claude-tweaks/issues/4301)
+* Write gate misreads cp/mv value-taking options… ([#4449](https://github.com/thn-inc/claude-tweaks/issues/4449)) ([d1be775](https://github.com/thn-inc/claude-tweaks/commit/d1be775ae07f17b802a7ab89f2fa064897a36f73))
+* Write gate reads a case compound that starts a pipeline… ([#4481](https://github.com/thn-inc/claude-tweaks/issues/4481)) ([fbffbd0](https://github.com/thn-inc/claude-tweaks/commit/fbffbd0e3c255a0fe74d996e87022cb9b84c5dfc))
+
 ## [6.156.3](https://github.com/thn-inc/claude-tweaks/compare/v6.156.2...v6.156.3) (2026-10-27)
 
 
