@@ -14,7 +14,7 @@
 
 - AC1: `node plugin/bin/log-decision.js --run <dir> --status AUTO --step "Step 3 Routing" --text "Step 3 Routing: x"` exits 2 and writes nothing.
 - AC2: A high finding routed through the composer produces a line containing the literal `high-severity finding`.
-- AC3: Each new test fails with its change reverted.
+- AC3: Each new test fails with its change reverted. (Plan-review clarification, decided by the user: an over-refusal guard test — one that pins the refusal does *not* fire — passes on the base by design and is proven red against an over-broad mutant instead.)
 - The refusal names both values (exit 2) and covers `--text`, `--text-file`, and `--entries` text.
 - CLI wrapper contract (`.claude/skills/gh-api-module-pattern/cli-wrapper-contract.md`, verbatim): "Logic lives in an exported `run(argv, deps)`; every side effect (`runner`, `ghAvailable`, `remoteUrl`, `stdout`, `stderr`) goes through `deps` so tests inject fakes." / "`require.main === module` guard sets `process.exitCode = run(...)` (never `process.exit`, which can truncate piped stdout). `--help` short-circuits before any availability probe." / "*Sanctioned-writer* (`plugin/bin/log-decision.js`, …): 0 written (the written path echoed to stdout), 2 malformed invocation, 3 the run dir is missing or not anchored under the main checkout, or the target file is unwritable — **no 1 at all**." / "A value-taking flag given as the last argv element reads `undefined`, and a `!== null` presence check treats that as supplied. … Validate the value inside `parseArgs` … — `typeof v !== 'string' || !v.trim() || v.startsWith('--')` returns a usage error — and pin both the trailing bare flag and the empty-string value with their own test cases."
 - `review-routing-line.js` takes the Sanctioned-writer vocabulary (0/2/3) because it delegates to `log-decision.js`; its own validation failures are exit 2.
@@ -59,11 +59,13 @@
   Run: `node --test tests/bin-lib/log-decision/cli.test.js`
   Expected: PASS, all tests.
 
-- [ ] **Step 5: Go-red proof** — temporarily make `repeatsStep` return `false`, re-run Step 4's command, confirm the four refusal tests fail, restore.
+- [ ] **Step 5: Go-red proof** — (a) temporarily make `repeatsStep` return `false`, re-run Step 4's command, confirm the four refusal tests fail, restore; (b) temporarily make `repeatsStep` the over-broad `Boolean(step) && String(text).includes(step)`, re-run, confirm the two acceptance tests fail (AC3.1 per the plan-review clarification), restore. Record both outcomes in the task report.
 
 - [ ] **Step 6: Commit** — `git add plugin/bin/log-decision.js tests/bin-lib/log-decision/cli.test.js docs/plugin-structure.md` then commit `Refuse a log-decision --text that repeats --step — exit 2 naming both values (#4488)`.
 
 ### Task 2: review-routing-line composer + CLI
+
+**Review risk:** high
 
 **Files:**
 - Create: `plugin/bin/lib/log-decision/review-routing.js`
@@ -74,31 +76,33 @@
 **Interfaces:**
 - Consumes: Task 1's `run(argv, deps)` from `plugin/bin/log-decision.js`.
 - Produces:
-  - `composeRoutingLine({ route, severity, category, at, stagePath, commit }) -> { status, text } | { error }` and `ROUTES = ['auto','staged','kept-prompt']`, `SEVERITIES = ['low','medium','high','critical']`, `ROUTING_STEP = 'Step 3 Routing'` from `review-routing.js`.
+  - `composeRoutingLine({ route, severity, category, at, stagePath, commit }) -> { status, text, reversibility } | { error }` and `ROUTES = ['auto','staged','kept-prompt']`, `SEVERITIES = ['low','medium','high','critical']`, `ROUTING_STEP = 'Step 3 Routing'` from `review-routing.js`.
   - CLI: `node plugin/bin/review-routing-line.js --run <run-dir> --route auto|staged|kept-prompt --severity low|medium|high|critical --category <text> --at <file:line> [--stage-path staged/review-{n}.patch] [--commit <sha>] [--spec <n>] [--lever "<k>=<v> (<source>)"]`; exports `run(argv, deps)` with the same `deps` shape as `log-decision.js` (`now, cwd, mainRoot, stdout, stderr`). Exit 0 appended (line echoed), 2 malformed/invalid combination, 3 from `log-decision.js` (run dir missing / not anchored).
 
-Composer rules (exact text; `formatEntry` adds the trailing `.` and `Reversibility: high.`):
+Composer rules (exact text; `formatEntry` adds the trailing `.` and `Reversibility: {reversibility}.`):
 
-| route | status | allowed severity | required | text |
-|---|---|---|---|---|
-| `auto` | `AUTO` | low, medium | `--commit` | `applied {severity}-severity {category} fix at {at} (commit {commit})` |
-| `staged` | `STAGED` | low, medium, high | `--stage-path` matching `^staged/review-\d+\.patch$` | `{severity}-severity finding {category} at {at}. Stage path: {stagePath}` |
-| `kept-prompt` | `KEPT-PROMPT` | critical only | — | `critical finding {category} at {at}. Surfaced inline` |
+| route | status | allowed severity | required | refused if given | text | reversibility |
+|---|---|---|---|---|---|---|
+| `auto` | `AUTO` | low, medium | `--commit` | `--stage-path` | `applied {severity}-severity {category} fix at {at}` | `high (commit {commit})` |
+| `staged` | `STAGED` | low, medium, high | `--stage-path` matching `^staged/review-\d+\.patch$` | `--commit` | `{severity}-severity finding {category} at {at}. Stage path: {stagePath}` | `high` |
+| `kept-prompt` | `KEPT-PROMPT` | critical only | — | `--stage-path`, `--commit` | `critical finding {category} at {at}. Surfaced inline` | `high` |
 
-Every other route/severity pairing is `{ error }` naming both (the ceiling table in `review/step3-routing.md` never produces it). `category`, `at`, `commit` must be non-empty single-line strings.
+Every other route/severity pairing is `{ error }` naming both (the ceiling table in `review/step3-routing.md` never produces it). A flag in the "refused if given" column is `{ error }` naming the flag and route — never silently dropped. `--severity` is matched case-insensitively and normalised to lowercase (the routing tables write `High`/`Critical`), so `High` composes `high-severity finding`; anything else outside the four values is `{ error }` naming the lowercase set. `category`, `at`, `commit` must be non-empty single-line strings. The AUTO line renders `… fix at src/a.js:3. Reversibility: high (commit abc1234).` (plan-review clarification, decided by the user: the commit stays in the reversibility field as log-decision's qualifier).
 
 - [ ] **Step 1: Write the failing tests** in `tests/bin-lib/log-decision/review-routing.test.js` (copy `fixture()`/`deps()` from `cli.test.js`):
   - `AC2.1: a high finding routed staged produces the literal "high-severity finding"` — run with `--route staged --severity high --category security --at src/a.js:12 --stage-path staged/review-3.patch` → code 0; the appended line equals `- STAGED 09:05:07 — Step 3 Routing: high-severity finding security at src/a.js:12. Stage path: staged/review-3.patch. Reversibility: high.` under a `## /review` heading.
   - `release Step 3 classifies composed lines as the release gate's table says` — read `plugin/skills/release/SKILL.md`, take the table row starting `` | `review: blocking` | `` and collect every `` literal token `X` `` into `BLOCKING`; take the `review: findings` row's backticked tokens (`medium-severity finding`, `applied low-severity`) into `FINDINGS`; assert `BLOCKING` deep-equals `['critical finding','high-severity finding']` (so a reworded gate fails here, not silently). Define `classify(lines)` exactly per that table (blocking if any line includes a BLOCKING token; findings if any includes `Step 3 Routing:`; else clean). Compose via the real CLI: STAGED high → `review: blocking`; KEPT-PROMPT critical → `review: blocking`; STAGED medium → `review: findings`; AUTO low → `review: findings`.
   - `no composed line doubles the step prefix` — each of the four lines above does not include `Step 3 Routing: Step 3 Routing`.
-  - Refusals, each exit 2 with nothing written: `--route kept-prompt --severity high`; `--route staged --severity critical`; `--route auto --severity high`; `--route auto` without `--commit`; `--route staged` without `--stage-path`; `--stage-path staged/review-x.patch`; `--severity severe`; `--category` as the last argv element (trailing bare flag); `--category ''`.
+  - `--severity High is normalised` — `--route staged --severity High …` → code 0, line contains `high-severity finding`.
+  - `the AUTO line carries the commit in the reversibility qualifier` — `--route auto --severity low --category Convention --at src/a.js:3 --commit abc1234` → line equals `- AUTO 09:05:07 — Step 3 Routing: applied low-severity Convention fix at src/a.js:3. Reversibility: high (commit abc1234).`
+  - Refusals, each exit 2 with nothing written: `--route kept-prompt --severity high`; `--route staged --severity critical`; `--route auto --severity high`; `--route auto` without `--commit`; `--route staged` without `--stage-path`; `--stage-path staged/review-x.patch`; `--severity severe`; `--route auto … --stage-path staged/review-3.patch` (inapplicable flag); `--route staged … --commit abc1234` (inapplicable flag); `--category` as the last argv element (trailing bare flag); `--category ''`.
   - `a shadow run dir is refused with exit 3` — `--run` the fixture's worktree-local shadow → code 3, shadow `decisions.md` absent.
 
 - [ ] **Step 2: Run to verify it fails**
   Run: `node --test tests/bin-lib/log-decision/review-routing.test.js`
   Expected: FAIL with `Cannot find module '../../../plugin/bin/review-routing-line'`.
 
-- [ ] **Step 3: Implement** `review-routing.js` (pure, per the table) and `review-routing-line.js` (`parseArgs` with the trailing-flag guard, `--help` → USAGE exit 0, compose, then `return require('./log-decision').run(['--run', run, '--status', status, '--step', ROUTING_STEP, '--section', '/review', '--reversibility', 'high', '--text', text, ...spec/lever], deps)`; `require.main === module` → `process.exitCode = run(process.argv.slice(2), realDeps)`). Header comment states the 0/2/3 vocabulary and that the write is `log-decision.js`'s.
+- [ ] **Step 3: Implement** `review-routing.js` (pure, per the table) and `review-routing-line.js` (`parseArgs` with the trailing-flag guard, `--help` → USAGE exit 0, compose, then `return require('./log-decision').run(['--run', run, '--status', status, '--step', ROUTING_STEP, '--section', '/review', '--reversibility', reversibility, '--text', text, ...spec/lever], deps)`; `require.main === module` → `process.exitCode = run(process.argv.slice(2), realDeps)`). Header comment states the 0/2/3 vocabulary and that the write is `log-decision.js`'s.
 
 - [ ] **Step 4: Run to verify it passes**
   Run: `node --test tests/bin-lib/log-decision/review-routing.test.js tests/bin-lib/log-decision/cli.test.js tests/bin-lib/exit-code-conformance.test.js`
