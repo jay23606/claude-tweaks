@@ -124,7 +124,9 @@ function readEntries(file, defaultSection) {
   return { entries };
 }
 
-// True iff text opens with `{step}:` — the prefix formatEntry already writes before the text.
+// True iff text opens with `{step}:` — the prefix formatEntry already writes before the text. The text is
+// trimmed because formatEntry trims it before writing, so leading whitespace still lands as a doubled prefix;
+// the step is compared as given, since formatEntry writes it as given.
 function repeatsStep(step, text) {
   return typeof step === 'string' && step !== '' && String(text).trim().startsWith(step + ':');
 }

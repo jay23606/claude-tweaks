@@ -4,7 +4,7 @@
 // Step 3 Routing log line (#4488). Each bullet's cited command is executed
 // against a fixture run dir, and the appended line must carry the route's
 // release-gate token.
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
@@ -16,8 +16,12 @@ const MD_PATH = path.join(__dirname, '..', 'plugin', 'skills', 'review', 'step3-
 const md = readText(MD_PATH);
 const NOW = new Date(2026, 7, 16, 9, 5, 7).getTime();
 
+const roots = [];
+after(() => { for (const r of roots) fs.rmSync(r, { recursive: true, force: true }); });
+
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rrl-prose-'));
+  roots.push(root);
   const main = path.join(root, 'main');
   const runDir = path.join(main, '.claude-tweaks', 'pipelines', '2026-08-16T090000-spec-12');
   fs.mkdirSync(runDir, { recursive: true });

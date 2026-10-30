@@ -28,7 +28,7 @@ files:
 - **URL:** `node "${CLAUDE_PLUGIN_ROOT}/bin/review-routing-line.js" --run "$PIPELINE_RUN_DIR" --route staged --severity high --category 'security' --at 'app/routes/posts.$postId.tsx:12' --stage-path staged/review-3.patch`
 - **Action:** The agent fills the placeholders and runs the command, single-quoting `--category` and `--at` (a `'` inside a value is written `'\''`). The CLI composes the text and appends it under `## /review` with step `Step 3 Routing`, echoing the line.
 - **Should feel:** Like filling a form. Severity case (`High`) doesn't matter, and the token order is not the agent's job.
-- **Should understand:** Exit 2 means the call was refused and nothing was written: a route/severity pairing the table never produces, a flag that doesn't belong to the route (`--commit` on staged), a non-hex `--commit`, a malformed `--stage-path`, or a `--category`/`--at` that itself carries `severity finding` / `critical finding`. Exit 3 means the run dir is missing or not anchored under the main checkout.
+- **Should understand:** Exit 2 means the call was refused and nothing was written: a route/severity pairing the table never produces, a flag that doesn't belong to the route (`--commit` on staged), a non-hex `--commit`, a malformed `--stage-path`, or a `--category`/`--at`/`--lever` that carries a line break or `severity finding` / `critical finding`. Exit 3 means the run dir is missing or not anchored under the main checkout.
 - **Red flags:** The `$postId` segment vanishes from the logged path (the value was double-quoted), or a hand-typed `{severity}-severity {category} finding` reaches `decisions.md`.
 
 ### 3. A hand-typed prefix is refused — `log-decision.js`

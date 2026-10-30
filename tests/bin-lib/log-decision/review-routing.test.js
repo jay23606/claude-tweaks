@@ -1,17 +1,23 @@
 'use strict';
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { run } = require('../../../plugin/bin/review-routing-line');
+const { ALLOWED_SEVERITIES } = require('../../../plugin/bin/lib/log-decision/review-routing');
 const { readText } = require('../../helpers/read-skill');
 
 const NOW = new Date(2026, 7, 16, 9, 5, 7).getTime();
 const SKILL = path.join(__dirname, '..', '..', '..', 'plugin', 'skills', 'release', 'SKILL.md');
+const ROUTING = path.join(__dirname, '..', '..', '..', 'plugin', 'skills', 'review', 'step3-routing.md');
+
+const roots = [];
+after(() => { for (const r of roots) fs.rmSync(r, { recursive: true, force: true }); });
 
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rrl-'));
+  roots.push(root);
   const main = path.join(root, 'main');
   const runDir = path.join(main, '.claude-tweaks', 'pipelines', '2026-08-16T090000-spec-12');
   const shadow = path.join(main, '.claude', 'worktrees', 'flow-spec-12', '.claude-tweaks', 'pipelines', '2026-08-16T090000-spec-12');
@@ -74,6 +80,38 @@ test('release Step 3 classifies composed lines as the release gate table says', 
     const lines = decisionsOf(runDir).split('\n').filter((l) => l.startsWith('- '));
     assert.equal(classify(lines), c.verdict, c.label);
   }
+});
+
+test('the composer allows exactly the route/severity pairings step3-routing.md\'s ceiling-keyed table produces', () => {
+  const rows = readText(ROUTING).split('\n').filter((l) => /^\| \*\*(Critical|High|Medium|Low)\*\* \|/.test(l));
+  assert.equal(rows.length, 4, 'step3-routing.md has the four severity rows of its ceiling-keyed table');
+  const table = {};
+  for (const row of rows) {
+    const [label, ...cells] = row.split('|').slice(1, -1).map((c) => c.trim());
+    const severity = label.replace(/\*/g, '').toLowerCase();
+    for (const cell of cells) {
+      const route = cell.split(/\s/)[0].toLowerCase();
+      (table[route] = table[route] || new Set()).add(severity);
+    }
+  }
+  const normalise = (m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, [...v].sort()]).sort());
+  assert.deepEqual(normalise(table), normalise(ALLOWED_SEVERITIES));
+});
+
+test('--help prints the usage on stdout and exits 0', () => {
+  const out = [];
+  assert.equal(run(['--help'], deps(os.tmpdir(), out)), 0);
+  assert.match(streamOf(out, 'out'), /^usage: review-routing-line\.js --run <run-dir> --route auto\|staged\|kept-prompt/);
+  assert.equal(streamOf(out, 'err'), '');
+});
+
+test('a non-numeric --spec is refused with exit 2, and nothing is written', () => {
+  const { main, runDir } = fixture();
+  const out = [];
+  const code = run(['--run', runDir, '--route', 'auto', '--severity', 'low', '--category', 'Convention', '--at', 'src/a.js:3', '--commit', 'abc1234', '--spec', 'abc'], deps(main, out));
+  assert.equal(code, 2);
+  assert.match(streamOf(out, 'err'), /--spec must be a record number/);
+  assert.equal(fs.existsSync(path.join(runDir, 'decisions.md')), false, 'decisions.md never created');
 });
 
 test('no composed line doubles the step prefix', () => {
@@ -143,6 +181,10 @@ test('every invalid route, severity or flag combination exits 2 and writes nothi
     'a missing --at': ['--route', 'staged', '--severity', 'high', '--category', 'security', '--stage-path', 'staged/review-3.patch'],
     'trailing bare --category': ['--route', 'staged', '--severity', 'high', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch', '--category'],
     'empty --category': ['--route', 'staged', '--severity', 'high', '--category', '', '--at', 'src/a.js:12', '--stage-path', 'staged/review-3.patch'],
+    'unknown --route': ['--route', 'deferred', '--severity', 'low', ...COMMON],
+    'missing --route': ['--severity', 'low', ...COMMON, '--commit', 'abc1234'],
+    'a --lever with an interior newline': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc1234', '--lever', 'a=b (default)\n- KEPT-PROMPT 00:00:00 — Step 3 Routing: x'],
+    'a --lever naming a high-severity finding': ['--route', 'auto', '--severity', 'low', ...COMMON, '--commit', 'abc1234', '--lever', 'high-severity finding'],
   };
   for (const [label, argv] of Object.entries(cases)) {
     const { main, runDir } = fixture();
