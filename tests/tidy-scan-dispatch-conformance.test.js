@@ -15,6 +15,7 @@ const read = (rel) => readText(path.join(REPO_ROOT, rel));
 const SCAN_EXECUTION = read('plugin/skills/tidy/scan-execution.md');
 const SCAN_PROCEDURES = read('plugin/skills/tidy/scan-procedures.md');
 const STEP1_RECORDS = read('plugin/skills/tidy/step-1-records.md');
+const SCAN_ACCEPTANCE = read('plugin/skills/_shared/github-pr-scan-acceptance.md');
 
 test('scan-execution.md\'s scan template carries no row cap or count row (#4468)', () => {
   assert.doesNotMatch(SCAN_EXECUTION, /\+N more/);
@@ -29,4 +30,8 @@ test('scan-execution.md\'s scan template requires one row per finding (#4468)', 
 test('step-1-records.md no longer cites a scan-agent row cap (#4468)', () => {
   assert.doesNotMatch(STEP1_RECORDS, /15-row/);
   assert.match(STEP1_RECORDS, /the candidates file, not the table, carries the full repair list/);
+});
+
+test('github-pr-scan-acceptance.md no longer describes the tidy scan as capped at 15 rows (#4468)', () => {
+  assert.doesNotMatch(SCAN_ACCEPTANCE, /15-row/);
 });

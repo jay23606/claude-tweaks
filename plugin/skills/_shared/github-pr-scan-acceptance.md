@@ -323,8 +323,9 @@ Emit `[acceptance-gap]` rows per the Output Contract, at severity `info` — not
 not `low`. This is the one finding in this file whose row count is a standing backlog rather
 than a defect count: on a repo that closes records ad hoc it returns a three-digit set on every
 run, indefinitely. `/claude-tweaks:tidy` runs this scope in the same agent as `repo-wide`
-(`tidy/scan-procedures.md` Step 4.8) under one 15-row, highest-severity-first cap, so any tier
-above `info` would permanently evict every actionable `repo-wide` finding beneath it. `info` is
+(`tidy/scan-procedures.md` Step 4.8) and the agent returns its rows highest-severity-first with no
+row cap, so any tier above `info` would bury every actionable `repo-wide` finding beneath a
+standing backlog. `info` is
 also where its behavioural sibling already sits — "Open PR awaiting review", the other
 no-mutation, always-surfaced row (`tidy/step-6-auto.md`).
 
@@ -659,6 +660,6 @@ ends with "then `/claude-tweaks:demo #{n}`" even once the gate is open.
 
 Emit `[parent-gate]` rows per the Output Contract, at severity `info` — the same severity
 `acceptance-gap` uses and for the same reason: `/claude-tweaks:tidy` runs this scope in the same
-agent as `repo-wide` and `acceptance-gap` under one 15-row, highest-severity-first cap
+agent as `repo-wide` and `acceptance-gap` in one highest-severity-first table
 (`tidy/scan-procedures.md` Step 4.8), and this can be a standing backlog on a repo with several
 open decompositions, not a one-off defect count.
