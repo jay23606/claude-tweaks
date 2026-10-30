@@ -5,11 +5,12 @@ scan batch, extracted from `SKILL.md` so this skill's main file stays under its 
 keeps the step-cost framing sentence and a stub pointing here; the per-step data-source table
 (which step reads what, and its `[type]` output prefix) also stays in `SKILL.md`.
 
-**No worktree for the scan batch.** The agent-backed scans only read — they write nothing — so
-`_shared/worktree-setup.md`'s "Forge-API-only invocations need no worktree" carve-out covers them
-outright; the only worktree `/claude-tweaks:tidy` provisions is Step 7.5's, and only when Step 7's
-approved set holds a working-tree write. Step 4.5's reconcile is the one convergence write before
-the batch, and it runs in the main thread (below).
+**No worktree for the scan batch.** The agent-backed scans only read — they mutate no repo state,
+forge, or run dir (their scratch outputs are listed below) — so `_shared/worktree-setup.md`'s
+"Forge-API-only invocations need no worktree" carve-out covers them outright; the only worktree
+`/claude-tweaks:tidy` provisions is Step 7.5's, and only when Step 7's approved set holds a
+working-tree write. Step 4.5's reconcile is the one convergence write before the batch, and it
+runs in the main thread (below).
 
 ---
 

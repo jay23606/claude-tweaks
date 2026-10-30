@@ -50,6 +50,7 @@ test('scan-procedures.md Step 4.5 reconcile runs in the main thread before the s
 test('scan-execution.md\'s dispatch block runs Step 4.5\'s reconcile before dispatching (#4468)', () => {
   assert.match(SCAN_EXECUTION, /Before dispatching the batch, when Step 4\.5 is in scope, run its reconcile in the main thread/);
   assert.match(SCAN_EXECUTION, /scan agents are read-only/);
+  assert.doesNotMatch(SCAN_EXECUTION, /they write nothing/);
   assert.match(SCAN_EXECUTION, /omits only the "Reconcile first" paragraph \(it keeps Working-directory discipline\)/);
   assert.match(SCAN_EXECUTION, /feed Step 6's \*\*Applied automatically\*\* section/);
   assert.match(SCAN_EXECUTION, /none mutates repo state, the forge, or the run dir/);
