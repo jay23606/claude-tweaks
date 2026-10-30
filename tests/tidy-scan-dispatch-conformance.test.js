@@ -35,3 +35,20 @@ test('step-1-records.md no longer cites a scan-agent row cap (#4468)', () => {
 test('github-pr-scan-acceptance.md no longer describes the tidy scan as capped at 15 rows (#4468)', () => {
   assert.doesNotMatch(SCAN_ACCEPTANCE, /15[- ]rows?\b|at most 15\b/);
 });
+
+test('scan-procedures.md Step 4.5 reconcile runs in the main thread before the scan batch (#4468)', () => {
+  const section = SCAN_PROCEDURES.slice(
+    SCAN_PROCEDURES.indexOf('## Step 4.5:'),
+    SCAN_PROCEDURES.indexOf('## Step 4.6:'),
+  );
+  assert.match(section, /\*\*Reconcile first — main thread, before the scan batch:\*\*/);
+  assert.match(section, /the Step 4\.5 scan agent never runs it/);
+});
+
+test('scan-execution.md\'s dispatch block runs Step 4.5\'s reconcile before dispatching (#4468)', () => {
+  assert.match(SCAN_EXECUTION, /Before dispatching the batch, when Step 4\.5 is in scope, run its reconcile in the main thread/);
+  assert.match(SCAN_EXECUTION, /scan agents are read-only/);
+  assert.match(SCAN_EXECUTION, /inlined Step 4\.5 section starts at "Worktrees and merged remote branches — shared probe"/);
+  assert.match(SCAN_EXECUTION, /feed Step 6's \*\*Applied automatically\*\* section/);
+  assert.match(SCAN_EXECUTION, /Step 1's `\{release-note-candidates-file\}` is the one write/);
+});
