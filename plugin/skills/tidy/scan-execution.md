@@ -30,7 +30,7 @@ outright; the only worktree `/claude-tweaks:tidy` provisions is Step 7.5's, and 
 >
 > Severity scale: critical / high / medium / low / info
 > If no findings: return literal text "No findings."
-> Return at most 15 rows, highest severity first; if more were found, append a final row reading "+N more" with the count in place of N — never omit this row when findings exceed the cap.
+> Return every finding as its own row, highest severity first, with no row cap — never collapse findings into a count or summary row: the Step 6 report renders one row per record (`step-6-auto.md`'s Report rules), and the dispatcher holds only the rows you return.
 > Do not add narration, headers, or summaries before or after the table and trailing status line.
 > ```
 >

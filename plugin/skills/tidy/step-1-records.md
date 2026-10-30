@@ -141,7 +141,7 @@ node "${CLAUDE_PLUGIN_ROOT}/bin/release-note-repair.js" scan --driver {work-back
 
 `{work-backend}` is the driver this step resolved; `{release-note-candidates-file}` is the absolute
 path the dispatcher substituted into this prompt (`SKILL.md`'s Step 1 note). The scan writes every
-candidate there — this agent's 15-row table cap never truncates the repair list — and prints at
+candidate there — the candidates file, not the table, carries the full repair list — and prints at
 most one summary line. Exit 2 (an unusable records file or `--out`): report one
 `[release-note] scan failed` row, severity `medium`.
 
