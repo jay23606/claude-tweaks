@@ -299,8 +299,8 @@ a gate due. No fetch-limit or truncation warning applies, unlike the API-paging 
 → Collect each as: `[parent-gate] {id}: {title} — parent complete, no acceptance disposition — Open parent gate, then /claude-tweaks:demo {id}`
 
 Severity `info` — with several open decompositions this is a standing backlog, not a defect
-count, and Step 6 caps rows highest-severity-first (the same tier and reason as its
-`github-issues` twin). The recommendation is the `Open parent gate` action, staged at every
+count, and rows return highest-severity-first with no cap, so any tier above `info` would bury
+actionable rows beneath it (the same tier and reason as its `github-issues` twin). The recommendation is the `Open parent gate` action, staged at every
 aggressiveness tier and never writing `demo:approved`/`demo:changes-requested`, which is why the
 row still ends with `/claude-tweaks:demo {id}`; `actions-local-files.md`'s `## Open parent gate`
 and `step-6-auto.md`'s row carry that action's execution, its staging reasoning, and what it
@@ -408,9 +408,9 @@ are excluded past 30 days like the other driver.
 → Collect each as: `[acceptance-gap] {id}: {title} — closed with no acceptance disposition — recommend /claude-tweaks:demo {id}`
 
 Severity `info` — the same tier and the same reason as its `github-issues` twin: on a project that
-closes records ad hoc this is a standing backlog rather than a defect count, and Step 6 caps rows
-highest-severity-first, so any tier above `info` would permanently evict actionable rows beneath
-it. Unlike Shape 7, the recommendation is **not** one of the Action Vocabulary's atomic actions —
+closes records ad hoc this is a standing backlog rather than a defect count, and rows return
+highest-severity-first with no cap, so any tier above `info` would bury actionable rows beneath
+a standing backlog. Unlike Shape 7, the recommendation is **not** one of the Action Vocabulary's atomic actions —
 this shape mutates nothing at all, on either driver. It recommends `/claude-tweaks:demo {id}` and
 stops there, because disposing a closed record is a human judgment about whether shipped work
 solved the problem. It is staged at every aggressiveness tier for that reason (`step-6-auto.md`'s
